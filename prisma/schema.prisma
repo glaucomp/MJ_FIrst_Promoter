@@ -1,0 +1,211 @@
+// Prisma Schema for MJ First Promoter Platform
+// Multi-level referral tracking system
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  PROMOTER
+}
+
+enum ReferralStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+// Users table - stores all users regardless of role
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  password      String
+  firstName     String?
+  lastName      String?
+  role          UserRole @default(PROMOTER)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relationships
+  createdCampaigns      Campaign[]         @relation("CampaignCreator")
+  referralsMade         Referral[]         @relation("ReferrerReferrals")
+  referralsReceived     Referral[]         @relation("ReferredUserReferrals")
+  commissions           Commission[]
+  trackingLinks         TrackingLink[]
+  clickTracking         ClickTracking[]
+
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+// Campaign table - promotional campaigns with commission rates
+model Campaign {
+  id                String   @id @default(cuid())
+  name              String
+  description       String?
+  websiteUrl        String   // The website being promoted
+  commissionRate    Float    // Percentage (e.g., 15.0 for 15%)
+  secondaryRate     Float?   // Optional: Commission for second-level referrals
+  recurringRate     Float?   // Recurring commission for subscriptions
+  isActive          Boolean  @default(true)
+  startDate         DateTime @default(now())
+  endDate           DateTime?
+  
+  // FirstPromoter-style settings
+  cookieLifeDays    Int      @default(60) // Cookie lifetime in days
+  autoApprove       Boolean  @default(true) // Auto-approve new promoters
+  defaultReferralUrl String? // Default referral link URL
+  visibleToPromoters Boolean @default(true) // Whether promoters can see and promote this campaign
+  
+  // Referral rewards (for people being referred)
+  referralDiscount  Float?   // Discount percentage for referred users
+  referralReward    Float?   // Reward amount for referred users
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relationships
+  createdById       String
+  createdBy         User              @relation("CampaignCreator", fields: [createdById], references: [id])
+  referrals         Referral[]
+  trackingLinks     TrackingLink[]
+  commissions       Commission[]
+  customers         Customer[]
+
+  @@index([createdById])
+  @@index([isActive])
+  @@map("campaigns")
+}
+
+// Referral table - tracks the referral relationship and hierarchy
+model Referral {
+  id                String          @id @default(cuid())
+  inviteCode        String          @unique // Unique code for this referral
+  status            ReferralStatus  @default(PENDING)
+  level             Int             @default(1) // 1 = direct, 2 = second-level, etc.
+  metadata          Json?           // Store additional tracking data
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  acceptedAt        DateTime?       // When the referred user signed up
+
+  // Relationships
+  campaignId        String
+  campaign          Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  referrerId        String          // Person who made the referral
+  referrer          User            @relation("ReferrerReferrals", fields: [referrerId], references: [id])
+  referredUserId    String?         // Person who was referred (null until they sign up)
+  referredUser      User?           @relation("ReferredUserReferrals", fields: [referredUserId], references: [id])
+  parentReferralId  String?         // For multi-level tracking
+  parentReferral    Referral?       @relation("ReferralHierarchy", fields: [parentReferralId], references: [id])
+  childReferrals    Referral[]      @relation("ReferralHierarchy")
+  commissions       Commission[]
+  clicks            ClickTracking[]
+  customers         Customer[]
+
+  @@index([inviteCode])
+  @@index([campaignId])
+  @@index([referrerId])
+  @@index([referredUserId])
+  @@index([status])
+  @@map("referrals")
+}
+
+// TrackingLink table - unique URLs for each user/campaign combination
+model TrackingLink {
+  id            String   @id @default(cuid())
+  shortCode     String   @unique // Short code for the URL
+  fullUrl       String   // Complete tracking URL
+  clicks        Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relationships
+  userId        String
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaignId    String
+  campaign      Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  clickTracking ClickTracking[]
+
+  @@index([shortCode])
+  @@index([userId])
+  @@index([campaignId])
+  @@map("tracking_links")
+}
+
+// ClickTracking table - tracks individual clicks on tracking links
+model ClickTracking {
+  id              String   @id @default(cuid())
+  ipAddress       String?
+  userAgent       String?
+  referrerUrl     String?
+  metadata        Json?    // Store additional tracking data (location, device, etc.)
+  createdAt       DateTime @default(now())
+
+  // Relationships
+  trackingLinkId  String
+  trackingLink    TrackingLink @relation(fields: [trackingLinkId], references: [id], onDelete: Cascade)
+  userId          String?
+  user            User?        @relation(fields: [userId], references: [id])
+  referralId      String?
+  referral        Referral?    @relation(fields: [referralId], references: [id])
+
+  @@index([trackingLinkId])
+  @@index([createdAt])
+  @@map("click_tracking")
+}
+
+// Customer table - tracks actual customers and revenue
+model Customer {
+  id              String   @id @default(cuid())
+  email           String?
+  name            String?
+  revenue         Float    @default(0) // Total revenue from this customer
+  status          String   @default("active") // active, churned, trial
+  metadata        Json?    // Additional customer data
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relationships
+  campaignId      String
+  campaign        Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  referralId      String?
+  referral        Referral? @relation(fields: [referralId], references: [id])
+
+  @@index([campaignId])
+  @@index([referralId])
+  @@index([email])
+  @@map("customers")
+}
+
+// Commission table - tracks earned commissions
+model Commission {
+  id              String   @id @default(cuid())
+  amount          Float    // Commission amount in currency
+  percentage      Float    // Percentage used for calculation
+  status          String   @default("unpaid") // unpaid, paid, pending
+  description     String?
+  createdAt       DateTime @default(now())
+  paidAt          DateTime?
+
+  // Relationships
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaignId      String
+  campaign        Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  referralId      String?
+  referral        Referral? @relation(fields: [referralId], references: [id])
+
+  @@index([userId])
+  @@index([campaignId])
+  @@index([status])
+  @@map("commissions")
+}
