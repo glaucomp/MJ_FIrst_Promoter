@@ -6,6 +6,8 @@ import campaignRoutes from './routes/campaign.routes';
 import referralRoutes from './routes/referral.routes';
 import userRoutes from './routes/user.routes';
 import dashboardRoutes from './routes/dashboard.routes';
+import apiV1Routes from './routes/api.v1.routes';
+import apiV2Routes from './routes/api.v2.routes';
 
 dotenv.config();
 
@@ -28,6 +30,10 @@ app.use('/api/campaigns', campaignRoutes);
 app.use('/api/referrals', referralRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+
+// FirstPromoter-compatible API routes
+app.use('/api/v1', apiV1Routes);
+app.use('/api/v2', apiV2Routes);
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

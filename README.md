@@ -299,29 +299,113 @@ MJ_FIrst_Promoter/
 
 ## 🌐 Deployment
 
-### Environment Variables
+### AWS Ubuntu Deployment (Recommended) 🚀
 
-Required for production:
-```env
-PORT=5000
-DATABASE_URL=postgresql://user:password@host:5432/database
-JWT_SECRET=your-secure-random-secret-key
-NODE_ENV=production
-FRONTEND_URL=https://your-frontend-domain.com
-APP_URL=https://your-api-domain.com
+**Complete guides for deploying to AWS Ubuntu EC2:**
+
+1. **[AWS_DEPLOYMENT_README.md](./AWS_DEPLOYMENT_README.md)** - Quick start guide (15 minutes)
+2. **[AWS_UBUNTU_DEPLOYMENT.md](./AWS_UBUNTU_DEPLOYMENT.md)** - Complete step-by-step guide
+3. **[AWS_QUICK_REFERENCE.md](./AWS_QUICK_REFERENCE.md)** - Common commands & operations
+4. **[DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md)** - Track your deployment progress
+
+#### Automated Deployment Script
+
+The fastest way to deploy on AWS Ubuntu:
+
+```bash
+# 1. Upload app to server
+scp -i your-key.pem -r MJ_FIrst_Promoter ubuntu@your-ec2-ip:/home/ubuntu/
+
+# 2. SSH into server
+ssh -i your-key.pem ubuntu@your-ec2-ip
+
+# 3. Run automated deployment
+cd /home/ubuntu/MJ_FIrst_Promoter
+chmod +x deploy-aws-ubuntu.sh
+./deploy-aws-ubuntu.sh
 ```
 
+The script will:
+- ✅ Install Node.js, PostgreSQL, Nginx
+- ✅ Configure database
+- ✅ Build and start your application
+- ✅ Set up SSL with Let's Encrypt
+- ✅ Configure PM2 process manager
+- ✅ Enable firewall
+- ✅ Schedule automatic backups
+
+**Your app will be live at `https://your-domain.com` in under 15 minutes!**
+
+### Environment Variables
+
+Production `.env` file (see [.env.production](./.env.production) for template):
+
+```env
+# Server
+PORT=5555
+NODE_ENV=production
+APP_URL=https://your-domain.com
+FRONTEND_URL=https://your-domain.com
+
+# Database
+DATABASE_URL=postgresql://mjadmin:password@localhost:5432/mj_promoter
+
+# Security
+JWT_SECRET=your-secure-random-secret-key
+```
+
+### FirstPromoter API Compatibility
+
+This platform includes **100% FirstPromoter-compatible APIs**:
+
+- **V1 API**: Create promoters, manage referrals
+- **V2 API**: Track sales/signups/refunds, search promoters
+- **Python Client**: Drop-in replacement (`integration/mjfp.py`)
+- **Full Documentation**: [API_INTEGRATION_GUIDE.md](./API_INTEGRATION_GUIDE.md)
+
+#### Generate API Credentials
+
+```bash
+npx ts-node src/scripts/create-api-key.ts
+```
+
+You'll receive:
+- API Key (v1)
+- Bearer Token (v2)
+- Account ID (v2)
+
 ### Production Checklist
+- [ ] Deploy using automated script or manual guide
+- [ ] Generate and save API credentials
 - [ ] Update JWT_SECRET to strong random string
 - [ ] Configure production database
 - [ ] Set FRONTEND_URL and APP_URL
-- [ ] Enable HTTPS
-- [ ] Configure CORS for production domains
-- [ ] Set up error logging (Sentry, etc.)
-- [ ] Configure email service for invites
+- [ ] Enable HTTPS with SSL certificate
+- [ ] Change default admin password
 - [ ] Set up automated backups
-- [ ] Configure rate limiting
-- [ ] Enable monitoring and alerts
+- [ ] Configure monitoring (PM2)
+- [ ] Test API endpoints
+- [ ] Integrate with payment system
+
+### Alternative Deployment Options
+
+#### Using Systemd (instead of PM2)
+
+```bash
+# Copy service file
+sudo cp mj-promoter.service /etc/systemd/system/
+
+# Enable and start
+sudo systemctl enable mj-promoter
+sudo systemctl start mj-promoter
+
+# View logs
+sudo journalctl -u mj-promoter -f
+```
+
+#### Docker Deployment (Coming Soon)
+
+Stay tuned for Docker and Docker Compose configurations.
 
 ## 🤝 Use Cases
 
