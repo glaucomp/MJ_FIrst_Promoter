@@ -46,6 +46,7 @@ export const createPromoter = async (req: ApiKeyRequest, res: Response) => {
     // Create password (use temp_password if provided, otherwise generate)
     const password = temp_password || Math.random().toString(36).slice(-8);
     const hashedPassword = await bcrypt.hash(password, 10);
+    const passwordWasGenerated = !temp_password;
 
     // Determine role: ADMIN if is_admin is true, otherwise PROMOTER
     const userRole = is_admin === true ? UserRole.ADMIN : UserRole.PROMOTER;
@@ -144,6 +145,11 @@ export const createPromoter = async (req: ApiKeyRequest, res: Response) => {
     // Include parent_promoter_id if provided
     if (parent_promoter_id) {
       response.parent_promoter_id = parent_promoter_id;
+    }
+    
+    // Include auto-generated password so it can be sent via email
+    if (passwordWasGenerated) {
+      response.temp_password = password;
     }
     
     res.status(201).json(response);
