@@ -47,6 +47,7 @@ model ApiKey {
 model User {
   id            String   @id @default(cuid())
   email         String   @unique
+  username      String?  @unique // Unique username for the promoter
   password      String
   firstName     String?
   lastName      String?
@@ -66,6 +67,7 @@ model User {
   apiKeys               ApiKey[]
 
   @@index([email])
+  @@index([username])
   @@index([role])
   @@index([inviteCode])
   @@map("users")

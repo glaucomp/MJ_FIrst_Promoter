@@ -29,6 +29,15 @@ const Promoters = () => {
   const [success, setSuccess] = useState('');
   const [selectedPromoter, setSelectedPromoter] = useState<Promoter | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newPromoter, setNewPromoter] = useState({
+    email: '',
+    firstName: '',
+    lastName: '',
+    custId: '',
+    tempPassword: '',
+    isAdmin: false
+  });
 
   useEffect(() => {
     fetchPromoters();
@@ -37,8 +46,8 @@ const Promoters = () => {
   const fetchPromoters = async () => {
     try {
       const response = await userAPI.getAll();
-      // Filter only promoters
-      const promoterUsers = response.data.users.filter((u: any) => u.role === 'PROMOTER');
+      // Filter promoters and admins
+      const promoterUsers = response.data.users.filter((u: any) => u.role === 'PROMOTER' || u.role === 'ADMIN');
       
       // Mock additional stats for now
       const promotersWithStats = promoterUsers.map((p: any) => ({
@@ -71,6 +80,60 @@ const Promoters = () => {
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       setError('Failed to update promoter status');
+    }
+  };
+
+  const handleAddPromoter = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    
+    if (!newPromoter.email || !newPromoter.firstName || !newPromoter.lastName) {
+      setError('Email, first name, and last name are required');
+      return;
+    }
+    
+    try {
+      // Call the API to create promoter
+      const response = await fetch('http://localhost:5555/api/v1/promoters/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-KEY': 'fp_key_ByfKtLyM8sSCVl4G_buVY0QFeBUifmIZ' // TODO: Get from config
+        },
+        body: JSON.stringify({
+          email: newPromoter.email,
+          first_name: newPromoter.firstName,
+          last_name: newPromoter.lastName,
+          cust_id: newPromoter.custId || undefined,
+          temp_password: newPromoter.tempPassword || undefined,
+          is_admin: newPromoter.isAdmin
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create promoter');
+      }
+
+      const data = await response.json();
+      
+      setSuccess(`${newPromoter.isAdmin ? 'Admin' : 'Promoter'} created successfully! ${newPromoter.isAdmin ? '🔐' : '✨'}`);
+      setShowAddModal(false);
+      setNewPromoter({
+        email: '',
+        firstName: '',
+        lastName: '',
+        custId: '',
+        tempPassword: '',
+        isAdmin: false
+      });
+      
+      // Refresh promoters list
+      fetchPromoters();
+      
+      setTimeout(() => setSuccess(''), 5000);
+    } catch (err: any) {
+      setError(err.message || 'Failed to create promoter');
     }
   };
 
@@ -196,7 +259,7 @@ const Promoters = () => {
       {/* Filters & Search */}
       <div className="card" style={{ padding: '1.5rem', marginBottom: '1.5rem', background: 'white' }}>
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
             <button
               onClick={() => setFilter('all')}
               className="btn"
@@ -229,6 +292,20 @@ const Promoters = () => {
               }}
             >
               Inactive ({stats.inactive})
+            </button>
+            
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="btn"
+              style={{
+                background: 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)',
+                color: 'white',
+                border: 'none',
+                fontWeight: '600',
+                marginLeft: '0.5rem'
+              }}
+            >
+              ➕ Add Promoter
             </button>
           </div>
           
@@ -670,6 +747,276 @@ const Promoters = () => {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Promoter Modal */}
+      {showAddModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '1rem'
+        }} onClick={() => setShowAddModal(false)}>
+          <div style={{
+            background: 'white',
+            borderRadius: '0.75rem',
+            maxWidth: '600px',
+            width: '100%',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
+          }} onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div style={{
+              padding: '1.5rem',
+              borderBottom: '1px solid #e2e8f0',
+              background: 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)',
+              color: 'white',
+              borderTopLeftRadius: '0.75rem',
+              borderTopRightRadius: '0.75rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: 0 }}>
+                  ➕ Add New Promoter
+                </h2>
+                <p style={{ fontSize: '0.875rem', opacity: 0.9, margin: '0.25rem 0 0 0' }}>
+                  Create a new promoter or admin account
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAddModal(false)}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  border: 'none',
+                  color: 'white',
+                  fontSize: '1.5rem',
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleAddPromoter} style={{ padding: '1.5rem' }}>
+              {error && (
+                <div style={{
+                  padding: '1rem',
+                  background: '#fed7d7',
+                  color: '#c53030',
+                  borderRadius: '0.375rem',
+                  marginBottom: '1rem',
+                  fontSize: '0.875rem'
+                }}>
+                  {error}
+                </div>
+              )}
+
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#2d3748', marginBottom: '0.5rem' }}>
+                  Email <span style={{ color: '#f56565' }}>*</span>
+                </label>
+                <input
+                  type="email"
+                  value={newPromoter.email}
+                  onChange={(e) => setNewPromoter({ ...newPromoter, email: e.target.value })}
+                  placeholder="promoter@example.com"
+                  required
+                  className="input"
+                  style={{
+                    width: '100%',
+                    padding: '0.625rem 1rem',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '0.375rem',
+                    fontSize: '1rem'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#2d3748', marginBottom: '0.5rem' }}>
+                    First Name <span style={{ color: '#f56565' }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={newPromoter.firstName}
+                    onChange={(e) => setNewPromoter({ ...newPromoter, firstName: e.target.value })}
+                    placeholder="John"
+                    required
+                    className="input"
+                    style={{
+                      width: '100%',
+                      padding: '0.625rem 1rem',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '0.375rem',
+                      fontSize: '1rem'
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#2d3748', marginBottom: '0.5rem' }}>
+                    Last Name <span style={{ color: '#f56565' }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={newPromoter.lastName}
+                    onChange={(e) => setNewPromoter({ ...newPromoter, lastName: e.target.value })}
+                    placeholder="Doe"
+                    required
+                    className="input"
+                    style={{
+                      width: '100%',
+                      padding: '0.625rem 1rem',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '0.375rem',
+                      fontSize: '1rem'
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#2d3748', marginBottom: '0.5rem' }}>
+                  Customer ID (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={newPromoter.custId}
+                  onChange={(e) => setNewPromoter({ ...newPromoter, custId: e.target.value })}
+                  placeholder="preinf-001"
+                  className="input"
+                  style={{
+                    width: '100%',
+                    padding: '0.625rem 1rem',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '0.375rem',
+                    fontSize: '1rem'
+                  }}
+                />
+                <p style={{ fontSize: '0.75rem', color: '#718096', marginTop: '0.25rem' }}>
+                  Your internal customer/influencer ID
+                </p>
+              </div>
+
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#2d3748', marginBottom: '0.5rem' }}>
+                  Temporary Password (Optional)
+                </label>
+                <input
+                  type="password"
+                  value={newPromoter.tempPassword}
+                  onChange={(e) => setNewPromoter({ ...newPromoter, tempPassword: e.target.value })}
+                  placeholder="Leave empty for auto-generated"
+                  className="input"
+                  style={{
+                    width: '100%',
+                    padding: '0.625rem 1rem',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '0.375rem',
+                    fontSize: '1rem'
+                  }}
+                />
+                <p style={{ fontSize: '0.75rem', color: '#718096', marginTop: '0.25rem' }}>
+                  Will be auto-generated if not provided
+                </p>
+              </div>
+
+              <div style={{
+                marginBottom: '1.5rem',
+                padding: '1rem',
+                background: '#f7fafc',
+                border: '2px solid #e2e8f0',
+                borderRadius: '0.5rem'
+              }}>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.75rem',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  color: '#2d3748'
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={newPromoter.isAdmin}
+                    onChange={(e) => setNewPromoter({ ...newPromoter, isAdmin: e.target.checked })}
+                    style={{
+                      width: '20px',
+                      height: '20px',
+                      cursor: 'pointer'
+                    }}
+                  />
+                  <div>
+                    <div style={{ fontSize: '1rem' }}>
+                      🔐 Create as Admin
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#718096', fontWeight: 'normal', marginTop: '0.25rem' }}>
+                      Admin users have full access to the dashboard and all settings
+                    </div>
+                  </div>
+                </label>
+              </div>
+
+              <div style={{
+                display: 'flex',
+                gap: '1rem',
+                paddingTop: '1rem',
+                borderTop: '1px solid #e2e8f0'
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="btn"
+                  style={{
+                    flex: 1,
+                    background: '#e2e8f0',
+                    color: '#2d3748',
+                    border: 'none',
+                    padding: '0.75rem 1.5rem',
+                    borderRadius: '0.375rem',
+                    fontWeight: '600',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn"
+                  style={{
+                    flex: 1,
+                    background: 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '0.75rem 1.5rem',
+                    borderRadius: '0.375rem',
+                    fontWeight: '600',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {newPromoter.isAdmin ? '🔐 Create Admin' : '✨ Create Promoter'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

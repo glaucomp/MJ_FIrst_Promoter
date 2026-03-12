@@ -11,6 +11,7 @@ export const createPromoter = async (req: ApiKeyRequest, res: Response) => {
   try {
     const { 
       email, 
+      username,            // Unique username for the promoter
       ref_id, 
       first_name, 
       last_name, 
@@ -18,7 +19,8 @@ export const createPromoter = async (req: ApiKeyRequest, res: Response) => {
       auth_token, 
       temp_password,
       parent_promoter_id,  // Parent's ref_id (for multi-level tracking)
-      cust_id              // Custom customer ID from your system
+      cust_id,             // Custom customer ID from your system
+      is_admin             // Whether to create as admin (default: false)
     } = req.body;
 
     if (!email) {
@@ -47,20 +49,24 @@ export const createPromoter = async (req: ApiKeyRequest, res: Response) => {
     const password = temp_password || Math.random().toString(36).slice(-8);
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Determine role: ADMIN if is_admin is true, otherwise PROMOTER
+    const userRole = is_admin === true ? UserRole.ADMIN : UserRole.PROMOTER;
+
     // Create promoter
     const promoter = await prisma.user.create({
       data: {
         email,
+        username: username || null,
         password: hashedPassword,
         firstName: first_name || email.split('@')[0],
         lastName: last_name || '',
-        role: UserRole.PROMOTER,
+        role: userRole,
         inviteCode,
         isActive: true
       }
     });
 
-    console.log(`✅ Promoter created via API: ${email} (${inviteCode})`);
+    console.log(`✅ ${userRole} created via API: ${email} (${inviteCode})`);
 
     // If parent_promoter_id is provided, create the referral relationship
     if (parent_promoter_id) {
@@ -110,6 +116,8 @@ export const createPromoter = async (req: ApiKeyRequest, res: Response) => {
       cust_id: cust_id || promoter.id,
       first_name: first_name || promoter.firstName || '',
       last_name: last_name || promoter.lastName || '',
+      is_admin: promoter.role === UserRole.ADMIN,
+      role: promoter.role,
       created_at: promoter.createdAt
     };
     

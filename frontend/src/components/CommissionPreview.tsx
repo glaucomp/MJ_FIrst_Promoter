@@ -3,14 +3,14 @@ import React from 'react';
 interface CommissionPreviewProps {
   commissionRate: number;
   secondaryRate: number;
-  recurringRate: number;
+  recurringRate?: number;
   exampleRevenue?: number;
 }
 
 const CommissionPreview: React.FC<CommissionPreviewProps> = ({
   commissionRate,
   secondaryRate,
-  recurringRate,
+  recurringRate = 0,
   exampleRevenue = 100
 }) => {
   const level1 = (exampleRevenue * commissionRate) / 100;

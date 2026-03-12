@@ -18,7 +18,6 @@ const Campaigns = () => {
     defaultReferralUrl: '',
     commissionRate: 15,
     secondaryRate: 5,
-    recurringRate: 10,
     cookieLifeDays: 60,
     autoApprove: true,
     visibleToPromoters: true,
@@ -57,7 +56,6 @@ const Campaigns = () => {
         defaultReferralUrl: '',
         commissionRate: 15,
         secondaryRate: 5,
-        recurringRate: 10,
         cookieLifeDays: 60,
         autoApprove: true,
         visibleToPromoters: true,
@@ -79,7 +77,6 @@ const Campaigns = () => {
       defaultReferralUrl: campaign.defaultReferralUrl || '',
       commissionRate: campaign.commissionRate,
       secondaryRate: campaign.secondaryRate || 0,
-      recurringRate: campaign.recurringRate || 0,
       cookieLifeDays: campaign.cookieLifeDays || 60,
       autoApprove: campaign.autoApprove !== false,
       visibleToPromoters: campaign.visibleToPromoters !== false,
@@ -105,7 +102,6 @@ const Campaigns = () => {
         defaultReferralUrl: '',
         commissionRate: 15,
         secondaryRate: 5,
-        recurringRate: 10,
         cookieLifeDays: 60,
         autoApprove: true,
         visibleToPromoters: true,
@@ -258,24 +254,12 @@ const Campaigns = () => {
                     color="#764ba2"
                     description="Level 2 promoter earns this on sub-referrals"
                   />
-                  
-                  <PercentageSlider
-                    label="Recurring Commission"
-                    value={campaignForm.recurringRate}
-                    onChange={(value) => setCampaignForm({ ...campaignForm, recurringRate: value })}
-                    min={0}
-                    max={30}
-                    icon="🔄"
-                    color="#48bb78"
-                    description="Earned on each subscription renewal"
-                  />
                 </div>
                 
                 <div>
                   <CommissionPreview
                     commissionRate={campaignForm.commissionRate}
                     secondaryRate={campaignForm.secondaryRate}
-                    recurringRate={campaignForm.recurringRate}
                     exampleRevenue={100}
                   />
                 </div>
@@ -442,24 +426,12 @@ const Campaigns = () => {
                     color="#764ba2"
                     description="Level 2 promoter earns this on sub-referrals"
                   />
-                  
-                  <PercentageSlider
-                    label="Recurring Commission"
-                    value={campaignForm.recurringRate}
-                    onChange={(value) => setCampaignForm({ ...campaignForm, recurringRate: value })}
-                    min={0}
-                    max={30}
-                    icon="🔄"
-                    color="#48bb78"
-                    description="Earned on each subscription renewal"
-                  />
                 </div>
                 
                 <div>
                   <CommissionPreview
                     commissionRate={campaignForm.commissionRate}
                     secondaryRate={campaignForm.secondaryRate}
-                    recurringRate={campaignForm.recurringRate}
                     exampleRevenue={100}
                   />
                 </div>
@@ -570,23 +542,17 @@ const Campaigns = () => {
                   <p style={{ color: '#718096', fontSize: '0.875rem', marginBottom: '1rem' }}>
                     {campaign.description || 'No description'}
                   </p>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
                     <div>
-                      <div style={{ fontSize: '0.75rem', color: '#718096' }}>Commission</div>
+                      <div style={{ fontSize: '0.75rem', color: '#718096' }}>Level 1 Commission</div>
                       <div style={{ fontSize: '1.125rem', fontWeight: 'bold', color: '#667eea' }}>
                         {campaign.commissionRate}%
                       </div>
                     </div>
                     <div>
-                      <div style={{ fontSize: '0.75rem', color: '#718096' }}>Second Tier</div>
+                      <div style={{ fontSize: '0.75rem', color: '#718096' }}>Level 2 Commission</div>
                       <div style={{ fontSize: '1.125rem', fontWeight: 'bold', color: '#764ba2' }}>
                         {campaign.secondaryRate}%
-                      </div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '0.75rem', color: '#718096' }}>Recurring</div>
-                      <div style={{ fontSize: '1.125rem', fontWeight: 'bold', color: '#48bb78' }}>
-                        {campaign.recurringRate}%
                       </div>
                     </div>
                     <div>
