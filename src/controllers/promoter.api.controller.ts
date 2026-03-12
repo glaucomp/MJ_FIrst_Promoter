@@ -43,9 +43,6 @@ export const createPromoter = async (req: ApiKeyRequest, res: Response) => {
       });
     }
 
-    // Generate unique invite code
-    const inviteCode = ref_id || nanoid(10);
-
     // Create password (use temp_password if provided, otherwise generate)
     const password = temp_password || Math.random().toString(36).slice(-8);
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -67,6 +64,9 @@ export const createPromoter = async (req: ApiKeyRequest, res: Response) => {
         counter++;
       }
     }
+
+    // Use username as inviteCode (ref_id), or use provided ref_id, or generate random
+    const inviteCode = ref_id || finalUsername;
 
     // Create promoter
     const promoter = await prisma.user.create({
