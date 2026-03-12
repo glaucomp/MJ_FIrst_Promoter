@@ -53,11 +53,26 @@ export const createPromoter = async (req: ApiKeyRequest, res: Response) => {
     // Determine role: ADMIN if is_admin is true, otherwise PROMOTER
     const userRole = is_admin === true ? UserRole.ADMIN : UserRole.PROMOTER;
 
+    // Generate username if not provided
+    let finalUsername = username;
+    if (!finalUsername) {
+      // Use email prefix as base username
+      const baseUsername = email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '_');
+      finalUsername = baseUsername;
+      
+      // Ensure uniqueness
+      let counter = 1;
+      while (await prisma.user.findUnique({ where: { username: finalUsername } })) {
+        finalUsername = `${baseUsername}${counter}`;
+        counter++;
+      }
+    }
+
     // Create promoter
     const promoter = await prisma.user.create({
       data: {
         email,
-        username: username || null,
+        username: finalUsername,
         password: hashedPassword,
         firstName: first_name || email.split('@')[0],
         lastName: last_name || '',
