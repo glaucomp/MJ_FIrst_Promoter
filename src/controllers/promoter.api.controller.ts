@@ -86,10 +86,13 @@ export const createPromoter = async (req: ApiKeyRequest, res: Response) => {
 
     // If parent_promoter_id is provided, create the referral relationship
     if (parent_promoter_id) {
-      // Find parent promoter by their ref_id (inviteCode)
+      // Find parent promoter by their ref_id (inviteCode) OR username
       const parentPromoter = await prisma.user.findFirst({
         where: {
-          inviteCode: parent_promoter_id,
+          OR: [
+            { inviteCode: parent_promoter_id },
+            { username: parent_promoter_id }
+          ],
           role: UserRole.PROMOTER
         }
       });
@@ -218,11 +221,14 @@ export const searchPromoters = async (req: ApiKeyRequest, res: Response) => {
       return res.status(400).json({ error: 'search parameter required' });
     }
 
-    // Search by ref_id (inviteCode)
+    // Search by ref_id (inviteCode) OR username
     const promoters = await prisma.user.findMany({
       where: {
         role: UserRole.PROMOTER,
-        inviteCode: search as string
+        OR: [
+          { inviteCode: search as string },
+          { username: search as string }
+        ]
       },
       include: {
         referralsMade: true,
