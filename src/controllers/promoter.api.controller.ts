@@ -36,6 +36,7 @@ export const createPromoter = async (req: ApiKeyRequest, res: Response) => {
       return res.status(200).json({
         id: existing.id,
         email: existing.email,
+        username: existing.username || null,
         ref_id: existing.inviteCode,
         cust_id: cust_id || existing.id,
         message: 'Promoter already exists'
@@ -112,6 +113,7 @@ export const createPromoter = async (req: ApiKeyRequest, res: Response) => {
     const response: any = {
       id: promoter.id,
       email: promoter.email,
+      username: promoter.username || null,
       ref_id: inviteCode,
       cust_id: cust_id || promoter.id,
       first_name: first_name || promoter.firstName || '',
