@@ -329,12 +329,16 @@ export const generateTrackingLink = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'Campaign not found' });
     }
 
-    // Generate unique short code
-    const shortCode = nanoid(8);
+    // Use username as short code (fallback to user.id if no username)
+    const shortCode = user.username || user.id;
 
-    // Create tracking link
-    const baseUrl = process.env.APP_URL || 'http://localhost:5000';
-    const fullUrl = `${baseUrl}/track/${shortCode}`;
+    // Get campaign website URL
+    const campaignWebsiteUrl = campaign.websiteUrl || campaign.defaultReferralUrl;
+    
+    // Create tracking link using campaign's actual URL with ref parameter
+    const urlObj = new URL(campaignWebsiteUrl);
+    urlObj.searchParams.set('ref', shortCode);
+    const fullUrl = urlObj.toString();
 
     const trackingLink = await prisma.trackingLink.create({
       data: {
@@ -349,6 +353,13 @@ export const generateTrackingLink = async (req: AuthRequest, res: Response) => {
             id: true,
             name: true,
             websiteUrl: true
+          }
+        },
+        user: {
+          select: {
+            id: true,
+            username: true,
+            email: true
           }
         }
       }
