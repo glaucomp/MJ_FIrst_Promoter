@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import * as dashboardController from '../controllers/dashboard.controller';
 import { authenticate } from '../middleware/auth.middleware';
+import { getMyPromoterLink } from '../controllers/promoter-link.controller';
 
 const router = Router();
 
@@ -15,5 +16,8 @@ router.get('/earnings', authenticate, dashboardController.getEarnings);
 
 // Get top performers (for superuser and account managers)
 router.get('/top-performers', authenticate, dashboardController.getTopPerformers);
+
+// Get promoter's permanent referral link (username-based)
+router.get('/my-link', authenticate, getMyPromoterLink);
 
 export default router;

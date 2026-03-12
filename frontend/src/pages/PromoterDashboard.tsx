@@ -1,16 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { dashboardAPI, referralAPI, campaignAPI } from '../services/api';
+import { useState, useEffect } from 'react';
+import { dashboardAPI, referralAPI } from '../services/api';
 
 const PromoterDashboard = () => {
   const [stats, setStats] = useState<any>(null);
   const [referrals, setReferrals] = useState<any>(null);
   const [earnings, setEarnings] = useState<any>(null);
-  const [trackingLinks, setTrackingLinks] = useState<any[]>([]);
-  const [campaigns, setCampaigns] = useState<any[]>([]);
+  const [myReferralLink, setMyReferralLink] = useState<string>('');
   const [loading, setLoading] = useState(true);
-  const [showInviteForm, setShowInviteForm] = useState(false);
-  const [selectedCampaignId, setSelectedCampaignId] = useState('');
-  const [inviteUrl, setInviteUrl] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -20,18 +16,16 @@ const PromoterDashboard = () => {
 
   const fetchData = async () => {
     try {
-      const [statsRes, referralsRes, earningsRes, linksRes, campaignsRes] = await Promise.all([
+      const [statsRes, referralsRes, earningsRes, linkRes] = await Promise.all([
         dashboardAPI.getStats(),
         referralAPI.getMyReferrals(),
         dashboardAPI.getEarnings(),
-        referralAPI.getMyTrackingLinks(),
-        campaignAPI.getAll()
+        dashboardAPI.getMyPromoterLink()
       ]);
       setStats(statsRes.data.stats);
       setReferrals(referralsRes.data);
       setEarnings(earningsRes.data);
-      setTrackingLinks(linksRes.data.trackingLinks);
-      setCampaigns(campaignsRes.data.campaigns);
+      setMyReferralLink(linkRes.data.referralLink);
     } catch (err) {
       setError('Failed to load dashboard data');
     } finally {
@@ -39,42 +33,10 @@ const PromoterDashboard = () => {
     }
   };
 
-  const handleCreateInvite = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-
-    if (!selectedCampaignId) {
-      setError('Please select a campaign');
-      return;
-    }
-
-    try {
-      const response = await referralAPI.createInvite(selectedCampaignId);
-      setInviteUrl(response.data.inviteUrl);
-      setSuccess('Invite link created! Share it with your friends to earn commissions.');
-      fetchData();
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to create invite');
-    }
-  };
-
-  const handleGenerateTrackingLink = async (campaignId: string) => {
-    setError('');
-    setSuccess('');
-
-    try {
-      const response = await referralAPI.generateTrackingLink(campaignId);
-      setSuccess(`Tracking link created: ${response.data.trackingLink.fullUrl}`);
-      fetchData();
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to generate tracking link');
-    }
-  };
-
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     setSuccess('Copied to clipboard!');
+    setTimeout(() => setSuccess(''), 3000);
   };
 
 
@@ -95,6 +57,65 @@ const PromoterDashboard = () => {
 
       {error && <div className="alert alert-error">{error}</div>}
       {success && <div className="alert alert-success">{success}</div>}
+
+      {/* Permanent Referral Link Card */}
+      {myReferralLink && (
+        <div className="card" style={{ 
+          marginBottom: '2rem', 
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          padding: '2rem',
+          color: 'white'
+        }}>
+          <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem', color: 'white' }}>
+            🔗 Your Referral Link
+          </h3>
+          <p style={{ marginBottom: '1.5rem', opacity: 0.9, fontSize: '0.95rem' }}>
+            Share this link to refer customers and earn commissions
+          </p>
+          
+          <div style={{ 
+            display: 'flex', 
+            gap: '0.75rem', 
+            alignItems: 'center',
+            background: 'rgba(255,255,255,0.15)',
+            padding: '1rem',
+            borderRadius: '0.5rem',
+            backdropFilter: 'blur(10px)'
+          }}>
+            <input
+              type="text"
+              value={myReferralLink}
+              readOnly
+              style={{ 
+                flex: 1, 
+                background: 'white',
+                border: 'none',
+                padding: '0.75rem 1rem',
+                borderRadius: '0.375rem',
+                fontSize: '0.95rem',
+                fontFamily: 'monospace',
+                color: '#333'
+              }}
+            />
+            <button
+              onClick={() => copyToClipboard(myReferralLink)}
+              style={{
+                background: 'white',
+                color: '#667eea',
+                border: 'none',
+                padding: '0.75rem 1.5rem',
+                borderRadius: '0.375rem',
+                fontWeight: '600',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                fontSize: '1rem'
+              }}
+            >
+              📋 Copy
+            </button>
+          </div>
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
         <div className="card" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
@@ -119,65 +140,6 @@ const PromoterDashboard = () => {
         </div>
       </div>
 
-      <div style={{ marginBottom: '2rem' }}>
-        <button
-          className="btn btn-primary"
-          onClick={() => setShowInviteForm(!showInviteForm)}
-        >
-          {showInviteForm ? 'Cancel' : '+ Invite Friends'}
-        </button>
-      </div>
-
-      {showInviteForm && (
-        <div className="card" style={{ marginBottom: '2rem' }}>
-          <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem' }}>
-            Invite Friends & Earn
-          </h3>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-            Share your referral link with friends. When they sign up and refer others, you earn commissions!
-          </p>
-          <form onSubmit={handleCreateInvite}>
-            <div className="form-group">
-              <label className="form-label">Select Campaign</label>
-              <select
-                className="input"
-                value={selectedCampaignId}
-                onChange={(e) => setSelectedCampaignId(e.target.value)}
-                required
-              >
-                <option value="">Choose a campaign...</option>
-                {campaigns.map((campaign: any) => (
-                  <option key={campaign.id} value={campaign.id}>
-                    {campaign.name} - {campaign.commissionRate}% recurring commission
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <button type="submit" className="btn btn-primary">
-              Generate Referral Link
-            </button>
-          </form>
-
-          {inviteUrl && (
-            <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'var(--light)', borderRadius: '0.375rem' }}>
-              <p style={{ fontWeight: '600', marginBottom: '0.5rem' }}>Your Referral URL:</p>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <input
-                  type="text"
-                  className="input"
-                  value={inviteUrl}
-                  readOnly
-                  style={{ flex: 1 }}
-                />
-                <button className="btn btn-secondary" onClick={() => copyToClipboard(inviteUrl)}>
-                  Copy
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       <div className="card" style={{ marginBottom: '2rem' }}>
         <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem' }}>
@@ -265,52 +227,6 @@ const PromoterDashboard = () => {
         )}
       </div>
 
-      <div className="card">
-        <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem' }}>
-          Tracking Links
-        </h3>
-        {trackingLinks.length === 0 ? (
-          <p style={{ color: 'var(--text-secondary)' }}>No tracking links yet. Generate one to track clicks!</p>
-        ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Campaign</th>
-                <th>Short Code</th>
-                <th>URL</th>
-                <th>Clicks</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {trackingLinks.map((link) => (
-                <tr key={link.id}>
-                  <td style={{ fontWeight: '500' }}>{link.campaign.name}</td>
-                  <td><code>{link.shortCode}</code></td>
-                  <td>
-                    <input
-                      type="text"
-                      value={link.fullUrl}
-                      readOnly
-                      style={{ border: 'none', background: 'transparent', width: '300px' }}
-                    />
-                  </td>
-                  <td>{link.clicks}</td>
-                  <td>
-                    <button
-                      className="btn btn-secondary"
-                      style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem' }}
-                      onClick={() => copyToClipboard(link.fullUrl)}
-                    >
-                      Copy
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
     </div>
   );
 };

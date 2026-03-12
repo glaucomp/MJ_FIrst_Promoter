@@ -318,7 +318,21 @@ export const generateTrackingLink = async (req: AuthRequest, res: Response) => {
     }
 
     const { campaignId } = req.body;
-    const user = req.user!;
+    const userId = req.user!.id;
+
+    // Get full user with username
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        username: true
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
 
     // Verify campaign exists
     const campaign = await prisma.campaign.findUnique({
@@ -334,6 +348,9 @@ export const generateTrackingLink = async (req: AuthRequest, res: Response) => {
 
     // Get campaign website URL
     const campaignWebsiteUrl = campaign.websiteUrl || campaign.defaultReferralUrl;
+    if (!campaignWebsiteUrl) {
+      return res.status(400).json({ error: 'Campaign URL not configured' });
+    }
     
     // Create tracking link using campaign's actual URL with ref parameter
     const urlObj = new URL(campaignWebsiteUrl);

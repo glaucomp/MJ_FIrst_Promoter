@@ -75,7 +75,8 @@ export const dashboardAPI = {
   getStats: () => api.get('/dashboard/stats'),
   getActivity: (limit?: number) => api.get('/dashboard/activity', { params: { limit } }),
   getEarnings: () => api.get('/dashboard/earnings'),
-  getTopPerformers: (limit?: number) => api.get('/dashboard/top-performers', { params: { limit } })
+  getTopPerformers: (limit?: number) => api.get('/dashboard/top-performers', { params: { limit } }),
+  getMyPromoterLink: () => api.get('/dashboard/my-link')
 };
 
 export default api;

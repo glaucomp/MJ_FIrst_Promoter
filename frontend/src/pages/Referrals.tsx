@@ -1,13 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { referralAPI, campaignAPI } from '../services/api';
+import { useState, useEffect } from 'react';
+import { referralAPI, dashboardAPI } from '../services/api';
 
 const Referrals = () => {
   const [referrals, setReferrals] = useState<any>(null);
-  const [campaigns, setCampaigns] = useState<any[]>([]);
+  const [myReferralLink, setMyReferralLink] = useState<string>('');
   const [loading, setLoading] = useState(true);
-  const [showInviteForm, setShowInviteForm] = useState(false);
-  const [selectedCampaignId, setSelectedCampaignId] = useState('');
-  const [inviteUrl, setInviteUrl] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -17,36 +14,16 @@ const Referrals = () => {
 
   const fetchData = async () => {
     try {
-      const [referralsRes, campaignsRes] = await Promise.all([
+      const [referralsRes, linkRes] = await Promise.all([
         referralAPI.getMyReferrals(),
-        campaignAPI.getAll()
+        dashboardAPI.getMyPromoterLink()
       ]);
       setReferrals(referralsRes.data);
-      setCampaigns(campaignsRes.data.campaigns);
+      setMyReferralLink(linkRes.data.referralLink);
     } catch (err) {
       setError('Failed to load referrals');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleCreateInvite = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-
-    if (!selectedCampaignId) {
-      setError('Please select a campaign');
-      return;
-    }
-
-    try {
-      const response = await referralAPI.createInvite(selectedCampaignId);
-      setInviteUrl(response.data.inviteUrl);
-      setSuccess('Invite link created! Share it with your friends to earn commissions.');
-      fetchData();
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to create invite');
     }
   };
 
@@ -132,86 +109,63 @@ const Referrals = () => {
         </div>
       </div>
 
-      {/* Create Invite Button */}
-      <div style={{ marginBottom: '2rem' }}>
-        <button
-          onClick={() => setShowInviteForm(!showInviteForm)}
-          className="btn btn-primary"
-          style={{
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            color: 'white',
-            border: 'none',
-            padding: '0.75rem 1.5rem',
-            fontSize: '1rem',
-            fontWeight: '600'
-          }}
-        >
-          {showInviteForm ? '✕ Cancel' : '+ Create Referral Link'}
-        </button>
-      </div>
-
-      {/* Invite Form */}
-      {showInviteForm && (
-        <div className="card" style={{ padding: '1.5rem', marginBottom: '2rem', background: 'white' }}>
-          <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#2d3748', marginBottom: '1rem' }}>
-            Generate Referral Link
+      {/* Permanent Referral Link Card */}
+      {myReferralLink && (
+        <div style={{ 
+          marginBottom: '2rem', 
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          padding: '2rem',
+          borderRadius: '0.75rem',
+          color: 'white',
+          boxShadow: '0 10px 25px rgba(102, 126, 234, 0.3)'
+        }}>
+          <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem', color: 'white' }}>
+            🔗 Your Referral Link
           </h3>
-          <form onSubmit={handleCreateInvite}>
-            <div className="form-group">
-              <label className="form-label">Select Campaign</label>
-              <select
-                className="input"
-                value={selectedCampaignId}
-                onChange={(e) => setSelectedCampaignId(e.target.value)}
-                required
-              >
-                <option value="">Choose a campaign...</option>
-                {campaigns.map((campaign) => (
-                  <option key={campaign.id} value={campaign.id}>
-                    {campaign.name} - {campaign.commissionRate}% commission
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <button 
-              type="submit" 
-              className="btn btn-primary"
-              style={{ background: '#667eea', color: 'white', border: 'none' }}
+          <p style={{ marginBottom: '1.5rem', opacity: 0.9, fontSize: '0.95rem' }}>
+            Share this link to refer customers and earn commissions
+          </p>
+          
+          <div style={{ 
+            display: 'flex', 
+            gap: '0.75rem', 
+            alignItems: 'center',
+            background: 'rgba(255,255,255,0.15)',
+            padding: '1rem',
+            borderRadius: '0.5rem'
+          }}>
+            <input
+              type="text"
+              value={myReferralLink}
+              readOnly
+              style={{ 
+                flex: 1, 
+                background: 'white',
+                border: 'none',
+                padding: '0.75rem 1rem',
+                borderRadius: '0.375rem',
+                fontSize: '0.95rem',
+                fontFamily: 'monospace',
+                color: '#333'
+              }}
+            />
+            <button
+              onClick={() => copyToClipboard(myReferralLink)}
+              style={{
+                background: 'white',
+                color: '#667eea',
+                border: 'none',
+                padding: '0.75rem 1.5rem',
+                borderRadius: '0.375rem',
+                fontWeight: '600',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                fontSize: '1rem'
+              }}
             >
-              Generate Link
+              📋 Copy
             </button>
-          </form>
-
-          {inviteUrl && (
-            <div style={{ 
-              marginTop: '1.5rem', 
-              padding: '1rem', 
-              background: '#f7fafc', 
-              borderRadius: '0.5rem',
-              border: '1px solid #e2e8f0'
-            }}>
-              <label style={{ fontSize: '0.875rem', fontWeight: '600', color: '#2d3748', display: 'block', marginBottom: '0.5rem' }}>
-                Your Referral Link:
-              </label>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <input
-                  type="text"
-                  className="input"
-                  value={inviteUrl}
-                  readOnly
-                  style={{ flex: 1 }}
-                />
-                <button
-                  onClick={() => copyToClipboard(inviteUrl)}
-                  className="btn"
-                  style={{ background: '#48bb78', color: 'white', border: 'none', whiteSpace: 'nowrap' }}
-                >
-                  📋 Copy
-                </button>
-              </div>
-            </div>
-          )}
+          </div>
         </div>
       )}
 
