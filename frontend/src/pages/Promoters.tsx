@@ -115,7 +115,7 @@ const Promoters = () => {
         throw new Error(errorData.error || 'Failed to create promoter');
       }
 
-      const data = await response.json();
+      await response.json();
       
       setSuccess(`${newPromoter.isAdmin ? 'Admin' : 'Promoter'} created successfully! ${newPromoter.isAdmin ? '🔐' : '✨'}`);
       setShowAddModal(false);

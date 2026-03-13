@@ -123,7 +123,6 @@ const Campaigns = () => {
       defaultReferralUrl: '',
       commissionRate: 15,
       secondaryRate: 5,
-      recurringRate: 10,
       cookieLifeDays: 60,
       autoApprove: true,
       visibleToPromoters: true,

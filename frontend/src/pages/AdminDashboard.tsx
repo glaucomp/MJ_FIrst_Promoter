@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { dashboardAPI, campaignAPI, userAPI } from '../services/api';
+import { dashboardAPI, campaignAPI } from '../services/api';
 import PercentageSlider from '../components/PercentageSlider';
 import CommissionPreview from '../components/CommissionPreview';
 

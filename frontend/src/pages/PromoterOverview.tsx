@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { dashboardAPI, referralAPI, campaignAPI } from '../services/api';
 
 const PromoterOverview = () => {
   const navigate = useNavigate();
-  const [stats, setStats] = useState<any>(null);
   const [referrals, setReferrals] = useState<any>(null);
   const [earnings, setEarnings] = useState<any>(null);
   const [campaigns, setCampaigns] = useState<any[]>([]);
@@ -17,13 +16,11 @@ const PromoterOverview = () => {
 
   const fetchData = async () => {
     try {
-      const [statsRes, referralsRes, earningsRes, campaignsRes] = await Promise.all([
-        dashboardAPI.getStats(),
+      const [referralsRes, earningsRes, campaignsRes] = await Promise.all([
         referralAPI.getMyReferrals(),
         dashboardAPI.getEarnings(),
         campaignAPI.getAll()
       ]);
-      setStats(statsRes.data.stats);
       setReferrals(referralsRes.data);
       setEarnings(earningsRes.data);
       setCampaigns(campaignsRes.data.campaigns.slice(0, 3));
