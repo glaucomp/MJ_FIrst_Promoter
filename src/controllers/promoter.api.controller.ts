@@ -101,16 +101,21 @@ export const createPromoter = async (req: ApiKeyRequest, res: Response) => {
 
     // If parent_promoter_id is provided, create the referral relationship
     if (parent_promoter_id) {
-      // Find parent promoter by their ref_id (inviteCode) OR username
+      console.log(`[CREATE PROMOTER] Looking for parent: ${parent_promoter_id}`);
+      
+      // Find parent promoter by ID, ref_id (inviteCode), OR username
       const parentPromoter = await prisma.user.findFirst({
         where: {
           OR: [
+            { id: parent_promoter_id },
             { inviteCode: parent_promoter_id },
             { username: parent_promoter_id }
           ],
           role: UserRole.PROMOTER
         }
       });
+      
+      console.log(`[CREATE PROMOTER] Parent found:`, parentPromoter ? `${parentPromoter.username || parentPromoter.email} (${parentPromoter.id})` : 'NOT FOUND');
 
       if (parentPromoter) {
         // Find an active campaign to link this referral
@@ -131,16 +136,22 @@ export const createPromoter = async (req: ApiKeyRequest, res: Response) => {
               referredUserId: promoter.id,
               campaignId: campaign.id,
               inviteCode: nanoid(10),
-              status: campaign.autoApprove ? 'ACTIVE' : 'PENDING',
-              acceptedAt: campaign.autoApprove ? new Date() : null
+              status: 'ACTIVE',
+              level: 1,
+              acceptedAt: new Date()
             }
           });
 
-          console.log(`✅ Referral created: ${parentPromoter.email} -> ${promoter.email} (${referral.inviteCode})`);
+          console.log(`[CREATE PROMOTER] ✅ Referral created: ${parentPromoter.username || parentPromoter.email} -> ${promoter.username || promoter.email}`);
+          console.log(`[CREATE PROMOTER] Referral ID: ${referral.id}, Campaign: ${campaign.name}`);
+        } else {
+          console.log(`[CREATE PROMOTER] ⚠️ No active campaign found for referral`);
         }
       } else {
-        console.log(`⚠️  Parent promoter not found: ${parent_promoter_id}`);
+        console.log(`[CREATE PROMOTER] ⚠️ Parent promoter not found: ${parent_promoter_id}`);
       }
+    } else {
+      console.log(`[CREATE PROMOTER] No parent_promoter_id provided - no referral created`);
     }
 
     const response: any = {
