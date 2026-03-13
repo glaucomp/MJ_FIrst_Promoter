@@ -19,7 +19,7 @@ export const register = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { email, password, firstName, lastName, inviteCode } = req.body;
+    const { email, password, firstName, lastName, inviteCode, refCode } = req.body;
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -84,6 +84,39 @@ export const register = async (req: AuthRequest, res: Response) => {
       if (referral.level === 1) {
         // Create a new referral relationship for multi-level tracking
         // The influencer who referred this user can now track their referrals
+      }
+    }
+
+    // Track signup in MJ Promoter Python service if refCode is provided
+    if (refCode) {
+      try {
+        const mjfpUrl = process.env.MJFP_API_URL || 'http://15.135.60.144:5555/api';
+        const mjfpToken = process.env.MJFP_TOKEN;
+        const mjfpAccountId = process.env.MJFP_ACCOUNT_ID;
+
+        if (mjfpToken && mjfpAccountId) {
+          const trackResponse = await fetch(`${mjfpUrl}/v2/track/signup`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${mjfpToken}`,
+              'Account-ID': mjfpAccountId
+            },
+            body: JSON.stringify({
+              email: user.email,
+              uid: user.id,
+              tid: refCode
+            })
+          });
+
+          if (trackResponse.ok) {
+            console.log(`✅ MJ Promoter signup tracked: ${email} -> ${refCode}`);
+          } else {
+            console.warn(`⚠️ MJ Promoter signup tracking failed: ${trackResponse.status}`);
+          }
+        }
+      } catch (error) {
+        console.error('MJ Promoter tracking error:', error);
       }
     }
 

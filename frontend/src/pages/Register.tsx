@@ -16,6 +16,7 @@ const Register = () => {
   const navigate = useNavigate();
 
   const inviteCode = searchParams.get('invite');
+  const refCode = searchParams.get('ref');
 
   useEffect(() => {
     const fetchInviteInfo = async () => {
@@ -26,11 +27,13 @@ const Register = () => {
         } catch (err: any) {
           setError(err.response?.data?.error || 'Invalid invite code');
         }
+      } else if (refCode) {
+        setInviteInfo({ type: 'ref', refCode: refCode });
       }
     };
 
     fetchInviteInfo();
-  }, [inviteCode]);
+  }, [inviteCode, refCode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,7 +46,8 @@ const Register = () => {
         password,
         firstName,
         lastName,
-        inviteCode: inviteCode || undefined
+        inviteCode: inviteCode || undefined,
+        refCode: refCode || undefined
       });
       navigate('/dashboard');
     } catch (err: any) {
@@ -67,16 +71,24 @@ const Register = () => {
             Create Account
           </h1>
           <p style={{ color: 'var(--text-secondary)' }}>
-            {inviteCode ? 'Join via referral invite' : 'Sign up for MJ First Promoter'}
+            {inviteCode || refCode ? 'Join via referral invite' : 'Sign up for MJ First Promoter'}
           </p>
         </div>
 
-        {inviteInfo && (
+        {inviteInfo && inviteInfo.type !== 'ref' && (
           <div className="alert alert-info">
             <strong>Referral Invite</strong>
             <p>Campaign: {inviteInfo.campaign.name}</p>
             <p>Referred by: {inviteInfo.referrer.firstName} {inviteInfo.referrer.lastName}</p>
             <p>Commission Rate: {inviteInfo.campaign.commissionRate}%</p>
+          </div>
+        )}
+        
+        {inviteInfo && inviteInfo.type === 'ref' && (
+          <div className="alert alert-info">
+            <strong>🎉 Referral Registration</strong>
+            <p>You're signing up through a referral link!</p>
+            <p>Referral Code: <strong>{inviteInfo.refCode}</strong></p>
           </div>
         )}
 
