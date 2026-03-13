@@ -1,15 +1,16 @@
-import { Response } from 'express';
-import { PrismaClient, UserRole } from '@prisma/client';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import { validationResult } from 'express-validator';
-import { AuthRequest } from '../middleware/auth.middleware';
+import { PrismaClient, UserRole } from "@prisma/client";
+import bcrypt from "bcryptjs";
+import { Response } from "express";
+import { validationResult } from "express-validator";
+import jwt from "jsonwebtoken";
+import { AuthRequest } from "../middleware/auth.middleware";
 
 const prisma = new PrismaClient();
 
 const generateToken = (userId: string, email: string, role: UserRole) => {
-  const secret = process.env.JWT_SECRET || 'default_secret_change_in_production';
-  return jwt.sign({ id: userId, email, role }, secret, { expiresIn: '7d' });
+  const secret =
+    process.env.JWT_SECRET || "default_secret_change_in_production";
+  return jwt.sign({ id: userId, email, role }, secret, { expiresIn: "7d" });
 };
 
 export const register = async (req: AuthRequest, res: Response) => {
@@ -19,12 +20,13 @@ export const register = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { email, password, firstName, lastName, inviteCode, refCode } = req.body;
+    const { email, password, firstName, lastName, inviteCode, refCode } =
+      req.body;
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
-      return res.status(400).json({ error: 'User already exists' });
+      return res.status(400).json({ error: "User already exists" });
     }
 
     // Hash password
@@ -38,15 +40,15 @@ export const register = async (req: AuthRequest, res: Response) => {
       // Find the referral by invite code
       referral = await prisma.referral.findUnique({
         where: { inviteCode },
-        include: { campaign: true, referrer: true }
+        include: { campaign: true, referrer: true },
       });
 
       if (!referral) {
-        return res.status(400).json({ error: 'Invalid invite code' });
+        return res.status(400).json({ error: "Invalid invite code" });
       }
 
       if (referral.referredUserId) {
-        return res.status(400).json({ error: 'Invite code already used' });
+        return res.status(400).json({ error: "Invite code already used" });
       }
     }
 
@@ -57,7 +59,7 @@ export const register = async (req: AuthRequest, res: Response) => {
         password: hashedPassword,
         firstName,
         lastName,
-        role
+        role,
       },
       select: {
         id: true,
@@ -65,8 +67,8 @@ export const register = async (req: AuthRequest, res: Response) => {
         firstName: true,
         lastName: true,
         role: true,
-        createdAt: true
-      }
+        createdAt: true,
+      },
     });
 
     // Update referral if invite code was used
@@ -75,9 +77,9 @@ export const register = async (req: AuthRequest, res: Response) => {
         where: { id: referral.id },
         data: {
           referredUserId: user.id,
-          status: 'ACTIVE',
-          acceptedAt: new Date()
-        }
+          status: "ACTIVE",
+          acceptedAt: new Date(),
+        },
       });
 
       // If this is a second-level referral, the new user becomes an account manager for their own sub-campaign
@@ -93,11 +95,8 @@ export const register = async (req: AuthRequest, res: Response) => {
         // Find the referrer by username or inviteCode
         const referrer = await prisma.user.findFirst({
           where: {
-            OR: [
-              { username: refCode },
-              { inviteCode: refCode }
-            ]
-          }
+            OR: [{ username: refCode }, { inviteCode: refCode }],
+          },
         });
 
         if (referrer) {
@@ -105,8 +104,8 @@ export const register = async (req: AuthRequest, res: Response) => {
           const campaign = await prisma.campaign.findFirst({
             where: {
               isActive: true,
-              visibleToPromoters: true
-            }
+              visibleToPromoters: true,
+            },
           });
 
           if (campaign) {
@@ -117,46 +116,52 @@ export const register = async (req: AuthRequest, res: Response) => {
                 campaignId: campaign.id,
                 referrerId: referrer.id,
                 referredUserId: user.id,
-                status: 'ACTIVE',
+                status: "ACTIVE",
                 level: 1,
-                acceptedAt: new Date()
-              }
+                acceptedAt: new Date(),
+              },
             });
-            
-            console.log(`✅ Referral created: ${user.email} referred by ${referrer.username || referrer.email}`);
+
+            console.log(
+              `✅ Referral created: ${user.email} referred by ${referrer.username || referrer.email}`,
+            );
           }
         } else {
           console.warn(`⚠️ Referrer not found for refCode: ${refCode}`);
         }
 
         // Also track in MJ Promoter Python service
-        const mjfpUrl = process.env.MJFP_API_URL || 'http://15.135.60.144:5555/api';
+        const mjfpUrl = process.env.MJFP_API_URL;
         const mjfpToken = process.env.MJFP_TOKEN;
         const mjfpAccountId = process.env.MJFP_ACCOUNT_ID;
 
         if (mjfpToken && mjfpAccountId) {
           const trackResponse = await fetch(`${mjfpUrl}/v2/track/signup`, {
-            method: 'POST',
+            method: "POST",
             headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${mjfpToken}`,
-              'Account-ID': mjfpAccountId
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${mjfpToken}`,
+              "Account-ID": mjfpAccountId,
             },
             body: JSON.stringify({
               email: user.email,
               uid: user.id,
-              tid: refCode
-            })
+              tid: refCode,
+            }),
           });
 
           if (trackResponse.ok) {
-            console.log(`✅ MJ Promoter signup tracked: ${email} -> ${refCode}`);
+            console.log(
+              `✅ MJ Promoter signup tracked: ${email} -> ${refCode}`,
+            );
           } else {
-            console.warn(`⚠️ MJ Promoter signup tracking failed: ${trackResponse.status}`);
+            console.warn(
+              `⚠️ MJ Promoter signup tracking failed: ${trackResponse.status}`,
+            );
           }
         }
       } catch (error) {
-        console.error('Referral/MJFP tracking error:', error);
+        console.error("Referral/MJFP tracking error:", error);
       }
     }
 
@@ -165,11 +170,13 @@ export const register = async (req: AuthRequest, res: Response) => {
     res.status(201).json({
       user,
       token,
-      message: inviteCode ? 'Registration successful with referral' : 'Registration successful'
+      message: inviteCode
+        ? "Registration successful with referral"
+        : "Registration successful",
     });
   } catch (error) {
-    console.error('Registration error:', error);
-    res.status(500).json({ error: 'Registration failed' });
+    console.error("Registration error:", error);
+    res.status(500).json({ error: "Registration failed" });
   }
 };
 
@@ -191,21 +198,21 @@ export const login = async (req: AuthRequest, res: Response) => {
         firstName: true,
         lastName: true,
         role: true,
-        isActive: true
-      }
+        isActive: true,
+      },
     });
 
     if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ error: "Invalid credentials" });
     }
 
     if (!user.isActive) {
-      return res.status(401).json({ error: 'Account is inactive' });
+      return res.status(401).json({ error: "Account is inactive" });
     }
 
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ error: "Invalid credentials" });
     }
 
     const token = generateToken(user.id, user.email, user.role);
@@ -214,18 +221,18 @@ export const login = async (req: AuthRequest, res: Response) => {
 
     res.json({
       user: userWithoutPassword,
-      token
+      token,
     });
   } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Login failed' });
+    console.error("Login error:", error);
+    res.status(500).json({ error: "Login failed" });
   }
 };
 
 export const getCurrentUser = async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) {
-      return res.status(401).json({ error: 'Not authenticated' });
+      return res.status(401).json({ error: "Not authenticated" });
     }
 
     const user = await prisma.user.findUnique({
@@ -237,32 +244,32 @@ export const getCurrentUser = async (req: AuthRequest, res: Response) => {
         lastName: true,
         role: true,
         isActive: true,
-        createdAt: true
-      }
+        createdAt: true,
+      },
     });
 
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ error: "User not found" });
     }
 
     res.json({ user });
   } catch (error) {
-    console.error('Get current user error:', error);
-    res.status(500).json({ error: 'Failed to fetch user' });
+    console.error("Get current user error:", error);
+    res.status(500).json({ error: "Failed to fetch user" });
   }
 };
 
 export const refreshToken = async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) {
-      return res.status(401).json({ error: 'Not authenticated' });
+      return res.status(401).json({ error: "Not authenticated" });
     }
 
     const token = generateToken(req.user.id, req.user.email, req.user.role);
 
     res.json({ token });
   } catch (error) {
-    console.error('Refresh token error:', error);
-    res.status(500).json({ error: 'Failed to refresh token' });
+    console.error("Refresh token error:", error);
+    res.status(500).json({ error: "Failed to refresh token" });
   }
 };
