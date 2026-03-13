@@ -87,9 +87,49 @@ export const register = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // Track signup in MJ Promoter Python service if refCode is provided
+    // Handle refCode - find referrer and create referral record
     if (refCode) {
       try {
+        // Find the referrer by username or inviteCode
+        const referrer = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { username: refCode },
+              { inviteCode: refCode }
+            ]
+          }
+        });
+
+        if (referrer) {
+          // Find an active campaign
+          const campaign = await prisma.campaign.findFirst({
+            where: {
+              isActive: true,
+              visibleToPromoters: true
+            }
+          });
+
+          if (campaign) {
+            // Create a referral record
+            await prisma.referral.create({
+              data: {
+                inviteCode: `${refCode}-${user.id.substring(0, 8)}`,
+                campaignId: campaign.id,
+                referrerId: referrer.id,
+                referredUserId: user.id,
+                status: 'ACTIVE',
+                level: 1,
+                acceptedAt: new Date()
+              }
+            });
+            
+            console.log(`✅ Referral created: ${user.email} referred by ${referrer.username || referrer.email}`);
+          }
+        } else {
+          console.warn(`⚠️ Referrer not found for refCode: ${refCode}`);
+        }
+
+        // Also track in MJ Promoter Python service
         const mjfpUrl = process.env.MJFP_API_URL || 'http://15.135.60.144:5555/api';
         const mjfpToken = process.env.MJFP_TOKEN;
         const mjfpAccountId = process.env.MJFP_ACCOUNT_ID;
@@ -116,7 +156,7 @@ export const register = async (req: AuthRequest, res: Response) => {
           }
         }
       } catch (error) {
-        console.error('MJ Promoter tracking error:', error);
+        console.error('Referral/MJFP tracking error:', error);
       }
     }
 
