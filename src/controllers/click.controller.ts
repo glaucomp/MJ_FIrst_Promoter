@@ -3,21 +3,24 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// Track click from ?ref=username URL parameter
+// Track click from ?ref=username or ?fpr=code URL parameter
 export const trackClickByRef = async (req: Request, res: Response) => {
   try {
-    const { ref, campaignId, ipAddress, userAgent, referrerUrl } = req.body;
+    const { ref, fpr, campaignId, ipAddress, userAgent, referrerUrl } = req.body;
+    
+    // Accept both 'ref' and 'fpr' parameters
+    const refCode = ref || fpr;
 
-    if (!ref) {
-      return res.status(400).json({ error: 'Missing ref parameter' });
+    if (!refCode) {
+      return res.status(400).json({ error: 'Missing ref or fpr parameter' });
     }
 
     // Find user by username or inviteCode
     const user = await prisma.user.findFirst({
       where: {
         OR: [
-          { username: ref },
-          { inviteCode: ref }
+          { username: refCode },
+          { inviteCode: refCode }
         ]
       },
       select: {
@@ -116,21 +119,24 @@ export const trackClickByRef = async (req: Request, res: Response) => {
   }
 };
 
-// Get referral info from ?ref=username (for frontend to identify promoter)
+// Get referral info from ?ref=username or ?fpr=code (for frontend to identify promoter)
 export const getReferralInfo = async (req: Request, res: Response) => {
   try {
-    const { ref } = req.query;
+    const { ref, fpr } = req.query;
+    
+    // Accept both 'ref' and 'fpr' parameters
+    const refCode = (ref || fpr) as string;
 
-    if (!ref || typeof ref !== 'string') {
-      return res.status(400).json({ error: 'Missing or invalid ref parameter' });
+    if (!refCode || typeof refCode !== 'string') {
+      return res.status(400).json({ error: 'Missing or invalid ref/fpr parameter' });
     }
 
     // Find user by username or inviteCode
     const user = await prisma.user.findFirst({
       where: {
         OR: [
-          { username: ref },
-          { inviteCode: ref }
+          { username: refCode },
+          { inviteCode: refCode }
         ]
       },
       select: {
@@ -170,7 +176,7 @@ export const getReferralInfo = async (req: Request, res: Response) => {
         email: user.email
       },
       campaign: campaign || null,
-      ref
+      ref: refCode
     });
   } catch (error) {
     console.error('Get referral info error:', error);
