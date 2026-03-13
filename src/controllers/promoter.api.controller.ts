@@ -3,7 +3,6 @@ import { PrismaClient, UserRole } from '@prisma/client';
 import { ApiKeyRequest } from '../middleware/apiKey.middleware';
 import bcrypt from 'bcryptjs';
 import { nanoid } from 'nanoid';
-import { emailService } from '../services/email.service';
 
 const prisma = new PrismaClient();
 
@@ -44,10 +43,9 @@ export const createPromoter = async (req: ApiKeyRequest, res: Response) => {
       });
     }
 
-    // Create password (use temp_password if provided, otherwise generate)
-    const password = temp_password || Math.random().toString(36).slice(-8);
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const passwordWasGenerated = !temp_password; // Track if we auto-generated it
+    // Create password (use temp_password if provided, otherwise use default)
+    const password = temp_password || 'promoter123';
+    const hashedPassword = await bcrypt.hash(password, 10); // Track if we auto-generated it
 
     // Determine role: ADMIN if is_admin is true, otherwise PROMOTER
     const userRole = is_admin === true ? UserRole.ADMIN : UserRole.PROMOTER;
@@ -86,20 +84,20 @@ export const createPromoter = async (req: ApiKeyRequest, res: Response) => {
 
     console.log(`✅ ${userRole} created via API: ${email} (${inviteCode})`);
 
-    // Send welcome email with credentials if password was auto-generated
-    if (passwordWasGenerated) {
-      const loginUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-      emailService.sendPromoterWelcomeEmail({
-        email: promoter.email,
-        username: finalUsername,
-        password,
-        firstName: promoter.firstName || undefined,
-        ref_id: inviteCode,
-        loginUrl: `${loginUrl}/login`
-      }).catch(err => {
-        console.error(`⚠️  Failed to send welcome email to ${email}:`, err);
-      });
-    }
+    // Email sending disabled
+    // if (passwordWasGenerated) {
+    //   const loginUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    //   emailService.sendPromoterWelcomeEmail({
+    //     email: promoter.email,
+    //     username: finalUsername,
+    //     password,
+    //     firstName: promoter.firstName || undefined,
+    //     ref_id: inviteCode,
+    //     loginUrl: `${loginUrl}/login`
+    //   }).catch(err => {
+    //     console.error(`⚠️  Failed to send welcome email to ${email}:`, err);
+    //   });
+    // }
 
     // If parent_promoter_id is provided, create the referral relationship
     if (parent_promoter_id) {
