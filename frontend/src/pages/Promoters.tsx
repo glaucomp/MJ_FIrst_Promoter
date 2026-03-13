@@ -104,14 +104,22 @@ const Promoters = () => {
     }
 
     try {
-      // Call the API to create promoter
+      // Call the API to create promoter (reads from .env)
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5555';
+      const apiKey = import.meta.env.VITE_API_KEY;
+      
+      if (!apiKey) {
+        setError('API key not configured. Please check frontend/.env file.');
+        return;
+      }
+      
       const response = await fetch(
-        "http://15.135.60.144:5555/api/v1/promoters/create",
+        `${apiBaseUrl}/api/v1/promoters/create`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "X-API-KEY": "fp_key_ByfKtLyM8sSCVl4G_buVY0QFeBUifmIZ", // TODO: Get from config
+            "X-API-KEY": apiKey,
           },
           body: JSON.stringify({
             email: newPromoter.email,
