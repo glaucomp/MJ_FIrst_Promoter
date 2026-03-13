@@ -8,6 +8,7 @@ import userRoutes from './routes/user.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 import apiV1Routes from './routes/api.v1.routes';
 import apiV2Routes from './routes/api.v2.routes';
+import publicRoutes from './routes/public.routes';
 
 dotenv.config();
 
@@ -23,6 +24,9 @@ app.use(express.urlencoded({ extended: true }));
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// Public routes (no authentication)
+app.use('/api/public', publicRoutes);
 
 // Routes
 app.use('/api/auth', authRoutes);

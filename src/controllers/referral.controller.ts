@@ -103,13 +103,21 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
       }
     });
 
+    // Get full user with username
+    const fullUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { username: true, inviteCode: true }
+    });
+
+    // Use username as the ref code
+    const refCode = fullUser?.username || fullUser?.inviteCode || user.id;
+
     // Generate invite URL - use campaign's defaultReferralUrl or websiteUrl
     const targetUrl = referral.campaign.defaultReferralUrl || referral.campaign.websiteUrl;
     
-    // Parse URL and add tracking parameters
+    // Parse URL and add tracking parameter with username
     const urlObj = new URL(targetUrl);
-    urlObj.searchParams.set('ref', inviteCode);
-    urlObj.searchParams.set('promoter', user.id);
+    urlObj.searchParams.set('ref', refCode);
     
     const inviteUrl = urlObj.toString();
 
