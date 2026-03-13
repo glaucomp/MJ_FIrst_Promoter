@@ -72,7 +72,7 @@ export const trackClickByRef = async (req: Request, res: Response) => {
       }
       
       const urlObj = new URL(campaignUrl);
-      urlObj.searchParams.set('ref', shortCode);
+      urlObj.searchParams.set('fpr', shortCode);
       const fullUrl = urlObj.toString();
 
       trackingLink = await prisma.trackingLink.create({

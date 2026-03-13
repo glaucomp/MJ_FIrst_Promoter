@@ -16,7 +16,7 @@ const Register = () => {
   const navigate = useNavigate();
 
   const inviteCode = searchParams.get('invite');
-  const refCode = searchParams.get('ref');
+  const refCode = searchParams.get('fpr');
 
   useEffect(() => {
     const fetchInviteInfo = async () => {

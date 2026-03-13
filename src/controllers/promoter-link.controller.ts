@@ -48,7 +48,7 @@ export const getMyPromoterLink = async (req: AuthRequest, res: Response) => {
     }
     
     const url = new URL(campaignUrl);
-    url.searchParams.set('ref', refCode);
+    url.searchParams.set('fpr', refCode);
     
     const referralLink = url.toString();
 

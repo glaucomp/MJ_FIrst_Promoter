@@ -117,7 +117,7 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
     
     // Parse URL and add tracking parameter with username
     const urlObj = new URL(targetUrl);
-    urlObj.searchParams.set('ref', refCode);
+    urlObj.searchParams.set('fpr', refCode);
     
     const inviteUrl = urlObj.toString();
 
@@ -360,9 +360,9 @@ export const generateTrackingLink = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'Campaign URL not configured' });
     }
     
-    // Create tracking link using campaign's actual URL with ref parameter
+    // Create tracking link using campaign's actual URL with fpr parameter
     const urlObj = new URL(campaignWebsiteUrl);
-    urlObj.searchParams.set('ref', shortCode);
+    urlObj.searchParams.set('fpr', shortCode);
     const fullUrl = urlObj.toString();
 
     const trackingLink = await prisma.trackingLink.create({
