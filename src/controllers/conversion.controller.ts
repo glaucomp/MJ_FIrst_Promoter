@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 // POST /api/v2/track/sale
 export const trackSale = async (req: ApiKeyRequest, res: Response) => {
   try {
-    const { email, uid, amount, event_id, ref_id, tid, plan } = req.body;
+    const { email, uid, amount, event_id, ref_id, tid, plan, username } = req.body;
 
     // Validation
     if (!event_id) {
@@ -41,9 +41,10 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
       });
     }
 
-    // Find referral by ref_id, tid, or email/uid
+    // Find referral by ref_id, username, tid, or email/uid
     let referral;
 
+    // Try by ref_id first
     if (ref_id) {
       referral = await prisma.referral.findFirst({
         where: {
@@ -61,6 +62,32 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
           }
         }
       });
+    }
+
+    // Try by username if ref_id didn't work
+    if (!referral && username) {
+      const user = await prisma.user.findUnique({
+        where: { username }
+      });
+
+      if (user) {
+        referral = await prisma.referral.findFirst({
+          where: {
+            referrerId: user.id,
+            status: 'ACTIVE'
+          },
+          include: {
+            campaign: true,
+            referrer: true,
+            parentReferral: {
+              include: {
+                referrer: true,
+                campaign: true
+              }
+            }
+          }
+        });
+      }
     }
 
     if (!referral && (email || uid)) {
@@ -91,6 +118,7 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
       return res.status(404).json({
         error: 'No active referral found',
         ref_id,
+        username,
         email,
         uid
       });

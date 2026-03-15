@@ -104,6 +104,7 @@ async def fp_track_sale_v2(
     event_id: str, 
     tid: str | None = None, 
     ref_id: str | None = None, 
+    username: str | None = None,
     plan: str | None = None
 ) -> dict | None:
     """
@@ -116,6 +117,7 @@ async def fp_track_sale_v2(
         event_id: Unique transaction ID from your system
         tid: Tracking ID (optional)
         ref_id: Promoter's ref_id (optional, used for lookup)
+        username: Promoter's username (alternative to ref_id)
         plan: Subscription plan name (optional)
         
     Returns:
@@ -141,6 +143,8 @@ async def fp_track_sale_v2(
         payload["tid"] = tid
     if ref_id:
         payload["ref_id"] = ref_id
+    if username:
+        payload["username"] = username
     if plan:
         payload["plan"] = plan
 
