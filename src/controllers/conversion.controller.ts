@@ -71,10 +71,15 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
       });
 
       if (user) {
+        // Find the referral for this user's direct customers
+        // Priority: referrals where referredUserId is null (for their own customers)
+        // AND has a parentReferralId (so secondary commissions flow up)
         referral = await prisma.referral.findFirst({
           where: {
             referrerId: user.id,
-            status: 'ACTIVE'
+            status: 'ACTIVE',
+            referredUserId: null,
+            parentReferralId: { not: null }
           },
           include: {
             campaign: true,
@@ -85,8 +90,31 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
                 campaign: true
               }
             }
-          }
+          },
+          orderBy: { createdAt: 'desc' }
         });
+
+        // If no referral with parent found, try any active referral for their customers
+        if (!referral) {
+          referral = await prisma.referral.findFirst({
+            where: {
+              referrerId: user.id,
+              status: 'ACTIVE',
+              referredUserId: null
+            },
+            include: {
+              campaign: true,
+              referrer: true,
+              parentReferral: {
+                include: {
+                  referrer: true,
+                  campaign: true
+                }
+              }
+            },
+            orderBy: { createdAt: 'desc' }
+          });
+        }
       }
     }
 
@@ -124,8 +152,8 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
       });
     }
 
-    // Calculate revenue (amount is in cents)
-    const revenue = amount / 100;
+    // Calculate revenue (amount is in dollars)
+    const revenue = amount;
     const campaign = referral.campaign;
 
     // Create Customer record
@@ -150,9 +178,11 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
         amount: level1Amount,
         percentage: campaign.commissionRate,
         status: 'unpaid',
+        description: `Direct customer sale ($${revenue.toFixed(2)})`,
         userId: referral.referrerId,
         campaignId: campaign.id,
-        referralId: referral.id
+        referralId: referral.id,
+        customerId: customer.id
       }
     });
 
@@ -169,9 +199,11 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
           amount: level2Amount,
           percentage: campaign.secondaryRate,
           status: 'unpaid',
+          description: `From ${referral.referrer.firstName}'s sale ($${revenue.toFixed(2)})`,
           userId: referral.parentReferral.referrerId,
           campaignId: campaign.id,
-          referralId: referral.parentReferral.id
+          referralId: referral.parentReferral.id,
+          customerId: customer.id
         }
       });
 
@@ -287,7 +319,7 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
       return res.status(404).json({ error: 'Original sale not found' });
     }
 
-    const refundRevenue = amount / 100;
+    const refundRevenue = amount;
     const campaign = customer.referral.campaign;
 
     // Create negative commission for Level 1

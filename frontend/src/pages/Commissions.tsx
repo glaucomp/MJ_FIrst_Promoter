@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { commissionAPI } from '../services/api';
 
 interface Commission {
   id: string;
   amount: number;
   percentage: number;
   status: 'unpaid' | 'pending' | 'paid';
+  description: string | null;
   createdAt: string;
   user: {
     id: string;
@@ -17,7 +19,17 @@ interface Commission {
     campaign: {
       name: string;
     };
-  };
+    referrer: {
+      firstName: string;
+      lastName: string;
+      email: string;
+    };
+  } | null;
+  customer: {
+    email: string;
+    name: string;
+    revenue: number;
+  } | null;
 }
 
 const Commissions = () => {
@@ -34,63 +46,19 @@ const Commissions = () => {
 
   const fetchCommissions = async () => {
     try {
-      // TODO: Replace with actual API call
-      // const response = await axios.get('/api/commissions');
-      // setCommissions(response.data.commissions);
-      
-      setCommissions([]);
+      const response = await commissionAPI.getAll();
+      setCommissions(response.data.commissions || []);
     } catch (err) {
+      console.error('Error fetching commissions:', err);
       setError('Failed to load commissions');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleStatusChange = async (commissionId: string, newStatus: 'unpaid' | 'pending' | 'paid') => {
-    try {
-      // TODO: Replace with actual API call
-      // await axios.patch(`/api/commissions/${commissionId}`, { status: newStatus });
-      
-      setCommissions(prev => prev.map(c => 
-        c.id === commissionId ? { ...c, status: newStatus } : c
-      ));
-      setSuccess(`Commission marked as ${newStatus}`);
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err) {
-      setError('Failed to update commission status');
-    }
-  };
-
   const filteredCommissions = filter === 'all' 
     ? commissions 
     : commissions.filter(c => c.status === filter);
-
-  const stats = {
-    total: commissions.reduce((sum, c) => sum + c.amount, 0),
-    unpaid: commissions.filter(c => c.status === 'unpaid').reduce((sum, c) => sum + c.amount, 0),
-    pending: commissions.filter(c => c.status === 'pending').reduce((sum, c) => sum + c.amount, 0),
-    paid: commissions.filter(c => c.status === 'paid').reduce((sum, c) => sum + c.amount, 0),
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'unpaid': return '#f56565';
-      case 'pending': return '#ed8936';
-      case 'paid': return '#48bb78';
-      default: return '#718096';
-    }
-  };
-
-  const getStatusBadgeStyle = (status: string) => ({
-    display: 'inline-block',
-    padding: '0.25rem 0.75rem',
-    borderRadius: '9999px',
-    fontSize: '0.75rem',
-    fontWeight: '600',
-    textTransform: 'uppercase' as const,
-    background: `${getStatusColor(status)}20`,
-    color: getStatusColor(status)
-  });
 
   if (loading) {
     return (
@@ -103,162 +71,172 @@ const Commissions = () => {
   return (
     <div>
       {/* Page Header */}
-      <div style={{ marginBottom: '2rem' }}>
-        <h2 style={{ fontSize: '1.875rem', fontWeight: 'bold', color: '#2d3748', marginBottom: '0.5rem' }}>
-          💰 Commission Management
+      <div style={{ marginBottom: '1.5rem' }}>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: '600', color: '#1a202c', marginBottom: '0.25rem' }}>
+          Commissions
         </h2>
-        <p style={{ color: '#718096', fontSize: '1rem' }}>
-          {user?.role === 'ADMIN' 
-            ? 'Track and manage all promoter commissions and payments'
-            : 'View your earned commissions and payment history'}
-        </p>
       </div>
 
       {/* Alerts */}
       {error && (
-        <div className="alert alert-error" style={{ marginBottom: '1.5rem' }}>
+        <div className="alert alert-error" style={{ marginBottom: '1rem' }}>
           {error}
         </div>
       )}
       {success && (
-        <div className="alert alert-success" style={{ marginBottom: '1.5rem' }}>
+        <div className="alert alert-success" style={{ marginBottom: '1rem' }}>
           {success}
         </div>
       )}
 
-      {/* Stats Cards */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-        gap: '1.5rem',
-        marginBottom: '2rem'
-      }}>
-        <div className="card" style={{ padding: '1.5rem', background: 'white' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-            <div>
-              <p style={{ fontSize: '0.875rem', color: '#718096', marginBottom: '0.5rem' }}>Total Commissions</p>
-              <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#2d3748' }}>
-                ${stats.total.toFixed(2)}
-              </p>
-            </div>
-            <div style={{ fontSize: '2rem' }}>💵</div>
-          </div>
-        </div>
-
-        <div className="card" style={{ padding: '1.5rem', background: 'white' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-            <div>
-              <p style={{ fontSize: '0.875rem', color: '#718096', marginBottom: '0.5rem' }}>Unpaid</p>
-              <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#f56565' }}>
-                ${stats.unpaid.toFixed(2)}
-              </p>
-            </div>
-            <div style={{ fontSize: '2rem' }}>⏳</div>
-          </div>
-        </div>
-
-        <div className="card" style={{ padding: '1.5rem', background: 'white' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-            <div>
-              <p style={{ fontSize: '0.875rem', color: '#718096', marginBottom: '0.5rem' }}>Pending</p>
-              <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#ed8936' }}>
-                ${stats.pending.toFixed(2)}
-              </p>
-            </div>
-            <div style={{ fontSize: '2rem' }}>⏱️</div>
-          </div>
-        </div>
-
-        <div className="card" style={{ padding: '1.5rem', background: 'white' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-            <div>
-              <p style={{ fontSize: '0.875rem', color: '#718096', marginBottom: '0.5rem' }}>Paid</p>
-              <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#48bb78' }}>
-                ${stats.paid.toFixed(2)}
-              </p>
-            </div>
-            <div style={{ fontSize: '2rem' }}>✅</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="card" style={{ padding: '1.5rem', marginBottom: '1.5rem', background: 'white' }}>
-        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+      {/* Tabs and Search */}
+      <div className="card" style={{ padding: 0, background: 'white', overflow: 'hidden', marginBottom: '0' }}>
+        {/* Tabs */}
+        <div style={{ 
+          display: 'flex', 
+          borderBottom: '1px solid #e2e8f0',
+          padding: '0 1.5rem'
+        }}>
           <button
             onClick={() => setFilter('all')}
-            className="btn"
             style={{
-              background: filter === 'all' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#e2e8f0',
-              color: filter === 'all' ? 'white' : '#2d3748',
-              border: 'none'
+              padding: '1rem 1.5rem',
+              background: 'none',
+              border: 'none',
+              borderBottom: filter === 'all' ? '2px solid #3b82f6' : '2px solid transparent',
+              color: filter === 'all' ? '#3b82f6' : '#718096',
+              fontWeight: filter === 'all' ? '600' : '400',
+              fontSize: '0.875rem',
+              cursor: 'pointer',
+              marginBottom: '-1px'
             }}
           >
-            All ({commissions.length})
+            All
           </button>
           <button
             onClick={() => setFilter('unpaid')}
-            className="btn"
             style={{
-              background: filter === 'unpaid' ? '#f56565' : '#e2e8f0',
-              color: filter === 'unpaid' ? 'white' : '#2d3748',
-              border: 'none'
+              padding: '1rem 1.5rem',
+              background: 'none',
+              border: 'none',
+              borderBottom: filter === 'unpaid' ? '2px solid #3b82f6' : '2px solid transparent',
+              color: filter === 'unpaid' ? '#3b82f6' : '#718096',
+              fontWeight: filter === 'unpaid' ? '600' : '400',
+              fontSize: '0.875rem',
+              cursor: 'pointer',
+              marginBottom: '-1px'
             }}
           >
-            Unpaid ({commissions.filter(c => c.status === 'unpaid').length})
+            Unpaid
           </button>
           <button
             onClick={() => setFilter('pending')}
-            className="btn"
             style={{
-              background: filter === 'pending' ? '#ed8936' : '#e2e8f0',
-              color: filter === 'pending' ? 'white' : '#2d3748',
-              border: 'none'
+              padding: '1rem 1.5rem',
+              background: 'none',
+              border: 'none',
+              borderBottom: filter === 'pending' ? '2px solid #3b82f6' : '2px solid transparent',
+              color: filter === 'pending' ? '#3b82f6' : '#718096',
+              fontWeight: filter === 'pending' ? '600' : '400',
+              fontSize: '0.875rem',
+              cursor: 'pointer',
+              marginBottom: '-1px'
             }}
           >
-            Pending ({commissions.filter(c => c.status === 'pending').length})
+            Pending
           </button>
           <button
             onClick={() => setFilter('paid')}
-            className="btn"
             style={{
-              background: filter === 'paid' ? '#48bb78' : '#e2e8f0',
-              color: filter === 'paid' ? 'white' : '#2d3748',
-              border: 'none'
+              padding: '1rem 1.5rem',
+              background: 'none',
+              border: 'none',
+              borderBottom: filter === 'paid' ? '2px solid #3b82f6' : '2px solid transparent',
+              color: filter === 'paid' ? '#3b82f6' : '#718096',
+              fontWeight: filter === 'paid' ? '600' : '400',
+              fontSize: '0.875rem',
+              cursor: 'pointer',
+              marginBottom: '-1px'
             }}
           >
-            Paid ({commissions.filter(c => c.status === 'paid').length})
+            Paid
           </button>
         </div>
-      </div>
 
-      {/* Commissions Table */}
-      <div className="card" style={{ padding: 0, background: 'white', overflow: 'hidden' }}>
+        {/* Search and Filters Bar */}
+        <div style={{ 
+          padding: '1rem 1.5rem', 
+          borderBottom: '1px solid #e2e8f0',
+          display: 'flex',
+          gap: '1rem',
+          alignItems: 'center'
+        }}>
+          <div style={{ 
+            flex: 1,
+            position: 'relative'
+          }}>
+            <input
+              type="text"
+              placeholder="Start your search..."
+              style={{
+                width: '100%',
+                padding: '0.5rem 0.75rem 0.5rem 2.5rem',
+                border: '1px solid #e2e8f0',
+                borderRadius: '0.375rem',
+                fontSize: '0.875rem',
+                background: '#f7fafc'
+              }}
+            />
+            <span style={{
+              position: 'absolute',
+              left: '0.75rem',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              color: '#a0aec0',
+              fontSize: '1rem'
+            }}>🔍</span>
+          </div>
+          <select style={{
+            padding: '0.5rem 2rem 0.5rem 0.75rem',
+            border: '1px solid #e2e8f0',
+            borderRadius: '0.375rem',
+            fontSize: '0.875rem',
+            background: 'white',
+            cursor: 'pointer'
+          }}>
+            <option>Campaign: All</option>
+          </select>
+        </div>
+
+        {/* Commissions Table */}
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ background: '#f7fafc', borderBottom: '2px solid #e2e8f0' }}>
-                <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#4a5568' }}>
+              <tr style={{ background: 'white', borderBottom: '1px solid #e2e8f0' }}>
+                <th style={{ padding: '0.75rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   Promoter
                 </th>
-                <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#4a5568' }}>
-                  Campaign
+                <th style={{ padding: '0.75rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Sale
                 </th>
-                <th style={{ padding: '1rem', textAlign: 'right', fontSize: '0.875rem', fontWeight: '600', color: '#4a5568' }}>
+                <th style={{ padding: '0.75rem 1.5rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   Amount
                 </th>
-                <th style={{ padding: '1rem', textAlign: 'center', fontSize: '0.875rem', fontWeight: '600', color: '#4a5568' }}>
-                  Rate
+                <th style={{ padding: '0.75rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Created at
                 </th>
-                <th style={{ padding: '1rem', textAlign: 'center', fontSize: '0.875rem', fontWeight: '600', color: '#4a5568' }}>
-                  Status
+                <th style={{ padding: '0.75rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Customer
                 </th>
-                <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#4a5568' }}>
-                  Date
+                <th style={{ padding: '0.75rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Campaign
+                </th>
+                <th style={{ padding: '0.75rem 1.5rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  
                 </th>
                 {user?.role === 'ADMIN' && (
-                  <th style={{ padding: '1rem', textAlign: 'center', fontSize: '0.875rem', fontWeight: '600', color: '#4a5568' }}>
-                    Actions
+                  <th style={{ padding: '0.75rem 1.5rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: '600', color: '#6b7280' }}>
+                    
                   </th>
                 )}
               </tr>
@@ -266,67 +244,168 @@ const Commissions = () => {
             <tbody>
               {filteredCommissions.map((commission) => (
                 <tr key={commission.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                  <td style={{ padding: '1rem' }}>
-                    <div>
-                      <div style={{ fontWeight: '600', color: '#2d3748' }}>
-                        {commission.user.firstName} {commission.user.lastName}
+                  <td style={{ padding: '1rem 1.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <div style={{ 
+                        width: '24px', 
+                        height: '24px', 
+                        borderRadius: '50%', 
+                        background: commission.status === 'paid' ? '#10b981' : '#6b7280',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '0.75rem',
+                        color: 'white',
+                        fontWeight: 'bold'
+                      }}>
+                        ✓
                       </div>
-                      <div style={{ fontSize: '0.875rem', color: '#718096' }}>
-                        {commission.user.email}
+                      <div>
+                        <div style={{ fontWeight: '500', color: '#3b82f6', fontSize: '0.875rem' }}>
+                          {commission.user.firstName} {commission.user.lastName}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                          {commission.user.email}
+                        </div>
                       </div>
                     </div>
                   </td>
-                  <td style={{ padding: '1rem', color: '#4a5568' }}>
-                    {commission.referral.campaign.name}
+                  <td style={{ padding: '1rem 1.5rem' }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                        <span style={{ fontSize: '0.875rem', color: '#6b7280', fontWeight: '500' }}>$</span>
+                        <span style={{ 
+                          fontWeight: '500',
+                          color: '#1f2937',
+                          fontSize: '0.875rem'
+                        }}>
+                          {commission.customer?.revenue?.toFixed(0) || '0'}
+                        </span>
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '16px',
+                          height: '16px',
+                          borderRadius: '50%',
+                          background: commission.percentage === 30 ? '#3b82f6' : '#f59e0b',
+                          color: 'white',
+                          fontSize: '0.625rem',
+                          fontWeight: 'bold'
+                        }}>
+                          {commission.percentage === 30 ? '1' : '2'}
+                        </span>
+                      </div>
+                      {commission.percentage !== 30 && commission.description && (
+                        <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                          {commission.description.match(/From (.+?)'s sale/)?.[1] 
+                            ? `from ${commission.description.match(/From (.+?)'s sale/)?.[1]}`
+                            : commission.description}
+                        </div>
+                      )}
+                    </div>
                   </td>
-                  <td style={{ padding: '1rem', textAlign: 'right', fontWeight: '600', color: '#2d3748', fontSize: '1.125rem' }}>
-                    ${commission.amount.toFixed(2)}
+                  <td style={{ padding: '1rem 1.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                      <span style={{ fontSize: '0.875rem', color: '#6b7280', fontWeight: '500' }}>$</span>
+                      <span style={{ 
+                        fontWeight: '500',
+                        color: '#1f2937',
+                        fontSize: '0.875rem'
+                      }}>
+                        {commission.amount.toFixed(0)}
+                      </span>
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '16px',
+                        height: '16px',
+                        borderRadius: '50%',
+                        background: commission.percentage === 30 ? '#3b82f6' : '#f59e0b',
+                        color: 'white',
+                        fontSize: '0.625rem',
+                        fontWeight: 'bold'
+                      }}>
+                        {commission.percentage === 30 ? '1' : '2'}
+                      </span>
+                    </div>
                   </td>
-                  <td style={{ padding: '1rem', textAlign: 'center', color: '#718096' }}>
-                    {commission.percentage}%
+                  <td style={{ padding: '1rem 1.5rem' }}>
+                    <div style={{ color: '#1f2937', fontSize: '0.875rem' }}>
+                      {new Date(commission.createdAt).toLocaleDateString('en-US', { 
+                        day: 'numeric',
+                        month: 'short', 
+                        year: 'numeric' 
+                      })}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                      {new Date(commission.createdAt).toLocaleTimeString('en-US', { 
+                        hour: '2-digit', 
+                        minute: '2-digit',
+                        hour12: true
+                      })}
+                    </div>
                   </td>
-                  <td style={{ padding: '1rem', textAlign: 'center' }}>
-                    <span style={getStatusBadgeStyle(commission.status)}>
-                      {commission.status}
-                    </span>
+                  <td style={{ padding: '1rem 1.5rem', color: '#1f2937', fontSize: '0.875rem' }}>
+                    {commission.customer?.email || '-'}
                   </td>
-                  <td style={{ padding: '1rem', color: '#718096', fontSize: '0.875rem' }}>
-                    {new Date(commission.createdAt).toLocaleDateString()}
+                  <td style={{ padding: '1rem 1.5rem' }}>
+                    <div style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.375rem',
+                      padding: '0.25rem 0.625rem',
+                      borderRadius: '9999px',
+                      fontSize: '0.75rem',
+                      fontWeight: '600',
+                      background: '#f59e0b',
+                      color: 'white'
+                    }}>
+                      <span style={{ fontSize: '0.625rem' }}>●</span>
+                      {commission.referral?.campaign?.name || 'N/A'}
+                    </div>
+                  </td>
+                  <td style={{ padding: '1rem 1.5rem', textAlign: 'center' }}>
+                    {commission.status === 'paid' ? (
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '24px',
+                        height: '24px',
+                        borderRadius: '50%',
+                        background: '#3b82f6',
+                        color: 'white'
+                      }}>
+                        ✓
+                      </span>
+                    ) : commission.status === 'pending' ? (
+                      <span style={{
+                        fontSize: '0.75rem',
+                        padding: '0.25rem 0.5rem',
+                        borderRadius: '0.25rem',
+                        background: '#fef3c7',
+                        color: '#92400e'
+                      }}>
+                        ⏱
+                      </span>
+                    ) : null}
                   </td>
                   {user?.role === 'ADMIN' && (
-                    <td style={{ padding: '1rem' }}>
-                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-                        {commission.status === 'unpaid' && (
-                          <button
-                            onClick={() => handleStatusChange(commission.id, 'pending')}
-                            className="btn"
-                            style={{
-                              background: '#ed8936',
-                              color: 'white',
-                              border: 'none',
-                              padding: '0.375rem 0.75rem',
-                              fontSize: '0.75rem'
-                            }}
-                          >
-                            Mark Pending
-                          </button>
-                        )}
-                        {commission.status !== 'paid' && (
-                          <button
-                            onClick={() => handleStatusChange(commission.id, 'paid')}
-                            className="btn"
-                            style={{
-                              background: '#48bb78',
-                              color: 'white',
-                              border: 'none',
-                              padding: '0.375rem 0.75rem',
-                              fontSize: '0.75rem'
-                            }}
-                          >
-                            Mark Paid
-                          </button>
-                        )}
-                      </div>
+                    <td style={{ padding: '1rem 1.5rem', textAlign: 'center' }}>
+                      <button
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#6b7280',
+                          fontSize: '1.25rem',
+                          cursor: 'pointer',
+                          padding: '0.25rem'
+                        }}
+                      >
+                        ⋮
+                      </button>
                     </td>
                   )}
                 </tr>

@@ -87,7 +87,30 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
       orderBy: { createdAt: 'desc' }
     });
 
-    res.json({ users });
+    // Calculate real stats for each user
+    const usersWithStats = await Promise.all(
+      users.map(async (user) => {
+        const referrals = await prisma.referral.findMany({
+          where: { referrerId: user.id }
+        });
+
+        const commissions = await prisma.commission.findMany({
+          where: { userId: user.id }
+        });
+
+        return {
+          ...user,
+          stats: {
+            totalReferrals: referrals.length,
+            activeReferrals: referrals.filter(r => r.status === 'ACTIVE').length,
+            totalEarnings: commissions.reduce((sum, c) => sum + c.amount, 0),
+            pendingEarnings: commissions.filter(c => c.status === 'unpaid' || c.status === 'pending').reduce((sum, c) => sum + c.amount, 0)
+          }
+        };
+      })
+    );
+
+    res.json({ users: usersWithStats });
   } catch (error) {
     console.error('Get users error:', error);
     res.status(500).json({ error: 'Failed to fetch users' });

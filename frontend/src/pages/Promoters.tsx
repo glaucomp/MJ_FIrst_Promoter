@@ -48,23 +48,12 @@ const Promoters = () => {
   const fetchPromoters = async () => {
     try {
       const response = await userAPI.getAll();
-      // Filter promoters and admins
+      // Filter only promoters (exclude admins)
       const promoterUsers = response.data.users.filter(
-        (u: any) => u.role === "PROMOTER" || u.role === "ADMIN",
+        (u: any) => u.role === "PROMOTER"
       );
 
-      // Mock additional stats for now
-      const promotersWithStats = promoterUsers.map((p: any) => ({
-        ...p,
-        stats: {
-          totalReferrals: Math.floor(Math.random() * 50),
-          activeReferrals: Math.floor(Math.random() * 30),
-          totalEarnings: Math.random() * 5000,
-          pendingEarnings: Math.random() * 500,
-        },
-      }));
-
-      setPromoters(promotersWithStats);
+      setPromoters(promoterUsers);
     } catch (err) {
       setError("Failed to load promoters");
     } finally {
@@ -1071,109 +1060,6 @@ const Promoters = () => {
                 </div>
               </div>
 
-              {/* Recent Referrals */}
-              <div style={{ marginBottom: "1.5rem" }}>
-                <h3
-                  style={{
-                    fontSize: "1.125rem",
-                    fontWeight: "600",
-                    color: "#2d3748",
-                    marginBottom: "1rem",
-                  }}
-                >
-                  👥 Recent Referrals
-                </h3>
-                <div
-                  style={{
-                    border: "1px solid #e2e8f0",
-                    borderRadius: "0.5rem",
-                    overflow: "hidden",
-                  }}
-                >
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                    <thead>
-                      <tr style={{ background: "#f7fafc" }}>
-                        <th
-                          style={{
-                            padding: "0.75rem",
-                            textAlign: "left",
-                            fontSize: "0.75rem",
-                            fontWeight: "600",
-                            color: "#4a5568",
-                          }}
-                        >
-                          User
-                        </th>
-                        <th
-                          style={{
-                            padding: "0.75rem",
-                            textAlign: "center",
-                            fontSize: "0.75rem",
-                            fontWeight: "600",
-                            color: "#4a5568",
-                          }}
-                        >
-                          Status
-                        </th>
-                        <th
-                          style={{
-                            padding: "0.75rem",
-                            textAlign: "left",
-                            fontSize: "0.75rem",
-                            fontWeight: "600",
-                            color: "#4a5568",
-                          }}
-                        >
-                          Date
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[1, 2, 3].map((i) => (
-                        <tr key={i} style={{ borderTop: "1px solid #e2e8f0" }}>
-                          <td
-                            style={{
-                              padding: "0.75rem",
-                              fontSize: "0.875rem",
-                              color: "#2d3748",
-                            }}
-                          >
-                            Referral User {i}
-                          </td>
-                          <td
-                            style={{ padding: "0.75rem", textAlign: "center" }}
-                          >
-                            <span
-                              style={{
-                                display: "inline-block",
-                                padding: "0.25rem 0.5rem",
-                                borderRadius: "9999px",
-                                fontSize: "0.75rem",
-                                fontWeight: "600",
-                                background: i === 1 ? "#48bb7820" : "#667eea20",
-                                color: i === 1 ? "#48bb78" : "#667eea",
-                              }}
-                            >
-                              {i === 1 ? "Active" : "Pending"}
-                            </span>
-                          </td>
-                          <td
-                            style={{
-                              padding: "0.75rem",
-                              fontSize: "0.875rem",
-                              color: "#718096",
-                            }}
-                          >
-                            {new Date(
-                              Date.now() - i * 86400000,
-                            ).toLocaleDateString()}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
 
               {/* Actions */}
               <div

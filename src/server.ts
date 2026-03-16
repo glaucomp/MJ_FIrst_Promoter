@@ -6,6 +6,7 @@ import campaignRoutes from './routes/campaign.routes';
 import referralRoutes from './routes/referral.routes';
 import userRoutes from './routes/user.routes';
 import dashboardRoutes from './routes/dashboard.routes';
+import commissionRoutes from './routes/commission.routes';
 import apiV1Routes from './routes/api.v1.routes';
 import apiV2Routes from './routes/api.v2.routes';
 import publicRoutes from './routes/public.routes';
@@ -14,6 +15,7 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
 
 // Middleware
 app.use(cors());
@@ -34,6 +36,7 @@ app.use('/api/campaigns', campaignRoutes);
 app.use('/api/referrals', referralRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/commissions', commissionRoutes);
 
 // FirstPromoter-compatible API routes
 app.use('/api/v1', apiV1Routes);

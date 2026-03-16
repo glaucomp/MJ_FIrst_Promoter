@@ -18,7 +18,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#f7fafc' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#1a1f2e' }}>
       {/* Sidebar Navigation */}
       <Navigation isOpen={sidebarOpen} />
 
@@ -33,9 +33,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       }}>
         {/* Top Header Bar */}
         <header style={{
-          background: 'white',
+          background: '#242938',
           padding: '1rem 2rem',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -55,16 +55,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 borderRadius: '0.375rem',
                 transition: 'background 0.2s'
               }}
-              onMouseEnter={(e) => e.currentTarget.style.background = '#f7fafc'}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
               onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
             >
-              ☰
+              <span style={{ color: '#e5e7eb' }}>☰</span>
             </button>
             <div>
               <h1 style={{
                 fontSize: '1.25rem',
                 fontWeight: '600',
-                color: '#2d3748',
+                color: '#f3f4f6',
                 margin: 0
               }}>
                 {user?.role === 'ADMIN' ? 'Admin Dashboard' : 'Promoter Dashboard'}
@@ -136,12 +136,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
         {/* Footer */}
         <footer style={{
-          background: 'white',
-          borderTop: '1px solid #e2e8f0',
+          background: '#242938',
+          borderTop: '1px solid rgba(255,255,255,0.1)',
           padding: '1rem 2rem',
           textAlign: 'center',
           fontSize: '0.875rem',
-          color: '#718096'
+          color: '#9ca3af'
         }}>
           <p>© 2026 MJ First Promoter. All rights reserved.</p>
         </footer>

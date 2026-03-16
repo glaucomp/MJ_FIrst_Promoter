@@ -102,8 +102,6 @@ const Login = () => {
         }}>
           <p style={{ fontWeight: '600', marginBottom: '0.5rem' }}>Demo Accounts:</p>
           <p>Admin: admin@example.com / admin123</p>
-          <p>Promoter (Yoda): yoda@example.com / promoter123</p>
-          <p>Promoter (Luke): luke@example.com / promoter123</p>
         </div>
       </div>
     </div>

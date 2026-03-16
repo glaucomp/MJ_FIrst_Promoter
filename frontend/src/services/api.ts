@@ -79,4 +79,9 @@ export const dashboardAPI = {
   getMyPromoterLink: () => api.get('/dashboard/my-link')
 };
 
+export const commissionAPI = {
+  getAll: () => api.get('/commissions'),
+  updateStatus: (id: string, status: string) => api.patch(`/commissions/${id}`, { status })
+};
+
 export default api;

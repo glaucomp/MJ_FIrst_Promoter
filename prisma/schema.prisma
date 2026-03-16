@@ -206,6 +206,7 @@ model Customer {
   campaign        Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   referralId      String?
   referral        Referral? @relation(fields: [referralId], references: [id])
+  commissions     Commission[]
 
   @@index([campaignId])
   @@index([referralId])
@@ -230,9 +231,12 @@ model Commission {
   campaign        Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
   referralId      String?
   referral        Referral? @relation(fields: [referralId], references: [id])
+  customerId      String?
+  customer        Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([campaignId])
   @@index([status])
+  @@index([customerId])
   @@map("commissions")
 }
