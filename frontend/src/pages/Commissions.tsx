@@ -38,7 +38,6 @@ const Commissions = () => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'unpaid' | 'pending' | 'paid'>('all');
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
   useEffect(() => {
     fetchCommissions();
@@ -81,11 +80,6 @@ const Commissions = () => {
       {error && (
         <div className="alert alert-error" style={{ marginBottom: '1rem' }}>
           {error}
-        </div>
-      )}
-      {success && (
-        <div className="alert alert-success" style={{ marginBottom: '1rem' }}>
-          {success}
         </div>
       )}
 
