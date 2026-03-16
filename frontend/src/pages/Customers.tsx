@@ -34,64 +34,6 @@ const Customers = () => {
       // TODO: Replace with actual API call
       // const response = await axios.get('/api/customers');
       // setCustomers(response.data.customers);
-      
-      // Mock data for now
-      setCustomers([
-        {
-          id: '1',
-          email: 'sarah@example.com',
-          name: 'Sarah Connor',
-          revenue: 1000.00,
-          subscriptionType: 'yearly',
-          status: 'active',
-          createdAt: new Date().toISOString(),
-          referral: {
-            referrer: {
-              firstName: 'Master',
-              lastName: 'Yoda'
-            },
-            campaign: {
-              name: 'TeaseMe Referral Program'
-            }
-          }
-        },
-        {
-          id: '2',
-          email: 'john@example.com',
-          name: 'John Doe',
-          revenue: 755.00,
-          subscriptionType: 'monthly',
-          status: 'active',
-          createdAt: new Date(Date.now() - 86400000).toISOString(),
-          referral: {
-            referrer: {
-              firstName: 'Luke',
-              lastName: 'Skywalker'
-            },
-            campaign: {
-              name: 'TeaseMe Referral Program'
-            }
-          }
-        },
-        {
-          id: '3',
-          email: 'jane@example.com',
-          name: 'Jane Smith',
-          revenue: 500.00,
-          subscriptionType: 'monthly',
-          status: 'cancelled',
-          createdAt: new Date(Date.now() - 172800000).toISOString(),
-          referral: {
-            referrer: {
-              firstName: 'Master',
-              lastName: 'Yoda'
-            },
-            campaign: {
-              name: 'Premium Members Campaign'
-            }
-          }
-        }
-      ]);
     } catch (err) {
       setError('Failed to load customers');
     } finally {

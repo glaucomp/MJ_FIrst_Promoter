@@ -37,64 +37,6 @@ const Commissions = () => {
       // TODO: Replace with actual API call
       // const response = await axios.get('/api/commissions');
       // setCommissions(response.data.commissions);
-      
-      // Mock data for now
-      setCommissions([
-        {
-          id: '1',
-          amount: 150.00,
-          percentage: 15,
-          status: 'unpaid',
-          createdAt: new Date().toISOString(),
-          user: {
-            id: 'u1',
-            firstName: 'Master',
-            lastName: 'Yoda',
-            email: 'yoda@example.com'
-          },
-          referral: {
-            campaign: {
-              name: 'TeaseMe Referral Program'
-            }
-          }
-        },
-        {
-          id: '2',
-          amount: 75.50,
-          percentage: 10,
-          status: 'pending',
-          createdAt: new Date(Date.now() - 86400000).toISOString(),
-          user: {
-            id: 'u2',
-            firstName: 'Luke',
-            lastName: 'Skywalker',
-            email: 'luke@example.com'
-          },
-          referral: {
-            campaign: {
-              name: 'TeaseMe Referral Program'
-            }
-          }
-        },
-        {
-          id: '3',
-          amount: 200.00,
-          percentage: 15,
-          status: 'paid',
-          createdAt: new Date(Date.now() - 172800000).toISOString(),
-          user: {
-            id: 'u1',
-            firstName: 'Master',
-            lastName: 'Yoda',
-            email: 'yoda@example.com'
-          },
-          referral: {
-            campaign: {
-              name: 'Premium Members Campaign'
-            }
-          }
-        }
-      ]);
     } catch (err) {
       setError('Failed to load commissions');
     } finally {
