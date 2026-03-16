@@ -37,6 +37,8 @@ const Commissions = () => {
       // TODO: Replace with actual API call
       // const response = await axios.get('/api/commissions');
       // setCommissions(response.data.commissions);
+      
+      setCommissions([]);
     } catch (err) {
       setError('Failed to load commissions');
     } finally {

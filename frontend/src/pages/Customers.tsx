@@ -34,6 +34,8 @@ const Customers = () => {
       // TODO: Replace with actual API call
       // const response = await axios.get('/api/customers');
       // setCustomers(response.data.customers);
+      
+      setCustomers([]);
     } catch (err) {
       setError('Failed to load customers');
     } finally {
