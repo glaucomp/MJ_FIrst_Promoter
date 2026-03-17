@@ -36,11 +36,20 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
       startOfMonth.setDate(1);
       startOfMonth.setHours(0, 0, 0, 0);
       
+      // Count ALL person invitation attempts this month (pending + accepted)
+      // Customer tracking referrals have a specific pattern: referredUserId is always null when created
+      // Person invitations: referredUserId is null when pending, not null when accepted
+      // To exclude customer tracking: inviteCode should not match username pattern
+      const user_username = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { username: true, email: true }
+      });
+      
       const invitesThisMonth = await prisma.referral.count({
         where: {
           referrerId: user.id,
           campaignId: campaign.id,
-          referredUserId: { not: null },  // Only count person invitations (not customer tracking)
+          inviteCode: { not: user_username?.username || 'no-match' },  // Exclude customer tracking
           createdAt: { gte: startOfMonth }
         }
       });
