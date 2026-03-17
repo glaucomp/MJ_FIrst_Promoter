@@ -131,7 +131,8 @@ const Campaigns = () => {
       autoApprove: true,
       visibleToPromoters: true,
       referralDiscount: 0,
-      referralReward: 0
+      referralReward: 0,
+      maxInvitesPerMonth: 0
     });
   };
 
