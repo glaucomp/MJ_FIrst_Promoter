@@ -83,10 +83,17 @@ export const getAllCampaigns = async (req: AuthRequest, res: Response) => {
       });
     } else {
       // Check if user is an account manager (top-level referrer who invites others)
+      // Exclude customer tracking referrals from this check
+      const userDetails = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { username: true }
+      });
+
       const isAccountManager = await prisma.referral.findFirst({
         where: {
           referrerId: user.id,
-          parentReferralId: null
+          parentReferralId: null,
+          referredUserId: { not: null }, // Must have invited an actual person, not customer tracking
         },
       });
 
