@@ -82,10 +82,40 @@ export const register = async (req: AuthRequest, res: Response) => {
         },
       });
 
-      // If this is a second-level referral, the new user becomes an account manager for their own sub-campaign
-      if (referral.level === 1) {
-        // Create a new referral relationship for multi-level tracking
-        // The influencer who referred this user can now track their referrals
+      // AUTO-CREATE: Customer tracking referral for the new promoter
+      // This allows them to track their own customer sales
+      try {
+        // Find the referrer's customer tracking referral (to link as parent)
+        const referrerTracking = await prisma.referral.findFirst({
+          where: {
+            referrerId: referral.referrerId,
+            referredUserId: null,  // Customer tracking referral
+            status: 'ACTIVE'
+          }
+        });
+
+        // Generate a unique invite code for customer tracking
+        const { nanoid } = await import('nanoid');
+        const customerTrackingCode = `${user.email.split('@')[0]}_${nanoid(8)}`;
+
+        // Create customer tracking referral for the new user
+        await prisma.referral.create({
+          data: {
+            inviteCode: customerTrackingCode,
+            campaignId: referral.campaignId,
+            referrerId: user.id,
+            referredUserId: null,  // NULL means this is for tracking customers
+            parentReferralId: referrerTracking?.id || null,  // Link to referrer's tracking
+            status: 'ACTIVE',
+            level: referral.level + 1,
+            acceptedAt: new Date()
+          }
+        });
+
+        console.log(`✅ Customer tracking referral created for ${user.email} (invite code: ${customerTrackingCode})`);
+      } catch (error) {
+        console.error('❌ Failed to create customer tracking referral:', error);
+        // Don't fail the registration if customer tracking creation fails
       }
     }
 
@@ -110,7 +140,7 @@ export const register = async (req: AuthRequest, res: Response) => {
 
           if (campaign) {
             // Create a referral record
-            await prisma.referral.create({
+            const newReferral = await prisma.referral.create({
               data: {
                 inviteCode: `${refCode}-${user.id.substring(0, 8)}`,
                 campaignId: campaign.id,
@@ -125,6 +155,38 @@ export const register = async (req: AuthRequest, res: Response) => {
             console.log(
               `✅ Referral created: ${user.email} referred by ${referrer.username || referrer.email}`,
             );
+
+            // AUTO-CREATE: Customer tracking referral for the new user
+            try {
+              // Find the referrer's customer tracking referral
+              const referrerTracking = await prisma.referral.findFirst({
+                where: {
+                  referrerId: referrer.id,
+                  referredUserId: null,
+                  status: 'ACTIVE'
+                }
+              });
+
+              const { nanoid } = await import('nanoid');
+              const customerTrackingCode = `${user.email.split('@')[0]}_${nanoid(8)}`;
+
+              await prisma.referral.create({
+                data: {
+                  inviteCode: customerTrackingCode,
+                  campaignId: campaign.id,
+                  referrerId: user.id,
+                  referredUserId: null,
+                  parentReferralId: referrerTracking?.id || null,
+                  status: 'ACTIVE',
+                  level: newReferral.level + 1,
+                  acceptedAt: new Date()
+                }
+              });
+
+              console.log(`✅ Customer tracking referral created for ${user.email}`);
+            } catch (error) {
+              console.error('❌ Failed to create customer tracking referral:', error);
+            }
           }
         } else {
           console.warn(`⚠️ Referrer not found for refCode: ${refCode}`);

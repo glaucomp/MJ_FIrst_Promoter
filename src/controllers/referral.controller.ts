@@ -29,6 +29,31 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
     if (!campaign.isActive) {
       return res.status(400).json({ error: 'Cannot create invites for inactive campaigns' });
     }
+
+    // Check monthly invite limit
+    if (campaign.maxInvitesPerMonth && campaign.maxInvitesPerMonth > 0) {
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+      
+      const invitesThisMonth = await prisma.referral.count({
+        where: {
+          referrerId: user.id,
+          campaignId: campaign.id,
+          referredUserId: { not: null },  // Only count person invitations (not customer tracking)
+          createdAt: { gte: startOfMonth }
+        }
+      });
+      
+      if (invitesThisMonth >= campaign.maxInvitesPerMonth) {
+        return res.status(403).json({ 
+          error: `Monthly invite limit reached`,
+          limit: campaign.maxInvitesPerMonth,
+          current: invitesThisMonth,
+          message: `You can invite up to ${campaign.maxInvitesPerMonth} people per month on this campaign`
+        });
+      }
+    }
     
     // Promoters can invite for any active campaign they're participating in
     if (user.role === UserRole.PROMOTER) {

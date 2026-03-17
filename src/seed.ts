@@ -34,13 +34,14 @@ async function main() {
       recurringRate: 30.0,
       cookieLifeDays: 90,
       autoApprove: true,
+      maxInvitesPerMonth: null,  // Unlimited invites for account managers
       referralDiscount: 0,
       referralReward: 0,
       createdById: admin.id,
       isActive: true
     }
   });
-  console.log('✅ Created campaign:', campaign1.name);
+  console.log('✅ Created campaign:', campaign1.name, '(unlimited invites)');
 
   // Campaign 2: Influencer → Influencer Friend (Friend 30%, Influencer 5%)
   const campaign2 = await prisma.campaign.create({
@@ -54,13 +55,14 @@ async function main() {
       recurringRate: 30.0,
       cookieLifeDays: 90,
       autoApprove: false,
+      maxInvitesPerMonth: 2,  // Influencers limited to 2 invites per month
       referralDiscount: 15.0,
       referralReward: 50.0,
       createdById: admin.id,
       isActive: true
     }
   });
-  console.log('✅ Created campaign:', campaign2.name);
+  console.log('✅ Created campaign:', campaign2.name, '(2 invites per month)');
 
   // Create Account Manager - Jorlyn
   const hashedPasswordPromoter = await bcrypt.hash('promoter123', 10);
