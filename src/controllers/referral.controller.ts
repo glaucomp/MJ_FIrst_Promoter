@@ -40,8 +40,8 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
           referrerId: user.id,
           OR: [
             { parentReferralId: null }, // Top level referrer
-            { referrer: { role: UserRole.ADMIN } } // Invited by admin
-          ]
+            { referrer: { role: UserRole.ADMIN } }, // Invited by admin
+          ],
         },
       });
 
@@ -99,12 +99,10 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
 
       // If not a participant yet and campaign requires approval, block
       if (!isParticipant && !campaign.autoApprove) {
-        return res
-          .status(403)
-          .json({
-            error:
-              "You must be approved for this campaign before inviting others",
-          });
+        return res.status(403).json({
+          error:
+            "You must be approved for this campaign before inviting others",
+        });
       }
     }
 
@@ -537,5 +535,71 @@ export const trackClick = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error("Track click error:", error);
     res.status(500).json({ error: "Failed to track click" });
+  }
+};
+
+export const checkInviteQuota = async (req: AuthRequest, res: Response) => {
+  try {
+    const { campaignId } = req.params;
+    const user = req.user!;
+
+    const campaign = await prisma.campaign.findUnique({
+      where: { id: campaignId },
+    });
+
+    if (!campaign) {
+      return res.status(404).json({ error: "Campaign not found" });
+    }
+
+    // If no limit set, return unlimited
+    if (!campaign.maxInvitesPerMonth || campaign.maxInvitesPerMonth <= 0) {
+      return res.json({
+        campaignId: campaign.id,
+        campaignName: campaign.name,
+        limit: null,
+        used: 0,
+        remaining: null,
+        status: 'unlimited',
+        message: 'You have unlimited invites on this campaign'
+      });
+    }
+
+    // Calculate invites used this month
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const user_username = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { username: true },
+    });
+
+    const invitesThisMonth = await prisma.referral.count({
+      where: {
+        referrerId: user.id,
+        campaignId: campaign.id,
+        inviteCode: { not: user_username?.username || "no-match" },
+        createdAt: { gte: startOfMonth },
+      },
+    });
+
+    const remaining = campaign.maxInvitesPerMonth - invitesThisMonth;
+    const isBlocked = remaining <= 0;
+
+    return res.json({
+      campaignId: campaign.id,
+      campaignName: campaign.name,
+      limit: campaign.maxInvitesPerMonth,
+      used: invitesThisMonth,
+      remaining: Math.max(0, remaining),
+      status: isBlocked ? 'blocked' : 'available',
+      message: isBlocked 
+        ? `Monthly invite limit reached. Try again next month.`
+        : `You have ${remaining} invite${remaining === 1 ? '' : 's'} remaining this month`,
+      nextResetDate: new Date(startOfMonth.getFullYear(), startOfMonth.getMonth() + 1, 1).toISOString()
+    });
+  } catch (error) {
+    console.error("Check invite quota error:", error);
+    res.status(500).json({ error: "Failed to check invite quota" });
   }
 };
