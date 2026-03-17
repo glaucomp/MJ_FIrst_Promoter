@@ -67,54 +67,35 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
     // Try by username if ref_id didn't work
     if (!referral && username) {
       const user = await prisma.user.findUnique({
-        where: { username }
-      });
-
-      if (user) {
-        // Find the referral for this user's direct customers
-        // Priority: referrals where referredUserId is null (for their own customers)
-        // AND has a parentReferralId (so secondary commissions flow up)
-        referral = await prisma.referral.findFirst({
-          where: {
-            referrerId: user.id,
-            status: 'ACTIVE',
-            referredUserId: null,
-            parentReferralId: { not: null }
-          },
-          include: {
-            campaign: true,
-            referrer: true,
-            parentReferral: {
-              include: {
-                referrer: true,
-                campaign: true
-              }
-            }
-          },
-          orderBy: { createdAt: 'desc' }
-        });
-
-        // If no referral with parent found, try any active referral for their customers
-        if (!referral) {
-          referral = await prisma.referral.findFirst({
-            where: {
-              referrerId: user.id,
-              status: 'ACTIVE',
-              referredUserId: null
-            },
+        where: { username },
+        include: {
+          referralsReceived: {
+            where: { status: 'ACTIVE' },
             include: {
               campaign: true,
-              referrer: true,
-              parentReferral: {
-                include: {
-                  referrer: true,
-                  campaign: true
-                }
-              }
+              referrer: true
             },
-            orderBy: { createdAt: 'desc' }
-          });
+            orderBy: { createdAt: 'desc' },
+            take: 1
+          }
         }
+      });
+
+      if (user && user.referralsReceived.length > 0) {
+        const userReferral = user.referralsReceived[0];
+        
+        // Create a structure where the USER (Sofia) is the primary earner
+        referral = {
+          id: userReferral.id,
+          campaign: userReferral.campaign,
+          referrer: user, // Sofia earns the primary commission
+          parentReferral: {
+            id: userReferral.id,
+            referrer: userReferral.referrer, // Jorlyn (who invited Sofia) gets secondary
+            referrerId: userReferral.referrerId,
+            campaign: userReferral.campaign
+          }
+        } as any;
       }
     }
 
