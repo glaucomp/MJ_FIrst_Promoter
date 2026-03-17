@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { referralAPI, dashboardAPI } from '../services/api';
+import { referralAPI, dashboardAPI, campaignAPI, referralQuotaAPI } from '../services/api';
 
 const Referrals = () => {
   const [referrals, setReferrals] = useState<any>(null);
   const [myReferralLink, setMyReferralLink] = useState<string>('');
+  const [quotaStatus, setQuotaStatus] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -14,12 +15,22 @@ const Referrals = () => {
 
   const fetchData = async () => {
     try {
-      const [referralsRes, linkRes] = await Promise.all([
+      const [referralsRes, linkRes, campaignsRes] = await Promise.all([
         referralAPI.getMyReferrals(),
-        dashboardAPI.getMyPromoterLink()
+        dashboardAPI.getMyPromoterLink(),
+        campaignAPI.getAll()
       ]);
+      
       setReferrals(referralsRes.data);
       setMyReferralLink(linkRes.data.referralLink);
+
+      // Check quota for the first visible campaign (Influencer Campaign for Sofia)
+      const campaigns = campaignsRes.data.campaigns;
+      if (campaigns && campaigns.length > 0) {
+        const campaignId = campaigns[0].id;
+        const quotaRes = await referralQuotaAPI.checkQuota(campaignId);
+        setQuotaStatus(quotaRes.data);
+      }
     } catch (err) {
       setError('Failed to load referrals');
     } finally {
@@ -113,18 +124,40 @@ const Referrals = () => {
       {myReferralLink && (
         <div style={{ 
           marginBottom: '2rem', 
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          background: quotaStatus?.status === 'blocked' 
+            ? 'linear-gradient(135deg, #718096 0%, #4a5568 100%)'
+            : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           padding: '2rem',
           borderRadius: '0.75rem',
           color: 'white',
-          boxShadow: '0 10px 25px rgba(102, 126, 234, 0.3)'
+          boxShadow: quotaStatus?.status === 'blocked'
+            ? '0 10px 25px rgba(113, 128, 150, 0.3)'
+            : '0 10px 25px rgba(102, 126, 234, 0.3)',
+          opacity: quotaStatus?.status === 'blocked' ? 0.7 : 1
         }}>
-          <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem', color: 'white' }}>
-            🔗 Your Referral Link
-          </h3>
-          <p style={{ marginBottom: '1.5rem', opacity: 0.9, fontSize: '0.95rem' }}>
-            Share this link to refer customers and earn commissions
-          </p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+            <div style={{ flex: 1 }}>
+              <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem', color: 'white' }}>
+                {quotaStatus?.status === 'blocked' ? '🔒' : '🔗'} Your Referral Link
+              </h3>
+              <p style={{ marginBottom: '1.5rem', opacity: 0.9, fontSize: '0.95rem' }}>
+                {quotaStatus?.status === 'blocked' 
+                  ? '⚠️ Monthly invite limit reached - Link disabled until next month'
+                  : 'Share this link to invite friends and earn commissions'}
+              </p>
+            </div>
+            {quotaStatus && quotaStatus.status !== 'unlimited' && (
+              <div style={{
+                background: 'rgba(255,255,255,0.2)',
+                padding: '0.5rem 1rem',
+                borderRadius: '0.5rem',
+                fontSize: '0.875rem',
+                fontWeight: 'bold'
+              }}>
+                {quotaStatus.remaining}/{quotaStatus.limit} left
+              </div>
+            )}
+          </div>
           
           <div style={{ 
             display: 'flex', 
@@ -132,12 +165,33 @@ const Referrals = () => {
             alignItems: 'center',
             background: 'rgba(255,255,255,0.15)',
             padding: '1rem',
-            borderRadius: '0.5rem'
+            borderRadius: '0.5rem',
+            position: 'relative'
           }}>
+            {quotaStatus?.status === 'blocked' && (
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'rgba(0,0,0,0.5)',
+                borderRadius: '0.5rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '0.875rem',
+                fontWeight: 'bold',
+                backdropFilter: 'blur(2px)'
+              }}>
+                🔒 Blocked until {quotaStatus.nextResetDate ? new Date(quotaStatus.nextResetDate).toLocaleDateString() : 'next month'}
+              </div>
+            )}
             <input
               type="text"
               value={myReferralLink}
               readOnly
+              disabled={quotaStatus?.status === 'blocked'}
               style={{ 
                 flex: 1, 
                 background: 'white',
@@ -151,16 +205,18 @@ const Referrals = () => {
             />
             <button
               onClick={() => copyToClipboard(myReferralLink)}
+              disabled={quotaStatus?.status === 'blocked'}
               style={{
                 background: 'white',
-                color: '#667eea',
+                color: quotaStatus?.status === 'blocked' ? '#a0aec0' : '#667eea',
                 border: 'none',
                 padding: '0.75rem 1.5rem',
                 borderRadius: '0.375rem',
                 fontWeight: '600',
-                cursor: 'pointer',
+                cursor: quotaStatus?.status === 'blocked' ? 'not-allowed' : 'pointer',
                 whiteSpace: 'nowrap',
-                fontSize: '1rem'
+                fontSize: '1rem',
+                opacity: quotaStatus?.status === 'blocked' ? 0.5 : 1
               }}
             >
               📋 Copy

@@ -87,6 +87,10 @@ export const dashboardAPI = {
   getMyPromoterLink: () => api.get("/dashboard/my-link"),
 };
 
+export const referralQuotaAPI = {
+  checkQuota: (campaignId: string) => api.get(`/referrals/quota/${campaignId}`),
+};
+
 export const commissionAPI = {
   getAll: () => api.get("/commissions"),
   updateStatus: (id: string, status: string) =>
