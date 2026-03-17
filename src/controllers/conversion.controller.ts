@@ -152,8 +152,8 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
       });
     }
 
-    // Calculate revenue (amount is in dollars)
-    const revenue = amount;
+    // Calculate revenue (amount is in cents, convert to dollars)
+    const revenue = amount / 100;
     const campaign = referral.campaign;
 
     // Create Customer record
