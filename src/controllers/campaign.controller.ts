@@ -80,11 +80,21 @@ export const getAllCampaigns = async (req: AuthRequest, res: Response) => {
         orderBy: { createdAt: 'desc' }
       });
     } else {
-      // Promoters see only active campaigns that are visible to them
+      // Check if user is an account manager (top-level referrer who invites others)
+      const isAccountManager = await prisma.referral.findFirst({
+        where: {
+          referrerId: user.id,
+          parentReferralId: null
+        },
+      });
+
+      // Promoters see active campaigns
+      // Account managers see ALL active campaigns
+      // Regular influencers only see campaigns where visibleToPromoters: true
       campaigns = await prisma.campaign.findMany({
         where: {
           isActive: true,
-          visibleToPromoters: true
+          ...(isAccountManager ? {} : { visibleToPromoters: true })
         },
         include: {
           _count: {

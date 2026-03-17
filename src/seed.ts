@@ -34,6 +34,7 @@ async function main() {
       recurringRate: 30.0,
       cookieLifeDays: 90,
       autoApprove: true,
+      visibleToPromoters: false,  // Only visible to account managers (Jorlyn)
       maxInvitesPerMonth: null,  // Unlimited invites for account managers
       referralDiscount: 0,
       referralReward: 0,
