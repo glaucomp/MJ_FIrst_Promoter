@@ -25,6 +25,7 @@ export const createCampaign = async (req: AuthRequest, res: Response) => {
       visibleToPromoters,
       referralDiscount,
       referralReward,
+      maxInvitesPerMonth,
       startDate, 
       endDate 
     } = req.body;
@@ -43,6 +44,7 @@ export const createCampaign = async (req: AuthRequest, res: Response) => {
         visibleToPromoters: visibleToPromoters !== undefined ? visibleToPromoters : true,
         referralDiscount: referralDiscount ? parseFloat(referralDiscount) : null,
         referralReward: referralReward ? parseFloat(referralReward) : null,
+        maxInvitesPerMonth: maxInvitesPerMonth && parseInt(maxInvitesPerMonth) > 0 ? parseInt(maxInvitesPerMonth) : null,
         createdById: req.user!.id,
         startDate: startDate ? new Date(startDate) : new Date(),
         endDate: endDate ? new Date(endDate) : null
@@ -177,6 +179,7 @@ export const updateCampaign = async (req: AuthRequest, res: Response) => {
       visibleToPromoters,
       referralDiscount,
       referralReward,
+      maxInvitesPerMonth,
       isActive, 
       endDate 
     } = req.body;
@@ -196,6 +199,7 @@ export const updateCampaign = async (req: AuthRequest, res: Response) => {
         ...(visibleToPromoters !== undefined && { visibleToPromoters }),
         ...(referralDiscount !== undefined && { referralDiscount: referralDiscount ? parseFloat(referralDiscount) : null }),
         ...(referralReward !== undefined && { referralReward: referralReward ? parseFloat(referralReward) : null }),
+        ...(maxInvitesPerMonth !== undefined && { maxInvitesPerMonth: maxInvitesPerMonth && parseInt(maxInvitesPerMonth) > 0 ? parseInt(maxInvitesPerMonth) : null }),
         ...(isActive !== undefined && { isActive }),
         ...(endDate !== undefined && { endDate: endDate ? new Date(endDate) : null })
       },

@@ -22,7 +22,8 @@ const Campaigns = () => {
     autoApprove: true,
     visibleToPromoters: true,
     referralDiscount: 0,
-    referralReward: 0
+    referralReward: 0,
+    maxInvitesPerMonth: 0
   });
 
   useEffect(() => {
@@ -60,7 +61,8 @@ const Campaigns = () => {
         autoApprove: true,
         visibleToPromoters: true,
         referralDiscount: 0,
-        referralReward: 0
+        referralReward: 0,
+        maxInvitesPerMonth: 0
       });
       fetchCampaigns();
     } catch (err: any) {
@@ -81,7 +83,8 @@ const Campaigns = () => {
       autoApprove: campaign.autoApprove !== false,
       visibleToPromoters: campaign.visibleToPromoters !== false,
       referralDiscount: campaign.referralDiscount || 0,
-      referralReward: campaign.referralReward || 0
+      referralReward: campaign.referralReward || 0,
+      maxInvitesPerMonth: campaign.maxInvitesPerMonth || 0
     });
     setShowCreateCampaign(false);
   };
@@ -106,7 +109,8 @@ const Campaigns = () => {
         autoApprove: true,
         visibleToPromoters: true,
         referralDiscount: 0,
-        referralReward: 0
+        referralReward: 0,
+        maxInvitesPerMonth: 0
       });
       fetchCampaigns();
     } catch (err: any) {
@@ -294,42 +298,61 @@ const Campaigns = () => {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-              <div className="form-group">
-                <label className="form-label">Cookie Life (days)</label>
-                <input
-                  type="number"
-                  className="input"
-                  value={campaignForm.cookieLifeDays}
-                  onChange={(e) => setCampaignForm({ ...campaignForm, cookieLifeDays: parseInt(e.target.value) })}
-                  min="1"
-                  max="365"
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">
+            <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f7fafc', borderRadius: '0.5rem' }}>
+              <h4 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '1rem' }}>Campaign Settings</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="form-group">
+                  <label className="form-label">Cookie Life (days)</label>
                   <input
-                    type="checkbox"
-                    checked={campaignForm.autoApprove}
-                    onChange={(e) => setCampaignForm({ ...campaignForm, autoApprove: e.target.checked })}
-                    style={{ marginRight: '0.5rem' }}
+                    type="number"
+                    className="input"
+                    value={campaignForm.cookieLifeDays}
+                    onChange={(e) => setCampaignForm({ ...campaignForm, cookieLifeDays: parseInt(e.target.value) })}
+                    min="1"
+                    max="365"
                   />
-                  Auto-approve new promoters
-                </label>
-              </div>
-              <div className="form-group">
-                <label className="form-label">
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Max Invites per Month</label>
                   <input
-                    type="checkbox"
-                    checked={campaignForm.visibleToPromoters}
-                    onChange={(e) => setCampaignForm({ ...campaignForm, visibleToPromoters: e.target.checked })}
-                    style={{ marginRight: '0.5rem' }}
+                    type="number"
+                    className="input"
+                    value={campaignForm.maxInvitesPerMonth}
+                    onChange={(e) => setCampaignForm({ ...campaignForm, maxInvitesPerMonth: parseInt(e.target.value) })}
+                    min="0"
+                    placeholder="0 = unlimited"
                   />
-                  Visible to promoters
-                </label>
-                <p style={{ fontSize: '0.75rem', color: '#718096', marginTop: '0.25rem', marginLeft: '1.75rem' }}>
-                  When enabled, promoters can see and promote this campaign
-                </p>
+                  <p style={{ fontSize: '0.75rem', color: '#718096', marginTop: '0.25rem' }}>
+                    0 = unlimited invites, or set a specific limit per promoter
+                  </p>
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+                <div className="form-group">
+                  <label className="form-label">
+                    <input
+                      type="checkbox"
+                      checked={campaignForm.autoApprove}
+                      onChange={(e) => setCampaignForm({ ...campaignForm, autoApprove: e.target.checked })}
+                      style={{ marginRight: '0.5rem' }}
+                    />
+                    Auto-approve new promoters
+                  </label>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">
+                    <input
+                      type="checkbox"
+                      checked={campaignForm.visibleToPromoters}
+                      onChange={(e) => setCampaignForm({ ...campaignForm, visibleToPromoters: e.target.checked })}
+                      style={{ marginRight: '0.5rem' }}
+                    />
+                    Visible to promoters
+                  </label>
+                  <p style={{ fontSize: '0.75rem', color: '#718096', marginTop: '0.25rem', marginLeft: '1.75rem' }}>
+                    When enabled, promoters can see and promote this campaign
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -451,32 +474,46 @@ const Campaigns = () => {
                     max="365"
                   />
                 </div>
-                <div>
-                  <div className="form-group">
-                    <label className="form-label">
-                      <input
-                        type="checkbox"
-                        checked={campaignForm.autoApprove}
-                        onChange={(e) => setCampaignForm({ ...campaignForm, autoApprove: e.target.checked })}
-                        style={{ marginRight: '0.5rem' }}
-                      />
-                      Auto-approve new promoters
-                    </label>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">
-                      <input
-                        type="checkbox"
-                        checked={campaignForm.visibleToPromoters}
-                        onChange={(e) => setCampaignForm({ ...campaignForm, visibleToPromoters: e.target.checked })}
-                        style={{ marginRight: '0.5rem' }}
-                      />
-                      Visible to promoters
-                    </label>
-                    <p style={{ fontSize: '0.75rem', color: '#718096', marginTop: '0.25rem', marginLeft: '1.75rem' }}>
-                      When enabled, promoters can see and promote this campaign
-                    </p>
-                  </div>
+                <div className="form-group">
+                  <label className="form-label">Max Invites per Month</label>
+                  <input
+                    type="number"
+                    className="input"
+                    value={campaignForm.maxInvitesPerMonth}
+                    onChange={(e) => setCampaignForm({ ...campaignForm, maxInvitesPerMonth: parseInt(e.target.value) })}
+                    min="0"
+                    placeholder="0 = unlimited"
+                  />
+                  <p style={{ fontSize: '0.75rem', color: '#718096', marginTop: '0.25rem' }}>
+                    0 = unlimited invites, or set a specific limit per promoter
+                  </p>
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+                <div className="form-group">
+                  <label className="form-label">
+                    <input
+                      type="checkbox"
+                      checked={campaignForm.autoApprove}
+                      onChange={(e) => setCampaignForm({ ...campaignForm, autoApprove: e.target.checked })}
+                      style={{ marginRight: '0.5rem' }}
+                    />
+                    Auto-approve new promoters
+                  </label>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">
+                    <input
+                      type="checkbox"
+                      checked={campaignForm.visibleToPromoters}
+                      onChange={(e) => setCampaignForm({ ...campaignForm, visibleToPromoters: e.target.checked })}
+                      style={{ marginRight: '0.5rem' }}
+                    />
+                    Visible to promoters
+                  </label>
+                  <p style={{ fontSize: '0.75rem', color: '#718096', marginTop: '0.25rem', marginLeft: '1.75rem' }}>
+                    When enabled, promoters can see and promote this campaign
+                  </p>
                 </div>
               </div>
             </div>
@@ -541,7 +578,7 @@ const Campaigns = () => {
                   <p style={{ color: '#718096', fontSize: '0.875rem', marginBottom: '1rem' }}>
                     {campaign.description || 'No description'}
                   </p>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
                     <div>
                       <div style={{ fontSize: '0.75rem', color: '#718096' }}>Level 1 Commission</div>
                       <div style={{ fontSize: '1.125rem', fontWeight: 'bold', color: '#667eea' }}>
@@ -558,6 +595,12 @@ const Campaigns = () => {
                       <div style={{ fontSize: '0.75rem', color: '#718096' }}>Cookie Life</div>
                       <div style={{ fontSize: '1.125rem', fontWeight: 'bold', color: '#2d3748' }}>
                         {campaign.cookieLifeDays} days
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.75rem', color: '#718096' }}>Max Invites/Month</div>
+                      <div style={{ fontSize: '1.125rem', fontWeight: 'bold', color: '#ed8936' }}>
+                        {campaign.maxInvitesPerMonth || 'Unlimited'}
                       </div>
                     </div>
                   </div>
