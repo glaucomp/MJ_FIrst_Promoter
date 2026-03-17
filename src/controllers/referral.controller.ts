@@ -249,7 +249,13 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user!;
 
-    const referrals = await prisma.referral.findMany({
+    // Get user's username to filter customer tracking referrals
+    const userDetails = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { username: true }
+    });
+
+    const allReferrals = await prisma.referral.findMany({
       where: { referrerId: user.id },
       include: {
         campaign: {
@@ -291,6 +297,14 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
         },
       },
       orderBy: { createdAt: "desc" },
+    });
+
+    // Filter out customer tracking referrals (inviteCode === username or starts with username_)
+    const referrals = allReferrals.filter(ref => {
+      if (ref.referredUserId === null && userDetails?.username) {
+        return ref.inviteCode !== userDetails.username && !ref.inviteCode.startsWith(`${userDetails.username}_`);
+      }
+      return true;
     });
 
     // Calculate total earnings
@@ -559,8 +573,8 @@ export const checkInviteQuota = async (req: AuthRequest, res: Response) => {
         limit: null,
         used: 0,
         remaining: null,
-        status: 'unlimited',
-        message: 'You have unlimited invites on this campaign'
+        status: "unlimited",
+        message: "You have unlimited invites on this campaign",
       });
     }
 
@@ -592,11 +606,15 @@ export const checkInviteQuota = async (req: AuthRequest, res: Response) => {
       limit: campaign.maxInvitesPerMonth,
       used: invitesThisMonth,
       remaining: Math.max(0, remaining),
-      status: isBlocked ? 'blocked' : 'available',
-      message: isBlocked 
+      status: isBlocked ? "blocked" : "available",
+      message: isBlocked
         ? `Monthly invite limit reached. Try again next month.`
-        : `You have ${remaining} invite${remaining === 1 ? '' : 's'} remaining this month`,
-      nextResetDate: new Date(startOfMonth.getFullYear(), startOfMonth.getMonth() + 1, 1).toISOString()
+        : `You have ${remaining} invite${remaining === 1 ? "" : "s"} remaining this month`,
+      nextResetDate: new Date(
+        startOfMonth.getFullYear(),
+        startOfMonth.getMonth() + 1,
+        1,
+      ).toISOString(),
     });
   } catch (error) {
     console.error("Check invite quota error:", error);
