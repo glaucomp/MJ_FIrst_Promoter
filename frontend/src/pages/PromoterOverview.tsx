@@ -4,8 +4,8 @@ import { dashboardAPI, referralAPI, campaignAPI } from '../services/api';
 
 const PromoterOverview = () => {
   const navigate = useNavigate();
+  const [stats, setStats] = useState<any>(null);
   const [referrals, setReferrals] = useState<any>(null);
-  const [earnings, setEarnings] = useState<any>(null);
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -16,13 +16,13 @@ const PromoterOverview = () => {
 
   const fetchData = async () => {
     try {
-      const [referralsRes, earningsRes, campaignsRes] = await Promise.all([
+      const [statsRes, referralsRes, campaignsRes] = await Promise.all([
+        dashboardAPI.getStats(),
         referralAPI.getMyReferrals(),
-        dashboardAPI.getEarnings(),
         campaignAPI.getAll()
       ]);
+      setStats(statsRes.data.stats);
       setReferrals(referralsRes.data);
-      setEarnings(earningsRes.data);
       setCampaigns(campaignsRes.data.campaigns.slice(0, 3));
     } catch (err) {
       setError('Failed to load dashboard data');
@@ -87,10 +87,10 @@ const PromoterOverview = () => {
             <div>
               <h3 style={{ fontSize: '0.875rem', marginBottom: '0.5rem', opacity: 0.9 }}>Total Earnings</h3>
               <p style={{ fontSize: '2rem', fontWeight: 'bold', margin: 0 }}>
-                ${referrals?.totalEarnings?.toFixed(2) || '0.00'}
+                ${stats?.paidEarnings?.toFixed(2) || '0.00'}
               </p>
               <p style={{ fontSize: '0.75rem', opacity: 0.8, marginTop: '0.5rem' }}>
-                All time
+                Paid commissions
               </p>
             </div>
             <div style={{ fontSize: '2.5rem', opacity: 0.3 }}>💰</div>
@@ -106,7 +106,7 @@ const PromoterOverview = () => {
             <div>
               <h3 style={{ fontSize: '0.875rem', marginBottom: '0.5rem', opacity: 0.9 }}>Pending Earnings</h3>
               <p style={{ fontSize: '2rem', fontWeight: 'bold', margin: 0 }}>
-                ${earnings?.pendingEarnings?.toFixed(2) || '0.00'}
+                ${stats?.pendingEarnings?.toFixed(2) || '0.00'}
               </p>
               <p style={{ fontSize: '0.75rem', opacity: 0.8, marginTop: '0.5rem' }}>
                 Awaiting payment

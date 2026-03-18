@@ -100,8 +100,9 @@ const Referrals = () => {
             <div>
               <p style={{ fontSize: '0.875rem', color: '#718096', marginBottom: '0.5rem' }}>Total Earnings</p>
               <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#48bb78' }}>
-                ${referrals?.totalEarnings?.toFixed(2) || '0.00'}
+                ${referrals?.paidEarnings?.toFixed(2) || '0.00'}
               </p>
+              <p style={{ fontSize: '0.75rem', color: '#718096', marginTop: '0.25rem' }}>Paid commissions</p>
             </div>
             <div style={{ fontSize: '2rem' }}>💰</div>
           </div>

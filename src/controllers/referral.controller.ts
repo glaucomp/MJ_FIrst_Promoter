@@ -307,7 +307,16 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
       return true;
     });
 
-    // Calculate total earnings
+    // Calculate earnings
+    const paidEarnings = referrals.reduce((sum, ref) => {
+      return (
+        sum +
+        ref.commissions
+          .filter((comm) => comm.status === "paid")
+          .reduce((commSum, comm) => commSum + comm.amount, 0)
+      );
+    }, 0);
+
     const totalEarnings = referrals.reduce((sum, ref) => {
       return (
         sum +
@@ -318,6 +327,7 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
     res.json({
       referrals,
       totalEarnings,
+      paidEarnings,
       totalReferrals: referrals.length,
       activeReferrals: referrals.filter((r) => r.status === "ACTIVE").length,
     });

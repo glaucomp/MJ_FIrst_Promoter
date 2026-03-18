@@ -126,12 +126,14 @@ const PromoterDashboard = () => {
 
         <div className="card" style={{ background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', color: 'white' }}>
           <h3 style={{ fontSize: '0.875rem', marginBottom: '0.5rem', opacity: 0.9 }}>Total Earnings</h3>
-          <p style={{ fontSize: '2rem', fontWeight: 'bold' }}>${stats?.totalEarnings?.toFixed(2) || '0.00'}</p>
+          <p style={{ fontSize: '2rem', fontWeight: 'bold' }}>${stats?.paidEarnings?.toFixed(2) || '0.00'}</p>
+          <p style={{ fontSize: '0.75rem', opacity: 0.8 }}>Paid commissions</p>
         </div>
 
         <div className="card" style={{ background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', color: 'white' }}>
-          <h3 style={{ fontSize: '0.875rem', marginBottom: '0.5rem', opacity: 0.9 }}>Paid Earnings</h3>
-          <p style={{ fontSize: '2rem', fontWeight: 'bold' }}>${stats?.paidEarnings?.toFixed(2) || '0.00'}</p>
+          <h3 style={{ fontSize: '0.875rem', marginBottom: '0.5rem', opacity: 0.9 }}>All Commissions</h3>
+          <p style={{ fontSize: '2rem', fontWeight: 'bold' }}>${stats?.totalEarnings?.toFixed(2) || '0.00'}</p>
+          <p style={{ fontSize: '0.75rem', opacity: 0.8 }}>Paid + Pending</p>
         </div>
 
         <div className="card" style={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', color: 'white' }}>
