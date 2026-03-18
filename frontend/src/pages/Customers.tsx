@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { customerAPI } from '../services/api';
 
 interface Customer {
   id: string;
@@ -7,6 +8,7 @@ interface Customer {
   revenue: number;
   subscriptionType: string;
   status: 'active' | 'cancelled';
+  metadata: string | null;
   createdAt: string;
   referral: {
     referrer: {
@@ -31,11 +33,8 @@ const Customers = () => {
 
   const fetchCustomers = async () => {
     try {
-      // TODO: Replace with actual API call
-      // const response = await axios.get('/api/customers');
-      // setCustomers(response.data.customers);
-      
-      setCustomers([]);
+      const response = await customerAPI.getAll();
+      setCustomers(response.data.customers);
     } catch (err) {
       setError('Failed to load customers');
     } finally {
@@ -198,6 +197,9 @@ const Customers = () => {
                   Customer
                 </th>
                 <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#4a5568' }}>
+                  Transaction ID
+                </th>
+                <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#4a5568' }}>
                   Referred By
                 </th>
                 <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.875rem', fontWeight: '600', color: '#4a5568' }}>
@@ -230,11 +232,24 @@ const Customers = () => {
                       </div>
                     </div>
                   </td>
+                  <td style={{ padding: '1rem' }}>
+                    <div style={{ 
+                      fontFamily: 'monospace', 
+                      fontSize: '0.8rem', 
+                      color: '#4a5568',
+                      background: '#f7fafc',
+                      padding: '0.25rem 0.5rem',
+                      borderRadius: '0.25rem',
+                      display: 'inline-block'
+                    }}>
+                      {customer.metadata || 'N/A'}
+                    </div>
+                  </td>
                   <td style={{ padding: '1rem', color: '#4a5568' }}>
-                    {customer.referral.referrer.firstName} {customer.referral.referrer.lastName}
+                    {customer.referral?.referrer?.firstName} {customer.referral?.referrer?.lastName}
                   </td>
                   <td style={{ padding: '1rem', color: '#4a5568', fontSize: '0.875rem' }}>
-                    {customer.referral.campaign.name}
+                    {customer.referral?.campaign?.name}
                   </td>
                   <td style={{ padding: '1rem', textAlign: 'right', fontWeight: '600', color: '#2d3748', fontSize: '1.125rem' }}>
                     ${customer.revenue.toFixed(2)}

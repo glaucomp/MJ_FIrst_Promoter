@@ -273,7 +273,7 @@ const Commissions = () => {
                           color: '#1f2937',
                           fontSize: '0.875rem'
                         }}>
-                          {commission.customer?.revenue?.toFixed(0) || '0'}
+                          {commission.customer?.revenue?.toFixed(2) || '0.00'}
                         </span>
                         <span style={{
                           display: 'inline-flex',
@@ -307,7 +307,7 @@ const Commissions = () => {
                         color: '#1f2937',
                         fontSize: '0.875rem'
                       }}>
-                        {commission.amount.toFixed(0)}
+                        {commission.amount.toFixed(2)}
                       </span>
                       <span style={{
                         display: 'inline-flex',

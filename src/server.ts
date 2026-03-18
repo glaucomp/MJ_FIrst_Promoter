@@ -6,6 +6,7 @@ import apiV2Routes from "./routes/api.v2.routes";
 import authRoutes from "./routes/auth.routes";
 import campaignRoutes from "./routes/campaign.routes";
 import commissionRoutes from "./routes/commission.routes";
+import customerRoutes from "./routes/customer.routes";
 import dashboardRoutes from "./routes/dashboard.routes";
 import publicRoutes from "./routes/public.routes";
 import referralRoutes from "./routes/referral.routes";
@@ -36,6 +37,7 @@ app.use("/api/referrals", referralRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/commissions", commissionRoutes);
+app.use("/api/customers", customerRoutes);
 
 // FirstPromoter-compatible API routes
 app.use("/api/v1", apiV1Routes);
@@ -62,6 +64,7 @@ app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
   console.log(`🔧 Environment: ${process.env.NODE_ENV || "development"}`);
+  console.log(`🛍️ Customers API: http://localhost:${PORT}/api/customers`);
 });
 
 export default app;

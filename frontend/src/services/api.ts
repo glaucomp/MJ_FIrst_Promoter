@@ -97,4 +97,9 @@ export const commissionAPI = {
     api.patch(`/commissions/${id}`, { status }),
 };
 
+export const customerAPI = {
+  getAll: () => api.get("/customers"),
+  getById: (id: string) => api.get(`/customers/${id}`),
+};
+
 export default api;
