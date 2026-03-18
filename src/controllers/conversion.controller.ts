@@ -99,6 +99,7 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
         referral = {
           id: userReferral.id,
           campaign: userReferral.campaign,
+          referrerId: user.id, // Critical: userId for commission creation
           referrer: {
             id: user.id,
             email: user.email,
