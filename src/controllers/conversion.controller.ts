@@ -75,7 +75,9 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
           lastName: true,
           referralsReceived: {
             where: { status: 'ACTIVE' },
-            include: {
+            select: {
+              id: true,
+              referrerId: true,
               campaign: true,
               referrer: {
                 select: {
