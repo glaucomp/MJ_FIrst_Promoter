@@ -103,7 +103,7 @@ const Promoters = () => {
       }
       
       const response = await fetch(
-        `${apiBaseUrl}/api/v1/promoters/create`,
+        `${apiBaseUrl}/v1/promoters/create`,
         {
           method: "POST",
           headers: {
