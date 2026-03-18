@@ -68,12 +68,23 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
     if (!referral && username) {
       const user = await prisma.user.findUnique({
         where: { username },
-        include: {
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
           referralsReceived: {
             where: { status: 'ACTIVE' },
             include: {
               campaign: true,
-              referrer: true
+              referrer: {
+                select: {
+                  id: true,
+                  email: true,
+                  firstName: true,
+                  lastName: true
+                }
+              }
             },
             orderBy: { createdAt: 'desc' },
             take: 1
@@ -88,10 +99,15 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
         referral = {
           id: userReferral.id,
           campaign: userReferral.campaign,
-          referrer: user, // Sofia earns the primary commission
+          referrer: {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName
+          },
           parentReferral: {
             id: userReferral.id,
-            referrer: userReferral.referrer, // Jorlyn (who invited Sofia) gets secondary
+            referrer: userReferral.referrer,
             referrerId: userReferral.referrerId,
             campaign: userReferral.campaign
           }
