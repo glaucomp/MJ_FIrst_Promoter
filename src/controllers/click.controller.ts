@@ -162,9 +162,7 @@ export const getReferralInfo = async (req: Request, res: Response) => {
         id: true,
         name: true,
         description: true,
-        commissionRate: true,
-        referralDiscount: true,
-        referralReward: true
+        commissionRate: true
       }
     });
 

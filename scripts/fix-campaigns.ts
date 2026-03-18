@@ -17,20 +17,17 @@ async function fixCampaigns() {
       
       let newCommissionRate = campaign.commissionRate;
       let newSecondaryRate = campaign.secondaryRate || 0;
-      let newReferralDiscount = 30; // The 30% discount for customers
 
       // Fix based on campaign name pattern
       if (campaign.name.toLowerCase().includes('ai model')) {
         // Account Manager campaign
         newCommissionRate = 30;  // Invited Account Manager earns 30% (Tier 1)
         newSecondaryRate = 10;   // Person who invited them earns 10% (Tier 2)
-        newReferralDiscount = 0; // No customer discount
         console.log(`   ✅ Fixed to - Tier 1: 30%, Tier 2: 10%`);
       } else if (campaign.name.toLowerCase().includes('referral program')) {
         // Customer Referral campaign
         newCommissionRate = 30;  // Invited customer earns 30% (Tier 1)
         newSecondaryRate = 5;    // Person who invited them earns 5% (Tier 2)
-        newReferralDiscount = 0; // No customer discount
         console.log(`   ✅ Fixed to - Tier 1: 30%, Tier 2: 5%`);
       }
 
@@ -39,8 +36,7 @@ async function fixCampaigns() {
         where: { id: campaign.id },
         data: {
           commissionRate: newCommissionRate,
-          secondaryRate: newSecondaryRate,
-          referralDiscount: newReferralDiscount
+          secondaryRate: newSecondaryRate
         }
       });
     }
@@ -54,7 +50,6 @@ async function fixCampaigns() {
       console.log(`\n${campaign.name}:`);
       console.log(`  Promoter Commission: ${campaign.commissionRate}%`);
       console.log(`  Level 2 Commission: ${campaign.secondaryRate}%`);
-      console.log(`  Customer Discount: ${campaign.referralDiscount}%`);
     }
     
   } catch (error) {

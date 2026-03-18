@@ -21,8 +21,6 @@ const Campaigns = () => {
     cookieLifeDays: 60,
     autoApprove: true,
     visibleToPromoters: true,
-    referralDiscount: 0,
-    referralReward: 0,
     maxInvitesPerMonth: 0
   });
 
@@ -60,8 +58,6 @@ const Campaigns = () => {
         cookieLifeDays: 60,
         autoApprove: true,
         visibleToPromoters: true,
-        referralDiscount: 0,
-        referralReward: 0,
         maxInvitesPerMonth: 0
       });
       fetchCampaigns();
@@ -82,8 +78,6 @@ const Campaigns = () => {
       cookieLifeDays: campaign.cookieLifeDays || 60,
       autoApprove: campaign.autoApprove !== false,
       visibleToPromoters: campaign.visibleToPromoters !== false,
-      referralDiscount: campaign.referralDiscount || 0,
-      referralReward: campaign.referralReward || 0,
       maxInvitesPerMonth: campaign.maxInvitesPerMonth || 0
     });
     setShowCreateCampaign(false);
@@ -108,8 +102,6 @@ const Campaigns = () => {
         cookieLifeDays: 60,
         autoApprove: true,
         visibleToPromoters: true,
-        referralDiscount: 0,
-        referralReward: 0,
         maxInvitesPerMonth: 0
       });
       fetchCampaigns();
@@ -130,8 +122,6 @@ const Campaigns = () => {
       cookieLifeDays: 60,
       autoApprove: true,
       visibleToPromoters: true,
-      referralDiscount: 0,
-      referralReward: 0,
       maxInvitesPerMonth: 0
     });
   };
@@ -265,35 +255,6 @@ const Campaigns = () => {
                     commissionRate={campaignForm.commissionRate}
                     secondaryRate={campaignForm.secondaryRate}
                     exampleRevenue={100}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f7fafc', borderRadius: '0.5rem' }}>
-              <h4 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '1rem' }}>Reward Setup for Referrals</h4>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Referral Discount (%)</label>
-                  <input
-                    type="number"
-                    className="input"
-                    value={campaignForm.referralDiscount}
-                    onChange={(e) => setCampaignForm({ ...campaignForm, referralDiscount: parseFloat(e.target.value) })}
-                    min="0"
-                    max="100"
-                    step="0.1"
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Referral Reward ($)</label>
-                  <input
-                    type="number"
-                    className="input"
-                    value={campaignForm.referralReward}
-                    onChange={(e) => setCampaignForm({ ...campaignForm, referralReward: parseFloat(e.target.value) })}
-                    min="0"
-                    step="0.01"
                   />
                 </div>
               </div>

@@ -36,8 +36,6 @@ async function main() {
       autoApprove: true,
       visibleToPromoters: false,  // Only visible to account managers (Jorlyn)
       maxInvitesPerMonth: null,  // Unlimited invites for account managers
-      referralDiscount: 0,
-      referralReward: 0,
       createdById: admin.id,
       isActive: true
     }
@@ -57,8 +55,6 @@ async function main() {
       cookieLifeDays: 90,
       autoApprove: false,
       maxInvitesPerMonth: 2,  // Influencers limited to 2 invites per month
-      referralDiscount: 15.0,
-      referralReward: 50.0,
       createdById: admin.id,
       isActive: true
     }

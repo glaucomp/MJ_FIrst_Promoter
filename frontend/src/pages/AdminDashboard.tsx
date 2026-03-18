@@ -21,9 +21,7 @@ const AdminDashboard = () => {
     secondaryRate: 5,
     recurringRate: 10,
     cookieLifeDays: 60,
-    autoApprove: true,
-    referralDiscount: 0,
-    referralReward: 0
+    autoApprove: true
   });
 
 
@@ -64,9 +62,7 @@ const AdminDashboard = () => {
         secondaryRate: 5,
         recurringRate: 10,
         cookieLifeDays: 60,
-        autoApprove: true,
-        referralDiscount: 0,
-        referralReward: 0
+        autoApprove: true
       });
       fetchData();
     } catch (err: any) {
@@ -85,9 +81,7 @@ const AdminDashboard = () => {
       secondaryRate: campaign.secondaryRate || 0,
       recurringRate: campaign.recurringRate || 0,
       cookieLifeDays: campaign.cookieLifeDays || 60,
-      autoApprove: campaign.autoApprove !== false,
-      referralDiscount: campaign.referralDiscount || 0,
-      referralReward: campaign.referralReward || 0
+      autoApprove: campaign.autoApprove !== false
     });
     setShowCreateCampaign(false);
   };
@@ -110,9 +104,7 @@ const AdminDashboard = () => {
         secondaryRate: 5,
         recurringRate: 10,
         cookieLifeDays: 60,
-        autoApprove: true,
-        referralDiscount: 0,
-        referralReward: 0
+        autoApprove: true
       });
       fetchData();
     } catch (err: any) {
@@ -131,9 +123,7 @@ const AdminDashboard = () => {
       secondaryRate: 5,
       recurringRate: 10,
       cookieLifeDays: 60,
-      autoApprove: true,
-      referralDiscount: 0,
-      referralReward: 0
+      autoApprove: true
     });
   };
 
@@ -301,35 +291,6 @@ const AdminDashboard = () => {
               </div>
             </div>
 
-            <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--light)', borderRadius: '0.5rem' }}>
-              <h4 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '1rem' }}>Reward Setup for Referrals</h4>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Referral Discount (%)</label>
-                  <input
-                    type="number"
-                    className="input"
-                    value={campaignForm.referralDiscount}
-                    onChange={(e) => setCampaignForm({ ...campaignForm, referralDiscount: parseFloat(e.target.value) })}
-                    min="0"
-                    max="100"
-                    step="0.1"
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Referral Reward ($)</label>
-                  <input
-                    type="number"
-                    className="input"
-                    value={campaignForm.referralReward}
-                    onChange={(e) => setCampaignForm({ ...campaignForm, referralReward: parseFloat(e.target.value) })}
-                    min="0"
-                    step="0.01"
-                  />
-                </div>
-              </div>
-            </div>
-
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <div className="form-group">
                 <label className="form-label">Cookie Life (days)</label>
@@ -454,45 +415,6 @@ const AdminDashboard = () => {
                     recurringRate={campaignForm.recurringRate}
                     exampleRevenue={100}
                   />
-                </div>
-              </div>
-            </div>
-
-            <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--light)', borderRadius: '0.5rem' }}>
-              <h4 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '1rem' }}>Reward Setup for Referrals</h4>
-              <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-                Discount or rewards given to the users referred by the promoters
-              </p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Referral Discount (%)</label>
-                  <input
-                    type="number"
-                    className="input"
-                    value={campaignForm.referralDiscount}
-                    onChange={(e) => setCampaignForm({ ...campaignForm, referralDiscount: parseFloat(e.target.value) })}
-                    min="0"
-                    max="100"
-                    step="0.1"
-                  />
-                  <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-                    Discount for referred customers
-                  </p>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Referral Reward ($)</label>
-                  <input
-                    type="number"
-                    className="input"
-                    value={campaignForm.referralReward}
-                    onChange={(e) => setCampaignForm({ ...campaignForm, referralReward: parseFloat(e.target.value) })}
-                    min="0"
-                    step="0.01"
-                  />
-                  <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-                    Cash reward for referred customers
-                  </p>
                 </div>
               </div>
             </div>

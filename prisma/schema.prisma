@@ -93,10 +93,6 @@ model Campaign {
   visibleToPromoters Boolean @default(true) // Whether promoters can see and promote this campaign
   maxInvitesPerMonth Int?    // Max invites per promoter per month (NULL = unlimited)
   
-  // Referral rewards (for people being referred)
-  referralDiscount  Float?   // Discount percentage for referred users
-  referralReward    Float?   // Reward amount for referred users
-  
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
