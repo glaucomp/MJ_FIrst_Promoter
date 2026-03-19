@@ -31,6 +31,9 @@ router.post(
 // Get current user profile
 router.get('/me', authenticate, authController.getCurrentUser);
 
+// Get user type (account manager, promoter, or both)
+router.get('/user-type', authenticate, authController.getUserType);
+
 // Refresh token
 router.post('/refresh', authenticate, authController.refreshToken);
 

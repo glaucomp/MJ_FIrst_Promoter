@@ -4,6 +4,7 @@ import { Response } from "express";
 import { validationResult } from "express-validator";
 import jwt from "jsonwebtoken";
 import { AuthRequest } from "../middleware/auth.middleware";
+import { getUserTypeInfo } from "../services/user.service";
 
 const prisma = new PrismaClient();
 
@@ -94,15 +95,50 @@ export const register = async (req: AuthRequest, res: Response) => {
           }
         });
 
+        // Determine the appropriate campaign for the new promoter
+        // Regular promoters (level 2+) should only get campaigns visible to promoters
+        // They should NOT inherit hidden campaigns like "Account Manager"
+        let assignedCampaignId = referral.campaignId;
+        
+        // If the parent campaign is hidden from promoters, use the linked campaign
+        if (!referral.campaign.visibleToPromoters) {
+          // Check if there's a linked campaign configured
+          if (referral.campaign.linkedCampaignId) {
+            assignedCampaignId = referral.campaign.linkedCampaignId;
+            const linkedCampaign = await prisma.campaign.findUnique({
+              where: { id: referral.campaign.linkedCampaignId },
+              select: { name: true }
+            });
+            console.log(`✅ Assigning new promoter ${user.email} to linked campaign: ${linkedCampaign?.name}`);
+          } else {
+            // Fallback: find any visible campaign
+            const visibleCampaign = await prisma.campaign.findFirst({
+              where: {
+                isActive: true,
+                visibleToPromoters: true
+              },
+              orderBy: { createdAt: 'asc' }
+            });
+            
+            if (visibleCampaign) {
+              assignedCampaignId = visibleCampaign.id;
+              console.log(`⚠️ No linked campaign configured. Assigning new promoter ${user.email} to first visible campaign: ${visibleCampaign.name}`);
+            } else {
+              console.warn(`❌ No visible campaigns found for new promoter ${user.email}`);
+              return; // Skip customer tracking creation if no visible campaign exists
+            }
+          }
+        }
+
         // Generate a unique invite code for customer tracking
         const { nanoid } = await import('nanoid');
         const customerTrackingCode = `${user.email.split('@')[0]}_${nanoid(8)}`;
 
-        // Create customer tracking referral for the new user
+        // Create customer tracking referral for the new user with the appropriate campaign
         await prisma.referral.create({
           data: {
             inviteCode: customerTrackingCode,
-            campaignId: referral.campaignId,
+            campaignId: assignedCampaignId,
             referrerId: user.id,
             referredUserId: null,  // NULL means this is for tracking customers
             parentReferralId: referrerTracking?.id || null,  // Link to referrer's tracking
@@ -167,13 +203,50 @@ export const register = async (req: AuthRequest, res: Response) => {
                 }
               });
 
+              // Ensure the campaign is suitable for regular promoters
+              // If the found campaign is hidden, use the linked campaign
+              let assignedCampaignId = campaign.id;
+              if (!campaign.visibleToPromoters) {
+                // Check if there's a linked campaign configured
+                const fullCampaign = await prisma.campaign.findUnique({
+                  where: { id: campaign.id },
+                  select: { linkedCampaignId: true }
+                });
+                
+                if (fullCampaign?.linkedCampaignId) {
+                  assignedCampaignId = fullCampaign.linkedCampaignId;
+                  const linkedCampaign = await prisma.campaign.findUnique({
+                    where: { id: fullCampaign.linkedCampaignId },
+                    select: { name: true }
+                  });
+                  console.log(`✅ Assigning new promoter ${user.email} to linked campaign: ${linkedCampaign?.name}`);
+                } else {
+                  // Fallback: find any visible campaign
+                  const visibleCampaign = await prisma.campaign.findFirst({
+                    where: {
+                      isActive: true,
+                      visibleToPromoters: true
+                    },
+                    orderBy: { createdAt: 'asc' }
+                  });
+                  
+                  if (visibleCampaign) {
+                    assignedCampaignId = visibleCampaign.id;
+                    console.log(`⚠️ No linked campaign configured. Assigning new promoter ${user.email} to first visible campaign: ${visibleCampaign.name}`);
+                  } else {
+                    console.warn(`❌ No visible campaigns found for new promoter ${user.email}`);
+                    return; // Skip if no visible campaign exists
+                  }
+                }
+              }
+
               const { nanoid } = await import('nanoid');
               const customerTrackingCode = `${user.email.split('@')[0]}_${nanoid(8)}`;
 
               await prisma.referral.create({
                 data: {
                   inviteCode: customerTrackingCode,
-                  campaignId: campaign.id,
+                  campaignId: assignedCampaignId,
                   referrerId: user.id,
                   referredUserId: null,
                   parentReferralId: referrerTracking?.id || null,
@@ -314,7 +387,18 @@ export const getCurrentUser = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    res.json({ user });
+    // Get user type information
+    const userTypeInfo = await getUserTypeInfo(req.user.id);
+
+    res.json({ 
+      user: {
+        ...user,
+        userType: userTypeInfo.userType,
+        isAccountManager: userTypeInfo.isAccountManager,
+        isPromoter: userTypeInfo.isPromoter
+      },
+      typeDetails: userTypeInfo
+    });
   } catch (error) {
     console.error("Get current user error:", error);
     res.status(500).json({ error: "Failed to fetch user" });
@@ -333,5 +417,20 @@ export const refreshToken = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error("Refresh token error:", error);
     res.status(500).json({ error: "Failed to refresh token" });
+  }
+};
+
+export const getUserType = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const userTypeInfo = await getUserTypeInfo(req.user.id);
+
+    res.json({ userTypeInfo });
+  } catch (error) {
+    console.error("Get user type error:", error);
+    res.status(500).json({ error: "Failed to get user type" });
   }
 };

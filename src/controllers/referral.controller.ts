@@ -35,20 +35,19 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
     // Check if campaign is visible to regular promoters
     if (!campaign.visibleToPromoters) {
       // This campaign is restricted - check if user is an account manager
+      // Account managers are users who were directly invited by an admin
       const isAccountManager = await prisma.referral.findFirst({
         where: {
-          referrerId: user.id,
-          OR: [
-            { parentReferralId: null }, // Top level referrer
-            { referrer: { role: UserRole.ADMIN } }, // Invited by admin
-          ],
+          referredUserId: user.id, // User was invited (not the referrer)
+          referrer: { role: UserRole.ADMIN }, // By an admin
+          status: "ACTIVE"
         },
       });
 
       if (!isAccountManager && user.role !== UserRole.ADMIN) {
         return res.status(403).json({
           error: "Access denied",
-          message: "You don't have access to this campaign",
+          message: "You don't have access to this campaign. Only account managers can promote hidden campaigns.",
         });
       }
     }

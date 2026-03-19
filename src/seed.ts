@@ -22,7 +22,29 @@ async function main() {
   });
   console.log('✅ Created admin user:', admin.email);
 
+  // Campaign 2: Influencer → Influencer Friend (Friend 30%, Influencer 5%)
+  // This is the visible campaign that promoters can access
+  const campaign2 = await prisma.campaign.create({
+    data: {
+      name: 'Influencer Referral Campaign',
+      description: 'Influencer invites Friend: Friend 30%, Influencer 5%',
+      websiteUrl: 'https://teaseme.live',
+      defaultReferralUrl: 'https://teaseme.live/models',
+      commissionRate: 30.0,
+      secondaryRate: 5.0,
+      recurringRate: 30.0,
+      cookieLifeDays: 90,
+      autoApprove: false,
+      visibleToPromoters: true,  // Visible to all promoters
+      maxInvitesPerMonth: 2,  // Influencers limited to 2 invites per month
+      createdById: admin.id,
+      isActive: true
+    }
+  });
+  console.log('✅ Created campaign:', campaign2.name, '(2 invites per month)');
+
   // Campaign 1: Account Manager → Influencer (Influencer 30%, Manager 10%)
+  // This is hidden and linked to campaign2
   const campaign1 = await prisma.campaign.create({
     data: {
       name: 'Account Manager Campaign',
@@ -36,30 +58,12 @@ async function main() {
       autoApprove: true,
       visibleToPromoters: false,  // Only visible to account managers (Jorlyn)
       maxInvitesPerMonth: null,  // Unlimited invites for account managers
+      linkedCampaignId: campaign2.id,  // ✅ Link to visible campaign
       createdById: admin.id,
       isActive: true
     }
   });
-  console.log('✅ Created campaign:', campaign1.name, '(unlimited invites)');
-
-  // Campaign 2: Influencer → Influencer Friend (Friend 30%, Influencer 5%)
-  const campaign2 = await prisma.campaign.create({
-    data: {
-      name: 'Influencer Referral Campaign',
-      description: 'Influencer invites Friend: Friend 30%, Influencer 5%',
-      websiteUrl: 'https://teaseme.live',
-      defaultReferralUrl: 'https://teaseme.live/models',
-      commissionRate: 30.0,
-      secondaryRate: 5.0,
-      recurringRate: 30.0,
-      cookieLifeDays: 90,
-      autoApprove: false,
-      maxInvitesPerMonth: 2,  // Influencers limited to 2 invites per month
-      createdById: admin.id,
-      isActive: true
-    }
-  });
-  console.log('✅ Created campaign:', campaign2.name, '(2 invites per month)');
+  console.log('✅ Created campaign:', campaign1.name, '(unlimited invites, linked to:', campaign2.name, ')');
 
   // Create Account Manager - Jorlyn
   const hashedPasswordPromoter = await bcrypt.hash('promoter123', 10);

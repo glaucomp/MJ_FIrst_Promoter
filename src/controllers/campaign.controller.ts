@@ -24,6 +24,7 @@ export const createCampaign = async (req: AuthRequest, res: Response) => {
       autoApprove,
       visibleToPromoters,
       maxInvitesPerMonth,
+      linkedCampaignId,
       startDate, 
       endDate 
     } = req.body;
@@ -41,6 +42,7 @@ export const createCampaign = async (req: AuthRequest, res: Response) => {
         autoApprove: autoApprove !== undefined ? autoApprove : true,
         visibleToPromoters: visibleToPromoters !== undefined ? visibleToPromoters : true,
         maxInvitesPerMonth: maxInvitesPerMonth && parseInt(maxInvitesPerMonth) > 0 ? parseInt(maxInvitesPerMonth) : null,
+        linkedCampaignId: linkedCampaignId || null,
         createdById: req.user!.id,
         startDate: startDate ? new Date(startDate) : new Date(),
         endDate: endDate ? new Date(endDate) : null
@@ -71,6 +73,9 @@ export const getAllCampaigns = async (req: AuthRequest, res: Response) => {
           createdBy: {
             select: { id: true, email: true, firstName: true, lastName: true }
           },
+          linkedCampaign: {
+            select: { id: true, name: true, visibleToPromoters: true }
+          },
           _count: {
             select: { referrals: true, commissions: true }
           }
@@ -78,18 +83,13 @@ export const getAllCampaigns = async (req: AuthRequest, res: Response) => {
         orderBy: { createdAt: 'desc' }
       });
     } else {
-      // Check if user is an account manager (top-level referrer who invites others)
-      // Exclude customer tracking referrals from this check
-      const userDetails = await prisma.user.findUnique({
-        where: { id: user.id },
-        select: { username: true }
-      });
-
+      // Check if user is an account manager (directly invited by admin)
+      // Account managers can see all campaigns including hidden ones
       const isAccountManager = await prisma.referral.findFirst({
         where: {
-          referrerId: user.id,
-          parentReferralId: null,
-          referredUserId: { not: null }, // Must have invited an actual person, not customer tracking
+          referredUserId: user.id, // User was invited
+          referrer: { role: UserRole.ADMIN }, // By an admin
+          status: 'ACTIVE'
         },
       });
 
@@ -102,6 +102,9 @@ export const getAllCampaigns = async (req: AuthRequest, res: Response) => {
           ...(isAccountManager ? {} : { visibleToPromoters: true })
         },
         include: {
+          linkedCampaign: {
+            select: { id: true, name: true, visibleToPromoters: true }
+          },
           _count: {
             select: { referrals: true, commissions: true }
           }
@@ -126,6 +129,9 @@ export const getCampaignById = async (req: AuthRequest, res: Response) => {
       include: {
         createdBy: {
           select: { id: true, email: true, firstName: true, lastName: true }
+        },
+        linkedCampaign: {
+          select: { id: true, name: true, visibleToPromoters: true }
         },
         referrals: {
           include: {
@@ -181,6 +187,7 @@ export const updateCampaign = async (req: AuthRequest, res: Response) => {
       autoApprove,
       visibleToPromoters,
       maxInvitesPerMonth,
+      linkedCampaignId,
       isActive, 
       endDate 
     } = req.body;
@@ -199,6 +206,7 @@ export const updateCampaign = async (req: AuthRequest, res: Response) => {
         ...(autoApprove !== undefined && { autoApprove }),
         ...(visibleToPromoters !== undefined && { visibleToPromoters }),
         ...(maxInvitesPerMonth !== undefined && { maxInvitesPerMonth: maxInvitesPerMonth && parseInt(maxInvitesPerMonth) > 0 ? parseInt(maxInvitesPerMonth) : null }),
+        ...(linkedCampaignId !== undefined && { linkedCampaignId: linkedCampaignId || null }),
         ...(isActive !== undefined && { isActive }),
         ...(endDate !== undefined && { endDate: endDate ? new Date(endDate) : null })
       },

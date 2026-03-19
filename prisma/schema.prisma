@@ -92,6 +92,7 @@ model Campaign {
   defaultReferralUrl String? // Default referral link URL
   visibleToPromoters Boolean @default(true) // Whether promoters can see and promote this campaign
   maxInvitesPerMonth Int?    // Max invites per promoter per month (NULL = unlimited)
+  linkedCampaignId  String?  // Campaign to assign when inviting from a hidden campaign
   
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -99,6 +100,8 @@ model Campaign {
   // Relationships
   createdById       String
   createdBy         User              @relation("CampaignCreator", fields: [createdById], references: [id])
+  linkedCampaign    Campaign?         @relation("CampaignLink", fields: [linkedCampaignId], references: [id], onDelete: SetNull)
+  linkedBy          Campaign[]        @relation("CampaignLink")
   referrals         Referral[]
   trackingLinks     TrackingLink[]
   commissions       Commission[]
@@ -106,6 +109,7 @@ model Campaign {
 
   @@index([createdById])
   @@index([isActive])
+  @@index([linkedCampaignId])
   @@map("campaigns")
 }
 
