@@ -26,6 +26,7 @@ interface Commission {
     };
   } | null;
   customer: {
+    id: string;
     email: string;
     name: string;
     revenue: number;
@@ -59,12 +60,12 @@ const Commissions = () => {
     ? commissions 
     : commissions.filter(c => c.status === filter);
 
-  // Calculate stats - use unique customers to avoid counting sales twice
+  // Calculate stats - use unique customer IDs to count each purchase
   const pendingCommissionsList = commissions.filter(c => c.status === 'unpaid' || c.status === 'pending');
   const uniquePendingCustomers = new Map<string, number>();
   pendingCommissionsList.forEach(c => {
-    if (c.customer?.email) {
-      uniquePendingCustomers.set(c.customer.email, c.customer.revenue || 0);
+    if (c.customer?.id) {
+      uniquePendingCustomers.set(c.customer.id, c.customer.revenue || 0);
     }
   });
   const pendingEarnings = Array.from(uniquePendingCustomers.values()).reduce((sum, revenue) => sum + revenue, 0);
@@ -73,8 +74,8 @@ const Commissions = () => {
   const completedCommissionsList = commissions.filter(c => c.status === 'paid');
   const uniqueCompletedCustomers = new Map<string, number>();
   completedCommissionsList.forEach(c => {
-    if (c.customer?.email) {
-      uniqueCompletedCustomers.set(c.customer.email, c.customer.revenue || 0);
+    if (c.customer?.id) {
+      uniqueCompletedCustomers.set(c.customer.id, c.customer.revenue || 0);
     }
   });
   const completedEarnings = Array.from(uniqueCompletedCustomers.values()).reduce((sum, revenue) => sum + revenue, 0);
