@@ -21,7 +21,8 @@ const Campaigns = () => {
     cookieLifeDays: 60,
     autoApprove: true,
     visibleToPromoters: true,
-    maxInvitesPerMonth: 0
+    maxInvitesPerMonth: 0,
+    linkedCampaignId: ''
   });
 
   useEffect(() => {
@@ -58,7 +59,8 @@ const Campaigns = () => {
         cookieLifeDays: 60,
         autoApprove: true,
         visibleToPromoters: true,
-        maxInvitesPerMonth: 0
+        maxInvitesPerMonth: 0,
+        linkedCampaignId: ''
       });
       fetchCampaigns();
     } catch (err: any) {
@@ -78,7 +80,8 @@ const Campaigns = () => {
       cookieLifeDays: campaign.cookieLifeDays || 60,
       autoApprove: campaign.autoApprove !== false,
       visibleToPromoters: campaign.visibleToPromoters !== false,
-      maxInvitesPerMonth: campaign.maxInvitesPerMonth || 0
+      maxInvitesPerMonth: campaign.maxInvitesPerMonth || 0,
+      linkedCampaignId: campaign.linkedCampaignId || ''
     });
     setShowCreateCampaign(false);
   };
@@ -102,7 +105,8 @@ const Campaigns = () => {
         cookieLifeDays: 60,
         autoApprove: true,
         visibleToPromoters: true,
-        maxInvitesPerMonth: 0
+        maxInvitesPerMonth: 0,
+        linkedCampaignId: ''
       });
       fetchCampaigns();
     } catch (err: any) {
@@ -122,7 +126,8 @@ const Campaigns = () => {
       cookieLifeDays: 60,
       autoApprove: true,
       visibleToPromoters: true,
-      maxInvitesPerMonth: 0
+      maxInvitesPerMonth: 0,
+      linkedCampaignId: ''
     });
   };
 
@@ -316,6 +321,29 @@ const Campaigns = () => {
                   </p>
                 </div>
               </div>
+              
+              {/* Linked Campaign - Only show if campaign is hidden */}
+              {!campaignForm.visibleToPromoters && (
+                <div className="form-group" style={{ marginTop: '1rem' }}>
+                  <label className="form-label">🔗 Linked Campaign (for invited promoters)</label>
+                  <select
+                    className="input"
+                    value={campaignForm.linkedCampaignId}
+                    onChange={(e) => setCampaignForm({ ...campaignForm, linkedCampaignId: e.target.value })}
+                  >
+                    <option value="">-- Select visible campaign --</option>
+                    {campaigns
+                      .filter(c => c.visibleToPromoters && c.id !== editingCampaign?.id)
+                      .map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))
+                    }
+                  </select>
+                  <p style={{ fontSize: '0.75rem', color: '#718096', marginTop: '0.25rem' }}>
+                    When account managers invite promoters to this campaign, they'll be assigned to the linked campaign instead
+                  </p>
+                </div>
+              )}
             </div>
 
             <div style={{ display: 'flex', gap: '1rem' }}>
@@ -478,6 +506,29 @@ const Campaigns = () => {
                   </p>
                 </div>
               </div>
+              
+              {/* Linked Campaign - Only show if campaign is hidden */}
+              {!campaignForm.visibleToPromoters && (
+                <div className="form-group" style={{ marginTop: '1rem' }}>
+                  <label className="form-label">🔗 Linked Campaign (for invited promoters)</label>
+                  <select
+                    className="input"
+                    value={campaignForm.linkedCampaignId}
+                    onChange={(e) => setCampaignForm({ ...campaignForm, linkedCampaignId: e.target.value })}
+                  >
+                    <option value="">-- Select visible campaign --</option>
+                    {campaigns
+                      .filter(c => c.visibleToPromoters)
+                      .map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))
+                    }
+                  </select>
+                  <p style={{ fontSize: '0.75rem', color: '#718096', marginTop: '0.25rem' }}>
+                    When account managers invite promoters to this campaign, they'll be assigned to the linked campaign instead
+                  </p>
+                </div>
+              )}
             </div>
 
             <button type="submit" className="btn btn-primary" style={{ background: '#667eea', color: 'white' }}>
@@ -540,6 +591,23 @@ const Campaigns = () => {
                   <p style={{ color: '#718096', fontSize: '0.875rem', marginBottom: '1rem' }}>
                     {campaign.description || 'No description'}
                   </p>
+                  {/* Show linked campaign if exists */}
+                  {campaign.linkedCampaign && (
+                    <div style={{
+                      padding: '0.75rem',
+                      background: '#667eea10',
+                      borderLeft: '3px solid #667eea',
+                      borderRadius: '0.375rem',
+                      marginBottom: '1rem'
+                    }}>
+                      <div style={{ fontSize: '0.75rem', color: '#667eea', fontWeight: '600', marginBottom: '0.25rem' }}>
+                        🔗 LINKED CAMPAIGN
+                      </div>
+                      <div style={{ fontSize: '0.875rem', color: '#2d3748' }}>
+                        Invited promoters will be assigned to: <strong>{campaign.linkedCampaign.name}</strong>
+                      </div>
+                    </div>
+                  )}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
                     <div>
                       <div style={{ fontSize: '0.75rem', color: '#718096' }}>Level 1 Commission</div>
