@@ -9,6 +9,7 @@ import Commissions from './pages/Commissions';
 import Customers from './pages/Customers';
 import Promoters from './pages/Promoters';
 import Campaigns from './pages/Campaigns';
+import Profile from './pages/Profile';
 import Layout from './components/Layout';
 
 const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: string[] }) => {
@@ -169,10 +170,7 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['PROMOTER']}>
                 <Layout>
-                  <div style={{ textAlign: 'center', padding: '3rem' }}>
-                    <h2>👤 Profile Settings</h2>
-                    <p style={{ color: '#718096', marginTop: '1rem' }}>Coming soon...</p>
-                  </div>
+                  <Profile />
                 </Layout>
               </ProtectedRoute>
             }

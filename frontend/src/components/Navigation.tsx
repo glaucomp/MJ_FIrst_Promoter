@@ -9,6 +9,23 @@ interface NavigationProps {
 const Navigation: React.FC<NavigationProps> = ({ isOpen }) => {
   const { user } = useAuth();
 
+  const getUserTypeLabel = (userType?: string) => {
+    if (!userType) return 'User';
+    
+    switch (userType) {
+      case 'ADMIN':
+        return 'Administrator';
+      case 'ACCOUNT_MANAGER':
+        return 'Account Manager';
+      case 'TEAM_MANAGER':
+        return 'Team Manager';
+      case 'PROMOTER':
+        return 'Promoter';
+      default:
+        return 'Promoter';
+    }
+  };
+
   const adminLinks = [
     { path: '/dashboard', icon: '📊', label: 'Dashboard' },
     { path: '/campaigns', icon: '🎯', label: 'Campaigns' },
@@ -151,7 +168,7 @@ const Navigation: React.FC<NavigationProps> = ({ isOpen }) => {
                   fontSize: '0.75rem',
                   color: 'rgba(255,255,255,0.6)'
                 }}>
-                  {user.role === 'ADMIN' ? 'Administrator' : 'Promoter'}
+                  {getUserTypeLabel(user.userType || (user.role === 'ADMIN' ? 'ADMIN' : 'PROMOTER'))}
                 </div>
               </div>
             )}

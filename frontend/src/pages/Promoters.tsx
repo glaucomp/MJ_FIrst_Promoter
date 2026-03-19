@@ -6,6 +6,7 @@ interface Promoter {
   email: string;
   firstName: string;
   lastName: string;
+  userType: 'ADMIN' | 'ACCOUNT_MANAGER' | 'TEAM_MANAGER' | 'PROMOTER';
   isActive: boolean;
   createdAt: string;
   _count?: {
@@ -190,6 +191,40 @@ const Promoters = () => {
     background: isActive ? "#48bb7820" : "#f5656520",
     color: isActive ? "#48bb78" : "#f56565",
   });
+
+  const getUserTypeBadgeStyle = (userType: string) => {
+    const styles = {
+      ADMIN: { background: "#805ad520", color: "#805ad5" },
+      ACCOUNT_MANAGER: { background: "#667eea20", color: "#667eea" },
+      TEAM_MANAGER: { background: "#ed893620", color: "#ed8936" },
+      PROMOTER: { background: "#48bb7820", color: "#48bb78" },
+    };
+
+    return {
+      display: "inline-block",
+      padding: "0.25rem 0.75rem",
+      borderRadius: "9999px",
+      fontSize: "0.75rem",
+      fontWeight: "600",
+      textTransform: "uppercase" as const,
+      ...(styles[userType as keyof typeof styles] || styles.PROMOTER),
+    };
+  };
+
+  const getUserTypeLabel = (userType: string) => {
+    switch (userType) {
+      case 'ADMIN':
+        return 'Admin';
+      case 'ACCOUNT_MANAGER':
+        return 'Account Mgr';
+      case 'TEAM_MANAGER':
+        return 'Team Mgr';
+      case 'PROMOTER':
+        return 'Promoter';
+      default:
+        return 'Promoter';
+    }
+  };
 
   if (loading) {
     return (
@@ -512,6 +547,17 @@ const Promoters = () => {
                     color: "#4a5568",
                   }}
                 >
+                  Type
+                </th>
+                <th
+                  style={{
+                    padding: "1rem",
+                    textAlign: "center",
+                    fontSize: "0.875rem",
+                    fontWeight: "600",
+                    color: "#4a5568",
+                  }}
+                >
                   Status
                 </th>
                 <th
@@ -612,6 +658,11 @@ const Promoters = () => {
                         </div>
                       </div>
                     </div>
+                  </td>
+                  <td style={{ padding: "1rem", textAlign: "center" }}>
+                    <span style={getUserTypeBadgeStyle(promoter.userType)}>
+                      {getUserTypeLabel(promoter.userType)}
+                    </span>
                   </td>
                   <td style={{ padding: "1rem", textAlign: "center" }}>
                     <span style={getStatusBadgeStyle(promoter.isActive)}>

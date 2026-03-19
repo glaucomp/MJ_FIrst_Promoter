@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole } from '@prisma/client';
+import { PrismaClient, UserRole, UserType } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { nanoid } from 'nanoid';
 
@@ -17,7 +17,8 @@ async function main() {
       password: hashedPasswordAdmin,
       firstName: 'Admin',
       lastName: 'User',
-      role: UserRole.ADMIN
+      role: UserRole.ADMIN,
+      userType: UserType.ADMIN
     }
   });
   console.log('✅ Created admin user:', admin.email);
@@ -78,7 +79,8 @@ async function main() {
       password: hashedPasswordPromoter,
       firstName: 'Jorlyn',
       lastName: 'Manager',
-      role: UserRole.PROMOTER
+      role: UserRole.PROMOTER,
+      userType: UserType.ACCOUNT_MANAGER
     }
   });
   console.log('✅ Created account manager:', jorlyn.email);
@@ -93,7 +95,8 @@ async function main() {
       password: hashedPasswordPromoter,
       firstName: 'Sofia',
       lastName: 'Martinez',
-      role: UserRole.PROMOTER
+      role: UserRole.PROMOTER,
+      userType: UserType.TEAM_MANAGER
     }
   });
   console.log('✅ Created influencer:', sofia.email);
@@ -108,12 +111,27 @@ async function main() {
       password: hashedPasswordPromoter,
       firstName: 'Kelly',
       lastName: 'Johnson',
-      role: UserRole.PROMOTER
+      role: UserRole.PROMOTER,
+      userType: UserType.PROMOTER
     }
   });
   console.log('✅ Created influencer friend:', kelly.email);
 
   // Create Referral Hierarchy
+  // First: Admin invites Jorlyn (makes Jorlyn an Account Manager)
+  const referralAdminToJorlyn = await prisma.referral.create({
+    data: {
+      inviteCode: nanoid(10),
+      campaignId: campaign1.id,
+      referrerId: admin.id,
+      referredUserId: jorlyn.id,
+      status: 'ACTIVE',
+      level: 1,
+      acceptedAt: new Date()
+    }
+  });
+  console.log('✅ Created referral: Admin -> Jorlyn (Jorlyn becomes Account Manager)');
+
   // Campaign 1: Jorlyn (Account Manager) invites Sofia (Influencer)
   // Jorlyn gets 10%, Sofia gets 30%
   const referralJorlynToSofia = await prisma.referral.create({
@@ -123,7 +141,8 @@ async function main() {
       referrerId: jorlyn.id,
       referredUserId: sofia.id,
       status: 'ACTIVE',
-      level: 1,
+      level: 2,
+      parentReferralId: referralAdminToJorlyn.id,
       acceptedAt: new Date()
     }
   });
@@ -138,7 +157,7 @@ async function main() {
       referrerId: sofia.id,
       referredUserId: kelly.id,
       status: 'ACTIVE',
-      level: 2,
+      level: 3,
       parentReferralId: referralJorlynToSofia.id,
       acceptedAt: new Date()
     }
@@ -190,7 +209,8 @@ async function main() {
       referrerId: jorlyn.id,
       referredUserId: null,
       status: 'ACTIVE',
-      level: 1,
+      level: 2,
+      parentReferralId: referralAdminToJorlyn.id,
       acceptedAt: new Date()
     }
   });
@@ -204,7 +224,7 @@ async function main() {
       referrerId: sofia.id,
       referredUserId: null,
       status: 'ACTIVE',
-      level: 2,
+      level: 3,
       parentReferralId: referralJorlynCustomers.id,
       acceptedAt: new Date()
     }
@@ -219,7 +239,7 @@ async function main() {
       referrerId: kelly.id,
       referredUserId: null,
       status: 'ACTIVE',
-      level: 3,
+      level: 4,
       parentReferralId: referralSofiaCustomers.id,
       acceptedAt: new Date()
     }
@@ -232,12 +252,14 @@ async function main() {
   console.log(`   Kelly: ${referralKellyCustomers.inviteCode} (30% commission + 5% to Sofia, Influencer Campaign)`);
   console.log('\n🔗 Referral Hierarchy:');
   console.log('   Person Invitations:');
-  console.log('     • Jorlyn -> Sofia (Jorlyn 10%, Sofia 30%)');
+  console.log('     • Admin -> Jorlyn (Jorlyn becomes Account Manager)');
+  console.log('     • Jorlyn -> Sofia (Jorlyn 10%, Sofia 30%, Sofia becomes Team Manager)');
   console.log('     • Sofia -> Kelly (Sofia 5%, Kelly 30%)');
   console.log('   Customer Tracking:');
-  console.log('     • Jorlyn (top level)');
-  console.log('     •   └─ Sofia (parent: Jorlyn)');
-  console.log('     •       └─ Kelly (parent: Sofia)');
+  console.log('     • Admin (root)');
+  console.log('     •   └─ Jorlyn (Account Manager)');
+  console.log('     •       └─ Sofia (Team Manager)');
+  console.log('     •           └─ Kelly (Promoter)');
 
   // Create some click tracking data
   await prisma.clickTracking.createMany({
@@ -282,10 +304,10 @@ async function main() {
 
   console.log('\n🎉 Database seeding completed successfully!');
   console.log('\n📝 Login Credentials:');
-  console.log('   Admin: admin@example.com / admin123');
-  console.log('   Account Manager (Jorlyn): jorlyn@example.com / promoter123');
-  console.log('   Influencer (Sofia): sofia@example.com / promoter123');
-  console.log('   Influencer (Kelly): kelly@example.com / promoter123');
+  console.log('   Admin (userType: ADMIN): admin@example.com / admin123');
+  console.log('   Account Manager (userType: ACCOUNT_MANAGER): jorlyn@example.com / promoter123');
+  console.log('   Team Manager (userType: TEAM_MANAGER): sofia@example.com / promoter123');
+  console.log('   Promoter (userType: PROMOTER): kelly@example.com / promoter123');
   console.log('\n🔗 Demo Data:');
   console.log(`   Campaign 1: ${campaign1.name} (Sofia 30%, Jorlyn 10%)`);
   console.log(`   Campaign 2: ${campaign2.name} (Kelly 30%, Sofia 5%)`);

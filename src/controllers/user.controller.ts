@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { PrismaClient, UserRole } from '@prisma/client';
+import { PrismaClient, UserRole, UserType } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { validationResult } from 'express-validator';
 import { AuthRequest } from '../middleware/auth.middleware';
@@ -29,7 +29,8 @@ export const createAccountManager = async (req: AuthRequest, res: Response) => {
         password: hashedPassword,
         firstName,
         lastName,
-        role: UserRole.ADMIN
+        role: UserRole.ADMIN,
+        userType: UserType.ADMIN
       },
       select: {
         id: true,
@@ -37,6 +38,7 @@ export const createAccountManager = async (req: AuthRequest, res: Response) => {
         firstName: true,
         lastName: true,
         role: true,
+        userType: true,
         createdAt: true
       }
     });
@@ -74,6 +76,7 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
         firstName: true,
         lastName: true,
         role: true,
+        userType: true,
         isActive: true,
         createdAt: true,
         _count: {
@@ -135,6 +138,7 @@ export const getUserById = async (req: AuthRequest, res: Response) => {
         firstName: true,
         lastName: true,
         role: true,
+        userType: true,
         isActive: true,
         createdAt: true,
           _count: {
@@ -163,7 +167,7 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const currentUser = req.user!;
-    const { firstName, lastName, email, password } = req.body;
+    const { firstName, lastName, email, password, userType } = req.body;
 
     // Users can only update their own profile unless they're admin
     if (currentUser.role !== UserRole.ADMIN && currentUser.id !== id) {
@@ -178,6 +182,10 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
     if (password) {
       updateData.password = await bcrypt.hash(password, 10);
     }
+    // Only admins can change userType
+    if (userType !== undefined && currentUser.role === UserRole.ADMIN) {
+      updateData.userType = userType;
+    }
 
     const user = await prisma.user.update({
       where: { id },
@@ -188,6 +196,7 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
         firstName: true,
         lastName: true,
         role: true,
+        userType: true,
         isActive: true,
         updatedAt: true
       }

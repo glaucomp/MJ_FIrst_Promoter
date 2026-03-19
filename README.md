@@ -45,12 +45,19 @@ A comprehensive referral tracking and campaign management system built for accou
 ### Database Schema
 
 The system uses 7 main models:
-1. **User** - All users (superuser, account managers, influencers)
+1. **User** - All users with roles (ADMIN, PROMOTER) and types (ADMIN, ACCOUNT_MANAGER, TEAM_MANAGER, PROMOTER)
 2. **Campaign** - Promotional campaigns with commission rates
 3. **Referral** - Tracks referral relationships and hierarchy
 4. **TrackingLink** - Unique URLs for tracking clicks
 5. **ClickTracking** - Individual click tracking data
 6. **Commission** - Earned commissions
+
+#### User Types
+The platform supports four user types:
+- **ADMIN**: Platform administrators with full access
+- **ACCOUNT_MANAGER**: Promoters invited directly by admins, manage campaigns
+- **TEAM_MANAGER**: Promoters with a downline (have referred other promoters)
+- **PROMOTER**: Standard promoters without a team
 
 ## 🚀 Quick Start
 
@@ -103,9 +110,10 @@ The application will be available at:
 
 After seeding, you can log in with:
 
-- **Admin**: `admin@example.com` / `admin123`
-- **Promoter (Yoda)**: `yoda@example.com` / `promoter123`
-- **Promoter (Luke)**: `luke@example.com` / `promoter123`
+- **Admin** (userType: ADMIN): `admin@example.com` / `admin123`
+- **Account Manager** (userType: ACCOUNT_MANAGER): `jorlyn@example.com` / `promoter123`
+- **Team Manager** (userType: TEAM_MANAGER): `sofia@example.com` / `promoter123`
+- **Promoter** (userType: PROMOTER): `kelly@example.com` / `promoter123`
 
 ## 📊 How It Works
 

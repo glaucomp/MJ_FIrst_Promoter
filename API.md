@@ -65,7 +65,8 @@ Create a new user account.
     "email": "user@example.com",
     "firstName": "John",
     "lastName": "Doe",
-    "role": "INFLUENCER",
+    "role": "PROMOTER",
+    "userType": "PROMOTER",
     "createdAt": "2026-03-09T..."
   },
   "token": "eyJhbGciOiJIUzI1NiIs...",
@@ -95,7 +96,8 @@ Authenticate and receive JWT token.
     "email": "user@example.com",
     "firstName": "John",
     "lastName": "Doe",
-    "role": "INFLUENCER"
+    "role": "PROMOTER",
+    "userType": "PROMOTER"
   },
   "token": "eyJhbGciOiJIUzI1NiIs..."
 }
@@ -117,9 +119,22 @@ Get authenticated user's profile.
     "email": "user@example.com",
     "firstName": "John",
     "lastName": "Doe",
-    "role": "INFLUENCER",
+    "role": "PROMOTER",
+    "userType": "PROMOTER",
     "isActive": true,
     "createdAt": "2026-03-09T..."
+  },
+  "typeDetails": {
+    "userId": "clx...",
+    "userType": "promoter",
+    "isAccountManager": false,
+    "isTeamLeader": false,
+    "isPromoter": true,
+    "isAdmin": false,
+    "invitedByAdmin": false,
+    "hasDownline": false,
+    "totalReferrals": 0,
+    "totalCustomers": 0
   }
 }
 ```
@@ -479,7 +494,8 @@ Create a new account manager (superuser only).
     "email": "newmanager@example.com",
     "firstName": "Jane",
     "lastName": "Smith",
-    "role": "ACCOUNT_MANAGER",
+    "role": "ADMIN",
+    "userType": "ADMIN",
     "createdAt": "2026-03-09T..."
   },
   "message": "Account manager created successfully"
@@ -495,7 +511,7 @@ Get all users (superuser only).
 **Headers:** `Authorization: Bearer <token>`
 
 **Query Parameters:**
-- `role` - Filter by role (SUPERUSER, ACCOUNT_MANAGER, INFLUENCER)
+- `role` - Filter by role (ADMIN, PROMOTER)
 - `search` - Search by email, first name, or last name
 
 **Response:**
@@ -507,12 +523,15 @@ Get all users (superuser only).
       "email": "user@example.com",
       "firstName": "John",
       "lastName": "Doe",
-      "role": "INFLUENCER",
+      "role": "PROMOTER",
+      "userType": "TEAM_MANAGER",
       "isActive": true,
       "createdAt": "2026-03-09T...",
-      "_count": {
-        "referralsMade": 15,
-        "commissions": 8
+      "stats": {
+        "totalReferrals": 15,
+        "activeReferrals": 12,
+        "totalEarnings": 2500.00,
+        "pendingEarnings": 500.00
       }
     }
   ]

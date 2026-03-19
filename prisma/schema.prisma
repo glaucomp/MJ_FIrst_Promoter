@@ -15,6 +15,13 @@ enum UserRole {
   PROMOTER
 }
 
+enum UserType {
+  ADMIN
+  ACCOUNT_MANAGER
+  TEAM_MANAGER
+  PROMOTER
+}
+
 enum ReferralStatus {
   PENDING
   ACTIVE
@@ -53,6 +60,7 @@ model User {
   lastName      String?
   inviteCode    String?  @unique // Unique invite code for promoters (ref_id in FirstPromoter)
   role          UserRole @default(PROMOTER)
+  userType      UserType @default(PROMOTER) // Type of user: ADMIN, ACCOUNT_MANAGER, TEAM_MANAGER, or PROMOTER
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole } from "@prisma/client";
+import { PrismaClient, UserRole, UserType } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { Response } from "express";
 import { validationResult } from "express-validator";
@@ -35,6 +35,7 @@ export const register = async (req: AuthRequest, res: Response) => {
 
     // Determine role and handle invite code
     let role: UserRole = UserRole.PROMOTER;
+    let userType: UserType = UserType.PROMOTER;
     let referral = null;
 
     if (inviteCode) {
@@ -51,6 +52,11 @@ export const register = async (req: AuthRequest, res: Response) => {
       if (referral.referredUserId) {
         return res.status(400).json({ error: "Invite code already used" });
       }
+
+      // If invited by an admin, user becomes an account manager
+      if (referral.referrer.role === UserRole.ADMIN) {
+        userType = UserType.ACCOUNT_MANAGER;
+      }
     }
 
     // Create user
@@ -61,6 +67,7 @@ export const register = async (req: AuthRequest, res: Response) => {
         firstName,
         lastName,
         role,
+        userType,
       },
       select: {
         id: true,
@@ -68,6 +75,7 @@ export const register = async (req: AuthRequest, res: Response) => {
         firstName: true,
         lastName: true,
         role: true,
+        userType: true,
         createdAt: true,
       },
     });
@@ -333,6 +341,7 @@ export const login = async (req: AuthRequest, res: Response) => {
         firstName: true,
         lastName: true,
         role: true,
+        userType: true,
         isActive: true,
       },
     });
@@ -378,6 +387,7 @@ export const getCurrentUser = async (req: AuthRequest, res: Response) => {
         firstName: true,
         lastName: true,
         role: true,
+        userType: true,
         isActive: true,
         createdAt: true,
       },
@@ -391,12 +401,7 @@ export const getCurrentUser = async (req: AuthRequest, res: Response) => {
     const userTypeInfo = await getUserTypeInfo(req.user.id);
 
     res.json({ 
-      user: {
-        ...user,
-        userType: userTypeInfo.userType,
-        isAccountManager: userTypeInfo.isAccountManager,
-        isPromoter: userTypeInfo.isPromoter
-      },
+      user,
       typeDetails: userTypeInfo
     });
   } catch (error) {

@@ -7,6 +7,7 @@ interface User {
   firstName?: string;
   lastName?: string;
   role: 'ADMIN' | 'PROMOTER';
+  userType?: 'ADMIN' | 'ACCOUNT_MANAGER' | 'TEAM_MANAGER' | 'PROMOTER';
 }
 
 interface AuthContextType {

@@ -1,12 +1,12 @@
-import { PrismaClient, UserRole } from '@prisma/client';
+import { PrismaClient, UserRole, UserType } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-export type UserType = 'admin' | 'account_manager' | 'team_leader' | 'promoter';
+export type UserTypeString = 'admin' | 'account_manager' | 'team_manager' | 'promoter';
 
 export interface UserTypeInfo {
   userId: string;
-  userType: UserType;
+  userType: UserTypeString;
   isAccountManager: boolean;
   isTeamLeader: boolean;
   isPromoter: boolean;
@@ -134,11 +134,11 @@ export const getUserTypeInfo = async (userId: string): Promise<UserTypeInfo> => 
   const hasDownline = promoterReferrals > 0;
   const isTeamLeader = hasDownline && !isAccountManager; // Has team but not account manager
 
-  let userType: UserType;
+  let userType: UserTypeString;
   if (isAccountManager) {
     userType = 'account_manager';
   } else if (isTeamLeader) {
-    userType = 'team_leader';
+    userType = 'team_manager';
   } else {
     userType = 'promoter';
   }
@@ -162,4 +162,50 @@ export const getUserTypeInfo = async (userId: string): Promise<UserTypeInfo> => 
       isAccountManager: uplineIsAccountManager
     } : undefined
   };
+};
+
+// Helper function to sync userType field in database with calculated type
+export const syncUserType = async (userId: string): Promise<void> => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, role: true }
+    });
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Admins always have ADMIN type
+    if (user.role === UserRole.ADMIN) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { userType: UserType.ADMIN }
+      });
+      return;
+    }
+
+    // For promoters, calculate their type based on relationships
+    const typeInfo = await getUserTypeInfo(userId);
+    
+    let dbUserType: UserType;
+    if (typeInfo.userType === 'account_manager') {
+      dbUserType = UserType.ACCOUNT_MANAGER;
+    } else if (typeInfo.userType === 'team_manager') {
+      dbUserType = UserType.TEAM_MANAGER;
+    } else {
+      dbUserType = UserType.PROMOTER;
+    }
+
+    // Update the database field
+    await prisma.user.update({
+      where: { id: userId },
+      data: { userType: dbUserType }
+    });
+
+    console.log(`✅ User type synced for user ${userId}: ${dbUserType}`);
+  } catch (error) {
+    console.error(`❌ Failed to sync user type for ${userId}:`, error);
+    throw error;
+  }
 };
