@@ -62,19 +62,19 @@ const Commissions = () => {
   // Calculate stats
   const pendingEarnings = commissions
     .filter(c => c.status === 'unpaid' || c.status === 'pending')
-    .reduce((sum, c) => sum + c.amount, 0);
+    .reduce((sum, c) => sum + (c.customer?.revenue || 0), 0);
   
-  const pendingCount = commissions
+  const pendingCommissions = commissions
     .filter(c => c.status === 'unpaid' || c.status === 'pending')
-    .length;
+    .reduce((sum, c) => sum + c.amount, 0);
   
   const completedEarnings = commissions
     .filter(c => c.status === 'paid')
-    .reduce((sum, c) => sum + c.amount, 0);
+    .reduce((sum, c) => sum + (c.customer?.revenue || 0), 0);
   
-  const completedCount = commissions
+  const completedCommissions = commissions
     .filter(c => c.status === 'paid')
-    .length;
+    .reduce((sum, c) => sum + c.amount, 0);
 
   if (loading) {
     return (
@@ -119,7 +119,7 @@ const Commissions = () => {
           </div>
         </div>
 
-        {/* Pending Commissions Count */}
+        {/* Pending Commissions */}
         <div style={{ 
           background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', 
           padding: '1.5rem', 
@@ -131,7 +131,7 @@ const Commissions = () => {
             <span style={{ fontSize: '1.5rem' }}>📊</span>
           </div>
           <div style={{ fontSize: '1.875rem', fontWeight: 'bold' }}>
-            {pendingCount}
+            ${pendingCommissions.toFixed(2)}
           </div>
           <div style={{ fontSize: '0.75rem', opacity: 0.8, marginTop: '0.25rem' }}>
             Total pending
@@ -157,7 +157,7 @@ const Commissions = () => {
           </div>
         </div>
 
-        {/* Completed Commissions Count */}
+        {/* Completed Commissions */}
         <div style={{ 
           background: 'linear-gradient(135deg, #059669 0%, #047857 100%)', 
           padding: '1.5rem', 
@@ -169,7 +169,7 @@ const Commissions = () => {
             <span style={{ fontSize: '1.5rem' }}>✓</span>
           </div>
           <div style={{ fontSize: '1.875rem', fontWeight: 'bold' }}>
-            {completedCount}
+            ${completedCommissions.toFixed(2)}
           </div>
           <div style={{ fontSize: '0.75rem', opacity: 0.8, marginTop: '0.25rem' }}>
             Total paid
