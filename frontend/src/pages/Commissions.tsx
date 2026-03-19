@@ -59,6 +59,23 @@ const Commissions = () => {
     ? commissions 
     : commissions.filter(c => c.status === filter);
 
+  // Calculate stats
+  const pendingEarnings = commissions
+    .filter(c => c.status === 'unpaid' || c.status === 'pending')
+    .reduce((sum, c) => sum + c.amount, 0);
+  
+  const pendingCount = commissions
+    .filter(c => c.status === 'unpaid' || c.status === 'pending')
+    .length;
+  
+  const completedEarnings = commissions
+    .filter(c => c.status === 'paid')
+    .reduce((sum, c) => sum + c.amount, 0);
+  
+  const completedCount = commissions
+    .filter(c => c.status === 'paid')
+    .length;
+
   if (loading) {
     return (
       <div style={{ textAlign: 'center', padding: '3rem' }}>
@@ -74,6 +91,90 @@ const Commissions = () => {
         <h2 style={{ fontSize: '1.5rem', fontWeight: '600', color: '#1a202c', marginBottom: '0.25rem' }}>
           Commissions
         </h2>
+      </div>
+
+      {/* Summary Stats - 4 Panels */}
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(4, 1fr)', 
+        gap: '1rem', 
+        marginBottom: '1.5rem' 
+      }}>
+        {/* Pending Earnings */}
+        <div style={{ 
+          background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)', 
+          padding: '1.5rem', 
+          borderRadius: '0.75rem',
+          color: 'white'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+            <span style={{ fontSize: '0.875rem', opacity: 0.9 }}>Pending Earnings</span>
+            <span style={{ fontSize: '1.5rem' }}>⏳</span>
+          </div>
+          <div style={{ fontSize: '1.875rem', fontWeight: 'bold' }}>
+            ${pendingEarnings.toFixed(2)}
+          </div>
+          <div style={{ fontSize: '0.75rem', opacity: 0.8, marginTop: '0.25rem' }}>
+            Awaiting payment
+          </div>
+        </div>
+
+        {/* Pending Commissions Count */}
+        <div style={{ 
+          background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', 
+          padding: '1.5rem', 
+          borderRadius: '0.75rem',
+          color: 'white'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+            <span style={{ fontSize: '0.875rem', opacity: 0.9 }}>Pending Commissions</span>
+            <span style={{ fontSize: '1.5rem' }}>📊</span>
+          </div>
+          <div style={{ fontSize: '1.875rem', fontWeight: 'bold' }}>
+            {pendingCount}
+          </div>
+          <div style={{ fontSize: '0.75rem', opacity: 0.8, marginTop: '0.25rem' }}>
+            Total pending
+          </div>
+        </div>
+
+        {/* Completed Earnings */}
+        <div style={{ 
+          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', 
+          padding: '1.5rem', 
+          borderRadius: '0.75rem',
+          color: 'white'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+            <span style={{ fontSize: '0.875rem', opacity: 0.9 }}>Completed Earnings</span>
+            <span style={{ fontSize: '1.5rem' }}>💰</span>
+          </div>
+          <div style={{ fontSize: '1.875rem', fontWeight: 'bold' }}>
+            ${completedEarnings.toFixed(2)}
+          </div>
+          <div style={{ fontSize: '0.75rem', opacity: 0.8, marginTop: '0.25rem' }}>
+            Already paid
+          </div>
+        </div>
+
+        {/* Completed Commissions Count */}
+        <div style={{ 
+          background: 'linear-gradient(135deg, #059669 0%, #047857 100%)', 
+          padding: '1.5rem', 
+          borderRadius: '0.75rem',
+          color: 'white'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+            <span style={{ fontSize: '0.875rem', opacity: 0.9 }}>Completed Commissions</span>
+            <span style={{ fontSize: '1.5rem' }}>✓</span>
+          </div>
+          <div style={{ fontSize: '1.875rem', fontWeight: 'bold' }}>
+            {completedCount}
+          </div>
+          <div style={{ fontSize: '0.75rem', opacity: 0.8, marginTop: '0.25rem' }}>
+            Total paid
+          </div>
+        </div>
       </div>
 
       {/* Alerts */}
