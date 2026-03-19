@@ -167,23 +167,45 @@ export const getEarnings = async (req: AuthRequest, res: Response) => {
           select: {
             id: true,
             level: true,
+            referrerId: true,
             referredUser: {
-              select: { firstName: true, lastName: true, email: true }
+              select: { id: true, firstName: true, lastName: true, email: true }
             }
           }
+        },
+        customer: {
+          select: { id: true, email: true, name: true }
         }
       },
       orderBy: { createdAt: 'desc' }
     });
 
+    // Separate commissions into direct (own sales) and team (downline sales)
+    const directCommissions = commissions.filter(c => 
+      c.referral && c.referral.referrerId === user.id
+    );
+    
+    const teamCommissions = commissions.filter(c => 
+      c.referral && c.referral.referrerId !== user.id
+    );
+
     const summary = {
       total: commissions.reduce((sum, c) => sum + c.amount, 0),
       paid: commissions.filter(c => c.status === 'paid').reduce((sum, c) => sum + c.amount, 0),
       unpaid: commissions.filter(c => c.status === 'unpaid').reduce((sum, c) => sum + c.amount, 0),
-      pending: commissions.filter(c => c.status === 'pending').reduce((sum, c) => sum + c.amount, 0)
+      pending: commissions.filter(c => c.status === 'pending').reduce((sum, c) => sum + c.amount, 0),
+      // Add breakdown by source
+      directEarnings: directCommissions.reduce((sum, c) => sum + c.amount, 0),
+      teamEarnings: teamCommissions.reduce((sum, c) => sum + c.amount, 0)
     };
 
-    res.json({ commissions, summary });
+    res.json({ 
+      commissions, 
+      summary,
+      directCommissions,
+      teamCommissions,
+      userId: user.id
+    });
   } catch (error) {
     console.error('Get earnings error:', error);
     res.status(500).json({ error: 'Failed to fetch earnings' });
