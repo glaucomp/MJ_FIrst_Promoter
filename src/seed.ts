@@ -64,6 +64,8 @@ async function main() {
     }
   });
   console.log('✅ Created campaign:', campaign1.name, '(unlimited invites, linked to:', campaign2.name, ')');
+  console.log('   🔗 Linked Campaign Setup:');
+  console.log(`      "${campaign1.name}" (hidden) → links to → "${campaign2.name}" (visible)`);
 
   // Create Account Manager - Jorlyn
   const hashedPasswordPromoter = await bcrypt.hash('promoter123', 10);
@@ -180,11 +182,11 @@ async function main() {
   // Create customer tracking referrals (for tracking direct customer sales)
   // These allow tracking sales by username/ref_id without a specific referred user
   
-  // Jorlyn's customer tracking (top level - no parent)
+  // Jorlyn's customer tracking (Account Manager - uses campaign1)
   const referralJorlynCustomers = await prisma.referral.create({
     data: {
-      inviteCode: 'jorlyn',
-      campaignId: campaign1.id,
+      inviteCode: `jorlyn_tracking_${nanoid(6)}`,
+      campaignId: campaign1.id,  // Account Manager Campaign
       referrerId: jorlyn.id,
       referredUserId: null,
       status: 'ACTIVE',
@@ -192,13 +194,13 @@ async function main() {
       acceptedAt: new Date()
     }
   });
-  console.log('✅ Created customer tracking for Jorlyn (ref_id: jorlyn)');
+  console.log('✅ Created customer tracking for Jorlyn (Account Manager Campaign)');
 
-  // Sofia's customer tracking (parent = Jorlyn's customer tracking)
+  // Sofia's customer tracking (Team Leader - uses campaign2, the LINKED campaign)
   const referralSofiaCustomers = await prisma.referral.create({
     data: {
-      inviteCode: 'sofia',
-      campaignId: campaign1.id,
+      inviteCode: `sofia_tracking_${nanoid(6)}`,
+      campaignId: campaign2.id,  // ✅ Influencer Referral Campaign (linked from campaign1)
       referrerId: sofia.id,
       referredUserId: null,
       status: 'ACTIVE',
@@ -207,13 +209,13 @@ async function main() {
       acceptedAt: new Date()
     }
   });
-  console.log('✅ Created customer tracking for Sofia (ref_id: sofia)');
+  console.log('✅ Created customer tracking for Sofia (Influencer Referral Campaign - linked)');
 
-  // Kelly's customer tracking (parent = Sofia's customer tracking)
+  // Kelly's customer tracking (Promoter - uses campaign2)
   const referralKellyCustomers = await prisma.referral.create({
     data: {
-      inviteCode: 'kelly',
-      campaignId: campaign2.id,
+      inviteCode: `kelly_tracking_${nanoid(6)}`,
+      campaignId: campaign2.id,  // Influencer Referral Campaign
       referrerId: kelly.id,
       referredUserId: null,
       status: 'ACTIVE',
@@ -222,12 +224,12 @@ async function main() {
       acceptedAt: new Date()
     }
   });
-  console.log('✅ Created customer tracking for Kelly (ref_id: kelly)');
+  console.log('✅ Created customer tracking for Kelly (Influencer Referral Campaign)');
 
   console.log('\n📝 Customer Tracking Codes (use as ref_id in API):');
-  console.log('   Jorlyn: jorlyn (30% commission, no parent)');
-  console.log('   Sofia: sofia (30% commission + 10% to Jorlyn)');
-  console.log('   Kelly: kelly (30% commission + 5% to Sofia)');
+  console.log(`   Jorlyn: ${referralJorlynCustomers.inviteCode} (30% commission, Account Manager Campaign)`);
+  console.log(`   Sofia: ${referralSofiaCustomers.inviteCode} (30% commission + 10% to Jorlyn, Influencer Campaign)`);
+  console.log(`   Kelly: ${referralKellyCustomers.inviteCode} (30% commission + 5% to Sofia, Influencer Campaign)`);
   console.log('\n🔗 Referral Hierarchy:');
   console.log('   Person Invitations:');
   console.log('     • Jorlyn -> Sofia (Jorlyn 10%, Sofia 30%)');
