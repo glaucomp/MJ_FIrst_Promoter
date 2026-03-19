@@ -31,7 +31,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (token) {
         try {
           const response = await authAPI.getCurrentUser();
-          setUser(response.data.user);
+          const userData = response.data.user;
+          
+          // Ensure userType is set, fallback to role-based default
+          if (!userData.userType) {
+            userData.userType = userData.role === 'ADMIN' ? 'ADMIN' : 'PROMOTER';
+          }
+          
+          // Always update localStorage with fresh data from server
+          localStorage.setItem('user', JSON.stringify(userData));
+          setUser(userData);
         } catch (error) {
           localStorage.removeItem('token');
           localStorage.removeItem('user');
@@ -47,8 +56,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const response = await authAPI.login(email, password);
     const { user, token } = response.data;
     localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(user));
-    setUser(user);
+    
+    // Fetch complete user profile with userType after login
+    try {
+      const profileResponse = await authAPI.getCurrentUser();
+      const completeUser = profileResponse.data.user;
+      localStorage.setItem('user', JSON.stringify(completeUser));
+      setUser(completeUser);
+    } catch (error) {
+      // Fallback to login response if getCurrentUser fails
+      localStorage.setItem('user', JSON.stringify(user));
+      setUser(user);
+    }
   };
 
   const register = async (data: any) => {

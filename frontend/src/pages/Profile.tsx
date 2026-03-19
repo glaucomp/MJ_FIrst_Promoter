@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import { authAPI } from '../services/api';
 
 interface UserProfile {
@@ -33,6 +34,7 @@ interface UserTypeInfo {
 }
 
 const Profile = () => {
+  const { updateUser } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [typeDetails, setTypeDetails] = useState<UserTypeInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -45,8 +47,18 @@ const Profile = () => {
   const fetchProfile = async () => {
     try {
       const response = await authAPI.getCurrentUser();
-      setProfile(response.data.user);
+      const userData = response.data.user;
+      
+      // Ensure userType is set, fallback to role-based default
+      if (!userData.userType) {
+        userData.userType = userData.role === 'ADMIN' ? 'ADMIN' : 'PROMOTER';
+      }
+      
+      setProfile(userData);
       setTypeDetails(response.data.typeDetails);
+      
+      // Update AuthContext with fresh user data (this updates navigation sidebar)
+      updateUser(userData);
     } catch (err) {
       setError('Failed to load profile');
     } finally {

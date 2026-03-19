@@ -5,6 +5,7 @@ const PromoterDashboard = () => {
   const [stats, setStats] = useState<any>(null);
   const [referrals, setReferrals] = useState<any>(null);
   const [earnings, setEarnings] = useState<any>(null);
+  const [teamEarnings, setTeamEarnings] = useState<any>(null);
   const [myReferralLink, setMyReferralLink] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -17,15 +18,17 @@ const PromoterDashboard = () => {
 
   const fetchData = async () => {
     try {
-      const [statsRes, referralsRes, earningsRes, linkRes] = await Promise.all([
+      const [statsRes, referralsRes, earningsRes, teamEarningsRes, linkRes] = await Promise.all([
         dashboardAPI.getStats(),
         referralAPI.getMyReferrals(),
         dashboardAPI.getEarnings(),
+        dashboardAPI.getTeamEarnings(),
         dashboardAPI.getMyPromoterLink()
       ]);
       setStats(statsRes.data.stats);
       setReferrals(referralsRes.data);
       setEarnings(earningsRes.data);
+      setTeamEarnings(teamEarningsRes.data);
       setCurrentUserId(earningsRes.data.userId);
       setMyReferralLink(linkRes.data.referralLink);
     } catch (err) {
@@ -145,10 +148,10 @@ const PromoterDashboard = () => {
       </div>
 
       {/* Earnings Breakdown - Direct vs Team */}
-      {earnings?.summary && (earnings.summary.directEarnings > 0 || earnings.summary.teamEarnings > 0) && (
+      {teamEarnings && (teamEarnings.summary.directTotal > 0 || teamEarnings.summary.teamTotal > 0) && (
         <div className="card" style={{ marginBottom: '2rem', padding: '2rem' }}>
           <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>
-            💰 Earnings Breakdown
+            💰 My Earnings Breakdown
           </h3>
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
@@ -162,19 +165,19 @@ const PromoterDashboard = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
                 <div>
                   <div style={{ fontSize: '0.875rem', opacity: 0.9, marginBottom: '0.5rem' }}>
-                    💼 Direct Sales
+                    💼 My Direct Sales
                   </div>
                   <div style={{ fontSize: '2.5rem', fontWeight: 'bold' }}>
-                    ${earnings.summary.directEarnings?.toFixed(2) || '0.00'}
+                    ${teamEarnings.summary.directTotal?.toFixed(2) || '0.00'}
                   </div>
                 </div>
                 <div style={{ fontSize: '2rem' }}>🎯</div>
               </div>
               <div style={{ fontSize: '0.875rem', opacity: 0.85 }}>
-                From your own customer referrals
+                From my own customer referrals
               </div>
               <div style={{ fontSize: '0.75rem', opacity: 0.75, marginTop: '0.5rem' }}>
-                {earnings.directCommissions?.length || 0} commission{earnings.directCommissions?.length !== 1 ? 's' : ''}
+                {teamEarnings.summary.myCustomers || 0} customer{teamEarnings.summary.myCustomers !== 1 ? 's' : ''}
               </div>
             </div>
 
@@ -191,52 +194,56 @@ const PromoterDashboard = () => {
                     👥 Team Sales
                   </div>
                   <div style={{ fontSize: '2.5rem', fontWeight: 'bold' }}>
-                    ${earnings.summary.teamEarnings?.toFixed(2) || '0.00'}
+                    ${teamEarnings.summary.teamTotal?.toFixed(2) || '0.00'}
                   </div>
                 </div>
                 <div style={{ fontSize: '2rem' }}>🌟</div>
               </div>
               <div style={{ fontSize: '0.875rem', opacity: 0.85 }}>
-                From your team's customer referrals
+                From my team's customer referrals
               </div>
               <div style={{ fontSize: '0.75rem', opacity: 0.75, marginTop: '0.5rem' }}>
-                {earnings.teamCommissions?.length || 0} commission{earnings.teamCommissions?.length !== 1 ? 's' : ''}
+                {teamEarnings.summary.teamMembersCount || 0} team member{teamEarnings.summary.teamMembersCount !== 1 ? 's' : ''}
               </div>
             </div>
           </div>
 
           {/* Percentage Breakdown */}
-          {earnings.summary.total > 0 && (
+          {teamEarnings.summary.grandTotal > 0 && (
             <div style={{ marginTop: '1.5rem' }}>
               <div style={{ display: 'flex', gap: '0.5rem', height: '40px', borderRadius: '0.5rem', overflow: 'hidden' }}>
-                <div
-                  style={{
-                    flex: earnings.summary.directEarnings || 0,
-                    background: '#48bb78',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white',
-                    fontWeight: '600',
-                    fontSize: '0.875rem'
-                  }}
-                >
-                  {((earnings.summary.directEarnings / earnings.summary.total) * 100).toFixed(0)}% Direct
-                </div>
-                <div
-                  style={{
-                    flex: earnings.summary.teamEarnings || 0,
-                    background: '#ed8936',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white',
-                    fontWeight: '600',
-                    fontSize: '0.875rem'
-                  }}
-                >
-                  {((earnings.summary.teamEarnings / earnings.summary.total) * 100).toFixed(0)}% Team
-                </div>
+                {teamEarnings.summary.directTotal > 0 && (
+                  <div
+                    style={{
+                      flex: teamEarnings.summary.directTotal,
+                      background: '#48bb78',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontWeight: '600',
+                      fontSize: '0.875rem'
+                    }}
+                  >
+                    {teamEarnings.summary.directPercentage}% Direct
+                  </div>
+                )}
+                {teamEarnings.summary.teamTotal > 0 && (
+                  <div
+                    style={{
+                      flex: teamEarnings.summary.teamTotal,
+                      background: '#ed8936',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontWeight: '600',
+                      fontSize: '0.875rem'
+                    }}
+                  >
+                    {teamEarnings.summary.teamPercentage}% Team
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -245,90 +252,149 @@ const PromoterDashboard = () => {
 
 
       {/* Team Performance - Only show if user has team members */}
-      {referrals?.referrals && referrals.referrals.some((r: any) => r.referredUser) && (
+      {teamEarnings?.teamEarnings?.breakdown && teamEarnings.teamEarnings.breakdown.length > 0 && (
         <div className="card" style={{ marginBottom: '2rem', padding: '2rem' }}>
           <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>
-            👥 My Team Performance
+            👥 My Team Members Performance
           </h3>
           
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem' }}>
-            {referrals.referrals
-              .filter((ref: any) => ref.referredUser)
-              .map((ref: any) => {
-                const teamMemberEarnings = earnings?.commissions?.filter(
-                  (c: any) => c.referral?.referredUser?.id === ref.referredUser?.id
-                ).reduce((sum: number, c: any) => sum + c.amount, 0) || 0;
-
-                return (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1rem' }}>
+            {teamEarnings.teamEarnings.breakdown.map((member: any) => (
+              <div
+                key={member.teamMember.id}
+                style={{
+                  padding: '1.5rem',
+                  background: 'linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%)',
+                  borderRadius: '0.75rem',
+                  border: '2px solid #e2e8f0'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
                   <div
-                    key={ref.id}
                     style={{
-                      padding: '1.25rem',
-                      background: '#f7fafc',
-                      borderRadius: '0.5rem',
-                      border: '1px solid #e2e8f0'
+                      width: '50px',
+                      height: '50px',
+                      borderRadius: '50%',
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontWeight: 'bold',
+                      fontSize: '1.1rem',
+                      flexShrink: 0
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                      <div
-                        style={{
-                          width: '45px',
-                          height: '45px',
-                          borderRadius: '50%',
-                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: 'white',
-                          fontWeight: 'bold',
-                          fontSize: '1rem'
-                        }}
-                      >
-                        {ref.referredUser.firstName?.charAt(0) || ''}
-                        {ref.referredUser.lastName?.charAt(0) || ''}
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: '600', color: '#2d3748', fontSize: '0.95rem' }}>
-                          {ref.referredUser.firstName} {ref.referredUser.lastName}
-                        </div>
-                        <div style={{ fontSize: '0.8rem', color: '#718096' }}>
-                          {ref.referredUser.email}
-                        </div>
-                      </div>
+                    {member.teamMember.firstName?.charAt(0) || ''}
+                    {member.teamMember.lastName?.charAt(0) || ''}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: '600', color: '#2d3748', fontSize: '1rem' }}>
+                      {member.teamMember.firstName} {member.teamMember.lastName}
                     </div>
-                    
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '1rem' }}>
-                      <div>
-                        <div style={{ fontSize: '0.7rem', color: '#718096', marginBottom: '0.25rem' }}>
-                          Your Earnings
-                        </div>
-                        <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#ed8936' }}>
-                          ${teamMemberEarnings.toFixed(2)}
-                        </div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: '0.7rem', color: '#718096', marginBottom: '0.25rem' }}>
-                          Status
-                        </div>
-                        <span
-                          style={{
-                            display: 'inline-block',
-                            padding: '0.25rem 0.5rem',
-                            borderRadius: '9999px',
-                            fontSize: '0.7rem',
-                            fontWeight: '600',
-                            background: ref.status === 'ACTIVE' ? '#48bb7820' : '#fbd38d20',
-                            color: ref.status === 'ACTIVE' ? '#48bb78' : '#ed8936'
-                          }}
-                        >
-                          {ref.status}
-                        </span>
-                      </div>
+                    <div style={{ fontSize: '0.8rem', color: '#718096' }}>
+                      {member.teamMember.email}
                     </div>
                   </div>
-                );
-              })}
+                </div>
+                
+                {/* Earnings Breakdown for this member */}
+                <div style={{ 
+                  background: 'white', 
+                  padding: '1rem', 
+                  borderRadius: '0.5rem',
+                  marginBottom: '1rem'
+                }}>
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <div style={{ fontSize: '0.7rem', color: '#718096', marginBottom: '0.25rem' }}>
+                      💰 My Earnings from {member.teamMember.firstName}
+                    </div>
+                    <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#ed8936' }}>
+                      ${member.myEarningsFromThisMember?.toFixed(2) || '0.00'}
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: '#718096', marginTop: '0.25rem' }}>
+                      {member.commissionsCount} commission{member.commissionsCount !== 1 ? 's' : ''} from their sales
+                    </div>
+                  </div>
+                  
+                  <div style={{ paddingTop: '0.75rem', borderTop: '1px solid #e2e8f0' }}>
+                    <div style={{ fontSize: '0.7rem', color: '#718096', marginBottom: '0.25rem' }}>
+                      🎯 Their Own Earnings
+                    </div>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#48bb78' }}>
+                      ${member.memberOwnEarnings?.toFixed(2) || '0.00'}
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: '#718096', marginTop: '0.25rem' }}>
+                      {member.memberCustomers} customer{member.memberCustomers !== 1 ? 's' : ''}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Status and Join Date */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem' }}>
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      padding: '0.25rem 0.625rem',
+                      borderRadius: '9999px',
+                      fontSize: '0.7rem',
+                      fontWeight: '600',
+                      background: member.status === 'ACTIVE' ? '#48bb7820' : '#fbd38d20',
+                      color: member.status === 'ACTIVE' ? '#48bb78' : '#ed8936'
+                    }}
+                  >
+                    {member.status}
+                  </span>
+                  <span style={{ color: '#718096', fontSize: '0.75rem' }}>
+                    Joined {new Date(member.joinedAt).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
+
+          {/* Overall Percentage Breakdown */}
+          {teamEarnings.summary.grandTotal > 0 && (
+            <div style={{ marginTop: '1.5rem' }}>
+              <div style={{ fontSize: '0.875rem', fontWeight: '600', color: '#2d3748', marginBottom: '0.75rem' }}>
+                📊 Overall Earnings Distribution
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', height: '45px', borderRadius: '0.5rem', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                {teamEarnings.summary.directTotal > 0 && (
+                  <div
+                    style={{
+                      flex: teamEarnings.summary.directTotal,
+                      background: 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontWeight: '600',
+                      fontSize: '0.875rem'
+                    }}
+                  >
+                    {teamEarnings.summary.directPercentage}% My Sales
+                  </div>
+                )}
+                {teamEarnings.summary.teamTotal > 0 && (
+                  <div
+                    style={{
+                      flex: teamEarnings.summary.teamTotal,
+                      background: 'linear-gradient(135deg, #ed8936 0%, #dd6b20 100%)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontWeight: '600',
+                      fontSize: '0.875rem'
+                    }}
+                  >
+                    {teamEarnings.summary.teamPercentage}% Team Sales
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
