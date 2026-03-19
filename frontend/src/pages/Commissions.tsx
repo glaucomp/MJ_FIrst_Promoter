@@ -59,22 +59,26 @@ const Commissions = () => {
     ? commissions 
     : commissions.filter(c => c.status === filter);
 
-  // Calculate stats
-  const pendingEarnings = commissions
-    .filter(c => c.status === 'unpaid' || c.status === 'pending')
-    .reduce((sum, c) => sum + (c.customer?.revenue || 0), 0);
+  // Calculate stats - use unique customers to avoid counting sales twice
+  const pendingCommissionsList = commissions.filter(c => c.status === 'unpaid' || c.status === 'pending');
+  const uniquePendingCustomers = new Map<string, number>();
+  pendingCommissionsList.forEach(c => {
+    if (c.customer?.email) {
+      uniquePendingCustomers.set(c.customer.email, c.customer.revenue || 0);
+    }
+  });
+  const pendingEarnings = Array.from(uniquePendingCustomers.values()).reduce((sum, revenue) => sum + revenue, 0);
+  const pendingCommissions = pendingCommissionsList.reduce((sum, c) => sum + c.amount, 0);
   
-  const pendingCommissions = commissions
-    .filter(c => c.status === 'unpaid' || c.status === 'pending')
-    .reduce((sum, c) => sum + c.amount, 0);
-  
-  const completedEarnings = commissions
-    .filter(c => c.status === 'paid')
-    .reduce((sum, c) => sum + (c.customer?.revenue || 0), 0);
-  
-  const completedCommissions = commissions
-    .filter(c => c.status === 'paid')
-    .reduce((sum, c) => sum + c.amount, 0);
+  const completedCommissionsList = commissions.filter(c => c.status === 'paid');
+  const uniqueCompletedCustomers = new Map<string, number>();
+  completedCommissionsList.forEach(c => {
+    if (c.customer?.email) {
+      uniqueCompletedCustomers.set(c.customer.email, c.customer.revenue || 0);
+    }
+  });
+  const completedEarnings = Array.from(uniqueCompletedCustomers.values()).reduce((sum, revenue) => sum + revenue, 0);
+  const completedCommissions = completedCommissionsList.reduce((sum, c) => sum + c.amount, 0);
 
   if (loading) {
     return (
