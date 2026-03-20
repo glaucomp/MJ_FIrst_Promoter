@@ -19,12 +19,17 @@ export const getAllCommissions = async (req: AuthRequest, res: Response) => {
             firstName: true,
             lastName: true,
             email: true,
+            userType: true,
           },
         },
         referral: {
           include: {
             campaign: {
-              select: { name: true },
+              select: { 
+                name: true,
+                commissionRate: true,
+                secondaryRate: true,
+              },
             },
             referrer: {
               select: {
@@ -47,7 +52,23 @@ export const getAllCommissions = async (req: AuthRequest, res: Response) => {
       orderBy: { createdAt: "desc" },
     });
 
-    res.json({ commissions });
+    // Filter out tier 2 commissions for TEAM_MANAGER users
+    const filteredCommissions = commissions.filter(commission => {
+      // Get the full user details to check userType
+      if (commission.user.id === user.id) {
+        const userDetails = commission.user as any;
+        // If user is TEAM_MANAGER, only show tier 1 (direct) commissions
+        if (userDetails.userType === 'TEAM_MANAGER') {
+          // Tier 1 commissions have percentage equal to campaign.commissionRate (30%)
+          // Tier 2 commissions have percentage equal to campaign.secondaryRate (10%)
+          const campaignRate = commission.referral?.campaign?.commissionRate;
+          return commission.percentage === campaignRate;
+        }
+      }
+      return true; // Show all commissions for ADMIN and other users
+    });
+
+    res.json({ commissions: filteredCommissions });
   } catch (error) {
     console.error("Get all commissions error:", error);
     res.status(500).json({ error: "Failed to fetch commissions" });

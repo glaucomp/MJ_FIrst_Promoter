@@ -39,6 +39,41 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
       };
     } else {
       // Promoter dashboard
+      // Get user details to check userType
+      const userDetails = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { userType: true }
+      });
+
+      // Build commission where clause - for TEAM_MANAGER, exclude tier 2 commissions
+      let commissionWhere: any = { userId: user.id };
+      
+      if (userDetails?.userType === 'TEAM_MANAGER') {
+        // Get all commissions to filter by percentage
+        const allCommissions = await prisma.commission.findMany({
+          where: { userId: user.id },
+          include: {
+            referral: {
+              include: {
+                campaign: {
+                  select: { commissionRate: true }
+                }
+              }
+            }
+          }
+        });
+        
+        // Filter to only tier 1 (percentage === commissionRate)
+        const tier1CommissionIds = allCommissions
+          .filter(c => c.referral?.campaign?.commissionRate === c.percentage)
+          .map(c => c.id);
+        
+        commissionWhere = {
+          userId: user.id,
+          id: { in: tier1CommissionIds }
+        };
+      }
+
       const [
         myReferrals,
         activeReferrals,
@@ -54,12 +89,12 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
           }
         }),
         prisma.commission.aggregate({
-          where: { userId: user.id },
+          where: commissionWhere,
           _sum: { amount: true }
         }),
         prisma.commission.aggregate({
           where: {
-            userId: user.id,
+            ...commissionWhere,
             status: 'paid'
           },
           _sum: { amount: true }
@@ -157,11 +192,17 @@ export const getEarnings = async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user!;
 
+    // Get user details to check userType
+    const userDetails = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { userType: true }
+    });
+
     const commissions = await prisma.commission.findMany({
       where: { userId: user.id },
       include: {
         campaign: {
-          select: { id: true, name: true }
+          select: { id: true, name: true, commissionRate: true }
         },
         referral: {
           select: {
@@ -180,27 +221,32 @@ export const getEarnings = async (req: AuthRequest, res: Response) => {
       orderBy: { createdAt: 'desc' }
     });
 
+    // Filter out tier 2 commissions for TEAM_MANAGER users
+    const filteredCommissions = userDetails?.userType === 'TEAM_MANAGER'
+      ? commissions.filter(c => c.campaign?.commissionRate === c.percentage)
+      : commissions;
+
     // Separate commissions into direct (own sales) and team (downline sales)
-    const directCommissions = commissions.filter(c => 
+    const directCommissions = filteredCommissions.filter(c => 
       c.referral && c.referral.referrerId === user.id
     );
     
-    const teamCommissions = commissions.filter(c => 
+    const teamCommissions = filteredCommissions.filter(c => 
       c.referral && c.referral.referrerId !== user.id
     );
 
     const summary = {
-      total: commissions.reduce((sum, c) => sum + c.amount, 0),
-      paid: commissions.filter(c => c.status === 'paid').reduce((sum, c) => sum + c.amount, 0),
-      unpaid: commissions.filter(c => c.status === 'unpaid').reduce((sum, c) => sum + c.amount, 0),
-      pending: commissions.filter(c => c.status === 'pending').reduce((sum, c) => sum + c.amount, 0),
+      total: filteredCommissions.reduce((sum, c) => sum + c.amount, 0),
+      paid: filteredCommissions.filter(c => c.status === 'paid').reduce((sum, c) => sum + c.amount, 0),
+      unpaid: filteredCommissions.filter(c => c.status === 'unpaid').reduce((sum, c) => sum + c.amount, 0),
+      pending: filteredCommissions.filter(c => c.status === 'pending').reduce((sum, c) => sum + c.amount, 0),
       // Add breakdown by source
       directEarnings: directCommissions.reduce((sum, c) => sum + c.amount, 0),
       teamEarnings: teamCommissions.reduce((sum, c) => sum + c.amount, 0)
     };
 
     res.json({ 
-      commissions, 
+      commissions: filteredCommissions, 
       summary,
       directCommissions,
       teamCommissions,
@@ -267,6 +313,12 @@ export const getTeamEarningsBreakdown = async (req: AuthRequest, res: Response) 
   try {
     const user = req.user!;
 
+    // Get user details to check userType
+    const userDetails = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { userType: true }
+    });
+
     // Get all commissions for this user
     const allCommissions = await prisma.commission.findMany({
       where: { userId: user.id },
@@ -294,19 +346,25 @@ export const getTeamEarningsBreakdown = async (req: AuthRequest, res: Response) 
         campaign: {
           select: {
             id: true,
-            name: true
+            name: true,
+            commissionRate: true
           }
         }
       },
       orderBy: { createdAt: 'desc' }
     });
 
+    // Filter out tier 2 commissions for TEAM_MANAGER users
+    const filteredCommissions = userDetails?.userType === 'TEAM_MANAGER'
+      ? allCommissions.filter(c => c.campaign?.commissionRate === c.percentage)
+      : allCommissions;
+
     // Separate direct sales (user's own referrals) from team sales (downline referrals)
-    const directCommissions = allCommissions.filter(c => 
+    const directCommissions = filteredCommissions.filter(c => 
       c.referral && c.referral.referrerId === user.id
     );
     
-    const teamCommissions = allCommissions.filter(c => 
+    const teamCommissions = filteredCommissions.filter(c => 
       c.referral && c.referral.referrerId !== user.id
     );
 
