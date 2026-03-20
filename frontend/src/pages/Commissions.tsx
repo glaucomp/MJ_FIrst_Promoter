@@ -60,25 +60,35 @@ const Commissions = () => {
     ? commissions 
     : commissions.filter(c => c.status === filter);
 
-  // Calculate stats - use unique customer IDs to count each purchase
+  // Calculate stats
   const pendingCommissionsList = commissions.filter(c => c.status === 'unpaid' || c.status === 'pending');
-  const uniquePendingCustomers = new Map<string, number>();
+  
+  // Pending Earnings: Sum only tier 1 sales revenue (percentage 30%)
+  const uniquePendingTier1Customers = new Map<string, number>();
   pendingCommissionsList.forEach(c => {
-    if (c.customer?.id) {
-      uniquePendingCustomers.set(c.customer.id, c.customer.revenue || 0);
+    // Only count tier 1 commissions (percentage === 30)
+    if (c.customer?.id && c.percentage === 30) {
+      uniquePendingTier1Customers.set(c.customer.id, c.customer.revenue || 0);
     }
   });
-  const pendingEarnings = Array.from(uniquePendingCustomers.values()).reduce((sum, revenue) => sum + revenue, 0);
+  const pendingEarnings = Array.from(uniquePendingTier1Customers.values()).reduce((sum, revenue) => sum + revenue, 0);
+  
+  // Pending Commissions: Sum ALL commissions (tier 1 + tier 2)
   const pendingCommissions = pendingCommissionsList.reduce((sum, c) => sum + c.amount, 0);
   
   const completedCommissionsList = commissions.filter(c => c.status === 'paid');
-  const uniqueCompletedCustomers = new Map<string, number>();
+  
+  // Completed Earnings: Sum only tier 1 sales revenue (percentage 30%)
+  const uniqueCompletedTier1Customers = new Map<string, number>();
   completedCommissionsList.forEach(c => {
-    if (c.customer?.id) {
-      uniqueCompletedCustomers.set(c.customer.id, c.customer.revenue || 0);
+    // Only count tier 1 commissions (percentage === 30)
+    if (c.customer?.id && c.percentage === 30) {
+      uniqueCompletedTier1Customers.set(c.customer.id, c.customer.revenue || 0);
     }
   });
-  const completedEarnings = Array.from(uniqueCompletedCustomers.values()).reduce((sum, revenue) => sum + revenue, 0);
+  const completedEarnings = Array.from(uniqueCompletedTier1Customers.values()).reduce((sum, revenue) => sum + revenue, 0);
+  
+  // Completed Commissions: Sum ALL commissions (tier 1 + tier 2)
   const completedCommissions = completedCommissionsList.reduce((sum, c) => sum + c.amount, 0);
 
   if (loading) {
