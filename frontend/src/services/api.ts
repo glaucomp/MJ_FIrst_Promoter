@@ -72,6 +72,7 @@ export const userAPI = {
   getAll: (params?: any) => api.get("/users", { params }),
   getById: (id: string) => api.get(`/users/${id}`),
   createAccountManager: (data: any) => api.post("/users/account-manager", data),
+  createPromoter: (data: any) => api.post("/users/promoter", data),
   update: (id: string, data: any) => api.put(`/users/${id}`, data),
   delete: (id: string) => api.delete(`/users/${id}`),
   getAccountManagers: () => api.get("/users/role/account-managers"),

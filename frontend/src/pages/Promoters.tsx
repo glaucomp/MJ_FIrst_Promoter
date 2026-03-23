@@ -94,40 +94,14 @@ const Promoters = () => {
     }
 
     try {
-      // Call the API to create promoter (reads from .env)
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5555';
-      const apiKey = import.meta.env.VITE_API_KEY;
-      
-      if (!apiKey) {
-        setError('API key not configured. Please check frontend/.env file.');
-        return;
-      }
-      
-      const response = await fetch(
-        `${apiBaseUrl}/v1/promoters/create`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-API-KEY": apiKey,
-          },
-          body: JSON.stringify({
-            email: newPromoter.email,
-            first_name: newPromoter.firstName,
-            last_name: newPromoter.lastName,
-            cust_id: newPromoter.custId || undefined,
-            temp_password: newPromoter.tempPassword || undefined,
-            is_admin: newPromoter.isAdmin,
-          }),
-        },
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to create promoter");
-      }
-
-      await response.json();
+      await userAPI.createPromoter({
+        email: newPromoter.email,
+        first_name: newPromoter.firstName,
+        last_name: newPromoter.lastName,
+        cust_id: newPromoter.custId || undefined,
+        temp_password: newPromoter.tempPassword || undefined,
+        is_admin: newPromoter.isAdmin,
+      });
 
       setSuccess(
         `${newPromoter.isAdmin ? "Admin" : "Promoter"} created successfully! ${newPromoter.isAdmin ? "🔐" : "✨"}`,
@@ -147,7 +121,7 @@ const Promoters = () => {
 
       setTimeout(() => setSuccess(""), 5000);
     } catch (err: any) {
-      setError(err.message || "Failed to create promoter");
+      setError(err.response?.data?.error || err.message || "Failed to create promoter");
     }
   };
 
