@@ -5,6 +5,7 @@ MJ First Promoter (MJFP) API Client
 Drop-in replacement for your existing FirstPromoter integration.
 """
 
+import os
 import httpx
 import logging
 from typing import Optional, Dict, Any
@@ -15,13 +16,17 @@ log = logging.getLogger(__name__)
 class MJFPConfig:
     """
     Configuration for MJ First Promoter API
-    
-    Set these values from your environment variables:
+
+    Set these via environment variables:
+      MJFP_API_URL    - Base URL of the MJFP server
+      MJFP_API_KEY    - V1 API key (X-API-KEY header)
+      MJFP_TOKEN      - V2 Bearer token
+      MJFP_ACCOUNT_ID - V2 Account ID
     """
-    MJFP_API_URL = "http://localhost:5555/api"  # Change to production URL
-    MJFP_API_KEY = "fp_key_ByfKtLyM8sSCVl4G_buVY0QFeBUifmIZ"  # V1 API
-    MJFP_TOKEN = "fp_token_4-mqzfOawT_slE8dAx1R2aKGnbz1i8_EV2oh8N6MCOXvC49G"  # V2 API
-    MJFP_ACCOUNT_ID = "acc_kDP8UCZW2J-exA55"  # V2 API
+    MJFP_API_URL = os.getenv("MJFP_API_URL", "http://localhost:5555/api")
+    MJFP_API_KEY = os.getenv("MJFP_API_KEY", "")
+    MJFP_TOKEN = os.getenv("MJFP_TOKEN", "")
+    MJFP_ACCOUNT_ID = os.getenv("MJFP_ACCOUNT_ID", "")
 
 
 def _fp_unwrap(payload: dict | None) -> dict | None:
