@@ -1,5 +1,5 @@
-import { Request, Response, NextFunction } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from "@prisma/client";
+import { NextFunction, Request, Response } from "express";
 
 const prisma = new PrismaClient();
 
@@ -12,40 +12,39 @@ export interface ApiKeyRequest extends Request {
 export const validateApiKeyV1 = async (
   req: ApiKeyRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
-    const apiKey = req.headers['x-api-key'] as string;
-
-    console.log(`[AUTH DEBUG] Received X-API-KEY: "${apiKey}"`);
+    const apiKey = req.headers["x-api-key"] as string;
 
     if (!apiKey) {
-      return res.status(401).json({ error: 'API key required' });
+      return res.status(401).json({ error: "API key required" });
     }
 
-    const allKeys = await prisma.apiKey.findMany({ select: { key: true, isActive: true } });
-    console.log(`[AUTH DEBUG] Keys in DB:`, allKeys.map(k => `${k.key} (active=${k.isActive})`));
+    const allKeys = await prisma.apiKey.findMany({
+      select: { key: true, isActive: true },
+    });
 
     const key = await prisma.apiKey.findUnique({
       where: { key: apiKey, isActive: true },
-      include: { user: true }
+      include: { user: true },
     });
 
     if (!key) {
-      return res.status(401).json({ error: 'Invalid API key' });
+      return res.status(401).json({ error: "Invalid API key" });
     }
 
     // Update last used
     await prisma.apiKey.update({
       where: { id: key.id },
-      data: { lastUsedAt: new Date() }
+      data: { lastUsedAt: new Date() },
     });
 
     req.apiKey = key;
     next();
   } catch (error) {
-    console.error('API key validation error:', error);
-    res.status(500).json({ error: 'Authentication failed' });
+    console.error("API key validation error:", error);
+    res.status(500).json({ error: "Authentication failed" });
   }
 };
 
@@ -53,18 +52,18 @@ export const validateApiKeyV1 = async (
 export const validateApiKeyV2 = async (
   req: ApiKeyRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
-    const authHeader = req.headers['authorization'] as string;
-    const accountId = req.headers['account-id'] as string;
+    const authHeader = req.headers["authorization"] as string;
+    const accountId = req.headers["account-id"] as string;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Bearer token required' });
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Bearer token required" });
     }
 
     if (!accountId) {
-      return res.status(401).json({ error: 'Account-ID header required' });
+      return res.status(401).json({ error: "Account-ID header required" });
     }
 
     const token = authHeader.substring(7);
@@ -73,26 +72,26 @@ export const validateApiKeyV2 = async (
       where: {
         token,
         accountId,
-        isActive: true
+        isActive: true,
       },
-      include: { user: true }
+      include: { user: true },
     });
 
     if (!key) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ error: "Invalid credentials" });
     }
 
     // Update last used
     await prisma.apiKey.update({
       where: { id: key.id },
-      data: { lastUsedAt: new Date() }
+      data: { lastUsedAt: new Date() },
     });
 
     req.apiKey = key;
     req.accountId = accountId;
     next();
   } catch (error) {
-    console.error('API key validation error:', error);
-    res.status(500).json({ error: 'Authentication failed' });
+    console.error("API key validation error:", error);
+    res.status(500).json({ error: "Authentication failed" });
   }
 };
