@@ -17,9 +17,14 @@ export const validateApiKeyV1 = async (
   try {
     const apiKey = req.headers['x-api-key'] as string;
 
+    console.log(`[AUTH DEBUG] Received X-API-KEY: "${apiKey}"`);
+
     if (!apiKey) {
       return res.status(401).json({ error: 'API key required' });
     }
+
+    const allKeys = await prisma.apiKey.findMany({ select: { key: true, isActive: true } });
+    console.log(`[AUTH DEBUG] Keys in DB:`, allKeys.map(k => `${k.key} (active=${k.isActive})`));
 
     const key = await prisma.apiKey.findUnique({
       where: { key: apiKey, isActive: true },
