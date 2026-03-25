@@ -4,8 +4,10 @@ import { referralAPI, dashboardAPI, campaignAPI, referralQuotaAPI } from '../ser
 const Referrals = () => {
   const [referrals, setReferrals] = useState<any>(null);
   const [myReferralLink, setMyReferralLink] = useState<string>('');
+  const [activeCampaignId, setActiveCampaignId] = useState<string>('');
   const [quotaStatus, setQuotaStatus] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [inviting, setInviting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -24,10 +26,11 @@ const Referrals = () => {
       setReferrals(referralsRes.data);
       setMyReferralLink(linkRes.data.referralLink);
 
-      // Check quota for the first visible campaign (Influencer Campaign for Sofia)
+      // Check quota for the first visible campaign
       const campaigns = campaignsRes.data.campaigns;
       if (campaigns && campaigns.length > 0) {
         const campaignId = campaigns[0].id;
+        setActiveCampaignId(campaignId);
         const quotaRes = await referralQuotaAPI.checkQuota(campaignId);
         setQuotaStatus(quotaRes.data);
       }
@@ -35,6 +38,25 @@ const Referrals = () => {
       setError('Failed to load referrals');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleInvite = async () => {
+    if (!activeCampaignId || inviting) return;
+    setInviting(true);
+    setError('');
+    try {
+      const res = await referralAPI.createInvite(activeCampaignId);
+      // Copy the invite link to clipboard
+      navigator.clipboard.writeText(res.data.inviteUrl || myReferralLink);
+      setSuccess('Invite created & link copied! Share it with your contact.');
+      setTimeout(() => setSuccess(''), 4000);
+      // Refresh list and quota
+      fetchData();
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.response?.data?.error || 'Failed to create invite');
+    } finally {
+      setInviting(false);
     }
   };
 
@@ -207,20 +229,38 @@ const Referrals = () => {
             <button
               onClick={() => copyToClipboard(myReferralLink)}
               disabled={quotaStatus?.status === 'blocked'}
+              title="Copy link"
+              style={{
+                background: 'rgba(255,255,255,0.25)',
+                color: 'white',
+                border: 'none',
+                padding: '0.75rem 0.875rem',
+                borderRadius: '0.375rem',
+                cursor: quotaStatus?.status === 'blocked' ? 'not-allowed' : 'pointer',
+                fontSize: '1.1rem',
+                opacity: quotaStatus?.status === 'blocked' ? 0.4 : 1,
+                lineHeight: 1
+              }}
+            >
+              📋
+            </button>
+            <button
+              onClick={handleInvite}
+              disabled={quotaStatus?.status === 'blocked' || inviting}
               style={{
                 background: 'white',
                 color: quotaStatus?.status === 'blocked' ? '#a0aec0' : '#667eea',
                 border: 'none',
                 padding: '0.75rem 1.5rem',
                 borderRadius: '0.375rem',
-                fontWeight: '600',
-                cursor: quotaStatus?.status === 'blocked' ? 'not-allowed' : 'pointer',
+                fontWeight: '700',
+                cursor: (quotaStatus?.status === 'blocked' || inviting) ? 'not-allowed' : 'pointer',
                 whiteSpace: 'nowrap',
                 fontSize: '1rem',
                 opacity: quotaStatus?.status === 'blocked' ? 0.5 : 1
               }}
             >
-              📋 Copy
+              {inviting ? '...' : '✉️ Invite'}
             </button>
           </div>
         </div>

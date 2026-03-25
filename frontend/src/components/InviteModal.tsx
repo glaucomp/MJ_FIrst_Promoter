@@ -1,0 +1,217 @@
+import { useState, useEffect } from 'react';
+import { modelsApi, type Campaign } from '../services/api';
+
+interface InviteModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  type: 'referral' | 'tracking';
+  userRole: 'admin' | 'team_manager' | 'account_manager' | 'promoter';
+}
+
+export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProps) => {
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [selectedCampaignId, setSelectedCampaignId] = useState('');
+  const [email, setEmail] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [generatedUrl, setGeneratedUrl] = useState('');
+  const [generatedCode, setGeneratedCode] = useState('');
+  const [quota, setQuota] = useState<{ used: number; remaining: number; unlimited: boolean } | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      loadCampaigns();
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (selectedCampaignId && type === 'referral' && (userRole === 'team_manager' || userRole === 'promoter')) {
+      loadQuota(selectedCampaignId);
+    }
+  }, [selectedCampaignId, type, userRole]);
+
+  const loadCampaigns = async () => {
+    try {
+      const data = await modelsApi.getCampaigns();
+      setCampaigns(data.filter(c => c.isActive));
+      if (data.length > 0) {
+        setSelectedCampaignId(data[0].id);
+      }
+    } catch (err) {
+      setError('Failed to load campaigns');
+    }
+  };
+
+  const loadQuota = async (campaignId: string) => {
+    try {
+      const quotaData = await modelsApi.getInviteQuota(campaignId);
+      setQuota(quotaData);
+    } catch (err) {
+      setQuota(null);
+    }
+  };
+
+  const handleGenerate = async () => {
+    if (!selectedCampaignId) {
+      setError('Please select a campaign');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      if (type === 'referral') {
+        const result = await modelsApi.createReferralInvite(selectedCampaignId, email || undefined);
+        setGeneratedUrl(result.inviteUrl);
+        setGeneratedCode(result.inviteCode);
+        if (quota && !quota.unlimited) {
+          setQuota({ ...quota, used: quota.used + 1, remaining: quota.remaining - 1 });
+        }
+      } else {
+        const result = await modelsApi.createTrackingLink(selectedCampaignId);
+        setGeneratedUrl(result.fullUrl);
+        setGeneratedCode(result.shortCode);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate link');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCopyUrl = () => {
+    navigator.clipboard.writeText(generatedUrl);
+  };
+
+  const handleClose = () => {
+    setGeneratedUrl('');
+    setGeneratedCode('');
+    setEmail('');
+    setError('');
+    onClose();
+  };
+
+  if (!isOpen) return null;
+
+  const title = type === 'referral' 
+    ? (userRole === 'admin' || userRole === 'account_manager' ? 'Invite New Promoter' : 'Invite Team Member')
+    : 'Create Tracking Link';
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-[20px]">
+      <div className="bg-gradient-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] w-full max-w-[500px]">
+        <div className="flex flex-col gap-[20px]">
+          <div className="flex items-center justify-between">
+            <h2 className="text-[20px] leading-[1.4] font-bold text-white">{title}</h2>
+            <button
+              onClick={handleClose}
+              className="text-[#9e9e9e] hover:text-white text-[24px] leading-none"
+            >
+              ×
+            </button>
+          </div>
+
+          {!generatedUrl ? (
+            <>
+              <div className="flex flex-col gap-[8px]">
+                <label className="text-[#9e9e9e] text-[14px] leading-[1.4] font-bold uppercase tracking-[0.2px]">
+                  Campaign
+                </label>
+                <select
+                  value={selectedCampaignId}
+                  onChange={(e) => setSelectedCampaignId(e.target.value)}
+                  className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[16px] py-[12px] text-[16px] text-white focus:outline-none focus:border-[#ff0f5f]"
+                >
+                  {campaigns.map((campaign) => (
+                    <option key={campaign.id} value={campaign.id}>
+                      {campaign.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {quota && !quota.unlimited && (
+                <div className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[16px] py-[12px]">
+                  <p className="text-[14px] text-[#9e9e9e]">
+                    Remaining invites: <span className="text-white font-bold">{quota.remaining}</span> / {quota.used + quota.remaining}
+                  </p>
+                </div>
+              )}
+
+              {type === 'referral' && (
+                <div className="flex flex-col gap-[8px]">
+                  <label className="text-[#9e9e9e] text-[14px] leading-[1.4] font-bold uppercase tracking-[0.2px]">
+                    Email (Optional)
+                  </label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="promoter@example.com"
+                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[16px] py-[12px] text-[16px] text-white focus:outline-none focus:border-[#ff0f5f]"
+                  />
+                </div>
+              )}
+
+              {error && (
+                <div className="bg-[#660000] border border-[#cc0000] rounded-[8px] px-[16px] py-[12px]">
+                  <p className="text-[#ff2a2a] text-[14px] leading-[1.4] font-medium">{error}</p>
+                </div>
+              )}
+
+              <button
+                onClick={handleGenerate}
+                disabled={isLoading || !selectedCampaignId || (quota?.remaining === 0 && !quota?.unlimited)}
+                className="bg-gradient-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[24px] py-[14px] text-white text-[16px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoading ? 'Generating...' : 'Generate Link'}
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="bg-[#006622] border border-[#00d948] rounded-[8px] px-[16px] py-[12px]">
+                <p className="text-[#28ff70] text-[14px] leading-[1.4] font-medium">
+                  {type === 'referral' ? 'Invite link generated successfully!' : 'Tracking link created successfully!'}
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-[8px]">
+                <label className="text-[#9e9e9e] text-[14px] leading-[1.4] font-bold uppercase tracking-[0.2px]">
+                  {type === 'referral' ? 'Invite Code' : 'Short Code'}
+                </label>
+                <div className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[16px] py-[12px] text-white font-mono">
+                  {generatedCode}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-[8px]">
+                <label className="text-[#9e9e9e] text-[14px] leading-[1.4] font-bold uppercase tracking-[0.2px]">
+                  URL
+                </label>
+                <div className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[16px] py-[12px] text-white break-all text-[14px]">
+                  {generatedUrl}
+                </div>
+              </div>
+
+              <div className="flex gap-[12px]">
+                <button
+                  onClick={handleCopyUrl}
+                  className="flex-1 bg-gradient-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[24px] py-[14px] text-white text-[16px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+                >
+                  Copy URL
+                </button>
+                <button
+                  onClick={handleClose}
+                  className="flex-1 bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[24px] py-[14px] text-white text-[16px] font-bold leading-[1.4] tracking-[0.2px] hover:bg-[#252525] active:scale-[0.98] transition-all"
+                >
+                  Done
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};

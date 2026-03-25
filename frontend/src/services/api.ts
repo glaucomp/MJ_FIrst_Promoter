@@ -1,107 +1,245 @@
-import axios from "axios";
+import type { DashboardStats, InvitedUser, ChartData } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
+const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5555/api';
 
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
-
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      window.location.href = "/login";
-    }
-    return Promise.reject(error);
-  },
-);
-
-export const authAPI = {
-  login: (email: string, password: string) =>
-    api.post("/auth/login", { email, password }),
-  register: (data: {
+export interface LoginResponse {
+  user: {
+    id: string;
     email: string;
-    password: string;
-    firstName?: string;
-    lastName?: string;
-    inviteCode?: string;
-    refCode?: string;
-  }) => api.post("/auth/register", data),
-  getCurrentUser: () => api.get("/auth/me"),
-  refreshToken: () => api.post("/auth/refresh"),
+    firstName: string;
+    lastName: string;
+    role: string;
+    userType: string;
+    isActive: boolean;
+  };
+  token: string;
+}
+
+export const authApi = {
+  async login(email: string, password: string): Promise<LoginResponse> {
+    const response = await fetch(`${API_URL}/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || 'Invalid email or password');
+    }
+
+    return response.json();
+  },
+
+  async getCurrentUser(token: string): Promise<LoginResponse['user']> {
+    const response = await fetch(`${API_URL}/auth/me`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to get user information');
+    }
+
+    const data = await response.json();
+    return data.user;
+  },
 };
 
-export const campaignAPI = {
-  getAll: () => api.get("/campaigns"),
-  getById: (id: string) => api.get(`/campaigns/${id}`),
-  create: (data: any) => api.post("/campaigns", data),
-  update: (id: string, data: any) => api.put(`/campaigns/${id}`, data),
-  delete: (id: string) => api.delete(`/campaigns/${id}`),
-  assignToManager: (id: string, managerId: string) =>
-    api.post(`/campaigns/${id}/assign`, { managerId }),
-  getStats: (id: string) => api.get(`/campaigns/${id}/stats`),
+
+export interface Campaign {
+  id: string;
+  name: string;
+  description: string;
+  websiteUrl: string;
+  commissionRate: number;
+  secondaryRate: number;
+  isActive: boolean;
+  visibleToPromoters: boolean;
+  _count?: {
+    referrals: number;
+    commissions: number;
+  };
+}
+
+export interface Referral {
+  id: string;
+  inviteCode: string;
+  level: number;
+  status: 'PENDING' | 'ACTIVE' | 'INACTIVE';
+  campaign: {
+    name: string;
+    commissionRate: number;
+  };
+  referredUser?: {
+    email: string;
+    firstName: string;
+    lastName: string;
+  };
+  createdAt: string;
+}
+
+export interface TrackingLink {
+  id: string;
+  shortCode: string;
+  fullUrl: string;
+  clicks: number;
+  createdAt: string;
+  campaign: {
+    name: string;
+    websiteUrl: string;
+  };
+}
+
+export interface ApiUser {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  userType: string;
+  isActive: boolean;
+  createdAt: string;
+  stats?: {
+    totalReferrals: number;
+    activeReferrals: number;
+    totalEarnings: number;
+    pendingEarnings: number;
+  };
+}
+
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('auth_token');
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`,
+  };
 };
 
-export const referralAPI = {
-  createInvite: (campaignId: string, email?: string) =>
-    api.post("/referrals/create", { campaignId, email }),
-  getByInviteCode: (inviteCode: string) =>
-    api.get(`/referrals/invite/${inviteCode}`),
-  getMyReferrals: () => api.get("/referrals/my-referrals"),
-  getById: (id: string) => api.get(`/referrals/${id}`),
-  generateTrackingLink: (campaignId: string) =>
-    api.post("/referrals/tracking-link", { campaignId }),
-  getMyTrackingLinks: () => api.get("/referrals/tracking-links/me"),
-  trackClick: (data: any) => api.post("/referrals/track-click", data),
+export const modelsApi = {
+  async getAllUsers(): Promise<ApiUser[]> {
+    const response = await fetch(`${API_URL}/users`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch users');
+    const data = await response.json();
+    return data.users;
+  },
+
+  async getCampaigns(): Promise<Campaign[]> {
+    const response = await fetch(`${API_URL}/campaigns`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch campaigns');
+    const data = await response.json();
+    return data.campaigns;
+  },
+
+  async getMyReferrals(): Promise<Referral[]> {
+    const response = await fetch(`${API_URL}/referrals/my-referrals`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to fetch referrals: ${response.status} - ${errorText}`);
+    }
+    const data = await response.json();
+    return data.referrals;
+  },
+
+  async createReferralInvite(campaignId: string, email?: string): Promise<{
+    inviteUrl: string;
+    inviteCode: string;
+    referral: Referral;
+  }> {
+    const response = await fetch(`${API_URL}/referrals/create`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ campaignId, email }),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || 'Failed to create invite');
+    }
+    return response.json();
+  },
+
+  async getInviteQuota(campaignId: string): Promise<{
+    used: number;
+    remaining: number;
+    unlimited: boolean;
+  }> {
+    const response = await fetch(`${API_URL}/referrals/quota/${campaignId}`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch quota');
+    const data = await response.json();
+    return data.quota;
+  },
+
+  async getMyTrackingLinks(): Promise<TrackingLink[]> {
+    const response = await fetch(`${API_URL}/referrals/tracking-links/me`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch tracking links');
+    const data = await response.json();
+    return data.trackingLinks;
+  },
+
+  async createTrackingLink(campaignId: string): Promise<TrackingLink> {
+    const response = await fetch(`${API_URL}/referrals/tracking-link`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ campaignId }),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || 'Failed to create tracking link');
+    }
+    const data = await response.json();
+    return data.trackingLink;
+  },
 };
 
-export const userAPI = {
-  getAll: (params?: any) => api.get("/users", { params }),
-  getById: (id: string) => api.get(`/users/${id}`),
-  createAccountManager: (data: any) => api.post("/users/account-manager", data),
-  createPromoter: (data: any) => api.post("/users/promoter", data),
-  update: (id: string, data: any) => api.put(`/users/${id}`, data),
-  delete: (id: string) => api.delete(`/users/${id}`),
-  getAccountManagers: () => api.get("/users/role/account-managers"),
-};
+export const mockApi = {
+  getDashboardStats: (): DashboardStats => ({
+    models: 2,
+    modelsChange: 10,
+    income: 500.0,
+    incomeChange: -5,
+  }),
 
-export const dashboardAPI = {
-  getStats: () => api.get("/dashboard/stats"),
-  getActivity: (limit?: number) =>
-    api.get("/dashboard/activity", { params: { limit } }),
-  getEarnings: () => api.get("/dashboard/earnings"),
-  getTeamEarnings: () => api.get("/dashboard/team-earnings"),
-  getTopPerformers: (limit?: number) =>
-    api.get("/dashboard/top-performers", { params: { limit } }),
-  getMyPromoterLink: () => api.get("/dashboard/my-link"),
-};
+  getPromoterStats: (): DashboardStats => ({
+    followers: 1250,
+    followersChange: 15,
+    income: 850.0,
+    incomeChange: 8,
+  }),
 
-export const referralQuotaAPI = {
-  checkQuota: (campaignId: string) => api.get(`/referrals/quota/${campaignId}`),
-};
+  getChartData: (): ChartData => ({
+    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    values: [49, 65, 92, 75, 55, 19, 65],
+  }),
 
-export const commissionAPI = {
-  getAll: () => api.get("/commissions"),
-  updateStatus: (id: string, status: string) =>
-    api.patch(`/commissions/${id}`, { status }),
+  getInvitedUsers: (): InvitedUser[] => [
+    {
+      id: '1',
+      name: 'Emma Wilson',
+      email: 'emma@example.com',
+      status: 'active',
+      joinedAt: '2024-01-15',
+      earnings: 2500,
+    },
+    {
+      id: '2',
+      name: 'Sarah Johnson',
+      email: 'sarah@example.com',
+      status: 'active',
+      joinedAt: '2024-02-20',
+      earnings: 1800,
+    },
+  ],
 };
-
-export const customerAPI = {
-  getAll: () => api.get("/customers"),
-  getById: (id: string) => api.get(`/customers/${id}`),
-};
-
-export default api;
