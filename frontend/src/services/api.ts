@@ -79,7 +79,7 @@ export interface CampaignInput {
   defaultReferralUrl?: string;
   commissionRate: number;
   secondaryRate?: number;
-  recurringRate?: number;
+  recurringRate?: number | null;
   cookieLifeDays?: number;
   autoApprove?: boolean;
   visibleToPromoters?: boolean;

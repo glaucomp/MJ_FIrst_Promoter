@@ -9,7 +9,7 @@ const EMPTY_FORM: CampaignInput = {
   defaultReferralUrl: '',
   commissionRate: 30,
   secondaryRate: 10,
-  recurringRate: 30,
+  recurringRate: null,
   cookieLifeDays: 90,
   autoApprove: true,
   visibleToPromoters: true,
@@ -71,7 +71,7 @@ export const Campaigns = () => {
       defaultReferralUrl: c.defaultReferralUrl ?? '',
       commissionRate: c.commissionRate,
       secondaryRate: c.secondaryRate ?? 0,
-      recurringRate: c.recurringRate ?? 0,
+      recurringRate: c.recurringRate ?? null,
       cookieLifeDays: c.cookieLifeDays,
       autoApprove: c.autoApprove,
       visibleToPromoters: c.visibleToPromoters,
@@ -370,15 +370,36 @@ export const Campaigns = () => {
                     className={inputCls}
                   />
                 </Field>
-                <Field label="Recurring %" className="flex-1">
+                <div className="flex flex-col gap-[6px] flex-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[#9e9e9e] text-[12px] font-bold uppercase tracking-[0.2px]">
+                      Recurring %
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setForm(f => ({
+                        ...f,
+                        recurringRate: f.recurringRate == null ? 30 : null,
+                      }))}
+                      className={`text-[10px] font-bold px-[8px] py-[2px] rounded-full border transition-colors ${
+                        form.recurringRate != null
+                          ? 'bg-[#ff0f5f]/10 border-[#ff0f5f] text-[#ff0f5f]'
+                          : 'bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#555] hover:border-[rgba(255,255,255,0.2)] hover:text-[#9e9e9e]'
+                      }`}
+                    >
+                      {form.recurringRate != null ? 'ON' : 'OFF'}
+                    </button>
+                  </div>
                   <input
                     type="number"
                     min={0} max={100} step={0.1}
-                    value={form.recurringRate ?? 0}
+                    value={form.recurringRate ?? ''}
+                    placeholder="—"
+                    disabled={form.recurringRate == null}
                     onChange={e => setForm(f => ({ ...f, recurringRate: parseFloat(e.target.value) || 0 }))}
-                    className={inputCls}
+                    className={`${inputCls} ${form.recurringRate == null ? 'opacity-30 cursor-not-allowed' : ''}`}
                   />
-                </Field>
+                </div>
               </div>
 
               {/* Cookie + Invites row */}
