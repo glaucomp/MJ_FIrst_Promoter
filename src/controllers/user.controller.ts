@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { PrismaClient, UserRole, UserType } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { nanoid } from 'nanoid';
 import { validationResult } from 'express-validator';
 import { AuthRequest } from '../middleware/auth.middleware';
 
@@ -221,6 +222,86 @@ export const deleteUser = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('Delete user error:', error);
     res.status(500).json({ error: 'Failed to delete user' });
+  }
+};
+
+export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
+  try {
+    const { email, password, firstName, lastName, userType } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    const allowedTypes: UserType[] = [UserType.ACCOUNT_MANAGER, UserType.TEAM_MANAGER, UserType.PROMOTER];
+    const resolvedType: UserType = allowedTypes.includes(userType as UserType)
+      ? (userType as UserType)
+      : UserType.PROMOTER;
+
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      return res.status(400).json({ error: 'A user with that email already exists' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Derive a unique username from the email prefix
+    const baseUsername = email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '_');
+    let username = baseUsername;
+    let counter = 1;
+    while (await prisma.user.findUnique({ where: { username } })) {
+      username = `${baseUsername}${counter}`;
+      counter++;
+    }
+
+    const newUser = await prisma.user.create({
+      data: {
+        email,
+        username,
+        password: hashedPassword,
+        firstName: firstName?.trim() || null,
+        lastName: lastName?.trim() || null,
+        role: UserRole.PROMOTER,
+        userType: resolvedType,
+        inviteCode: username,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        userType: true,
+        isActive: true,
+        createdAt: true,
+      },
+    });
+
+    // For account managers: automatically link them to the admin via a referral
+    if (resolvedType === UserType.ACCOUNT_MANAGER) {
+      const adminCampaign = await prisma.campaign.findFirst({
+        where: { isActive: true, visibleToPromoters: false },
+      });
+      if (adminCampaign) {
+        await prisma.referral.create({
+          data: {
+            inviteCode: nanoid(10),
+            campaignId: adminCampaign.id,
+            referrerId: req.user!.id,
+            referredUserId: newUser.id,
+            status: 'ACTIVE',
+            level: 1,
+            acceptedAt: new Date(),
+          },
+        });
+      }
+    }
+
+    res.status(201).json({ user: { ...newUser, stats: { totalReferrals: 0, activeReferrals: 0, totalEarnings: 0, pendingEarnings: 0 } }, message: 'User created successfully' });
+  } catch (error) {
+    console.error('Create user error:', error);
+    res.status(500).json({ error: 'Failed to create user' });
   }
 };
 

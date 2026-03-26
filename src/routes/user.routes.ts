@@ -29,6 +29,14 @@ router.post(
   userController.createAccountManager
 );
 
+// Create any non-admin user (admin only)
+router.post(
+  '/create',
+  authenticate,
+  authorize(UserRole.ADMIN),
+  userController.createUserByAdmin
+);
+
 // Get all users (superuser only)
 router.get(
   '/',

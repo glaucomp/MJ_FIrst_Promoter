@@ -119,13 +119,23 @@ const getAuthHeaders = () => {
   };
 };
 
+const handleResponse = async (response: Response, fallbackMessage: string) => {
+  if (response.status === 401) {
+    throw new Error('SESSION_EXPIRED');
+  }
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.error || body.message || fallbackMessage);
+  }
+  return response.json();
+};
+
 export const modelsApi = {
   async getAllUsers(): Promise<ApiUser[]> {
     const response = await fetch(`${API_URL}/users`, {
       headers: getAuthHeaders(),
     });
-    if (!response.ok) throw new Error('Failed to fetch users');
-    const data = await response.json();
+    const data = await handleResponse(response, 'Failed to fetch users');
     return data.users;
   },
 
@@ -133,8 +143,7 @@ export const modelsApi = {
     const response = await fetch(`${API_URL}/campaigns`, {
       headers: getAuthHeaders(),
     });
-    if (!response.ok) throw new Error('Failed to fetch campaigns');
-    const data = await response.json();
+    const data = await handleResponse(response, 'Failed to fetch campaigns');
     return data.campaigns;
   },
 
@@ -142,11 +151,7 @@ export const modelsApi = {
     const response = await fetch(`${API_URL}/referrals/my-referrals`, {
       headers: getAuthHeaders(),
     });
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to fetch referrals: ${response.status} - ${errorText}`);
-    }
-    const data = await response.json();
+    const data = await handleResponse(response, 'Failed to fetch referrals');
     return data.referrals;
   },
 
@@ -160,11 +165,7 @@ export const modelsApi = {
       headers: getAuthHeaders(),
       body: JSON.stringify({ campaignId, email }),
     });
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.message || 'Failed to create invite');
-    }
-    return response.json();
+    return handleResponse(response, 'Failed to create invite');
   },
 
   async getInviteQuota(campaignId: string): Promise<{
@@ -175,8 +176,7 @@ export const modelsApi = {
     const response = await fetch(`${API_URL}/referrals/quota/${campaignId}`, {
       headers: getAuthHeaders(),
     });
-    if (!response.ok) throw new Error('Failed to fetch quota');
-    const data = await response.json();
+    const data = await handleResponse(response, 'Failed to fetch quota');
     return data.quota;
   },
 
@@ -184,9 +184,35 @@ export const modelsApi = {
     const response = await fetch(`${API_URL}/referrals/tracking-links/me`, {
       headers: getAuthHeaders(),
     });
-    if (!response.ok) throw new Error('Failed to fetch tracking links');
-    const data = await response.json();
+    const data = await handleResponse(response, 'Failed to fetch tracking links');
     return data.trackingLinks;
+  },
+
+  async deleteUser(userId: string): Promise<void> {
+    const response = await fetch(`${API_URL}/users/${userId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+    await handleResponse(response, 'Failed to delete user');
+  },
+
+  async createUser(data: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    userType: 'account_manager' | 'team_manager' | 'promoter';
+  }): Promise<ApiUser> {
+    const response = await fetch(`${API_URL}/users/create`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        ...data,
+        userType: data.userType.toUpperCase(),
+      }),
+    });
+    const result = await handleResponse(response, 'Failed to create user');
+    return result.user;
   },
 
   async createTrackingLink(campaignId: string): Promise<TrackingLink> {
@@ -195,11 +221,7 @@ export const modelsApi = {
       headers: getAuthHeaders(),
       body: JSON.stringify({ campaignId }),
     });
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.message || 'Failed to create tracking link');
-    }
-    const data = await response.json();
+    const data = await handleResponse(response, 'Failed to create tracking link');
     return data.trackingLink;
   },
 };

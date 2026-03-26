@@ -298,8 +298,14 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
       orderBy: { createdAt: "desc" },
     });
 
-    // Filter out customer tracking referrals (inviteCode === username or starts with username_)
+    // Filter out:
+    // 1. Self-referrals (referredUserId === own id, e.g. username-based tracking records)
+    // 2. Customer tracking referrals (inviteCode === username or starts with username_)
     const referrals = allReferrals.filter(ref => {
+      // Remove self-referrals entirely
+      if (ref.referredUserId === user.id) return false;
+
+      // Remove username-based tracking records that are still pending
       if (ref.referredUserId === null && userDetails?.username) {
         return ref.inviteCode !== userDetails.username && !ref.inviteCode.startsWith(`${userDetails.username}_`);
       }
