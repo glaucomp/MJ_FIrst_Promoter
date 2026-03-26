@@ -33,7 +33,7 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
   const loadCampaigns = async () => {
     try {
       const data = await modelsApi.getCampaigns();
-      setCampaigns(data.filter(c => c.isActive));
+      setCampaigns(data.filter(c => c.isActive && c.visibleToPromoters));
       if (data.length > 0) {
         setSelectedCampaignId(data[0].id);
       }

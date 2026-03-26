@@ -5,6 +5,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Models } from './pages/Models';
 import { Reports } from './pages/Reports';
 import { Settings } from './pages/Settings';
+import { Campaigns } from './pages/Campaigns';
 import { Login } from './pages/Login';
 import { ReactNode } from 'react';
 
@@ -72,6 +73,16 @@ function AppRoutes() {
           <ProtectedRoute>
             <DashboardLayout>
               <Models />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/campaigns"
+        element={
+          <ProtectedRoute>
+            <DashboardLayout>
+              <Campaigns />
             </DashboardLayout>
           </ProtectedRoute>
         }

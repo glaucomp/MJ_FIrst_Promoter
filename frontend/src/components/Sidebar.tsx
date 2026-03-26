@@ -7,11 +7,13 @@ interface NavItem {
   icon: string;
   label: string;
   path: string;
+  adminOnly?: boolean;
 }
 
 const navItems: NavItem[] = [
   { id: 'dashboard', icon: '📊', label: 'Dashboard', path: '/dashboard' },
   { id: 'models', icon: '👥', label: 'Models', path: '/models' },
+  { id: 'campaigns', icon: '🎯', label: 'Campaigns', path: '/campaigns', adminOnly: true },
   { id: 'reports', icon: '📈', label: 'Reports', path: '/reports' },
   { id: 'settings', icon: '⚙️', label: 'Settings', path: '/settings' },
 ];
@@ -24,7 +26,7 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
 
   const toggleSidebar = () => {
     const newState = !isOpen;
@@ -73,7 +75,7 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
           </button>
 
           <nav className="flex-1 flex flex-col gap-[8px]">
-            {navItems.map((item) => {
+            {navItems.filter(item => !item.adminOnly || user?.baseRole === 'admin').map((item) => {
               const isActive = location.pathname === item.path;
               
               if (isOpen) {

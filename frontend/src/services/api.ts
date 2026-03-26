@@ -53,16 +53,37 @@ export const authApi = {
 export interface Campaign {
   id: string;
   name: string;
-  description: string;
+  description: string | null;
   websiteUrl: string;
+  defaultReferralUrl: string | null;
   commissionRate: number;
-  secondaryRate: number;
+  secondaryRate: number | null;
+  recurringRate: number | null;
+  cookieLifeDays: number;
+  autoApprove: boolean;
   isActive: boolean;
   visibleToPromoters: boolean;
+  maxInvitesPerMonth: number | null;
+  linkedCampaignId: string | null;
+  createdAt: string;
   _count?: {
     referrals: number;
     commissions: number;
   };
+}
+
+export interface CampaignInput {
+  name: string;
+  description?: string;
+  websiteUrl: string;
+  defaultReferralUrl?: string;
+  commissionRate: number;
+  secondaryRate?: number;
+  recurringRate?: number;
+  cookieLifeDays?: number;
+  autoApprove?: boolean;
+  visibleToPromoters?: boolean;
+  maxInvitesPerMonth?: number | null;
 }
 
 export interface Referral {
@@ -186,6 +207,42 @@ export const modelsApi = {
     });
     const data = await handleResponse(response, 'Failed to fetch tracking links');
     return data.trackingLinks;
+  },
+
+  async getAllCampaigns(): Promise<Campaign[]> {
+    const response = await fetch(`${API_URL}/campaigns`, {
+      headers: getAuthHeaders(),
+    });
+    const data = await handleResponse(response, 'Failed to fetch campaigns');
+    return data.campaigns;
+  },
+
+  async createCampaign(input: CampaignInput): Promise<Campaign> {
+    const response = await fetch(`${API_URL}/campaigns`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(input),
+    });
+    const data = await handleResponse(response, 'Failed to create campaign');
+    return data.campaign;
+  },
+
+  async updateCampaign(id: string, input: Partial<CampaignInput & { isActive: boolean }>): Promise<Campaign> {
+    const response = await fetch(`${API_URL}/campaigns/${id}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(input),
+    });
+    const data = await handleResponse(response, 'Failed to update campaign');
+    return data.campaign;
+  },
+
+  async deleteCampaign(id: string): Promise<void> {
+    const response = await fetch(`${API_URL}/campaigns/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+    await handleResponse(response, 'Failed to delete campaign');
   },
 
   async deleteUser(userId: string): Promise<void> {

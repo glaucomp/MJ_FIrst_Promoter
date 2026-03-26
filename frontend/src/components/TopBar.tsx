@@ -6,11 +6,13 @@ interface NavItem {
   icon: string;
   label: string;
   path: string;
+  adminOnly?: boolean;
 }
 
 const navItems: NavItem[] = [
   { id: 'dashboard', icon: '📊', label: 'Dashboard', path: '/dashboard' },
   { id: 'models', icon: '👥', label: 'Models', path: '/models' },
+  { id: 'campaigns', icon: '🎯', label: 'Campaigns', path: '/campaigns', adminOnly: true },
   { id: 'reports', icon: '📈', label: 'Reports', path: '/reports' },
   { id: 'settings', icon: '⚙️', label: 'Settings', path: '/settings' },
 ];
@@ -18,7 +20,7 @@ const navItems: NavItem[] = [
 export const TopBar = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
 
   return (
     <div 
@@ -39,7 +41,7 @@ export const TopBar = () => {
 
         {/* Navigation - Centered */}
         <nav className="flex items-center gap-[8px] absolute left-1/2 -translate-x-1/2">
-          {navItems.map((item) => {
+          {navItems.filter(item => !item.adminOnly || user?.baseRole === 'admin').map((item) => {
             const isActive = location.pathname === item.path;
             return (
               <button
