@@ -283,6 +283,60 @@ export const modelsApi = {
   },
 };
 
+export interface Commission {
+  id: string;
+  amount: number;
+  percentage: number;
+  status: 'unpaid' | 'pending' | 'paid';
+  description: string | null;
+  createdAt: string;
+  user: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    userType: string;
+  };
+  campaign: {
+    name: string;
+    commissionRate: number;
+    secondaryRate: number | null;
+  } | null;
+  referral: {
+    referrer: {
+      firstName: string;
+      lastName: string;
+      email: string;
+    };
+  } | null;
+  customer: {
+    id: string;
+    email: string;
+    name: string;
+    revenue: number;
+  } | null;
+}
+
+export const commissionApi = {
+  async getAll(): Promise<Commission[]> {
+    const response = await fetch(`${API_URL}/commissions`, {
+      headers: getAuthHeaders(),
+    });
+    const data = await handleResponse(response, 'Failed to fetch commissions');
+    return data.commissions;
+  },
+
+  async updateStatus(id: string, status: 'unpaid' | 'pending' | 'paid'): Promise<Commission> {
+    const response = await fetch(`${API_URL}/commissions/${id}`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ status }),
+    });
+    const data = await handleResponse(response, 'Failed to update commission status');
+    return data.commission;
+  },
+};
+
 export const mockApi = {
   getDashboardStats: (): DashboardStats => ({
     models: 2,

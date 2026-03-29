@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { PrismaClient, UserRole } from '@prisma/client';
+import { PrismaClient, UserRole, UserType } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -9,6 +9,7 @@ export interface AuthRequest extends Request {
     id: string;
     email: string;
     role: UserRole;
+    userType: UserType;
   };
 }
 
@@ -36,7 +37,7 @@ export const authenticate = async (
     // Verify user still exists and is active
     const user = await prisma.user.findUnique({
       where: { id: decoded.id },
-      select: { id: true, email: true, role: true, isActive: true }
+      select: { id: true, email: true, role: true, userType: true, isActive: true }
     });
 
     if (!user || !user.isActive) {
@@ -46,7 +47,8 @@ export const authenticate = async (
     req.user = {
       id: user.id,
       email: user.email,
-      role: user.role
+      role: user.role,
+      userType: user.userType,
     };
 
     next();

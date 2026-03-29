@@ -15,11 +15,13 @@ A responsive dashboard application for the TeaseMe platform with role-based acce
 ## User Roles
 
 ### Admin
+
 - Full access to all features
 - System-wide analytics and reports
 - User management capabilities
 
 ### Team Manager
+
 - View information from invited users (Models page)
 - Track model performance and team earnings
 - Access engagement reports
@@ -29,6 +31,7 @@ A responsive dashboard application for the TeaseMe platform with role-based acce
 - Can access Models page regardless of current view
 
 ### Promoter
+
 - View follower count and growth
 - Track personal earnings and revenue
 - Access to promotional tools
@@ -118,17 +121,20 @@ The application is configured to work with two separate backends:
 ### API Endpoints
 
 #### Backend 1
+
 - `GET /api/dashboard/stats` - Dashboard statistics
 - `GET /api/users/invited` - List of invited users
 - `GET /api/dashboard/chart` - Chart data
 
 #### Backend 2
+
 - `GET /api/promoter/stats` - Promoter statistics
 - `GET /api/promoter/followers` - Follower metrics
 
 ## Design
 
 The UI is based on Figma designs with:
+
 - Dark theme optimized for extended use
 - Custom color palette with pink accent colors
 - Responsive breakpoints: mobile (< 768px), tablet (768px - 1024px), desktop (> 1024px)
@@ -140,3 +146,6 @@ The UI is based on Figma designs with:
 - Replace mock data with actual API calls in `src/services/api.ts`
 - Implement proper authentication flow in `AuthContext.tsx`
 - Add error handling and loading states as needed
+
+npm run dev:frontend
+npm run dev:backend

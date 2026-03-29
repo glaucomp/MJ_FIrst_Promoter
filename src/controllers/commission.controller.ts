@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole } from "@prisma/client";
+import { PrismaClient, UserRole, UserType } from "@prisma/client";
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 
@@ -8,7 +8,8 @@ export const getAllCommissions = async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user!;
 
-    const where = user.role === UserRole.ADMIN ? {} : { userId: user.id };
+    const isAdmin = user.role === UserRole.ADMIN || user.userType === UserType.ADMIN;
+    const where = isAdmin ? {} : { userId: user.id };
 
     const commissions = await prisma.commission.findMany({
       where,
@@ -22,15 +23,15 @@ export const getAllCommissions = async (req: AuthRequest, res: Response) => {
             userType: true,
           },
         },
+        campaign: {
+          select: {
+            name: true,
+            commissionRate: true,
+            secondaryRate: true,
+          },
+        },
         referral: {
           include: {
-            campaign: {
-              select: { 
-                name: true,
-                commissionRate: true,
-                secondaryRate: true,
-              },
-            },
             referrer: {
               select: {
                 firstName: true,
@@ -68,7 +69,8 @@ export const updateCommissionStatus = async (
     const { id } = req.params;
     const { status } = req.body;
 
-    if (user.role !== UserRole.ADMIN) {
+    const isAdmin = user.role === UserRole.ADMIN || user.userType === UserType.ADMIN;
+    if (!isAdmin) {
       return res
         .status(403)
         .json({ error: "Only admins can update commission status" });
