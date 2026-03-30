@@ -1592,10 +1592,10 @@ export const Reports = () => {
           Reports
         </h1>
         <div className="flex items-center gap-[8px]">
-          <div className="relative">
+          <div className="relative flex-1">
             <button
               onClick={() => setPeriodOpen((o) => !o)}
-              className="flex items-center justify-between gap-[8px] bg-[#2a2a2a] border border-[rgba(255,255,255,0.12)] rounded-[12px] px-[16px] py-[10px] text-[14px] text-[#ccc] hover:bg-[#333] transition-colors min-w-[180px]"
+              className="flex items-center justify-between gap-[8px] w-full bg-[#2a2a2a] border border-[rgba(255,255,255,0.12)] rounded-[12px] px-[16px] py-[10px] text-[14px] text-[#ccc] hover:bg-[#333] transition-colors"
             >
               {(() => {
                 if (calRangeStart && calRangeEnd)
@@ -1640,7 +1640,7 @@ export const Reports = () => {
           </div>
           <button
             onClick={() => setCalOpen((o) => !o)}
-            className="flex items-center justify-center w-[42px] h-[42px] bg-[#2a2a2a] border border-[rgba(255,255,255,0.12)] rounded-[12px] hover:bg-[#333] transition-colors"
+            className="flex items-center justify-center w-[42px] h-[42px] shrink-0 bg-[#2a2a2a] border border-[rgba(255,255,255,0.12)] rounded-[12px] hover:bg-[#333] transition-colors"
           >
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
               <rect x="2" y="3.5" width="14" height="12" rx="2" stroke="#9e9e9e" strokeWidth="1.4"/>
