@@ -204,7 +204,6 @@ export const Models = () => {
           onClose={() => setIsCreateUserModalOpen(false)}
           onCreated={(newUser) => {
             setAllUsers(prev => [newUser, ...prev]);
-            setIsCreateUserModalOpen(false);
           }}
         />
       </div>
@@ -439,6 +438,8 @@ const ReferralList = ({ referrals }: { referrals: Referral[] }) => {
                       ? 'bg-[#006622] border-[#00d948] text-[#28ff70]'
                       : referral.status === 'PENDING'
                       ? 'bg-[#664400] border-[#cc8800] text-[#ffaa00]'
+                      : referral.status === 'INACTIVE'
+                      ? 'bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]'
                       : 'bg-[#660000] border-[#cc0000] text-[#ff2a2a]'
                   }`}
                 >

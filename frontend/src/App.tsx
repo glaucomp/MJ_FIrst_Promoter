@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DashboardLayout } from './components/DashboardLayout';
 import { Dashboard } from './pages/Dashboard';
@@ -123,12 +123,12 @@ function AppRoutes() {
           <div className="min-h-screen bg-[#212121] flex flex-col items-center justify-center gap-[16px]">
             <p className="text-white text-[32px] font-bold">404</p>
             <p className="text-[#9e9e9e] text-[16px]">Page not found</p>
-            <a
-              href="/dashboard"
+            <Link
+              to="/dashboard"
               className="mt-[8px] text-[#ff2a71] text-[14px] font-semibold hover:underline"
             >
               Go to Dashboard
-            </a>
+            </Link>
           </div>
         }
       />

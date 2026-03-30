@@ -18,9 +18,12 @@ const mapApiUserToUser = (apiUser: any): User => {
   const userType = apiUser.userType?.toLowerCase() || apiUser.role?.toLowerCase();
   const role = userType as UserRole;
 
+  const nameParts = [apiUser.firstName, apiUser.lastName].filter(Boolean);
+  const name = nameParts.length > 0 ? nameParts.join(' ') : apiUser.email;
+
   return {
     id: apiUser.id,
-    name: `${apiUser.firstName} ${apiUser.lastName}`,
+    name,
     email: apiUser.email,
     role: role,
     baseRole: role,
@@ -34,19 +37,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const storedToken = localStorage.getItem('auth_token');
-    const storedUser = localStorage.getItem('auth_user');
+    const init = async () => {
+      const storedToken = localStorage.getItem('auth_token');
 
-    if (storedToken && storedUser) {
-      try {
-        setToken(storedToken);
-        setUser(JSON.parse(storedUser));
-      } catch (err) {
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('auth_user');
+      if (storedToken) {
+        try {
+          const apiUser = await authApi.getCurrentUser(storedToken);
+          const mappedUser = mapApiUserToUser(apiUser);
+          setToken(storedToken);
+          setUser(mappedUser);
+          localStorage.setItem('auth_user', JSON.stringify(mappedUser));
+        } catch {
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('auth_user');
+        }
       }
-    }
-    setIsLoading(false);
+      setIsLoading(false);
+    };
+
+    init();
   }, []);
 
   const login = async (email: string, password: string) => {

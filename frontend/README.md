@@ -40,9 +40,9 @@ A responsive dashboard application for the TeaseMe platform with role-based acce
 
 ## Tech Stack
 
-- **Frontend**: React 18 + TypeScript
+- **Frontend**: React 19 + TypeScript
 - **Styling**: Tailwind CSS v4 with Figma design tokens
-- **Routing**: React Router v6
+- **Routing**: React Router v7
 - **Build Tool**: Vite
 - **State Management**: React Context API
 - **Design System**: Integrated directly from Figma variables

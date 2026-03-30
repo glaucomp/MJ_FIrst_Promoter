@@ -83,8 +83,13 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
     }
   };
 
-  const handleCopyUrl = () => {
-    navigator.clipboard.writeText(generatedUrl);
+  const handleCopyUrl = async () => {
+    if (!generatedUrl) return;
+    try {
+      await navigator.clipboard.writeText(generatedUrl);
+    } catch {
+      setError('Failed to copy URL to clipboard');
+    }
   };
 
   const handleClose = () => {
