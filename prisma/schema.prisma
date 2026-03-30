@@ -114,6 +114,7 @@ model Campaign {
   trackingLinks     TrackingLink[]
   commissions       Commission[]
   customers         Customer[]
+  transactions      Transaction[]
 
   @@index([createdById])
   @@index([isActive])
@@ -145,6 +146,7 @@ model Referral {
   commissions       Commission[]
   clicks            ClickTracking[]
   customers         Customer[]
+  transactions      Transaction[]
 
   @@index([inviteCode])
   @@index([campaignId])
@@ -216,6 +218,7 @@ model Customer {
   referralId      String?
   referral        Referral? @relation(fields: [referralId], references: [id])
   commissions     Commission[]
+  transactions    Transaction[]
 
   @@index([campaignId])
   @@index([referralId])
@@ -223,11 +226,39 @@ model Customer {
   @@map("customers")
 }
 
+// Transaction table - raw sale/refund events
+model Transaction {
+  id              String   @id @default(cuid())
+  eventId         String   @unique // External event_id from payment system
+  type            String   @default("sale") // sale, refund
+  saleAmount      Float    // Original transaction value (in dollars)
+  currency        String   @default("USD")
+  status          String   @default("completed") // completed, refunded
+  plan            String?
+  createdAt       DateTime @default(now())
+
+  // Relationships
+  customerId      String?
+  customer        Customer?  @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  campaignId      String?
+  campaign        Campaign?  @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  referralId      String?
+  referral        Referral?  @relation(fields: [referralId], references: [id])
+  originalTransactionId String? // For refunds: points to original sale
+  commissions     Commission[]
+
+  @@index([eventId])
+  @@index([customerId])
+  @@index([campaignId])
+  @@map("transactions")
+}
+
 // Commission table - tracks earned commissions
 model Commission {
   id              String   @id @default(cuid())
   amount          Float    // Commission amount in currency
   percentage      Float    // Percentage used for calculation
+  saleAmount      Float?   // Original transaction value this commission was calculated from
   status          String   @default("unpaid") // unpaid, paid, pending
   description     String?
   createdAt       DateTime @default(now())
@@ -236,16 +267,19 @@ model Commission {
   // Relationships
   userId          String
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  campaignId      String?  // Optional - tracks which campaign generated this
+  campaignId      String?
   campaign        Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
   referralId      String?
   referral        Referral? @relation(fields: [referralId], references: [id])
   customerId      String?
   customer        Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  transactionId   String?
+  transaction     Transaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([campaignId])
   @@index([status])
   @@index([customerId])
+  @@index([transactionId])
   @@map("commissions")
 }

@@ -170,6 +170,20 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
       }
     });
 
+    // Create Transaction record (source of truth for the sale)
+    const transaction = await prisma.transaction.create({
+      data: {
+        eventId: event_id,
+        type: 'sale',
+        saleAmount: revenue,
+        status: 'completed',
+        plan: plan || null,
+        customerId: customer.id,
+        campaignId: campaign.id,
+        referralId: referral.id,
+      }
+    });
+
     // Create Level 1 Commission
     const level1Amount = (revenue * campaign.commissionRate) / 100;
 
@@ -177,12 +191,14 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
       data: {
         amount: level1Amount,
         percentage: campaign.commissionRate,
+        saleAmount: revenue,
         status: 'unpaid',
         description: `Direct customer sale ($${revenue.toFixed(2)})`,
         userId: referral.referrerId,
         campaignId: campaign.id,
         referralId: referral.id,
-        customerId: customer.id
+        customerId: customer.id,
+        transactionId: transaction.id,
       }
     });
 
@@ -198,12 +214,14 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
         data: {
           amount: level2Amount,
           percentage: campaign.secondaryRate,
+          saleAmount: revenue,
           status: 'unpaid',
           description: `From ${referral.referrer.firstName}'s sale ($${revenue.toFixed(2)})`,
           userId: referral.parentReferral.referrerId,
           campaignId: campaign.id,
           referralId: referral.parentReferral.id,
-          customerId: customer.id
+          customerId: customer.id,
+          transactionId: transaction.id,
         }
       });
 
@@ -213,7 +231,9 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
     res.status(200).json({
       success: true,
       event_id,
+      transaction_id: transaction.id,
       customer_id: customer.id,
+      sale_amount: revenue,
       commissions: {
         level1: {
           id: commission1.id,
@@ -322,6 +342,25 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
     const refundRevenue = amount;
     const campaign = customer.referral.campaign;
 
+    // Find original transaction to link refund
+    const originalTransaction = await prisma.transaction.findFirst({
+      where: { customerId: customer.id, type: 'sale' }
+    });
+
+    // Create refund Transaction record
+    const refundTransaction = await prisma.transaction.create({
+      data: {
+        eventId: `refund-${event_id}`,
+        type: 'refund',
+        saleAmount: refundRevenue,
+        status: 'refunded',
+        customerId: customer.id,
+        campaignId: campaign.id,
+        referralId: customer.referral.id,
+        originalTransactionId: originalTransaction?.id ?? null,
+      }
+    });
+
     // Create negative commission for Level 1
     const level1RefundAmount = -(refundRevenue * campaign.commissionRate) / 100;
 
@@ -329,10 +368,14 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
       data: {
         amount: level1RefundAmount,
         percentage: campaign.commissionRate,
-        status: 'paid', // Refunds are processed immediately
+        saleAmount: refundRevenue,
+        status: 'paid',
+        description: `Refund ($${refundRevenue.toFixed(2)})`,
         userId: customer.referral.referrerId,
         campaignId: campaign.id,
-        referralId: customer.referral.id
+        referralId: customer.referral.id,
+        customerId: customer.id,
+        transactionId: refundTransaction.id,
       }
     });
 
@@ -344,10 +387,14 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
         data: {
           amount: level2RefundAmount,
           percentage: campaign.secondaryRate,
+          saleAmount: refundRevenue,
           status: 'paid',
+          description: `Refund override ($${refundRevenue.toFixed(2)})`,
           userId: customer.referral.parentReferral.referrerId,
           campaignId: campaign.id,
-          referralId: customer.referral.parentReferral.id
+          referralId: customer.referral.parentReferral.id,
+          customerId: customer.id,
+          transactionId: refundTransaction.id,
         }
       });
     }
@@ -358,9 +405,18 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
       data: { status: 'cancelled' }
     });
 
+    // Mark original transaction as refunded
+    if (originalTransaction) {
+      await prisma.transaction.update({
+        where: { id: originalTransaction.id },
+        data: { status: 'refunded' }
+      });
+    }
+
     res.json({
       success: true,
       event_id,
+      transaction_id: refundTransaction.id,
       refund_amount: refundRevenue,
       commissions_adjusted: true
     });

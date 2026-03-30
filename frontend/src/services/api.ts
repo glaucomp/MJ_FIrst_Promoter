@@ -283,10 +283,62 @@ export const modelsApi = {
   },
 };
 
+export interface Transaction {
+  id: string;
+  eventId: string;
+  type: 'sale' | 'refund';
+  saleAmount: number;
+  status: 'completed' | 'refunded';
+  createdAt: string;
+}
+
+export interface TransactionFull {
+  id: string;
+  eventId: string;
+  type: 'sale' | 'refund';
+  saleAmount: number;
+  currency: string;
+  status: 'completed' | 'refunded';
+  plan: string | null;
+  createdAt: string;
+  customer: {
+    id: string;
+    email: string | null;
+    name: string | null;
+    revenue: number;
+  } | null;
+  campaign: {
+    id: string;
+    name: string;
+    commissionRate: number;
+  } | null;
+  referral: {
+    referrer: {
+      id: string;
+      firstName: string | null;
+      lastName: string | null;
+      email: string;
+    };
+  } | null;
+  commissions: {
+    id: string;
+    amount: number;
+    percentage: number;
+    status: string;
+    user: {
+      id: string;
+      firstName: string | null;
+      lastName: string | null;
+      email: string;
+    };
+  }[];
+}
+
 export interface Commission {
   id: string;
   amount: number;
   percentage: number;
+  saleAmount: number | null;
   status: 'unpaid' | 'pending' | 'paid';
   description: string | null;
   createdAt: string;
@@ -315,6 +367,7 @@ export interface Commission {
     name: string;
     revenue: number;
   } | null;
+  transaction: Transaction | null;
 }
 
 export const commissionApi = {
@@ -334,6 +387,33 @@ export const commissionApi = {
     });
     const data = await handleResponse(response, 'Failed to update commission status');
     return data.commission;
+  },
+};
+
+export interface TransactionListResponse {
+  transactions: TransactionFull[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export const transactionApi = {
+  async getAll(params?: {
+    period?: 'week' | 'month' | '3month' | 'all';
+    page?: number;
+    limit?: number;
+  }): Promise<TransactionListResponse> {
+    const query = new URLSearchParams();
+    if (params?.period) query.set('period', params.period);
+    if (params?.page) query.set('page', String(params.page));
+    if (params?.limit) query.set('limit', String(params.limit));
+    const qs = query.toString();
+    const url = qs ? `${API_URL}/transactions?${qs}` : `${API_URL}/transactions`;
+    const response = await fetch(url, {
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response, 'Failed to fetch transactions');
   },
 };
 

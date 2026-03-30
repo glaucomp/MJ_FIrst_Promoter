@@ -1,7 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { commissionApi, modelsApi, type Commission, type ApiUser, type Referral } from '../services/api';
+import { commissionApi, modelsApi, transactionApi, type Commission, type ApiUser, type Referral, type TransactionFull } from '../services/api';
 import { Chart } from '../components/Chart';
 
 // ─── types & constants ───────────────────────────────────────────────────────
@@ -30,13 +30,6 @@ const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const isTier1 = (c: Commission) =>
   c.campaign?.commissionRate != null && c.percentage === c.campaign.commissionRate;
 
-const txLabel = (c: Commission): string => {
-  if (c.amount < 0) return 'Refund';
-  if (isTier1(c)) return 'Deposit';
-  const ut = c.user.userType?.toLowerCase() ?? '';
-  if (ut === 'account_manager' || ut === 'team_manager') return 'Manager';
-  return 'Promoter';
-};
 
 const cutoffMs = (days: number) =>
   days > 0 ? Date.now() - days * 86_400_000 : 0;
@@ -119,6 +112,721 @@ const ChangeBadge = ({ value, positive }: BadgeProps) => (
   </span>
 );
 
+// ─── TxRow (non-admin) ────────────────────────────────────────────────────────
+
+const statusColors: Record<string, { bg: string; text: string }> = {
+  paid:    { bg: 'rgba(16,185,129,0.15)',  text: '#10b981' },
+  pending: { bg: 'rgba(251,191,36,0.15)',  text: '#fbbf24' },
+  unpaid:  { bg: 'rgba(255,255,255,0.06)', text: '#9e9e9e' },
+};
+
+const TxRow = ({ tx, money }: { tx: Commission; money: (n: number) => string }) => {
+  const [expanded, setExpanded] = useState(false);
+  const positive = tx.amount >= 0;
+  const isRefund = tx.amount < 0;
+  const tier1 = isTier1(tx);
+  const tierLabel = tier1 ? 'T1' : 'T2';
+  const tierBg   = tier1 ? 'rgba(59,130,246,0.2)'  : 'rgba(245,158,11,0.2)';
+  const tierText = tier1 ? '#60a5fa'                : '#fbbf24';
+  const avatarBg = tier1 ? '#3b82f6'                : '#f59e0b';
+  const dt = new Date(tx.createdAt);
+  const d  = String(dt.getDate()).padStart(2, '0');
+  const m  = String(dt.getMonth() + 1).padStart(2, '0');
+  const y  = String(dt.getFullYear()).slice(-2);
+  const hh = dt.getHours() % 12 || 12;
+  const mn = String(dt.getMinutes()).padStart(2, '0');
+  const sc = String(dt.getSeconds()).padStart(2, '0');
+  const ap = dt.getHours() < 12 ? 'am' : 'pm';
+  const saleAmt = tx.saleAmount ?? tx.transaction?.saleAmount ?? tx.customer?.revenue ?? 0;
+  const statusStyle = statusColors[tx.status] ?? statusColors.unpaid;
+  const initials = `${tx.user.firstName?.[0] ?? ''}${tx.user.lastName?.[0] ?? ''}`.toUpperCase();
+
+  return (
+    <div>
+      <button
+        type="button"
+        className="w-full px-[16px] pt-[12px] pb-[10px] text-left bg-transparent border-none hover:bg-[rgba(255,255,255,0.02)] transition-colors"
+        onClick={() => setExpanded(p => !p)}
+      >
+        {/* Line 1: type + tier | amount */}
+        <div className="flex items-center justify-between mb-[6px]">
+          <div className="flex items-center gap-[6px]">
+            {isRefund && <span className="text-[13px] text-[#ef4444]">↩</span>}
+            <span className="text-[14px] font-semibold text-white">Sale</span>
+            <span
+              className="text-[10px] font-bold px-[6px] py-px rounded-[4px]"
+              style={{ background: tierBg, color: tierText, border: `1px solid ${tierText}44` }}
+            >
+              {tierLabel}
+            </span>
+          </div>
+          <span
+            className="text-[14px] font-bold"
+            style={{
+              color: positive ? '#00e676' : '#ef4444',
+              textDecoration: isRefund ? 'line-through' : 'none',
+            }}
+          >
+            {positive ? '+ ' : '− '}${money(Math.abs(tx.amount))}
+          </span>
+        </div>
+
+        {/* Line 2: avatar + name | status badge */}
+        <div className="flex items-center justify-between mb-[6px]">
+          <div className="flex items-center gap-[6px]">
+            <div
+              className="w-[20px] h-[20px] rounded-full flex items-center justify-center text-[8px] font-bold text-white shrink-0"
+              style={{ background: avatarBg }}
+            >
+              {initials}
+            </div>
+            <span className="text-[12px] text-[#ccc]">
+              {tx.user.firstName} {tx.user.lastName}
+            </span>
+          </div>
+          <span
+            className="text-[11px] font-semibold px-[9px] py-[2px] rounded-full capitalize"
+            style={{ background: statusStyle.bg, color: statusStyle.text, border: `1px solid ${statusStyle.text}33` }}
+          >
+            {tx.status}
+          </span>
+        </div>
+
+        {/* Line 3: date | chevron */}
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] text-[#555]">
+            {d}/{m}/{y} {hh}:{mn}:{sc}{ap}
+          </span>
+          <svg
+            width="14" height="14" viewBox="0 0 14 14" fill="none"
+            className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+            style={{ color: '#555' }}
+          >
+            <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+      </button>
+
+      {/* ── Expanded detail ── */}
+      {expanded && (
+        <div
+          className="mx-[16px] mb-[10px] rounded-[10px] overflow-hidden text-[12px]"
+          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
+        >
+          {saleAmt > 0 && (
+            <div className="flex justify-between px-[14px] py-[9px]" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+              <span className="text-[#666]">Sale Amount</span>
+              <span className="font-semibold text-white">${money(saleAmt)}</span>
+            </div>
+          )}
+          <div className="flex justify-between px-[14px] py-[9px]" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+            <span className="text-[#666]">Commission</span>
+            <div className="flex items-center gap-[6px]">
+              <span className="font-bold" style={{ color: positive ? '#00e676' : '#ef4444' }}>
+                {positive ? '+' : '−'}${money(Math.abs(tx.amount))}
+              </span>
+              <span className="text-[#555]">{tx.percentage}%</span>
+            </div>
+          </div>
+          {tx.customer && (
+            <div className="flex justify-between px-[14px] py-[9px]" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+              <span className="text-[#666]">Customer</span>
+              <span className="text-[#ccc]">{tx.customer.email || tx.customer.name}</span>
+            </div>
+          )}
+          {tx.campaign && (
+            <div className="flex justify-between items-center px-[14px] py-[9px]">
+              <span className="text-[#666]">Campaign</span>
+              <span
+                className="text-[10px] font-semibold px-[8px] py-[2px] rounded-full text-white"
+                style={{ background: 'rgba(255,15,95,0.2)', border: '1px solid rgba(255,15,95,0.3)' }}
+              >
+                {tx.campaign.name}
+              </span>
+            </div>
+          )}
+          {tx.description && (
+            <div className="px-[14px] py-[9px]" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+              <span className="text-[#555] italic">{tx.description}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      <HDivider />
+    </div>
+  );
+};
+
+// ─── AdminTxRow ──────────────────────────────────────────────────────────────
+
+const AdminTxRow = ({ tx, money }: { tx: TransactionFull; money: (n: number) => string }) => {
+  const [expanded, setExpanded] = useState(false);
+  const isDeposit = tx.type === 'sale';
+  const dt = new Date(tx.createdAt);
+  const d = String(dt.getDate()).padStart(2, '0');
+  const m = String(dt.getMonth() + 1).padStart(2, '0');
+  const y = String(dt.getFullYear()).slice(-2);
+  const hh = dt.getHours() % 12 || 12;
+  const min = String(dt.getMinutes()).padStart(2, '0');
+  const sec = String(dt.getSeconds()).padStart(2, '0');
+  const ampm = dt.getHours() < 12 ? 'am' : 'pm';
+  const customerLabel = tx.customer?.name || tx.customer?.email || '—';
+
+  return (
+    <div>
+      <button
+        type="button"
+        className="w-full flex items-center gap-[12px] px-[16px] py-[13px] text-left bg-transparent border-none hover:bg-[rgba(255,255,255,0.02)] transition-colors"
+        onClick={() => setExpanded(p => !p)}
+      >
+        {/* Type badge */}
+        <div
+          className="w-[28px] h-[28px] rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0"
+          style={{ background: isDeposit ? '#10b981' : '#ef4444' }}
+        >
+          {isDeposit ? '↑' : '↩'}
+        </div>
+
+        {/* Label + customer + date */}
+        <div className="flex-1 min-w-0 text-left">
+          <div className="flex items-center gap-[6px] flex-wrap">
+            <span className="text-[14px] font-semibold text-white">
+              {isDeposit ? 'Deposit' : 'Refund'}
+            </span>
+            <span className="text-[12px] text-[#9e9e9e] truncate">{customerLabel}</span>
+          </div>
+          <div className="text-[11px] text-[#555] mt-px">
+            {d}/{m}/{y} {hh}:{min}:{sec}{ampm}
+          </div>
+        </div>
+
+        {/* Amount + chevron */}
+        <div className="flex items-center gap-[8px] shrink-0">
+          <span
+            className="text-[14px] font-bold"
+            style={{ color: isDeposit ? '#00e676' : '#ef4444' }}
+          >
+            {isDeposit ? '+ ' : '− '}${money(tx.saleAmount)}
+          </span>
+          <svg
+            width="14" height="14" viewBox="0 0 14 14" fill="none"
+            className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+            style={{ color: '#555' }}
+          >
+            <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+      </button>
+
+      {/* ── Expanded detail ── */}
+      {expanded && (
+        <div
+          className="mx-[16px] mb-[12px] rounded-[10px] overflow-hidden"
+          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
+        >
+          {/* Customer */}
+          {tx.customer && (
+            <div
+              className="flex items-center justify-between px-[14px] py-[10px]"
+              style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}
+            >
+              <span className="text-[11px] text-[#666] uppercase tracking-[0.07em]">Customer</span>
+              <div className="text-right">
+                <div className="text-[12px] font-medium text-white">
+                  {tx.customer.name || tx.customer.email}
+                </div>
+                {tx.customer.name && tx.customer.email && (
+                  <div className="text-[10px] text-[#666]">{tx.customer.email}</div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Campaign */}
+          {tx.campaign && (
+            <div
+              className="flex items-center justify-between px-[14px] py-[10px]"
+              style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}
+            >
+              <span className="text-[11px] text-[#666] uppercase tracking-[0.07em]">Campaign</span>
+              <span
+                className="text-[10px] font-semibold px-[8px] py-[3px] rounded-full text-white"
+                style={{ background: 'rgba(255,15,95,0.2)', border: '1px solid rgba(255,15,95,0.3)' }}
+              >
+                {tx.campaign.name}
+              </span>
+            </div>
+          )}
+
+          {/* Sale amount */}
+          <div
+            className="flex items-center justify-between px-[14px] py-[10px]"
+            style={{ borderBottom: tx.commissions.length > 0 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}
+          >
+            <span className="text-[11px] text-[#666] uppercase tracking-[0.07em]">
+              {isDeposit ? 'Sale Amount' : 'Refund Amount'}
+            </span>
+            <span
+              className="text-[13px] font-bold"
+              style={{ color: isDeposit ? '#00e676' : '#ef4444' }}
+            >
+              {isDeposit ? '+ ' : '− '}${money(tx.saleAmount)}
+            </span>
+          </div>
+
+          {/* Commissions breakdown */}
+          {tx.commissions.length > 0 && (
+            <div className="px-[14px] py-[10px] flex flex-col gap-[8px]">
+              <span className="text-[11px] text-[#666] uppercase tracking-[0.07em]">Commissions</span>
+              {tx.commissions.map((c, idx) => {
+                const isT1 = idx === 0 || tx.commissions.findIndex(x => x.id === c.id) === 0;
+                const tierBg = isT1 ? '#3b82f6' : '#f59e0b';
+                const commPositive = c.amount >= 0;
+                const cStatus = statusColors[c.status] ?? statusColors.unpaid;
+                return (
+                  <div
+                    key={c.id}
+                    className="flex items-center gap-[10px] py-[8px] px-[10px] rounded-[8px]"
+                    style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}
+                  >
+                    {/* Avatar */}
+                    <div
+                      className="w-[26px] h-[26px] rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0"
+                      style={{ background: tierBg }}
+                    >
+                      {(c.user.firstName?.[0] ?? '?')}{(c.user.lastName?.[0] ?? '')}
+                    </div>
+                    {/* Name */}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[12px] font-medium text-white truncate">
+                        {c.user.firstName} {c.user.lastName}
+                      </div>
+                      <div className="text-[10px] text-[#666] truncate">{c.user.email}</div>
+                    </div>
+                    {/* Rate */}
+                    <span className="text-[11px] text-[#555] shrink-0">{c.percentage}%</span>
+                    {/* Amount */}
+                    <span
+                      className="text-[13px] font-bold shrink-0"
+                      style={{ color: commPositive ? '#00e676' : '#ef4444' }}
+                    >
+                      {commPositive ? '+' : '−'}${money(Math.abs(c.amount))}
+                    </span>
+                    {/* Status badge */}
+                    <span
+                      className="text-[10px] font-semibold px-[7px] py-[2px] rounded-full capitalize shrink-0"
+                      style={{ background: cStatus.bg, color: cStatus.text, border: `1px solid ${cStatus.text}33` }}
+                    >
+                      {c.status}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      <HDivider />
+    </div>
+  );
+};
+
+// ─── AdminTxListCard ──────────────────────────────────────────────────────────
+
+interface AdminTxListCardProps {
+  transactions: TransactionFull[];
+  totalPages: number;
+  page: number;
+  setPage: (p: number) => void;
+  isOpen: boolean;
+  onToggle: () => void;
+  period: Period;
+  onPeriodChange: (p: Period) => void;
+  loading: boolean;
+  money: (n: number) => string;
+}
+
+const AdminTxListCard = ({
+  transactions, totalPages, page, setPage,
+  isOpen, onToggle, period, onPeriodChange, loading, money,
+}: AdminTxListCardProps) => {
+  const [periodMenuOpen, setPeriodMenuOpen] = useState(false);
+  const closePeriodMenu = useCallback(() => setPeriodMenuOpen(false), []);
+
+  const pages = useMemo(() => {
+    const arr: (number | '…')[] = [];
+    if (totalPages <= 6) {
+      for (let i = 1; i <= totalPages; i++) arr.push(i);
+    } else {
+      arr.push(1);
+      if (page > 3) arr.push('…');
+      for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) arr.push(i);
+      if (page < totalPages - 2) arr.push('…');
+      arr.push(totalPages);
+    }
+    return arr;
+  }, [totalPages, page]);
+
+  return (
+    <Card>
+      {/* Header */}
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full flex items-center justify-between px-[16px] py-[14px] hover:bg-[rgba(255,255,255,0.02)] transition-colors text-left bg-transparent border-none"
+      >
+        <span className="text-[14px] font-semibold text-white">Transactions List</span>
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className={`text-[#9e9e9e] transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>
+          <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <>
+          <HDivider />
+
+          {/* Filter bar */}
+          <div className="flex items-center gap-[8px] px-[16px] py-[10px]">
+            <div className="relative flex-1">
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setPeriodMenuOpen(o => !o); }}
+                className="flex items-center justify-between w-full px-[12px] py-[7px] rounded-[8px] text-[13px] text-white transition-colors hover:bg-[#333]"
+                style={{ background: '#2a2a2a', border: '1px solid rgba(255,255,255,0.08)' }}
+              >
+                <span>{PERIOD_LABELS[period]}</span>
+                <span className="text-[10px] text-[#9e9e9e] ml-[6px]">▾</span>
+              </button>
+
+              {periodMenuOpen && (
+                <>
+                  <button
+                    type="button"
+                    aria-label="Close dropdown"
+                    className="fixed inset-0 z-10 cursor-default bg-transparent border-none p-0"
+                    onClick={closePeriodMenu}
+                  />
+                  <div
+                    className="absolute left-0 top-[38px] z-20 rounded-[8px] py-[4px] min-w-full"
+                    style={{ background: '#2a2a2a', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}
+                  >
+                    {(Object.keys(PERIOD_LABELS) as Period[]).map(p => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => { onPeriodChange(p); setPeriodMenuOpen(false); }}
+                        className="w-full text-left px-[14px] py-[8px] text-[13px] transition-colors hover:bg-[rgba(255,255,255,0.06)]"
+                        style={{ color: period === p ? '#ff0f5f' : 'white' }}
+                      >
+                        {PERIOD_LABELS[p]}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Calendar icon */}
+            <button
+              type="button"
+              className="flex items-center justify-center w-[34px] h-[34px] rounded-[8px] text-[#9e9e9e] hover:text-white transition-colors"
+              style={{ background: '#2a2a2a', border: '1px solid rgba(255,255,255,0.08)' }}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <rect x="2" y="2.5" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.3" />
+                <path d="M2 6h12" stroke="currentColor" strokeWidth="1.3" />
+                <path d="M5.5 1.5v2M10.5 1.5v2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+              </svg>
+            </button>
+
+            {/* Filter icon */}
+            <button
+              type="button"
+              className="flex items-center justify-center w-[34px] h-[34px] rounded-[8px] text-[#9e9e9e] hover:text-white transition-colors"
+              style={{ background: '#2a2a2a', border: '1px solid rgba(255,255,255,0.08)' }}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M2 4h12M5 8h6M7.5 12h1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
+
+          <HDivider />
+
+          {/* Rows */}
+          {loading && (
+            <div className="flex items-center justify-center py-[40px]">
+              <span className="text-[#9e9e9e] text-[14px]">Loading transactions…</span>
+            </div>
+          )}
+          {!loading && transactions.length === 0 && (
+            <div className="flex flex-col items-center py-[40px] gap-[8px]">
+              <span className="text-[32px]">📊</span>
+              <span className="text-[14px] text-[#9e9e9e]">No transactions for this period</span>
+            </div>
+          )}
+          {!loading && transactions.length > 0 && transactions.map(tx => (
+            <AdminTxRow key={tx.id} tx={tx} money={money} />
+          ))}
+
+          {/* Pagination */}
+          {!loading && totalPages > 1 && (
+            <div className="flex items-center justify-center gap-[5px] px-[16px] py-[12px]">
+              <button
+                type="button"
+                disabled={page === 1}
+                onClick={() => setPage(Math.max(1, page - 1))}
+                className="w-[28px] h-[28px] rounded-[6px] text-[13px] text-[#9e9e9e] border border-[rgba(255,255,255,0.08)] hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                ‹
+              </button>
+              {pages.map((p) => {
+                if (p === '…') {
+                  return <span key={`el-${page}`} className="text-[#555] text-[12px] px-[2px]">…</span>;
+                }
+                return (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setPage(p)}
+                    className="w-[28px] h-[28px] rounded-[6px] text-[13px] font-medium transition-colors"
+                    style={{
+                      background: page === p ? '#ff0f5f' : 'transparent',
+                      color: page === p ? 'white' : '#9e9e9e',
+                      border: page === p ? 'none' : '1px solid rgba(255,255,255,0.08)',
+                    }}
+                  >
+                    {p}
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                disabled={page === totalPages}
+                onClick={() => setPage(Math.min(totalPages, page + 1))}
+                className="w-[28px] h-[28px] rounded-[6px] text-[13px] text-[#9e9e9e] border border-[rgba(255,255,255,0.08)] hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                ›
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </Card>
+  );
+};
+
+// ─── TxListCard (non-admin) ───────────────────────────────────────────────────
+
+type StatusTab = 'all' | 'unpaid' | 'pending' | 'paid';
+
+interface TxListCardProps {
+  allTransactions: Commission[];
+  isOpen: boolean;
+  onToggle: () => void;
+  period: Period;
+  onPeriodChange: (p: Period) => void;
+  money: (n: number) => string;
+}
+
+const TxListCard = ({
+  allTransactions, isOpen, onToggle, period, onPeriodChange, money,
+}: TxListCardProps) => {
+  const [periodMenuOpen, setPeriodMenuOpen] = useState(false);
+  const [statusTab, setStatusTab]           = useState<StatusTab>('all');
+  const [search, setSearch]                 = useState('');
+  const [page, setPage]                     = useState(1);
+  const closePeriodMenu = useCallback(() => setPeriodMenuOpen(false), []);
+
+  // Reset page when filters change
+  useEffect(() => { setPage(1); }, [statusTab, search, period]);
+
+  const counts = useMemo(() => ({
+    all:     allTransactions.length,
+    unpaid:  allTransactions.filter(t => t.status === 'unpaid').length,
+    pending: allTransactions.filter(t => t.status === 'pending').length,
+    paid:    allTransactions.filter(t => t.status === 'paid').length,
+  }), [allTransactions]);
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    return allTransactions.filter(tx => {
+      if (statusTab !== 'all' && tx.status !== statusTab) return false;
+      if (q) {
+        const name = `${tx.user.firstName ?? ''} ${tx.user.lastName ?? ''}`.toLowerCase();
+        const email = tx.user.email.toLowerCase();
+        const campaign = tx.campaign?.name?.toLowerCase() ?? '';
+        const customer = (tx.customer?.email ?? tx.customer?.name ?? '').toLowerCase();
+        if (!name.includes(q) && !email.includes(q) && !campaign.includes(q) && !customer.includes(q)) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [allTransactions, statusTab, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+  const pageTx = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+
+  const pages = useMemo(() => {
+    const arr: (number | '…')[] = [];
+    if (totalPages <= 6) {
+      for (let i = 1; i <= totalPages; i++) arr.push(i);
+    } else {
+      arr.push(1);
+      if (page > 3) arr.push('…');
+      for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) arr.push(i);
+      if (page < totalPages - 2) arr.push('…');
+      arr.push(totalPages);
+    }
+    return arr;
+  }, [totalPages, page]);
+
+  const tabDefs: { key: StatusTab; label: string }[] = [
+    { key: 'all',     label: `All` },
+    { key: 'unpaid',  label: 'Unpaid' },
+    { key: 'pending', label: 'Pending' },
+    { key: 'paid',    label: 'Paid' },
+  ];
+
+  return (
+    <Card>
+      {/* Header */}
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full flex items-center justify-between px-[16px] py-[14px] hover:bg-[rgba(255,255,255,0.02)] transition-colors text-left bg-transparent border-none"
+      >
+        <span className="text-[14px] font-semibold text-white">Transactions List</span>
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className={`text-[#9e9e9e] transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>
+          <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <>
+          <HDivider />
+
+          {/* Period + icons row */}
+          <div className="flex items-center gap-[8px] px-[16px] py-[10px]">
+            <div className="relative flex-1">
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setPeriodMenuOpen(o => !o); }}
+                className="flex items-center justify-between w-full px-[12px] py-[7px] rounded-[8px] text-[13px] text-white transition-colors hover:bg-[#333]"
+                style={{ background: '#2a2a2a', border: '1px solid rgba(255,255,255,0.08)' }}
+              >
+                <span>{PERIOD_LABELS[period]}</span>
+                <span className="text-[10px] text-[#9e9e9e] ml-[6px]">▾</span>
+              </button>
+              {periodMenuOpen && (
+                <>
+                  <button type="button" aria-label="Close dropdown" className="fixed inset-0 z-10 cursor-default bg-transparent border-none p-0" onClick={closePeriodMenu} />
+                  <div className="absolute left-0 top-[38px] z-20 rounded-[8px] py-[4px] min-w-full" style={{ background: '#2a2a2a', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
+                    {(Object.keys(PERIOD_LABELS) as Period[]).map(p => (
+                      <button key={p} type="button" onClick={() => { onPeriodChange(p); setPeriodMenuOpen(false); }} className="w-full text-left px-[14px] py-[8px] text-[13px] transition-colors hover:bg-[rgba(255,255,255,0.06)]" style={{ color: period === p ? '#ff0f5f' : 'white' }}>
+                        {PERIOD_LABELS[p]}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+            <button type="button" className="flex items-center justify-center w-[34px] h-[34px] rounded-[8px] text-[#9e9e9e] hover:text-white transition-colors" style={{ background: '#2a2a2a', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="2.5" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.3" /><path d="M2 6h12" stroke="currentColor" strokeWidth="1.3" /><path d="M5.5 1.5v2M10.5 1.5v2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
+            </button>
+            <button type="button" className="flex items-center justify-center w-[34px] h-[34px] rounded-[8px] text-[#9e9e9e] hover:text-white transition-colors" style={{ background: '#2a2a2a', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M5 8h6M7.5 12h1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
+            </button>
+          </div>
+
+          {/* Status tabs */}
+          <div className="flex items-center gap-[6px] px-[16px] pb-[10px] overflow-x-auto">
+            {tabDefs.map(({ key, label }) => {
+              const active = statusTab === key;
+              const count = counts[key];
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setStatusTab(key)}
+                  className="flex items-center gap-[5px] px-[10px] py-[5px] rounded-full text-[12px] font-medium whitespace-nowrap transition-all shrink-0"
+                  style={{
+                    background: active ? 'rgba(255,15,95,0.15)' : 'rgba(255,255,255,0.05)',
+                    border: active ? '1px solid rgba(255,15,95,0.5)' : '1px solid rgba(255,255,255,0.08)',
+                    color: active ? '#ff2a71' : '#9e9e9e',
+                  }}
+                >
+                  {key === 'all' && count > 0 && (
+                    <span
+                      className="text-[10px] font-bold px-[5px] py-px rounded-full"
+                      style={{ background: active ? '#ff0f5f' : 'rgba(255,255,255,0.1)', color: 'white' }}
+                    >
+                      {count}
+                    </span>
+                  )}
+                  {label}
+                  {key !== 'all' && (
+                    <span className="text-[10px] opacity-60">{count}</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Search */}
+          <div className="px-[16px] pb-[10px]">
+            <div className="relative">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="absolute left-[10px] top-1/2 -translate-y-1/2 text-[#666]">
+                <circle cx="6" cy="6" r="4" stroke="currentColor" strokeWidth="1.3" />
+                <path d="M9.5 9.5l2.5 2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+              </svg>
+              <input
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Name, Email, Campaign"
+                className="w-full pl-[30px] pr-[12px] py-[8px] rounded-[8px] text-[13px] text-white placeholder-[#555] focus:outline-none"
+                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+              />
+            </div>
+          </div>
+
+          <HDivider />
+
+          {/* Rows */}
+          {pageTx.length === 0 ? (
+            <div className="flex flex-col items-center py-[40px] gap-[8px]">
+              <span className="text-[32px]">📊</span>
+              <span className="text-[14px] text-[#9e9e9e]">No transactions found</span>
+            </div>
+          ) : (
+            pageTx.map(tx => <TxRow key={tx.id} tx={tx} money={money} />)
+          )}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-[5px] px-[16px] py-[12px]">
+              <button type="button" disabled={page === 1} onClick={() => setPage(p => Math.max(1, p - 1))} className="w-[28px] h-[28px] rounded-[6px] text-[13px] text-[#9e9e9e] border border-[rgba(255,255,255,0.08)] hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed">‹</button>
+              {pages.map((p) => {
+                if (p === '…') return <span key={`el-${page}`} className="text-[#555] text-[12px] px-[2px]">…</span>;
+                return (
+                  <button key={p} type="button" onClick={() => setPage(p)} className="w-[28px] h-[28px] rounded-[6px] text-[13px] font-medium transition-colors" style={{ background: page === p ? '#ff0f5f' : 'transparent', color: page === p ? 'white' : '#9e9e9e', border: page === p ? 'none' : '1px solid rgba(255,255,255,0.08)' }}>
+                    {p}
+                  </button>
+                );
+              })}
+              <button type="button" disabled={page === totalPages} onClick={() => setPage(p => Math.min(p + 1, totalPages))} className="w-[28px] h-[28px] rounded-[6px] text-[13px] text-[#9e9e9e] border border-[rgba(255,255,255,0.08)] hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed">›</button>
+            </div>
+          )}
+        </>
+      )}
+    </Card>
+  );
+};
+
 // ─── main component ───────────────────────────────────────────────────────────
 
 export const Reports = () => {
@@ -139,7 +847,11 @@ export const Reports = () => {
   const [period, setPeriod] = useState<Period>('week');
   const [periodOpen, setPeriodOpen] = useState(false);
   const [txOpen, setTxOpen] = useState(true);
-  const [page, setPage] = useState(1);
+  // Admin-only: real transaction records (1 per sale/refund)
+  const [adminTxList, setAdminTxList] = useState<TransactionFull[]>([]);
+  const [adminTxTotalPages, setAdminTxTotalPages] = useState(1);
+  const [adminTxPage, setAdminTxPage] = useState(1);
+  const [adminTxLoading, setAdminTxLoading] = useState(false);
 
   useEffect(() => {
     const tasks: Promise<unknown>[] = [
@@ -153,6 +865,23 @@ export const Reports = () => {
     }
     Promise.all(tasks).finally(() => setLoading(false));
   }, [isAdmin, isManager]);
+
+  // Fetch real transactions for admin whenever period or page changes
+  useEffect(() => {
+    if (!isAdmin) return;
+    setAdminTxLoading(true);
+    transactionApi
+      .getAll({ period, page: adminTxPage, limit: ITEMS_PER_PAGE })
+      .then(d => {
+        setAdminTxList(d.transactions);
+        setAdminTxTotalPages(d.totalPages);
+      })
+      .catch(() => {
+        setAdminTxList([]);
+        setAdminTxTotalPages(1);
+      })
+      .finally(() => setAdminTxLoading(false));
+  }, [isAdmin, period, adminTxPage]);
 
   // ── filtered slices ──────────────────────────────────────────────────────
 
@@ -182,9 +911,6 @@ export const Reports = () => {
     () => [...curr].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
     [curr],
   );
-  const totalPages = Math.max(1, Math.ceil(sortedTx.length / ITEMS_PER_PAGE));
-  const pageTx = sortedTx.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
-
   // ── workforce / user stats ───────────────────────────────────────────────
 
   const nonAdmin = useMemo(() => allUsers.filter(u => u.userType?.toLowerCase() !== 'admin'), [allUsers]);
@@ -292,7 +1018,7 @@ export const Reports = () => {
     [commissions],
   );
 
-  const selectPeriod = (p: Period) => { setPeriod(p); setPeriodOpen(false); setPage(1); };
+  const selectPeriod = (p: Period) => { setPeriod(p); setPeriodOpen(false); setAdminTxPage(1); };
 
   if (loading) {
     return (
@@ -436,128 +1162,29 @@ export const Reports = () => {
       </Card>
 
       {/* ── Transactions List ── */}
-      <Card>
-        <button
-          onClick={() => setTxOpen(o => !o)}
-          className="w-full flex items-center justify-between px-[16px] py-[14px] hover:bg-[rgba(255,255,255,0.02)] transition-colors"
-        >
-          <span className="text-[14px] font-semibold text-white">Transactions List</span>
-          <span className="text-[11px] text-[#9e9e9e]">{txOpen ? '▴' : '▾'}</span>
-        </button>
-
-        {txOpen && (
-          <>
-            <HDivider />
-            {pageTx.length === 0 ? (
-              <div className="flex flex-col items-center py-[40px] gap-[8px]">
-                <span className="text-[32px]">📊</span>
-                <span className="text-[14px] text-[#9e9e9e]">No transactions for this period</span>
-              </div>
-            ) : (
-              pageTx.map((tx, i) => {
-                const label = txLabel(tx);
-                const positive = tx.amount >= 0;
-                const tier1 = isTier1(tx);
-                let tierNum: number | null = null;
-                if (tx.amount >= 0) tierNum = tier1 ? 1 : 2;
-                const tierColor = tier1 ? '#3b82f6' : '#f59e0b';
-                const dt = new Date(tx.createdAt);
-                const d = String(dt.getDate()).padStart(2, '0');
-                const m = String(dt.getMonth() + 1).padStart(2, '0');
-                const y = String(dt.getFullYear()).slice(-2);
-                const h = String(dt.getHours()).padStart(2, '0');
-                const min = String(dt.getMinutes()).padStart(2, '0');
-                return (
-                  <div key={tx.id}>
-                    {i > 0 && <HDivider />}
-                    <div className="flex items-start gap-[12px] px-[16px] py-[12px] hover:bg-[rgba(255,255,255,0.02)] transition-colors">
-                      {/* Tier badge */}
-                      {tierNum !== null && (
-                        <div
-                          className="w-[28px] h-[28px] rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0 mt-px"
-                          style={{ background: tierColor }}
-                        >
-                          {tierNum}
-                        </div>
-                      )}
-
-                      {/* Main info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-[6px]">
-                          <span className="text-[14px] font-medium text-white">{label}</span>
-                          {isAdmin && (
-                            <span className="text-[12px] text-[#9e9e9e] truncate">
-                              {tx.user.firstName} {tx.user.lastName}
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-[11px] text-[#555] mt-px">{d}/{m}/{y} {h}:{min}</div>
-                        {isAdmin && tx.customer && (
-                          <div className="text-[11px] text-[#666] mt-px truncate">
-                            {tx.customer.name || tx.customer.email}
-                            {tx.customer.revenue > 0 && (
-                              <span className="text-[#555]"> · sale ${money(tx.customer.revenue)}</span>
-                            )}
-                          </div>
-                        )}
-                        {isAdmin && tx.campaign && (
-                          <span
-                            className="inline-flex items-center gap-[3px] mt-[4px] px-[6px] py-px rounded-full text-[10px] font-semibold text-white"
-                            style={{ background: 'rgba(255,15,95,0.2)', border: '1px solid rgba(255,15,95,0.3)' }}
-                          >
-                            {tx.campaign.name}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Amount */}
-                      <div className="text-right shrink-0">
-                        <div
-                          className="text-[14px] font-bold"
-                          style={{ color: positive ? '#10b981' : '#ef4444' }}
-                        >
-                          {positive ? '+' : '-'}${money(Math.abs(tx.amount))}
-                        </div>
-                        <div className="text-[11px] text-[#555] mt-px">{tx.percentage}%</div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-
-            {totalPages > 1 && (
-              <div className="flex items-center justify-end gap-[4px] px-[16px] py-[12px] border-t border-[rgba(255,255,255,0.05)]">
-                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                  const p = i + 1;
-                  return (
-                    <button
-                      key={p}
-                      onClick={() => setPage(p)}
-                      className="w-[28px] h-[28px] rounded-[6px] text-[13px] font-medium transition-colors"
-                      style={{
-                        background: page === p ? '#ff0f5f' : 'transparent',
-                        color: page === p ? 'white' : '#9e9e9e',
-                        border: page === p ? 'none' : '1px solid rgba(255,255,255,0.08)',
-                      }}
-                    >
-                      {p}
-                    </button>
-                  );
-                })}
-                {page < totalPages && (
-                  <button
-                    onClick={() => setPage(p => Math.min(p + 1, totalPages))}
-                    className="w-[28px] h-[28px] rounded-[6px] text-[13px] text-[#9e9e9e] border border-[rgba(255,255,255,0.08)] hover:text-white transition-colors"
-                  >
-                    ›
-                  </button>
-                )}
-              </div>
-            )}
-          </>
-        )}
-      </Card>
+      {isAdmin ? (
+        <AdminTxListCard
+          transactions={adminTxList}
+          totalPages={adminTxTotalPages}
+          page={adminTxPage}
+          setPage={setAdminTxPage}
+          isOpen={txOpen}
+          onToggle={() => setTxOpen(o => !o)}
+          period={period}
+          onPeriodChange={selectPeriod}
+          loading={adminTxLoading}
+          money={money}
+        />
+      ) : (
+        <TxListCard
+          allTransactions={sortedTx}
+          isOpen={txOpen}
+          onToggle={() => setTxOpen(o => !o)}
+          period={period}
+          onPeriodChange={selectPeriod}
+          money={money}
+        />
+      )}
 
       {/* ── Top Users ── (promoter only) */}
       {isPromoter && (

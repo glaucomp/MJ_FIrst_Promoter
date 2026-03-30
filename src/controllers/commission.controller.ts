@@ -9,7 +9,10 @@ export const getAllCommissions = async (req: AuthRequest, res: Response) => {
     const user = req.user!;
 
     const isAdmin = user.role === UserRole.ADMIN || user.userType === UserType.ADMIN;
-    const where = isAdmin ? {} : { userId: user.id };
+    // Admins see all commissions, but never commissions assigned to admin accounts
+    const where = isAdmin
+      ? { user: { role: { not: UserRole.ADMIN }, userType: { not: UserType.ADMIN } } }
+      : { userId: user.id };
 
     const commissions = await prisma.commission.findMany({
       where,
@@ -47,6 +50,16 @@ export const getAllCommissions = async (req: AuthRequest, res: Response) => {
             email: true,
             name: true,
             revenue: true,
+          },
+        },
+        transaction: {
+          select: {
+            id: true,
+            eventId: true,
+            type: true,
+            saleAmount: true,
+            status: true,
+            createdAt: true,
           },
         },
       },
