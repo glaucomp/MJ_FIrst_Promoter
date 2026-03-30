@@ -21,14 +21,25 @@ All tests passed! Your MJ Promoter is **100% ready** to replace FirstPromoter.
 
 ## 🔑 Your API Credentials
 
+> ⚠️ **Never commit real credentials to version control.** Use environment variables or a secrets manager. Run the key-generation script to obtain your actual values.
+
 ```
 API URL:      http://localhost:5555/api
-API Key:      fp_key_ByfKtLyM8sSCVl4G_buVY0QFeBUifmIZ
-Bearer Token: fp_token_4-mqzfOawT_slE8dAx1R2aKGnbz1i8_EV2oh8N6MCOXvC49G
-Account ID:   acc_kDP8UCZW2J-exA55
+API Key:      fp_key_YOUR_API_KEY_HERE
+Bearer Token: fp_token_YOUR_BEARER_TOKEN_HERE
+Account ID:   acc_YOUR_ACCOUNT_ID_HERE
 ```
 
-**⚠️ Save these credentials securely!**
+**Store credentials as environment variables:**
+
+```bash
+export MJFP_API_URL="http://localhost:5555/api"
+export MJFP_API_KEY="fp_key_YOUR_API_KEY_HERE"
+export MJFP_TOKEN="fp_token_YOUR_BEARER_TOKEN_HERE"
+export MJFP_ACCOUNT_ID="acc_YOUR_ACCOUNT_ID_HERE"
+```
+
+Or add them to a `.env` file (excluded from version control via `.gitignore`).
 
 ---
 
@@ -69,10 +80,12 @@ from app.integrations.mjfp import fp_create_promoter, MJFPConfig
 
 ### Step 3: Configure (THREE LINES!)
 ```python
-MJFPConfig.MJFP_API_URL = "http://localhost:5555/api"
-MJFPConfig.MJFP_API_KEY = "fp_key_ByfKtLyM8sSCVl4G_buVY0QFeBUifmIZ"
-MJFPConfig.MJFP_TOKEN = "fp_token_4-mqzfOawT_slE8dAx1R2aKGnbz1i8_EV2oh8N6MCOXvC49G"
-MJFPConfig.MJFP_ACCOUNT_ID = "acc_kDP8UCZW2J-exA55"
+# Load credentials from environment variables (recommended)
+import os
+MJFPConfig.MJFP_API_URL = os.environ["MJFP_API_URL"]
+MJFPConfig.MJFP_API_KEY = os.environ["MJFP_API_KEY"]
+MJFPConfig.MJFP_TOKEN = os.environ["MJFP_TOKEN"]
+MJFPConfig.MJFP_ACCOUNT_ID = os.environ["MJFP_ACCOUNT_ID"]
 ```
 
 ### Step 4: Use exactly as before (ZERO CHANGES!)
@@ -153,8 +166,8 @@ Before tracking sales, create at least one campaign:
 ```bash
 # Test tracking a sale (requires campaign + referral)
 curl -X POST http://localhost:5555/api/v2/track/sale \
-  -H "Authorization: Bearer fp_token_4-mqzfOawT_slE8dAx1R2aKGnbz1i8_EV2oh8N6MCOXvC49G" \
-  -H "Account-ID: acc_kDP8UCZW2J-exA55" \
+  -H "Authorization: Bearer fp_token_YOUR_BEARER_TOKEN_HERE" \
+  -H "Account-ID: acc_YOUR_ACCOUNT_ID_HERE" \
   -H "Content-Type: application/json" \
   -d '{
     "email":"buyer@test.com",

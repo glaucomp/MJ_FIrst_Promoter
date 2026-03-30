@@ -42,7 +42,7 @@ Production: Update to your deployed URL (e.g., `https://promoter.yourdomain.com/
 
 **Headers:**
 ```
-X-API-KEY: fp_key_ByfKtLyM8sSCVl4G_buVY0QFeBUifmIZ
+X-API-KEY: fp_key_YOUR_API_KEY_HERE
 Content-Type: application/json
 ```
 
@@ -83,8 +83,8 @@ Content-Type: application/json
 
 **Headers:**
 ```
-Authorization: Bearer fp_token_4-mqzfOawT_slE8dAx1R2aKGnbz1i8_EV2oh8N6MCOXvC49G
-Account-ID: acc_kDP8UCZW2J-exA55
+Authorization: Bearer fp_token_YOUR_BEARER_TOKEN_HERE
+Account-ID: acc_YOUR_ACCOUNT_ID_HERE
 Content-Type: application/json
 ```
 
@@ -270,11 +270,12 @@ from mjfp import (
     MJFPConfig
 )
 
-# 1. Configure (in your settings.py)
-MJFPConfig.MJFP_API_URL = "http://localhost:5555/api"  # or production URL
-MJFPConfig.MJFP_API_KEY = "fp_key_ByfKtLyM8sSCVl4G_buVY0QFeBUifmIZ"
-MJFPConfig.MJFP_TOKEN = "fp_token_4-mqzfOawT_slE8dAx1R2aKGnbz1i8_EV2oh8N6MCOXvC49G"
-MJFPConfig.MJFP_ACCOUNT_ID = "acc_kDP8UCZW2J-exA55"
+# 1. Configure from environment variables (in your settings.py)
+import os
+MJFPConfig.MJFP_API_URL = os.environ["MJFP_API_URL"]       # e.g. http://localhost:5555/api
+MJFPConfig.MJFP_API_KEY = os.environ["MJFP_API_KEY"]       # fp_key_YOUR_API_KEY_HERE
+MJFPConfig.MJFP_TOKEN = os.environ["MJFP_TOKEN"]           # fp_token_YOUR_BEARER_TOKEN_HERE
+MJFPConfig.MJFP_ACCOUNT_ID = os.environ["MJFP_ACCOUNT_ID"] # acc_YOUR_ACCOUNT_ID_HERE
 
 # 2. Create promoter (EXACTLY like FirstPromoter!)
 promoter = await fp_create_promoter(
@@ -311,7 +312,7 @@ async def process_topup(topup_record):
 ```bash
 # 1. Create a promoter
 curl -X POST http://localhost:5555/api/v1/promoters/create \
-  -H "X-API-KEY: fp_key_ByfKtLyM8sSCVl4G_buVY0QFeBUifmIZ" \
+  -H "X-API-KEY: fp_key_YOUR_API_KEY_HERE" \
   -H "Content-Type: application/json" \
   -d '{"email":"test@example.com","first_name":"Test","last_name":"User"}'
 
@@ -319,13 +320,13 @@ curl -X POST http://localhost:5555/api/v1/promoters/create \
 
 # 2. Search for the promoter
 curl "http://localhost:5555/api/v2/company/promoters?search=WryiVbz5sk" \
-  -H "Authorization: Bearer fp_token_4-mqzfOawT_slE8dAx1R2aKGnbz1i8_EV2oh8N6MCOXvC49G" \
-  -H "Account-ID: acc_kDP8UCZW2J-exA55"
+  -H "Authorization: Bearer fp_token_YOUR_BEARER_TOKEN_HERE" \
+  -H "Account-ID: acc_YOUR_ACCOUNT_ID_HERE"
 
 # 3. Track a sale (requires active referral first - create via UI or referral endpoint)
 curl -X POST http://localhost:5555/api/v2/track/sale \
-  -H "Authorization: Bearer fp_token_4-mqzfOawT_slE8dAx1R2aKGnbz1i8_EV2oh8N6MCOXvC49G" \
-  -H "Account-ID: acc_kDP8UCZW2J-exA55" \
+  -H "Authorization: Bearer fp_token_YOUR_BEARER_TOKEN_HERE" \
+  -H "Account-ID: acc_YOUR_ACCOUNT_ID_HERE" \
   -H "Content-Type: application/json" \
   -d '{"email":"buyer@test.com","amount":10000,"event_id":"tx_001","ref_id":"WryiVbz5sk"}'
 ```
