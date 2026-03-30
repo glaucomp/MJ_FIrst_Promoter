@@ -161,29 +161,51 @@ export const getEarnings = async (req: AuthRequest, res: Response) => {
       where: { userId: user.id },
       include: {
         campaign: {
-          select: { id: true, name: true }
+          select: { id: true, name: true, commissionRate: true }
         },
         referral: {
           select: {
             id: true,
             level: true,
+            referrerId: true,
             referredUser: {
-              select: { firstName: true, lastName: true, email: true }
+              select: { id: true, firstName: true, lastName: true, email: true }
             }
           }
+        },
+        customer: {
+          select: { id: true, email: true, name: true }
         }
       },
       orderBy: { createdAt: 'desc' }
     });
 
+    // Separate commissions into direct (own sales) and team (downline sales)
+    const directCommissions = commissions.filter(c => 
+      c.referral && c.referral.referrerId === user.id
+    );
+    
+    const teamCommissions = commissions.filter(c => 
+      c.referral && c.referral.referrerId !== user.id
+    );
+
     const summary = {
       total: commissions.reduce((sum, c) => sum + c.amount, 0),
       paid: commissions.filter(c => c.status === 'paid').reduce((sum, c) => sum + c.amount, 0),
       unpaid: commissions.filter(c => c.status === 'unpaid').reduce((sum, c) => sum + c.amount, 0),
-      pending: commissions.filter(c => c.status === 'pending').reduce((sum, c) => sum + c.amount, 0)
+      pending: commissions.filter(c => c.status === 'pending').reduce((sum, c) => sum + c.amount, 0),
+      // Add breakdown by source
+      directEarnings: directCommissions.reduce((sum, c) => sum + c.amount, 0),
+      teamEarnings: teamCommissions.reduce((sum, c) => sum + c.amount, 0)
     };
 
-    res.json({ commissions, summary });
+    res.json({ 
+      commissions, 
+      summary,
+      directCommissions,
+      teamCommissions,
+      userId: user.id
+    });
   } catch (error) {
     console.error('Get earnings error:', error);
     res.status(500).json({ error: 'Failed to fetch earnings' });
@@ -238,5 +260,170 @@ export const getTopPerformers = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('Get top performers error:', error);
     res.status(500).json({ error: 'Failed to fetch top performers' });
+  }
+};
+
+export const getTeamEarningsBreakdown = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user!;
+
+    // Get all commissions for this user
+    const allCommissions = await prisma.commission.findMany({
+      where: { userId: user.id },
+      include: {
+        referral: {
+          include: {
+            referredUser: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                userType: true
+              }
+            }
+          }
+        },
+        customer: {
+          select: {
+            id: true,
+            email: true,
+            name: true
+          }
+        },
+        campaign: {
+          select: {
+            id: true,
+            name: true,
+            commissionRate: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // Separate direct sales (user's own referrals) from team sales (downline referrals)
+    const directCommissions = allCommissions.filter(c => 
+      c.referral && c.referral.referrerId === user.id
+    );
+    
+    const teamCommissions = allCommissions.filter(c => 
+      c.referral && c.referral.referrerId !== user.id
+    );
+
+    // Get my direct team members (people I directly invited)
+    const myTeamMembers = await prisma.referral.findMany({
+      where: {
+        referrerId: user.id,
+        referredUserId: { not: null },
+        status: 'ACTIVE'
+      },
+      include: {
+        referredUser: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            userType: true
+          }
+        }
+      }
+    });
+
+    // Calculate earnings breakdown by team member
+    const teamMemberBreakdown = await Promise.all(
+      myTeamMembers.map(async (member) => {
+        if (!member.referredUser) return null;
+
+        // Get commissions where this team member made the sale
+        const memberCommissions = teamCommissions.filter(c => 
+          c.referral && c.referral.referrerId === member.referredUser!.id
+        );
+
+        // Get commissions I earned from this team member's referrals
+        const myEarningsFromMember = memberCommissions.reduce((sum, c) => sum + c.amount, 0);
+
+        // Get total commissions the team member earned
+        const memberTotalCommissions = await prisma.commission.findMany({
+          where: { 
+            userId: member.referredUser.id,
+            referral: {
+              referrerId: member.referredUser.id
+            }
+          }
+        });
+        
+        const memberOwnEarnings = memberTotalCommissions.reduce((sum, c) => sum + c.amount, 0);
+
+        // Count their customers
+        const memberCommissionsForCount = await prisma.commission.findMany({
+          where: {
+            referral: {
+              referrerId: member.referredUser.id,
+              referredUserId: null // Customer tracking referrals
+            }
+          },
+          select: { customerId: true }
+        });
+        const memberCustomers = new Set(memberCommissionsForCount.map(c => c.customerId).filter(id => id !== null)).size;
+
+        return {
+          teamMember: member.referredUser,
+          myEarningsFromThisMember: myEarningsFromMember,
+          memberOwnEarnings: memberOwnEarnings,
+          memberCustomers: memberCustomers,
+          commissionsCount: memberCommissions.length,
+          status: member.status,
+          joinedAt: member.acceptedAt || member.createdAt
+        };
+      })
+    );
+
+    // Filter out null entries
+    const validBreakdown = teamMemberBreakdown.filter(b => b !== null);
+
+    // Calculate totals
+    const directTotal = directCommissions.reduce((sum, c) => sum + c.amount, 0);
+    const teamTotal = teamCommissions.reduce((sum, c) => sum + c.amount, 0);
+    const grandTotal = directTotal + teamTotal;
+
+    // Count my own customers
+    const myCommissionsForCount = await prisma.commission.findMany({
+      where: {
+        userId: user.id,
+        referral: {
+          referrerId: user.id,
+          referredUserId: null
+        }
+      },
+      select: { customerId: true }
+    });
+    const myCustomers = new Set(myCommissionsForCount.map(c => c.customerId).filter(id => id !== null)).size;
+
+    res.json({
+      summary: {
+        grandTotal,
+        directTotal,
+        teamTotal,
+        directPercentage: grandTotal > 0 ? (directTotal / grandTotal * 100).toFixed(1) : 0,
+        teamPercentage: grandTotal > 0 ? (teamTotal / grandTotal * 100).toFixed(1) : 0,
+        myCustomers,
+        teamMembersCount: validBreakdown.length
+      },
+      myEarnings: {
+        total: directTotal,
+        commissions: directCommissions,
+        customers: myCustomers
+      },
+      teamEarnings: {
+        total: teamTotal,
+        commissions: teamCommissions,
+        breakdown: validBreakdown
+      }
+    });
+  } catch (error) {
+    console.error('Get team earnings breakdown error:', error);
+    res.status(500).json({ error: 'Failed to fetch team earnings breakdown' });
   }
 };

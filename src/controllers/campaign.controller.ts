@@ -23,8 +23,8 @@ export const createCampaign = async (req: AuthRequest, res: Response) => {
       cookieLifeDays,
       autoApprove,
       visibleToPromoters,
-      referralDiscount,
-      referralReward,
+      maxInvitesPerMonth,
+      linkedCampaignId,
       startDate, 
       endDate 
     } = req.body;
@@ -41,8 +41,8 @@ export const createCampaign = async (req: AuthRequest, res: Response) => {
         cookieLifeDays: cookieLifeDays ? parseInt(cookieLifeDays) : 60,
         autoApprove: autoApprove !== undefined ? autoApprove : true,
         visibleToPromoters: visibleToPromoters !== undefined ? visibleToPromoters : true,
-        referralDiscount: referralDiscount ? parseFloat(referralDiscount) : null,
-        referralReward: referralReward ? parseFloat(referralReward) : null,
+        maxInvitesPerMonth: maxInvitesPerMonth && parseInt(maxInvitesPerMonth) > 0 ? parseInt(maxInvitesPerMonth) : null,
+        linkedCampaignId: linkedCampaignId || null,
         createdById: req.user!.id,
         startDate: startDate ? new Date(startDate) : new Date(),
         endDate: endDate ? new Date(endDate) : null
@@ -73,6 +73,9 @@ export const getAllCampaigns = async (req: AuthRequest, res: Response) => {
           createdBy: {
             select: { id: true, email: true, firstName: true, lastName: true }
           },
+          linkedCampaign: {
+            select: { id: true, name: true, visibleToPromoters: true }
+          },
           _count: {
             select: { referrals: true, commissions: true }
           }
@@ -80,13 +83,28 @@ export const getAllCampaigns = async (req: AuthRequest, res: Response) => {
         orderBy: { createdAt: 'desc' }
       });
     } else {
-      // Promoters see only active campaigns that are visible to them
+      // Check if user is an account manager (directly invited by admin)
+      // Account managers can see all campaigns including hidden ones
+      const isAccountManager = await prisma.referral.findFirst({
+        where: {
+          referredUserId: user.id, // User was invited
+          referrer: { role: UserRole.ADMIN }, // By an admin
+          status: 'ACTIVE'
+        },
+      });
+
+      // Promoters see active campaigns
+      // Account managers see ALL active campaigns
+      // Regular influencers only see campaigns where visibleToPromoters: true
       campaigns = await prisma.campaign.findMany({
         where: {
           isActive: true,
-          visibleToPromoters: true
+          ...(isAccountManager ? {} : { visibleToPromoters: true })
         },
         include: {
+          linkedCampaign: {
+            select: { id: true, name: true, visibleToPromoters: true }
+          },
           _count: {
             select: { referrals: true, commissions: true }
           }
@@ -111,6 +129,9 @@ export const getCampaignById = async (req: AuthRequest, res: Response) => {
       include: {
         createdBy: {
           select: { id: true, email: true, firstName: true, lastName: true }
+        },
+        linkedCampaign: {
+          select: { id: true, name: true, visibleToPromoters: true }
         },
         referrals: {
           include: {
@@ -165,8 +186,8 @@ export const updateCampaign = async (req: AuthRequest, res: Response) => {
       cookieLifeDays,
       autoApprove,
       visibleToPromoters,
-      referralDiscount,
-      referralReward,
+      maxInvitesPerMonth,
+      linkedCampaignId,
       isActive, 
       endDate 
     } = req.body;
@@ -184,8 +205,8 @@ export const updateCampaign = async (req: AuthRequest, res: Response) => {
         ...(cookieLifeDays && { cookieLifeDays: parseInt(cookieLifeDays) }),
         ...(autoApprove !== undefined && { autoApprove }),
         ...(visibleToPromoters !== undefined && { visibleToPromoters }),
-        ...(referralDiscount !== undefined && { referralDiscount: referralDiscount ? parseFloat(referralDiscount) : null }),
-        ...(referralReward !== undefined && { referralReward: referralReward ? parseFloat(referralReward) : null }),
+        ...(maxInvitesPerMonth !== undefined && { maxInvitesPerMonth: maxInvitesPerMonth && parseInt(maxInvitesPerMonth) > 0 ? parseInt(maxInvitesPerMonth) : null }),
+        ...(linkedCampaignId !== undefined && { linkedCampaignId: linkedCampaignId || null }),
         ...(isActive !== undefined && { isActive }),
         ...(endDate !== undefined && { endDate: endDate ? new Date(endDate) : null })
       },

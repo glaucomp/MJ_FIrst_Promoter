@@ -1,198 +1,148 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Overview from './pages/Overview';
-import PromoterOverview from './pages/PromoterOverview';
-import Referrals from './pages/Referrals';
-import Commissions from './pages/Commissions';
-import Customers from './pages/Customers';
-import Promoters from './pages/Promoters';
-import Campaigns from './pages/Campaigns';
-import Layout from './components/Layout';
+import { DashboardLayout } from './components/DashboardLayout';
+import { Dashboard } from './pages/Dashboard';
+import { Models } from './pages/Models';
+import { Reports } from './pages/Reports';
+import { Settings } from './pages/Settings';
+import { Campaigns } from './pages/Campaigns';
+import { Login } from './pages/Login';
+import type { ReactNode } from 'react';
+import type { UserRole } from './types';
 
-const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: string[] }) => {
-  const { user, loading } = useAuth();
+interface ProtectedRouteProps {
+  children: ReactNode;
+  allowedRoles?: UserRole[];
+}
 
-  if (loading) {
-    return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-      <div>Loading...</div>
-    </div>;
+const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#212121] flex items-center justify-center">
+        <div className="text-white text-[18px]">Loading...</div>
+      </div>
+    );
   }
 
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/" replace />;
+  if (allowedRoles && !allowedRoles.includes(user.baseRole)) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;
 };
 
-const DashboardRouter = () => {
-  const { user } = useAuth();
+const PublicRoute = ({ children }: { children: ReactNode }) => {
+  const { user, isLoading } = useAuth();
 
-  if (!user) return <Navigate to="/login" replace />;
-
-  switch (user.role) {
-    case 'ADMIN':
-      return <Overview />;
-    case 'PROMOTER':
-      return <PromoterOverview />;
-    default:
-      return <Navigate to="/login" replace />;
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#212121] flex items-center justify-center">
+        <div className="text-white text-[18px]">Loading...</div>
+      </div>
+    );
   }
+
+  if (user) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
 };
+
+function AppRoutes() {
+  return (
+    <Routes>
+      <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <Navigate to="/dashboard" replace />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <DashboardLayout>
+              <Dashboard />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/models"
+        element={
+          <ProtectedRoute>
+            <DashboardLayout>
+              <Models />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/campaigns"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <DashboardLayout>
+              <Campaigns />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/reports"
+        element={
+          <ProtectedRoute>
+            <DashboardLayout>
+              <Reports />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <DashboardLayout>
+              <Settings />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="*"
+        element={
+          <div className="min-h-screen bg-[#212121] flex flex-col items-center justify-center gap-[16px]">
+            <p className="text-white text-[32px] font-bold">404</p>
+            <p className="text-[#9e9e9e] text-[16px]">Page not found</p>
+            <Link
+              to="/dashboard"
+              className="mt-[8px] text-[#ff2a71] text-[14px] font-semibold hover:underline"
+            >
+              Go to Dashboard
+            </Link>
+          </div>
+        }
+      />
+    </Routes>
+  );
+}
 
 function App() {
   return (
-    <Router>
-      <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          
-          {/* Dashboard Routes */}
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <DashboardRouter />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <DashboardRouter />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          
-          {/* Admin Routes */}
-          <Route
-            path="/campaigns"
-            element={
-              <ProtectedRoute allowedRoles={['ADMIN']}>
-                <Layout>
-                  <Campaigns />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/promoters"
-            element={
-              <ProtectedRoute allowedRoles={['ADMIN']}>
-                <Layout>
-                  <Promoters />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/reports"
-            element={
-              <ProtectedRoute allowedRoles={['ADMIN']}>
-                <Layout>
-                  <div style={{ textAlign: 'center', padding: '3rem' }}>
-                    <h2>📈 Reports & Analytics</h2>
-                    <p style={{ color: '#718096', marginTop: '1rem' }}>Coming soon...</p>
-                  </div>
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          
-          {/* Shared Routes */}
-          <Route
-            path="/commissions"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <Commissions />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/customers"
-            element={
-              <ProtectedRoute allowedRoles={['ADMIN']}>
-                <Layout>
-                  <Customers />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          
-          {/* Promoter Routes */}
-          <Route
-            path="/referrals"
-            element={
-              <ProtectedRoute allowedRoles={['PROMOTER']}>
-                <Layout>
-                  <Referrals />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/earnings"
-            element={
-              <ProtectedRoute allowedRoles={['PROMOTER']}>
-                <Layout>
-                  <Commissions />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/tracking-links"
-            element={
-              <ProtectedRoute allowedRoles={['PROMOTER']}>
-                <Layout>
-                  <Referrals />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute allowedRoles={['PROMOTER']}>
-                <Layout>
-                  <div style={{ textAlign: 'center', padding: '3rem' }}>
-                    <h2>👤 Profile Settings</h2>
-                    <p style={{ color: '#718096', marginTop: '1rem' }}>Coming soon...</p>
-                  </div>
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/settings"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <div style={{ textAlign: 'center', padding: '3rem' }}>
-                    <h2>⚙️ Settings</h2>
-                    <p style={{ color: '#718096', marginTop: '1rem' }}>Coming soon...</p>
-                  </div>
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-        </Routes>
-      </AuthProvider>
-    </Router>
+    <AuthProvider>
+      <Router>
+        <AppRoutes />
+      </Router>
+    </AuthProvider>
   );
 }
 

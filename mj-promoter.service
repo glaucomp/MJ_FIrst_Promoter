@@ -1,0 +1,47 @@
+# Systemd Service File for MJ First Promoter
+# Alternative to PM2 for those who prefer systemd
+#
+# Installation:
+# 1. sudo cp mj-promoter.service /etc/systemd/system/
+# 2. sudo systemctl daemon-reload
+# 3. sudo systemctl enable mj-promoter
+# 4. sudo systemctl start mj-promoter
+#
+# Management:
+# - sudo systemctl status mj-promoter
+# - sudo systemctl restart mj-promoter
+# - sudo systemctl stop mj-promoter
+# - sudo journalctl -u mj-promoter -f (view logs)
+
+[Unit]
+Description=MJ First Promoter API Server
+Documentation=https://github.com/yourusername/MJ_FIrst_Promoter
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/MJ_FIrst_Promoter
+Environment="NODE_ENV=production"
+EnvironmentFile=/home/ubuntu/MJ_FIrst_Promoter/.env
+ExecStart=/usr/bin/node /home/ubuntu/MJ_FIrst_Promoter/dist/server.js
+
+# Restart policy
+Restart=always
+RestartSec=10
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mj-promoter
+
+# Resource limits
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

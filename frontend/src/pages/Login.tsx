@@ -1,113 +1,120 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useState, FormEvent } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
-const Login = () => {
+export const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
-    setLoading(true);
+    setIsLoading(true);
 
     try {
       await login(email, password);
       navigate('/dashboard');
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Login failed. Please try again.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-    }}>
-      <div className="card" style={{ width: '100%', maxWidth: '400px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <h1 style={{ fontSize: '1.875rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>
-            Welcome Back
-          </h1>
-          <p style={{ color: 'var(--text-secondary)' }}>
-            Sign in to your MJ First Promoter account
-          </p>
-        </div>
-
-        {error && (
-          <div className="alert alert-error">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label className="form-label">Email</label>
-            <input
-              type="email"
-              className="input"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="your@email.com"
-              required
-            />
+    <div className="min-h-screen bg-[#212121] flex items-center justify-center px-[20px]">
+      <div className="w-full max-w-[402px]">
+        <div className="flex flex-col gap-[32px]">
+          {/* Logo/Header */}
+          <div className="flex flex-col gap-[12px] items-center">
+            <div className="flex items-center gap-[4px]">
+              <h1 className="text-[28px] leading-[36px] font-semibold text-white font-primary">
+                TeaseMe
+              </h1>
+              <div className="border border-[#ff0f5f] rounded-[100px] px-[16px] py-[4px] h-[44px] flex items-center justify-center">
+                <span className="text-[28px] leading-[36px] font-tertiary text-[#ff0f5f]">
+                  HQ
+                </span>
+              </div>
+            </div>
+            <p className="text-[16px] leading-[1.4] text-[#9e9e9e] font-medium tracking-[0.2px]">
+              Sign in to your account
+            </p>
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Password</label>
-            <input
-              type="password"
-              className="input"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-            />
-          </div>
+          {/* Login Form */}
+          <form onSubmit={handleSubmit} className="flex flex-col gap-[20px]">
+            <div
+              className="bg-gradient-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-[20px]"
+            >
+              {/* Email Input */}
+              <div className="flex flex-col gap-[8px]">
+                <label
+                  htmlFor="email"
+                  className="text-[#9e9e9e] text-[14px] leading-[1.4] font-bold uppercase tracking-[0.2px]"
+                >
+                  Email
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[16px] py-[12px] text-[16px] text-white focus:outline-none focus:border-[#ff0f5f] transition-colors"
+                  placeholder="your@email.com"
+                />
+              </div>
 
-          <button
-            type="submit"
-            className="btn btn-primary"
-            style={{ width: '100%', marginTop: '1rem' }}
-            disabled={loading}
-          >
-            {loading ? 'Signing in...' : 'Sign In'}
-          </button>
-        </form>
+              {/* Password Input */}
+              <div className="flex flex-col gap-[8px]">
+                <label
+                  htmlFor="password"
+                  className="text-[#9e9e9e] text-[14px] leading-[1.4] font-bold uppercase tracking-[0.2px]"
+                >
+                  Password
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[16px] py-[12px] text-[16px] text-white focus:outline-none focus:border-[#ff0f5f] transition-colors"
+                  placeholder="••••••••"
+                />
+              </div>
 
-        <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
-          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-            Don't have an account?{' '}
-            <Link to="/register" style={{ color: 'var(--primary)', fontWeight: '500' }}>
-              Sign up
-            </Link>
-          </p>
-        </div>
+              {/* Error Message */}
+              {error && (
+                <div className="bg-[#660000] border border-[#cc0000] rounded-[8px] px-[16px] py-[12px]">
+                  <p className="text-[#ff2a2a] text-[14px] leading-[1.4] font-medium">
+                    {error}
+                  </p>
+                </div>
+              )}
 
-        <div style={{
-          marginTop: '2rem',
-          padding: '1rem',
-          background: 'var(--light)',
-          borderRadius: '0.375rem',
-          fontSize: '0.75rem'
-        }}>
-          <p style={{ fontWeight: '600', marginBottom: '0.5rem' }}>Demo Accounts:</p>
-          <p>Admin: admin@example.com / admin123</p>
-          <p>Promoter (Yoda): yoda@example.com / promoter123</p>
-          <p>Promoter (Luke): luke@example.com / promoter123</p>
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="bg-gradient-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[24px] py-[14px] text-white text-[16px] font-bold leading-[1.4] tracking-[0.2px] shadow-[0px_2px_4px_rgba(0,0,0,0.2)] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoading ? 'Signing In...' : 'Sign In'}
+              </button>
+            </div>
+
+            {/* Footer Text */}
+            <p className="text-center text-[14px] leading-[1.4] text-[#9e9e9e] tracking-[0.2px]">
+              Need help? Contact support
+            </p>
+          </form>
         </div>
       </div>
     </div>
   );
 };
-
-export default Login;

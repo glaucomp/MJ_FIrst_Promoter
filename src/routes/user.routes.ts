@@ -2,9 +2,18 @@ import { Router } from 'express';
 import { body } from 'express-validator';
 import * as userController from '../controllers/user.controller';
 import { authenticate, authorize } from '../middleware/auth.middleware';
+import { createPromoter } from '../controllers/promoter.api.controller';
 import { UserRole } from '@prisma/client';
 
 const router = Router();
+
+// Create promoter (admin only, JWT-authenticated)
+router.post(
+  '/promoter',
+  authenticate,
+  authorize(UserRole.ADMIN),
+  createPromoter
+);
 
 // Create account manager (superuser only)
 router.post(
@@ -18,6 +27,14 @@ router.post(
     body('lastName').optional().trim()
   ],
   userController.createAccountManager
+);
+
+// Create any non-admin user (admin only)
+router.post(
+  '/create',
+  authenticate,
+  authorize(UserRole.ADMIN),
+  userController.createUserByAdmin
 );
 
 // Get all users (superuser only)

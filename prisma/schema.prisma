@@ -15,6 +15,13 @@ enum UserRole {
   PROMOTER
 }
 
+enum UserType {
+  ADMIN
+  ACCOUNT_MANAGER
+  TEAM_MANAGER
+  PROMOTER
+}
+
 enum ReferralStatus {
   PENDING
   ACTIVE
@@ -22,14 +29,38 @@ enum ReferralStatus {
   CANCELLED
 }
 
+// API Key model for external integrations
+model ApiKey {
+  id          String   @id @default(cuid())
+  name        String   // Descriptive name (e.g., "TeaseMe Production")
+  key         String   @unique // The actual API key
+  token       String?  @unique // Bearer token for v2 API
+  accountId   String?  // Account ID for v2 API
+  isActive    Boolean  @default(true)
+  lastUsedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relationships
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([key])
+  @@index([token])
+  @@map("api_keys")
+}
+
 // Users table - stores all users regardless of role
 model User {
   id            String   @id @default(cuid())
   email         String   @unique
+  username      String?  @unique // Unique username for the promoter
   password      String
   firstName     String?
   lastName      String?
+  inviteCode    String?  @unique // Unique invite code for promoters (ref_id in FirstPromoter)
   role          UserRole @default(PROMOTER)
+  userType      UserType @default(PROMOTER) // Type of user: ADMIN, ACCOUNT_MANAGER, TEAM_MANAGER, or PROMOTER
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -41,9 +72,12 @@ model User {
   commissions           Commission[]
   trackingLinks         TrackingLink[]
   clickTracking         ClickTracking[]
+  apiKeys               ApiKey[]
 
   @@index([email])
+  @@index([username])
   @@index([role])
+  @@index([inviteCode])
   @@map("users")
 }
 
@@ -65,10 +99,8 @@ model Campaign {
   autoApprove       Boolean  @default(true) // Auto-approve new promoters
   defaultReferralUrl String? // Default referral link URL
   visibleToPromoters Boolean @default(true) // Whether promoters can see and promote this campaign
-  
-  // Referral rewards (for people being referred)
-  referralDiscount  Float?   // Discount percentage for referred users
-  referralReward    Float?   // Reward amount for referred users
+  maxInvitesPerMonth Int?    // Max invites per promoter per month (NULL = unlimited)
+  linkedCampaignId  String?  // Campaign to assign when inviting from a hidden campaign
   
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -76,13 +108,17 @@ model Campaign {
   // Relationships
   createdById       String
   createdBy         User              @relation("CampaignCreator", fields: [createdById], references: [id])
+  linkedCampaign    Campaign?         @relation("CampaignLink", fields: [linkedCampaignId], references: [id], onDelete: SetNull)
+  linkedBy          Campaign[]        @relation("CampaignLink")
   referrals         Referral[]
   trackingLinks     TrackingLink[]
   commissions       Commission[]
   customers         Customer[]
+  transactions      Transaction[]
 
   @@index([createdById])
   @@index([isActive])
+  @@index([linkedCampaignId])
   @@map("campaigns")
 }
 
@@ -110,6 +146,7 @@ model Referral {
   commissions       Commission[]
   clicks            ClickTracking[]
   customers         Customer[]
+  transactions      Transaction[]
 
   @@index([inviteCode])
   @@index([campaignId])
@@ -170,7 +207,8 @@ model Customer {
   name            String?
   revenue         Float    @default(0) // Total revenue from this customer
   status          String   @default("active") // active, churned, trial
-  metadata        Json?    // Additional customer data
+  subscriptionType String? // Subscription plan type
+  metadata        String?  // Additional customer data (e.g., event_id)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -179,6 +217,8 @@ model Customer {
   campaign        Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   referralId      String?
   referral        Referral? @relation(fields: [referralId], references: [id])
+  commissions     Commission[]
+  transactions    Transaction[]
 
   @@index([campaignId])
   @@index([referralId])
@@ -186,11 +226,39 @@ model Customer {
   @@map("customers")
 }
 
+// Transaction table - raw sale/refund events
+model Transaction {
+  id              String   @id @default(cuid())
+  eventId         String   @unique // External event_id from payment system
+  type            String   @default("sale") // sale, refund
+  saleAmount      Float    // Original transaction value (in dollars)
+  currency        String   @default("USD")
+  status          String   @default("completed") // completed, refunded
+  plan            String?
+  createdAt       DateTime @default(now())
+
+  // Relationships
+  customerId      String?
+  customer        Customer?  @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  campaignId      String?
+  campaign        Campaign?  @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  referralId      String?
+  referral        Referral?  @relation(fields: [referralId], references: [id])
+  originalTransactionId String? // For refunds: points to original sale
+  commissions     Commission[]
+
+  @@index([eventId])
+  @@index([customerId])
+  @@index([campaignId])
+  @@map("transactions")
+}
+
 // Commission table - tracks earned commissions
 model Commission {
   id              String   @id @default(cuid())
   amount          Float    // Commission amount in currency
   percentage      Float    // Percentage used for calculation
+  saleAmount      Float?   // Original transaction value this commission was calculated from
   status          String   @default("unpaid") // unpaid, paid, pending
   description     String?
   createdAt       DateTime @default(now())
@@ -199,13 +267,19 @@ model Commission {
   // Relationships
   userId          String
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  campaignId      String
-  campaign        Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaignId      String?
+  campaign        Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
   referralId      String?
   referral        Referral? @relation(fields: [referralId], references: [id])
+  customerId      String?
+  customer        Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  transactionId   String?
+  transaction     Transaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([campaignId])
   @@index([status])
+  @@index([customerId])
+  @@index([transactionId])
   @@map("commissions")
 }

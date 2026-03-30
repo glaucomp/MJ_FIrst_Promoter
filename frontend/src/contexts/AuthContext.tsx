@@ -1,76 +1,93 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { authAPI } from '../services/api';
-
-interface User {
-  id: string;
-  email: string;
-  firstName?: string;
-  lastName?: string;
-  role: 'ADMIN' | 'PROMOTER';
-}
+import { createContext, useContext, useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
+import type { User, UserRole } from '../types';
+import { authApi } from '../services/api';
 
 interface AuthContextType {
   user: User | null;
-  loading: boolean;
+  token: string | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (data: any) => Promise<void>;
   logout: () => void;
-  updateUser: (user: User) => void;
+  switchRole: (role: UserRole) => void;
+  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const mapApiUserToUser = (apiUser: any): User => {
+  const userType = apiUser.userType?.toLowerCase() || apiUser.role?.toLowerCase();
+  const role = userType as UserRole;
+
+  const nameParts = [apiUser.firstName, apiUser.lastName].filter(Boolean);
+  const name = nameParts.length > 0 ? nameParts.join(' ') : apiUser.email;
+
+  return {
+    id: apiUser.id,
+    name,
+    email: apiUser.email,
+    role: role,
+    baseRole: role,
+    canSwitchToPromoter: role === 'team_manager',
+  };
+};
+
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [token, setToken] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const initAuth = async () => {
-      const token = localStorage.getItem('token');
-      if (token) {
+    const init = async () => {
+      const storedToken = localStorage.getItem('auth_token');
+
+      if (storedToken) {
         try {
-          const response = await authAPI.getCurrentUser();
-          setUser(response.data.user);
-        } catch (error) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
+          const apiUser = await authApi.getCurrentUser(storedToken);
+          const mappedUser = mapApiUserToUser(apiUser);
+          setToken(storedToken);
+          setUser(mappedUser);
+          localStorage.setItem('auth_user', JSON.stringify(mappedUser));
+        } catch {
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('auth_user');
         }
       }
-      setLoading(false);
+      setIsLoading(false);
     };
 
-    initAuth();
+    init();
   }, []);
 
   const login = async (email: string, password: string) => {
-    const response = await authAPI.login(email, password);
-    const { user, token } = response.data;
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(user));
-    setUser(user);
-  };
+    const response = await authApi.login(email, password);
+    const mappedUser = mapApiUserToUser(response.user);
 
-  const register = async (data: any) => {
-    const response = await authAPI.register(data);
-    const { user, token } = response.data;
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(user));
-    setUser(user);
+    setToken(response.token);
+    setUser(mappedUser);
+
+    localStorage.setItem('auth_token', response.token);
+    localStorage.setItem('auth_user', JSON.stringify(mappedUser));
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
     setUser(null);
+    setToken(null);
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_user');
   };
 
-  const updateUser = (updatedUser: User) => {
-    setUser(updatedUser);
-    localStorage.setItem('user', JSON.stringify(updatedUser));
+  const switchRole = (role: UserRole) => {
+    if (user && user.canSwitchToPromoter) {
+      if (role === 'team_manager' || role === 'promoter') {
+        const updatedUser = { ...user, role };
+        setUser(updatedUser);
+        localStorage.setItem('auth_user', JSON.stringify(updatedUser));
+      }
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, token, login, logout, switchRole, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
