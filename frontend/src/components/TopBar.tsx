@@ -36,7 +36,7 @@ export const TopBar = () => {
           className="flex items-center gap-[8px] cursor-pointer"
         >
           <span className="text-[18px] leading-[24px] font-semibold text-white">TeaseMe</span>
-          <span className="text-[18px] leading-[24px] font-[family-name:'Abril_Fatface',sans-serif] text-[#ff0f5f]">HQ</span>
+          <span className="text-[18px] leading-[24px] font-tertiary text-[#ff0f5f]">HQ</span>
         </button>
 
         {/* Navigation - Centered */}
@@ -67,9 +67,10 @@ export const TopBar = () => {
         {/* Logout - Right side */}
         <button
           onClick={logout}
+          aria-label="Log out"
           className="flex items-center justify-center w-[36px] h-[36px] rounded-[6px] hover:bg-[#292929]/50 transition-all"
         >
-          <span className="text-[16px]">🚪</span>
+          <span className="text-[16px]" aria-hidden="true">🚪</span>
         </button>
       </div>
     </div>

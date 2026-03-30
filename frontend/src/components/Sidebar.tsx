@@ -83,13 +83,15 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
                   <button
                     key={item.id}
                     onClick={() => handleNavigation(item.path)}
+                    aria-label={item.label}
+                    aria-current={isActive ? 'page' : undefined}
                     className={`flex items-center gap-[8px] h-[44px] rounded-[8px] p-[12px] transition-all ${
                       isActive
                         ? 'bg-[#660022] border border-[#ff2a71]'
                         : 'hover:bg-[#292929]/50'
                     }`}
                   >
-                    <span className="text-[16px] leading-none shrink-0">{item.icon}</span>
+                    <span className="text-[16px] leading-none shrink-0" aria-hidden="true">{item.icon}</span>
                     <span
                       className={`text-[16px] font-medium leading-[1.4] tracking-[0.2px] flex-1 text-left ${
                         isActive ? 'text-[#ff2a71]' : 'text-white'
@@ -105,13 +107,16 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
                 <button
                   key={item.id}
                   onClick={() => handleNavigation(item.path)}
+                  aria-label={item.label}
+                  aria-current={isActive ? 'page' : undefined}
+                  title={item.label}
                   className={`flex items-center justify-center h-[40px] w-full px-[12px] py-[8px] rounded-[4px] transition-all ${
                     isActive
                       ? 'bg-[#660022] border border-[#ff2a71]'
                       : 'hover:bg-[#292929]/50'
                   }`}
                 >
-                  <span className="text-[16px] leading-none">{item.icon}</span>
+                  <span className="text-[16px] leading-none" aria-hidden="true">{item.icon}</span>
                 </button>
               );
             })}
@@ -127,8 +132,9 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
       </div>
 
       {isOpen && (
-        <div
-          className="fixed inset-0 z-40"
+        <button
+          aria-label="Close navigation"
+          className="fixed inset-0 z-40 w-full cursor-default"
           style={{
             backdropFilter: 'blur(18px)',
             background: 'linear-gradient(180deg, rgba(0,0,0,0.4) 37.983%, rgba(12,0,4,0.58) 82.696%, #2d000f 100%)'

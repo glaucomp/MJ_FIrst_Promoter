@@ -1,4 +1,4 @@
-import { ReactNode, useState } from 'react';
+import type { ReactNode } from 'react';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { useMediaQuery } from '../hooks/useMediaQuery';
@@ -9,7 +9,6 @@ interface DashboardLayoutProps {
 
 export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const isDesktop = useMediaQuery('(min-width: 1024px)');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   if (isDesktop) {
     return (
@@ -24,8 +23,8 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
   return (
     <div className="min-h-screen bg-[#212121] flex justify-center items-start">
-      <div className="relative w-full min-w-[380px] max-w-[402px] h-screen overflow-hidden">
-        <Sidebar onToggle={setIsSidebarOpen} />
+      <div className="relative w-full max-w-[402px] h-screen overflow-hidden">
+        <Sidebar />
         <div className="absolute top-0 left-[80px] right-0 h-screen overflow-y-auto overflow-x-hidden pb-[100px] pt-[64px] px-[20px]">
           <div className="w-full">{children}</div>
         </div>

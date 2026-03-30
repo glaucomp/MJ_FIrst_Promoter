@@ -14,14 +14,19 @@ export const useMediaQuery = (query: string): boolean => {
     const media = window.matchMedia(query);
     
     const listener = () => setMatches(media.matches);
-    
-    // Set initial value
-    setMatches(media.matches);
-    
-    // Listen for changes
-    media.addEventListener('change', listener);
 
-    return () => media.removeEventListener('change', listener);
+    setMatches(media.matches);
+
+    if (typeof media.addEventListener === 'function') {
+      media.addEventListener('change', listener);
+      return () => media.removeEventListener('change', listener);
+    }
+
+    // Fallback for Safari < 14 and other older browsers that lack addEventListener on MediaQueryList
+    // @ts-ignore -- addListener/removeListener are deprecated but intentionally used here as a fallback
+    media.addListener(listener);
+    // @ts-ignore
+    return () => media.removeListener(listener);
   }, [query]);
 
   return matches;

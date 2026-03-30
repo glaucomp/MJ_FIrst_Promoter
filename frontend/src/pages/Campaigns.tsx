@@ -17,7 +17,7 @@ const EMPTY_FORM: CampaignInput = {
 };
 
 export const Campaigns = () => {
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -35,8 +35,8 @@ export const Campaigns = () => {
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user?.baseRole === 'admin') loadCampaigns();
-  }, [user?.baseRole]);
+    loadCampaigns();
+  }, []);
 
   const loadCampaigns = async () => {
     setIsLoading(true);
@@ -132,15 +132,6 @@ export const Campaigns = () => {
       setDeletingId(null);
     }
   };
-
-  if (user?.baseRole !== 'admin') {
-    return (
-      <div className="flex flex-col gap-[24px]">
-        <h1 className="text-[28px] leading-[36px] font-semibold text-white">Campaigns</h1>
-        <p className="text-[#9e9e9e] text-[16px]">Access denied</p>
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-col gap-[24px]">

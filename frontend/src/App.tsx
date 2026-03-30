@@ -7,9 +7,15 @@ import { Reports } from './pages/Reports';
 import { Settings } from './pages/Settings';
 import { Campaigns } from './pages/Campaigns';
 import { Login } from './pages/Login';
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
+import type { UserRole } from './types';
 
-const ProtectedRoute = ({ children }: { children: ReactNode }) => {
+interface ProtectedRouteProps {
+  children: ReactNode;
+  allowedRoles?: UserRole[];
+}
+
+const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
@@ -22,6 +28,10 @@ const ProtectedRoute = ({ children }: { children: ReactNode }) => {
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (allowedRoles && !allowedRoles.includes(user.baseRole)) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;
@@ -80,7 +90,7 @@ function AppRoutes() {
       <Route
         path="/campaigns"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={['admin']}>
             <DashboardLayout>
               <Campaigns />
             </DashboardLayout>
@@ -105,6 +115,21 @@ function AppRoutes() {
               <Settings />
             </DashboardLayout>
           </ProtectedRoute>
+        }
+      />
+      <Route
+        path="*"
+        element={
+          <div className="min-h-screen bg-[#212121] flex flex-col items-center justify-center gap-[16px]">
+            <p className="text-white text-[32px] font-bold">404</p>
+            <p className="text-[#9e9e9e] text-[16px]">Page not found</p>
+            <a
+              href="/dashboard"
+              className="mt-[8px] text-[#ff2a71] text-[14px] font-semibold hover:underline"
+            >
+              Go to Dashboard
+            </a>
+          </div>
         }
       />
     </Routes>

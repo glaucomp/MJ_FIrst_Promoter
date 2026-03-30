@@ -32,11 +32,11 @@ export const Login = () => {
           {/* Logo/Header */}
           <div className="flex flex-col gap-[12px] items-center">
             <div className="flex items-center gap-[4px]">
-              <h1 className="text-[28px] leading-[36px] font-semibold text-white font-[family-name:'DM_Sans',sans-serif]">
+              <h1 className="text-[28px] leading-[36px] font-semibold text-white font-primary">
                 TeaseMe
               </h1>
               <div className="border border-[#ff0f5f] rounded-[100px] px-[16px] py-[4px] h-[44px] flex items-center justify-center">
-                <span className="text-[28px] leading-[36px] font-[family-name:'Abril_Fatface',sans-serif] text-[#ff0f5f]">
+                <span className="text-[28px] leading-[36px] font-tertiary text-[#ff0f5f]">
                   HQ
                 </span>
               </div>
