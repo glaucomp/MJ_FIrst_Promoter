@@ -292,6 +292,7 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
             amount: true,
             status: true,
             createdAt: true,
+            userId: true,
           },
         },
       },

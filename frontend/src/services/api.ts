@@ -92,14 +92,23 @@ export interface Referral {
   level: number;
   status: 'PENDING' | 'ACTIVE' | 'INACTIVE';
   campaign: {
+    id?: string;
     name: string;
     commissionRate: number;
   };
   referredUser?: {
+    id: string;
     email: string;
     firstName: string;
     lastName: string;
   };
+  commissions: Array<{
+    id: string;
+    amount: number;
+    status: string;
+    createdAt: string;
+    userId: string;
+  }>;
   createdAt: string;
 }
 
