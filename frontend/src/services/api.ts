@@ -412,16 +412,21 @@ export const transactionApi = {
     period?: 'week' | 'month' | '3month' | 'all';
     page?: number;
     limit?: number;
+    startDate?: string;
+    endDate?: string;
   }): Promise<TransactionListResponse> {
     const query = new URLSearchParams();
-    if (params?.period) query.set('period', params.period);
-    if (params?.page) query.set('page', String(params.page));
+    if (params?.startDate) {
+      query.set('startDate', params.startDate);
+      if (params?.endDate) query.set('endDate', params.endDate);
+    } else if (params?.period) {
+      query.set('period', params.period);
+    }
+    if (params?.page)  query.set('page',  String(params.page));
     if (params?.limit) query.set('limit', String(params.limit));
     const qs = query.toString();
     const url = qs ? `${API_URL}/transactions?${qs}` : `${API_URL}/transactions`;
-    const response = await fetch(url, {
-      headers: getAuthHeaders(),
-    });
+    const response = await fetch(url, { headers: getAuthHeaders() });
     return handleResponse(response, 'Failed to fetch transactions');
   },
 };

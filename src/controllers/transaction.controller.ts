@@ -24,19 +24,25 @@ export const getAllTransactions = async (req: AuthRequest, res: Response) => {
     const period = (req.query.period as string) ?? "all";
     const page = (req.query.page as string) ?? "1";
     const limit = (req.query.limit as string) ?? "10";
+    const startDate = req.query.startDate as string | undefined;
+    const endDate   = req.query.endDate   as string | undefined;
 
     const isAdmin =
       user.role === UserRole.ADMIN || user.userType === UserType.ADMIN;
     const pageNum = Math.max(1, Number.parseInt(page, 10));
     const limitNum = Math.min(100, Math.max(1, Number.parseInt(limit, 10)));
     const skip = (pageNum - 1) * limitNum;
-    const periodDate = getPeriodDate(period);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: any = {};
 
-    if (periodDate) {
-      where.createdAt = { gte: periodDate };
+    if (startDate || endDate) {
+      where.createdAt = {};
+      if (startDate) where.createdAt.gte = new Date(startDate);
+      if (endDate)   where.createdAt.lte = new Date(endDate);
+    } else {
+      const periodDate = getPeriodDate(period);
+      if (periodDate) where.createdAt = { gte: periodDate };
     }
 
     if (!isAdmin) {
