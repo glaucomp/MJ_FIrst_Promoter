@@ -223,19 +223,11 @@ const TxRow = ({
           </span>
         </div>
 
-        {/* Line 2: avatar + name | status badge */}
+        {/* Line 2: description | status badge */}
         <div className="flex items-center justify-between mb-[6px]">
-          <div className="flex items-center gap-[6px]">
-            <div
-              className="w-[20px] h-[20px] rounded-full flex items-center justify-center text-[8px] font-bold text-white shrink-0"
-              style={{ background: avatarBg }}
-            >
-              {initials}
-            </div>
-            <span className="text-[12px] text-[#ccc]">
-              {tx.user.firstName} {tx.user.lastName}
-            </span>
-          </div>
+          <span className="text-[12px] text-[#ccc] truncate max-w-[60%]">
+            {tx.description || `${tx.user.firstName} ${tx.user.lastName}`}
+          </span>
           <span
             className="text-[11px] font-semibold px-[9px] py-[2px] rounded-full capitalize"
             style={{
@@ -331,14 +323,6 @@ const TxRow = ({
               >
                 {tx.campaign.name}
               </span>
-            </div>
-          )}
-          {tx.description && (
-            <div
-              className="px-[14px] py-[9px]"
-              style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
-            >
-              <span className="text-[#555] italic">{tx.description}</span>
             </div>
           )}
         </div>
