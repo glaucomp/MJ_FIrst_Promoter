@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
-import { useMediaQuery } from '../hooks/useMediaQuery';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -25,8 +25,8 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     <div className="min-h-screen bg-[#212121] flex justify-center items-start">
       <div className="relative w-full max-w-[402px] h-screen overflow-hidden">
         <Sidebar />
-        <div className="absolute top-0 left-[80px] right-0 h-screen overflow-y-auto overflow-x-hidden pb-[100px] pt-[64px] px-[20px]">
-          <div className="w-full">{children}</div>
+        <div className="absolute top-0 left-[80px] right-0 h-screen overflow-y-auto overflow-x-hidden pt-[64px] px-[10px]" style={{ scrollbarWidth: 'none' }}>
+          <div style={{ width: '100%', paddingBottom: '40px' }}>{children}</div>
         </div>
       </div>
     </div>
