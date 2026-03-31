@@ -284,6 +284,15 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
                 lastName: true,
               },
             },
+            commissions: {
+              select: {
+                id: true,
+                amount: true,
+                status: true,
+                createdAt: true,
+                userId: true,
+              },
+            },
           },
         },
         commissions: {

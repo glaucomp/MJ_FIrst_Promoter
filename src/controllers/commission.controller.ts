@@ -31,6 +31,7 @@ export const getAllCommissions = async (req: AuthRequest, res: Response) => {
             name: true,
             commissionRate: true,
             secondaryRate: true,
+            recurringRate: true,
           },
         },
         referral: {

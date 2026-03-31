@@ -39,6 +39,14 @@ const isTier1 = (c: Commission) =>
   c.campaign?.commissionRate != null &&
   c.percentage === c.campaign.commissionRate;
 
+const isTier3 = (c: Commission) =>
+  (c.description ?? "").toLowerCase().includes("t3") ||
+  (c.campaign?.recurringRate != null &&
+    c.campaign.recurringRate > 0 &&
+    c.percentage === c.campaign.recurringRate &&
+    c.percentage !== c.campaign.commissionRate &&
+    c.percentage !== c.campaign.secondaryRate);
+
 const cutoffMs = (days: number) =>
   days > 0 ? Date.now() - days * 86_400_000 : 0;
 
@@ -162,10 +170,11 @@ const TxRow = ({
   const positive = tx.amount >= 0;
   const isRefund = tx.amount < 0;
   const tier1 = isTier1(tx);
-  const tierLabel = tier1 ? "T1" : "T2";
-  const tierBg = tier1 ? "rgba(59,130,246,0.2)" : "rgba(245,158,11,0.2)";
-  const tierText = tier1 ? "#60a5fa" : "#fbbf24";
-  const avatarBg = tier1 ? "#3b82f6" : "#f59e0b";
+  const tier3 = !tier1 && isTier3(tx);
+  const tierLabel = tier1 ? "T1" : tier3 ? "T3" : "T2";
+  const tierBg = tier1 ? "rgba(59,130,246,0.2)" : tier3 ? "rgba(34,197,94,0.2)" : "rgba(245,158,11,0.2)";
+  const tierText = tier1 ? "#60a5fa" : tier3 ? "#4ade80" : "#fbbf24";
+  const avatarBg = tier1 ? "#3b82f6" : tier3 ? "#22c55e" : "#f59e0b";
   const dt = new Date(tx.createdAt);
   const d = String(dt.getDate()).padStart(2, "0");
   const m = String(dt.getMonth() + 1).padStart(2, "0");
@@ -498,11 +507,14 @@ const AdminTxRow = ({
               <span className="text-[11px] text-[#666] uppercase tracking-[0.07em]">
                 Commissions
               </span>
-              {tx.commissions.map((c, idx) => {
-                const isT1 =
-                  idx === 0 ||
-                  tx.commissions.findIndex((x) => x.id === c.id) === 0;
-                const tierBg = isT1 ? "#3b82f6" : "#f59e0b";
+              {tx.commissions.map((c) => {
+                const desc = (c.description ?? "").toLowerCase();
+                const isT3 = desc.includes("t3");
+                const isT1 = !isT3 && (
+                  desc.includes("direct") ||
+                  c.percentage === tx.campaign?.commissionRate
+                );
+                const tierBg = isT1 ? "#3b82f6" : isT3 ? "#22c55e" : "#f59e0b";
                 const commPositive = c.amount >= 0;
                 const cStatus = statusColors[c.status] ?? statusColors.unpaid;
                 return (
@@ -1277,27 +1289,66 @@ export const Reports = () => {
       fromMs = period === "all" ? 0 : cutoffMs(PERIOD_DAYS[period]);
     }
 
-    return myReferrals
-      .filter((r) => r.referredUser != null)
-      .map((r) => {
-        const name = `${r.referredUser!.firstName} ${r.referredUser!.lastName}`;
-        const revenue = (r.commissions ?? [])
-          .filter((c) => {
-            if (c.amount <= 0 || c.userId !== r.referredUser!.id) return false;
-            const t = new Date(c.createdAt).getTime();
-            return t >= fromMs && t <= toMs;
-          })
-          .reduce((sum, c) => sum + c.amount, 0);
-        return { name, revenue };
-      })
+    // Build a map: userId → { name, totalRevenue }
+    // covering both direct referrals and their children (full network)
+    const earningsMap = new Map<string, { name: string; revenue: number }>();
+
+    const accumulateCommissions = (
+      person: { id: string; firstName: string; lastName: string },
+      commissions: Array<{ amount: number; userId: string; createdAt: string }>,
+    ) => {
+      const entry = earningsMap.get(person.id) ?? {
+        name: `${person.firstName} ${person.lastName}`,
+        revenue: 0,
+      };
+      const earned = commissions
+        .filter((c) => {
+          if (c.amount <= 0 || c.userId !== person.id) return false;
+          const t = new Date(c.createdAt).getTime();
+          return t >= fromMs && t <= toMs;
+        })
+        .reduce((sum, c) => sum + c.amount, 0);
+      entry.revenue += earned;
+      earningsMap.set(person.id, entry);
+    };
+
+    myReferrals.forEach((r) => {
+      // Direct referral (e.g. Jorlyn → Sofia)
+      if (r.referredUser) {
+        // Sofia's T1 earnings on the Jorlyn→Sofia referral ($66+$51)
+        accumulateCommissions(r.referredUser, r.commissions ?? []);
+
+        // Sofia also earns T2 commissions stored on child referrals (e.g. Sofia→Kelly)
+        // e.g. Sofia's $15 T2 from the carol/kelly transaction lives on referralSofiaToKelly
+        (r.childReferrals ?? []).forEach((cr) => {
+          accumulateCommissions(r.referredUser!, cr.commissions ?? []);
+        });
+      }
+      // Child referrals: accumulate the child person's own earnings (e.g. Kelly's T1 $90)
+      (r.childReferrals ?? []).forEach((cr) => {
+        if (cr.referredUser) {
+          accumulateCommissions(cr.referredUser, cr.commissions ?? []);
+        }
+      });
+    });
+
+    return Array.from(earningsMap.values())
       .filter((p) => p.revenue > 0)
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 10);
   }, [myReferrals, isManager, period, calRangeStart, calRangeEnd]);
 
-  const promoterCount = myReferrals.filter(
-    (r) => r.referredUser != null,
-  ).length;
+  // Count all users in the network (direct + their children)
+  const promoterCount = useMemo(() => {
+    const ids = new Set<string>();
+    myReferrals.forEach((r) => {
+      if (r.referredUser) ids.add(r.referredUser.id);
+      (r.childReferrals ?? []).forEach((cr) => {
+        if (cr.referredUser) ids.add(cr.referredUser.id);
+      });
+    });
+    return ids.size;
+  }, [myReferrals]);
   const managedCustomerCount = useMemo(
     () =>
       new Set(

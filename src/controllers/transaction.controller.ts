@@ -78,7 +78,12 @@ export const getAllTransactions = async (req: AuthRequest, res: Response) => {
                 userType: { not: UserType.ADMIN },
               },
             },
-            include: {
+            select: {
+              id: true,
+              amount: true,
+              percentage: true,
+              status: true,
+              description: true,
               user: {
                 select: {
                   id: true,

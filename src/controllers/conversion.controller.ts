@@ -57,7 +57,12 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
           parentReferral: {
             include: {
               referrer: true,
-              campaign: true
+              campaign: true,
+              parentReferral: {
+                include: {
+                  referrer: true
+                }
+              }
             }
           }
         }
@@ -86,6 +91,20 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
                   firstName: true,
                   lastName: true
                 }
+              },
+              parentReferral: {
+                select: {
+                  id: true,
+                  referrerId: true,
+                  referrer: {
+                    select: {
+                      id: true,
+                      email: true,
+                      firstName: true,
+                      lastName: true
+                    }
+                  }
+                }
               }
             },
             orderBy: { createdAt: 'desc' },
@@ -97,7 +116,7 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
       if (user && user.referralsReceived.length > 0) {
         const userReferral = user.referralsReceived[0];
         
-        // Create a structure where the USER (Sofia) is the primary earner
+        // Create a structure where the USER is the primary earner
         referral = {
           id: userReferral.id,
           campaign: userReferral.campaign,
@@ -112,7 +131,8 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
             id: userReferral.id,
             referrer: userReferral.referrer,
             referrerId: userReferral.referrerId,
-            campaign: userReferral.campaign
+            campaign: userReferral.campaign,
+            parentReferral: userReferral.parentReferral ?? null
           }
         } as any;
       }
@@ -135,7 +155,12 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
           parentReferral: {
             include: {
               referrer: true,
-              campaign: true
+              campaign: true,
+              parentReferral: {
+                include: {
+                  referrer: true
+                }
+              }
             }
           }
         }
@@ -205,8 +230,9 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
     console.log(`✅ Commission created: $${level1Amount.toFixed(2)} for ${referral.referrer.email}`);
 
     let commission2 = null;
+    let commission3 = null;
 
-    // Create Level 2 Commission (if exists)
+    // Create T2 Commission (upline — person who invited the direct earner)
     if (referral.parentReferral && campaign.secondaryRate && campaign.secondaryRate > 0) {
       const level2Amount = (revenue * campaign.secondaryRate) / 100;
 
@@ -216,7 +242,7 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
           percentage: campaign.secondaryRate,
           saleAmount: revenue,
           status: 'unpaid',
-          description: `From ${referral.referrer.firstName}'s sale ($${revenue.toFixed(2)})`,
+          description: `T2 upline from ${referral.referrer.firstName}'s sale ($${revenue.toFixed(2)})`,
           userId: referral.parentReferral.referrerId,
           campaignId: campaign.id,
           referralId: referral.parentReferral.id,
@@ -225,7 +251,29 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
         }
       });
 
-      console.log(`✅ Level 2 Commission: $${level2Amount.toFixed(2)} for ${referral.parentReferral.referrer.email}`);
+      console.log(`✅ T2 Commission: $${level2Amount.toFixed(2)} for ${referral.parentReferral.referrer.email}`);
+
+      // Create T3 Commission (Account Manager — 2 levels up, uses recurringRate)
+      if (referral.parentReferral.parentReferral && campaign.recurringRate && campaign.recurringRate > 0) {
+        const level3Amount = (revenue * campaign.recurringRate) / 100;
+
+        commission3 = await prisma.commission.create({
+          data: {
+            amount: level3Amount,
+            percentage: campaign.recurringRate,
+            saleAmount: revenue,
+            status: 'unpaid',
+            description: `T3 account manager from ${referral.referrer.firstName}'s sale ($${revenue.toFixed(2)})`,
+            userId: referral.parentReferral.parentReferral.referrerId,
+            campaignId: campaign.id,
+            referralId: referral.parentReferral.parentReferral.id,
+            customerId: customer.id,
+            transactionId: transaction.id,
+          }
+        });
+
+        console.log(`✅ T3 Commission: $${level3Amount.toFixed(2)} for ${referral.parentReferral.parentReferral.referrer.email}`);
+      }
     }
 
     res.status(200).json({
@@ -245,6 +293,13 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
             id: commission2.id,
             amount: (revenue * (campaign.secondaryRate || 0)) / 100,
             promoter: referral.parentReferral?.referrer.email
+          }
+        }),
+        ...(commission3 && {
+          level3: {
+            id: commission3.id,
+            amount: (revenue * (campaign.recurringRate || 0)) / 100,
+            promoter: referral.parentReferral?.parentReferral?.referrer.email
           }
         })
       }
@@ -327,7 +382,12 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
             referrer: true,
             parentReferral: {
               include: {
-                referrer: true
+                referrer: true,
+                parentReferral: {
+                  include: {
+                    referrer: true
+                  }
+                }
               }
             }
           }
@@ -379,7 +439,7 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
       }
     });
 
-    // Create negative commission for Level 2 (if exists)
+    // Create negative commission for T2 (if exists)
     if (customer.referral.parentReferral && campaign.secondaryRate && campaign.secondaryRate > 0) {
       const level2RefundAmount = -(refundRevenue * campaign.secondaryRate) / 100;
 
@@ -389,7 +449,7 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
           percentage: campaign.secondaryRate,
           saleAmount: refundRevenue,
           status: 'paid',
-          description: `Refund override ($${refundRevenue.toFixed(2)})`,
+          description: `T2 refund ($${refundRevenue.toFixed(2)})`,
           userId: customer.referral.parentReferral.referrerId,
           campaignId: campaign.id,
           referralId: customer.referral.parentReferral.id,
@@ -397,6 +457,26 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
           transactionId: refundTransaction.id,
         }
       });
+
+      // Create negative commission for T3 (Account Manager, if exists)
+      if (customer.referral.parentReferral.parentReferral && campaign.recurringRate && campaign.recurringRate > 0) {
+        const level3RefundAmount = -(refundRevenue * campaign.recurringRate) / 100;
+
+        await prisma.commission.create({
+          data: {
+            amount: level3RefundAmount,
+            percentage: campaign.recurringRate,
+            saleAmount: refundRevenue,
+            status: 'paid',
+            description: `T3 account manager refund ($${refundRevenue.toFixed(2)})`,
+            userId: customer.referral.parentReferral.parentReferral.referrerId,
+            campaignId: campaign.id,
+            referralId: customer.referral.parentReferral.parentReferral.id,
+            customerId: customer.id,
+            transactionId: refundTransaction.id,
+          }
+        });
+      }
     }
 
     // Update customer status

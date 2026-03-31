@@ -86,6 +86,14 @@ export interface CampaignInput {
   maxInvitesPerMonth?: number | null;
 }
 
+export interface ReferralCommission {
+  id: string;
+  amount: number;
+  status: string;
+  createdAt: string;
+  userId: string;
+}
+
 export interface Referral {
   id: string;
   inviteCode: string;
@@ -102,12 +110,16 @@ export interface Referral {
     firstName: string;
     lastName: string;
   };
-  commissions: Array<{
+  commissions: ReferralCommission[];
+  childReferrals?: Array<{
     id: string;
-    amount: number;
-    status: string;
-    createdAt: string;
-    userId: string;
+    referredUser?: {
+      id: string;
+      email: string;
+      firstName: string;
+      lastName: string;
+    };
+    commissions: ReferralCommission[];
   }>;
   createdAt: string;
 }
@@ -334,6 +346,7 @@ export interface TransactionFull {
     amount: number;
     percentage: number;
     status: string;
+    description: string | null;
     user: {
       id: string;
       firstName: string | null;
@@ -362,6 +375,7 @@ export interface Commission {
     name: string;
     commissionRate: number;
     secondaryRate: number | null;
+    recurringRate: number | null;
   } | null;
   referral: {
     referrer: {
