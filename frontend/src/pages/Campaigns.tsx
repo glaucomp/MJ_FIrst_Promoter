@@ -212,7 +212,7 @@ export const Campaigns = () => {
                       <p className="text-white text-[15px] font-bold">{c.secondaryRate}%</p>
                     </div>
                   )}
-                  {c.recurringRate != null && c.recurringRate > 0 && (
+                  {c.recurringRate != null && c.recurringRate > 0 && c.visibleToPromoters && (
                     <div className="flex flex-col gap-[2px]">
                       <p className="text-[#666] text-[11px] uppercase tracking-[0.5px]">Acc Mgr</p>
                       <p className="text-white text-[15px] font-bold">{c.recurringRate}%</p>
@@ -361,18 +361,20 @@ export const Campaigns = () => {
                     className={inputCls}
                   />
                 </Field>
-                <Field label="Acc Manager %" className="flex-1">
-                  <input
-                    type="number"
-                    min={0} max={100} step={0.1}
-                    value={form.recurringRate ?? 0}
-                    onChange={e => {
-                      const v = Number.parseFloat(e.target.value);
-                      setForm(f => ({ ...f, recurringRate: v > 0 ? v : null }));
-                    }}
-                    className={inputCls}
-                  />
-                </Field>
+                {form.visibleToPromoters && (
+                  <Field label="Acc Manager %" className="flex-1">
+                    <input
+                      type="number"
+                      min={0} max={100} step={0.1}
+                      value={form.recurringRate ?? 0}
+                      onChange={e => {
+                        const v = Number.parseFloat(e.target.value);
+                        setForm(f => ({ ...f, recurringRate: v > 0 ? v : null }));
+                      }}
+                      className={inputCls}
+                    />
+                  </Field>
+                )}
               </div>
 
               {/* Cookie + Invites row */}
@@ -406,7 +408,7 @@ export const Campaigns = () => {
                 <Toggle
                   label="Visible to Promoters"
                   value={form.visibleToPromoters ?? true}
-                  onChange={v => setForm(f => ({ ...f, visibleToPromoters: v }))}
+                  onChange={v => setForm(f => ({ ...f, visibleToPromoters: v, ...(!v && { recurringRate: null }) }))}
                 />
                 <Toggle
                   label="Auto Approve"
