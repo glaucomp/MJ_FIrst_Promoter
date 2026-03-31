@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Chart } from "../components/Chart";
 import { useAuth } from "../contexts/AuthContext";
@@ -576,9 +576,12 @@ interface AdminTxListCardProps {
   isOpen: boolean;
   onToggle: () => void;
   period: Period;
-  onPeriodChange: (p: Period) => void;
+  calRangeStart: Date | null;
+  calRangeEnd: Date | null;
   loading: boolean;
   money: (n: number) => string;
+  search: string;
+  onSearch: (q: string) => void;
 }
 
 const AdminTxListCard = ({
@@ -589,12 +592,13 @@ const AdminTxListCard = ({
   isOpen,
   onToggle,
   period,
-  onPeriodChange,
+  calRangeStart,
+  calRangeEnd,
   loading,
   money,
+  search,
+  onSearch,
 }: AdminTxListCardProps) => {
-  const [periodMenuOpen, setPeriodMenuOpen] = useState(false);
-  const closePeriodMenu = useCallback(() => setPeriodMenuOpen(false), []);
 
   const pages = useMemo(() => {
     const arr: (number | "…")[] = [];
@@ -647,107 +651,41 @@ const AdminTxListCard = ({
         <>
           <HDivider />
 
-          {/* Filter bar */}
-          <div className="flex items-center gap-[8px] px-[16px] py-[10px]">
-            <div className="relative flex-1">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setPeriodMenuOpen((o) => !o);
-                }}
-                className="flex items-center justify-between w-full px-[12px] py-[7px] rounded-[8px] text-[13px] text-white transition-colors hover:bg-[#333]"
+          {/* Active period label */}
+          <div className="flex items-center gap-[6px] px-[16px] py-[10px]">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="text-[#666]">
+              <rect x="1" y="1.5" width="10" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
+              <path d="M1 4.5h10" stroke="currentColor" strokeWidth="1.2"/>
+              <path d="M4 0.5v2M8 0.5v2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+            </svg>
+            <span className="text-[12px] text-[#9e9e9e]">
+              {calRangeStart && calRangeEnd
+                ? `${calRangeStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${calRangeEnd.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
+                : calRangeStart
+                  ? `${calRangeStart.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} →`
+                  : PERIOD_LABELS[period]}
+            </span>
+          </div>
+
+          {/* Search */}
+          <div className="px-[16px] pb-[10px]">
+            <div className="relative">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="absolute left-[10px] top-1/2 -translate-y-1/2 text-[#666]">
+                <circle cx="6" cy="6" r="4" stroke="currentColor" strokeWidth="1.3" />
+                <path d="M9.5 9.5l2.5 2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+              </svg>
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => onSearch(e.target.value)}
+                placeholder="Name, Email, Campaign, Customer"
+                className="w-full pl-[30px] pr-[12px] py-[8px] rounded-[8px] text-[13px] text-white placeholder-[#555] focus:outline-none"
                 style={{
-                  background: "#2a2a2a",
+                  background: "rgba(255,255,255,0.05)",
                   border: "1px solid rgba(255,255,255,0.08)",
                 }}
-              >
-                <span>{PERIOD_LABELS[period]}</span>
-                <span className="text-[10px] text-[#9e9e9e] ml-[6px]">▾</span>
-              </button>
-
-              {periodMenuOpen && (
-                <>
-                  <button
-                    type="button"
-                    aria-label="Close dropdown"
-                    className="fixed inset-0 z-10 cursor-default bg-transparent border-none p-0"
-                    onClick={closePeriodMenu}
-                  />
-                  <div
-                    className="absolute left-0 top-[38px] z-20 rounded-[8px] py-[4px] min-w-full"
-                    style={{
-                      background: "#2a2a2a",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
-                    }}
-                  >
-                    {(Object.keys(PERIOD_LABELS) as Period[]).map((p) => (
-                      <button
-                        key={p}
-                        type="button"
-                        onClick={() => {
-                          onPeriodChange(p);
-                          setPeriodMenuOpen(false);
-                        }}
-                        className="w-full text-left px-[14px] py-[8px] text-[13px] transition-colors hover:bg-[rgba(255,255,255,0.06)]"
-                        style={{ color: period === p ? "#ff0f5f" : "white" }}
-                      >
-                        {PERIOD_LABELS[p]}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
+              />
             </div>
-
-            {/* Calendar icon */}
-            <button
-              type="button"
-              className="flex items-center justify-center w-[34px] h-[34px] rounded-[8px] text-[#9e9e9e] hover:text-white transition-colors"
-              style={{
-                background: "#2a2a2a",
-                border: "1px solid rgba(255,255,255,0.08)",
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <rect
-                  x="2"
-                  y="2.5"
-                  width="12"
-                  height="11"
-                  rx="1.5"
-                  stroke="currentColor"
-                  strokeWidth="1.3"
-                />
-                <path d="M2 6h12" stroke="currentColor" strokeWidth="1.3" />
-                <path
-                  d="M5.5 1.5v2M10.5 1.5v2"
-                  stroke="currentColor"
-                  strokeWidth="1.3"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </button>
-
-            {/* Filter icon */}
-            <button
-              type="button"
-              className="flex items-center justify-center w-[34px] h-[34px] rounded-[8px] text-[#9e9e9e] hover:text-white transition-colors"
-              style={{
-                background: "#2a2a2a",
-                border: "1px solid rgba(255,255,255,0.08)",
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path
-                  d="M2 4h12M5 8h6M7.5 12h1"
-                  stroke="currentColor"
-                  strokeWidth="1.3"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </button>
           </div>
 
           <HDivider />
@@ -840,7 +778,8 @@ interface TxListCardProps {
   isOpen: boolean;
   onToggle: () => void;
   period: Period;
-  onPeriodChange: (p: Period) => void;
+  calRangeStart: Date | null;
+  calRangeEnd: Date | null;
   money: (n: number) => string;
 }
 
@@ -849,14 +788,13 @@ const TxListCard = ({
   isOpen,
   onToggle,
   period,
-  onPeriodChange,
+  calRangeStart,
+  calRangeEnd,
   money,
 }: TxListCardProps) => {
-  const [periodMenuOpen, setPeriodMenuOpen] = useState(false);
   const [statusTab, setStatusTab] = useState<StatusTab>("all");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const closePeriodMenu = useCallback(() => setPeriodMenuOpen(false), []);
 
   // Reset page when filters change
   useEffect(() => {
@@ -964,102 +902,20 @@ const TxListCard = ({
         <>
           <HDivider />
 
-          {/* Period + icons row */}
-          <div className="flex items-center gap-[8px] px-[16px] py-[10px]">
-            <div className="relative flex-1">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setPeriodMenuOpen((o) => !o);
-                }}
-                className="flex items-center justify-between w-full px-[12px] py-[7px] rounded-[8px] text-[13px] text-white transition-colors hover:bg-[#333]"
-                style={{
-                  background: "#2a2a2a",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                }}
-              >
-                <span>{PERIOD_LABELS[period]}</span>
-                <span className="text-[10px] text-[#9e9e9e] ml-[6px]">▾</span>
-              </button>
-              {periodMenuOpen && (
-                <>
-                  <button
-                    type="button"
-                    aria-label="Close dropdown"
-                    className="fixed inset-0 z-10 cursor-default bg-transparent border-none p-0"
-                    onClick={closePeriodMenu}
-                  />
-                  <div
-                    className="absolute left-0 top-[38px] z-20 rounded-[8px] py-[4px] min-w-full"
-                    style={{
-                      background: "#2a2a2a",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
-                    }}
-                  >
-                    {(Object.keys(PERIOD_LABELS) as Period[]).map((p) => (
-                      <button
-                        key={p}
-                        type="button"
-                        onClick={() => {
-                          onPeriodChange(p);
-                          setPeriodMenuOpen(false);
-                        }}
-                        className="w-full text-left px-[14px] py-[8px] text-[13px] transition-colors hover:bg-[rgba(255,255,255,0.06)]"
-                        style={{ color: period === p ? "#ff0f5f" : "white" }}
-                      >
-                        {PERIOD_LABELS[p]}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-            <button
-              type="button"
-              className="flex items-center justify-center w-[34px] h-[34px] rounded-[8px] text-[#9e9e9e] hover:text-white transition-colors"
-              style={{
-                background: "#2a2a2a",
-                border: "1px solid rgba(255,255,255,0.08)",
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <rect
-                  x="2"
-                  y="2.5"
-                  width="12"
-                  height="11"
-                  rx="1.5"
-                  stroke="currentColor"
-                  strokeWidth="1.3"
-                />
-                <path d="M2 6h12" stroke="currentColor" strokeWidth="1.3" />
-                <path
-                  d="M5.5 1.5v2M10.5 1.5v2"
-                  stroke="currentColor"
-                  strokeWidth="1.3"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </button>
-            <button
-              type="button"
-              className="flex items-center justify-center w-[34px] h-[34px] rounded-[8px] text-[#9e9e9e] hover:text-white transition-colors"
-              style={{
-                background: "#2a2a2a",
-                border: "1px solid rgba(255,255,255,0.08)",
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path
-                  d="M2 4h12M5 8h6M7.5 12h1"
-                  stroke="currentColor"
-                  strokeWidth="1.3"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </button>
+          {/* Active period label */}
+          <div className="flex items-center gap-[6px] px-[16px] py-[10px]">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="text-[#666]">
+              <rect x="1" y="1.5" width="10" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
+              <path d="M1 4.5h10" stroke="currentColor" strokeWidth="1.2"/>
+              <path d="M4 0.5v2M8 0.5v2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+            </svg>
+            <span className="text-[12px] text-[#9e9e9e]">
+              {calRangeStart && calRangeEnd
+                ? `${calRangeStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${calRangeEnd.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
+                : calRangeStart
+                  ? `${calRangeStart.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} →`
+                  : PERIOD_LABELS[period]}
+            </span>
           </div>
 
           {/* Status tabs */}
@@ -1232,12 +1088,20 @@ export const Reports = () => {
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<Period>("week");
   const [periodOpen, setPeriodOpen] = useState(false);
+  const [calOpen, setCalOpen] = useState(false);
+  const _today = new Date();
+  const [calViewYear, setCalViewYear] = useState(_today.getFullYear());
+  const [calViewMonth, setCalViewMonth] = useState(_today.getMonth());
+  const [calRangeStart, setCalRangeStart] = useState<Date | null>(null);
+  const [calRangeEnd, setCalRangeEnd] = useState<Date | null>(null);
+  const [calHover, setCalHover] = useState<Date | null>(null);
   const [txOpen, setTxOpen] = useState(true);
   // Admin-only: real transaction records (1 per sale/refund)
   const [adminTxList, setAdminTxList] = useState<TransactionFull[]>([]);
   const [adminTxTotalPages, setAdminTxTotalPages] = useState(1);
   const [adminTxPage, setAdminTxPage] = useState(1);
   const [adminTxLoading, setAdminTxLoading] = useState(false);
+  const [adminTxSearch, setAdminTxSearch] = useState("");
 
   useEffect(() => {
     const tasks: Promise<unknown>[] = [
@@ -1265,12 +1129,31 @@ export const Reports = () => {
     Promise.all(tasks).finally(() => setLoading(false));
   }, [isAdmin, isManager]);
 
-  // Fetch real transactions for admin whenever period or page changes
+  // Reset admin page when search, period, or date range changes
+  useEffect(() => {
+    setAdminTxPage(1);
+  }, [adminTxSearch, period, calRangeStart, calRangeEnd]);
+
+  // Fetch real transactions for admin whenever period, date range, search, or page changes
   useEffect(() => {
     if (!isAdmin) return;
     setAdminTxLoading(true);
+    const params: Parameters<typeof transactionApi.getAll>[0] = {
+      page: adminTxPage,
+      limit: ITEMS_PER_PAGE,
+    };
+    if (calRangeStart) {
+      const s = new Date(calRangeStart); s.setHours(0, 0, 0, 0);
+      const e = calRangeEnd ? new Date(calRangeEnd) : new Date(calRangeStart);
+      e.setHours(23, 59, 59, 999);
+      params.startDate = s.toISOString();
+      params.endDate   = e.toISOString();
+    } else {
+      params.period = period;
+    }
+    if (adminTxSearch) params.search = adminTxSearch;
     transactionApi
-      .getAll({ period, page: adminTxPage, limit: ITEMS_PER_PAGE })
+      .getAll(params)
       .then((d) => {
         setAdminTxList(d.transactions);
         setAdminTxTotalPages(d.totalPages);
@@ -1280,17 +1163,27 @@ export const Reports = () => {
         setAdminTxTotalPages(1);
       })
       .finally(() => setAdminTxLoading(false));
-  }, [isAdmin, period, adminTxPage]);
+  }, [isAdmin, period, adminTxPage, calRangeStart, calRangeEnd, adminTxSearch]);
 
   // ── filtered slices ──────────────────────────────────────────────────────
 
-  const curr = useMemo(
-    () => filterByPeriod(commissions, period),
-    [commissions, period],
-  );
+  const curr = useMemo(() => {
+    if (calRangeStart) {
+      const s = new Date(calRangeStart); s.setHours(0, 0, 0, 0);
+      const e = calRangeEnd ? new Date(calRangeEnd) : new Date(calRangeStart);
+      e.setHours(23, 59, 59, 999);
+      const [from, to] = s <= e ? [s, e] : [e, s];
+      return commissions.filter((c) => {
+        const t = new Date(c.createdAt).getTime();
+        return t >= from.getTime() && t <= to.getTime();
+      });
+    }
+    return filterByPeriod(commissions, period);
+  }, [commissions, period, calRangeStart, calRangeEnd]);
+
   const prev = useMemo(
-    () => prevPeriod(commissions, period),
-    [commissions, period],
+    () => (calRangeStart ? [] : prevPeriod(commissions, period)),
+    [commissions, period, calRangeStart],
   );
 
   const chartData = useMemo(() => buildChart(curr), [curr]);
@@ -1372,27 +1265,35 @@ export const Reports = () => {
   const topPerformers = useMemo(() => {
     if (!isManager) return [];
 
-    // Period cutoff (0 = all-time, no filter)
-    const cutoff = period === "all" ? 0 : cutoffMs(PERIOD_DAYS[period]);
+    // Use calendar range if set, otherwise fall back to period cutoff
+    let fromMs = 0;
+    let toMs = Infinity;
+    if (calRangeStart) {
+      const s = new Date(calRangeStart); s.setHours(0, 0, 0, 0);
+      const e = calRangeEnd ? new Date(calRangeEnd) : new Date(calRangeStart);
+      e.setHours(23, 59, 59, 999);
+      [fromMs, toMs] = s <= e ? [s.getTime(), e.getTime()] : [e.getTime(), s.getTime()];
+    } else {
+      fromMs = period === "all" ? 0 : cutoffMs(PERIOD_DAYS[period]);
+    }
 
     return myReferrals
       .filter((r) => r.referredUser != null)
       .map((r) => {
         const name = `${r.referredUser!.firstName} ${r.referredUser!.lastName}`;
         const revenue = (r.commissions ?? [])
-          .filter(
-            (c) =>
-              c.amount > 0 &&
-              c.userId === r.referredUser!.id &&
-              (cutoff === 0 || new Date(c.createdAt).getTime() >= cutoff),
-          )
+          .filter((c) => {
+            if (c.amount <= 0 || c.userId !== r.referredUser!.id) return false;
+            const t = new Date(c.createdAt).getTime();
+            return t >= fromMs && t <= toMs;
+          })
           .reduce((sum, c) => sum + c.amount, 0);
         return { name, revenue };
       })
       .filter((p) => p.revenue > 0)
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 10);
-  }, [myReferrals, isManager, period]);
+  }, [myReferrals, isManager, period, calRangeStart, calRangeEnd]);
 
   const promoterCount = myReferrals.filter(
     (r) => r.referredUser != null,
@@ -1473,6 +1374,53 @@ export const Reports = () => {
     setPeriod(p);
     setPeriodOpen(false);
     setAdminTxPage(1);
+    setCalRangeStart(null);
+    setCalRangeEnd(null);
+  };
+
+  // ── Calendar helpers ──────────────────────────────────────────────────────
+  const calPrevMonth = () => {
+    if (calViewMonth === 0) { setCalViewMonth(11); setCalViewYear((y) => y - 1); }
+    else setCalViewMonth((m) => m - 1);
+  };
+  const calNextMonth = () => {
+    if (calViewMonth === 11) { setCalViewMonth(0); setCalViewYear((y) => y + 1); }
+    else setCalViewMonth((m) => m + 1);
+  };
+  const calToMs = (d: Date) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x.getTime(); };
+  const calFmt = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const calEffectiveEnd = calRangeEnd ?? calHover;
+  const calRangeStartMs = calRangeStart ? calToMs(calRangeStart) : null;
+  const calRangeEndMs   = calEffectiveEnd ? calToMs(calEffectiveEnd) : null;
+  const calFromMs = calRangeStartMs !== null && calRangeEndMs !== null ? Math.min(calRangeStartMs, calRangeEndMs) : calRangeStartMs;
+  const calToMsVal = calRangeStartMs !== null && calRangeEndMs !== null ? Math.max(calRangeStartMs, calRangeEndMs) : calRangeStartMs;
+
+  const buildCalCells = (year: number, month: number): (number | null)[] => {
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const cells: (number | null)[] = [
+      ...new Array(firstDay).fill(null),
+      ...new Array(daysInMonth).fill(0).map((_, i) => i + 1),
+    ];
+    while (cells.length % 7 !== 0) cells.push(null);
+    return cells;
+  };
+
+  const handleCalDayClick = (day: number) => {
+    const clicked = new Date(calViewYear, calViewMonth, day);
+    if (!calRangeStart || (calRangeStart && calRangeEnd)) {
+      setCalRangeStart(clicked);
+      setCalRangeEnd(null);
+      setCalHover(null);
+      setAdminTxPage(1);
+    } else {
+      const s = calToMs(calRangeStart);
+      const c = calToMs(clicked);
+      if (c >= s) { setCalRangeEnd(clicked); }
+      else { setCalRangeEnd(calRangeStart); setCalRangeStart(clicked); }
+      setCalHover(null);
+      setAdminTxPage(1);
+    }
   };
 
   if (loading) {
@@ -1491,13 +1439,21 @@ export const Reports = () => {
           Reports
         </h1>
         <div className="flex items-center gap-[8px]">
-          <div className="relative">
+          <div className="relative flex-1">
             <button
               onClick={() => setPeriodOpen((o) => !o)}
-              className="flex items-center gap-[6px] bg-[#2a2a2a] border border-[rgba(255,255,255,0.08)] rounded-[8px] px-[12px] py-[7px] text-[13px] text-white hover:bg-[#333] transition-colors"
+              className="w-full flex items-center justify-between gap-[8px] bg-[#2a2a2a] border border-[rgba(255,255,255,0.12)] rounded-[12px] px-[16px] py-[10px] text-[14px] text-[#ccc] hover:bg-[#333] transition-colors"
             >
-              {PERIOD_LABELS[period]}
-              <span className="text-[10px] text-[#9e9e9e]">▾</span>
+              {(() => {
+                if (calRangeStart && calRangeEnd)
+                  return `${calRangeStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${calRangeEnd.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+                if (calRangeStart)
+                  return `${calRangeStart.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} →`;
+                return PERIOD_LABELS[period];
+              })()}
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M3 5L7 9L11 5" stroke="#9e9e9e" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
             </button>
             {periodOpen && (
               <>
@@ -1508,7 +1464,7 @@ export const Reports = () => {
                   onClick={() => setPeriodOpen(false)}
                 />
                 <div
-                  className="absolute right-0 top-[38px] z-20 rounded-[8px] py-[4px] min-w-[150px]"
+                  className="absolute right-0 top-[48px] z-20 rounded-[8px] py-[4px] min-w-[150px]"
                   style={{
                     background: "#2a2a2a",
                     border: "1px solid rgba(255,255,255,0.1)",
@@ -1529,11 +1485,148 @@ export const Reports = () => {
               </>
             )}
           </div>
-          <button className="flex items-center justify-center w-[34px] h-[34px] bg-[#2a2a2a] border border-[rgba(255,255,255,0.08)] rounded-[8px] text-[15px] hover:bg-[#333] transition-colors">
-            📅
+          <button
+            onClick={() => setCalOpen((o) => !o)}
+            className="flex items-center justify-center w-[42px] h-[42px] bg-[#2a2a2a] border border-[rgba(255,255,255,0.12)] rounded-[12px] hover:bg-[#333] transition-colors"
+          >
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <rect x="2" y="3.5" width="14" height="12" rx="2" stroke="#9e9e9e" strokeWidth="1.4"/>
+              <path d="M2 7.5H16" stroke="#9e9e9e" strokeWidth="1.4"/>
+              <path d="M6 2V5" stroke="#9e9e9e" strokeWidth="1.4" strokeLinecap="round"/>
+              <path d="M12 2V5" stroke="#9e9e9e" strokeWidth="1.4" strokeLinecap="round"/>
+              <rect x="5" y="10" width="2" height="2" rx="0.5" fill="#9e9e9e"/>
+              <rect x="8.5" y="10" width="2" height="2" rx="0.5" fill="#9e9e9e"/>
+              <rect x="12" y="10" width="2" height="2" rx="0.5" fill="#9e9e9e"/>
+            </svg>
           </button>
         </div>
       </div>
+
+      {/* ── Calendar range overlay ── */}
+      {calOpen && (() => {
+        const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+        const DAY_NAMES = ["Su","Mo","Tu","We","Th","Fr","Sa"];
+        const cells = buildCalCells(calViewYear, calViewMonth);
+        const dayMs = (day: number) => calToMs(new Date(calViewYear, calViewMonth, day));
+        const rangeFromMs = calFromMs;
+        const rangeToMs   = calToMsVal;
+        let headerLabel = "Select start date";
+        if (calRangeStart && calRangeEnd) headerLabel = `${calFmt(calRangeStart)} – ${calFmt(calRangeEnd)}`;
+        else if (calRangeStart) headerLabel = `${calFmt(calRangeStart)} → Select end`;
+        return (
+          <>
+            <button
+              type="button"
+              aria-label="Close calendar"
+              className="fixed inset-0 z-40 cursor-default border-none p-0"
+              style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}
+              onClick={() => setCalOpen(false)}
+            />
+            <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+              <div
+                className="pointer-events-auto w-[340px] rounded-[24px] overflow-hidden"
+                style={{
+                  background: "linear-gradient(160deg, #1e1e26 0%, #141418 100%)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  boxShadow: "0 32px 80px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,15,95,0.08), inset 0 1px 0 rgba(255,255,255,0.06)",
+                }}
+              >
+                {/* Header */}
+                <div
+                  className="px-[24px] pt-[22px] pb-[18px] relative overflow-hidden"
+                  style={{ background: "linear-gradient(135deg, #1a0a10 0%, #2a0d1a 60%, #1e1018 100%)" }}
+                >
+                  <div className="absolute top-[-20px] right-[-20px] w-[130px] h-[130px] rounded-full pointer-events-none" style={{ background: "radial-gradient(circle, rgba(255,15,95,0.28) 0%, transparent 70%)" }} />
+                  <p className="text-[11px] font-semibold text-[rgba(255,255,255,0.35)] tracking-widest uppercase mb-[6px]">Date Range</p>
+                  <p className="text-[20px] font-bold text-white leading-tight">{headerLabel}</p>
+                  <div className="flex items-center gap-[8px] mt-[12px]">
+                    <div className="flex-1 rounded-[8px] px-[10px] py-[6px] text-[12px] font-medium" style={{ background: calRangeStart ? "rgba(255,15,95,0.25)" : "rgba(255,255,255,0.06)", color: calRangeStart ? "white" : "rgba(255,255,255,0.3)", border: `1px solid ${calRangeStart ? "rgba(255,15,95,0.4)" : "rgba(255,255,255,0.08)"}` }}>
+                      {calRangeStart ? calFmt(calRangeStart) : "Start"}
+                    </div>
+                    <svg width="16" height="10" viewBox="0 0 16 10" fill="none"><path d="M1 5H15M15 5L11 1M15 5L11 9" stroke="rgba(255,255,255,0.3)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    <div className="flex-1 rounded-[8px] px-[10px] py-[6px] text-[12px] font-medium" style={{ background: calRangeEnd ? "rgba(255,15,95,0.25)" : "rgba(255,255,255,0.06)", color: calRangeEnd ? "white" : "rgba(255,255,255,0.3)", border: `1px solid ${calRangeEnd ? "rgba(255,15,95,0.4)" : "rgba(255,255,255,0.08)"}` }}>
+                      {calRangeEnd ? calFmt(calRangeEnd) : "End"}
+                    </div>
+                  </div>
+                </div>
+                {/* Month nav */}
+                <div className="flex items-center justify-between px-[20px] py-[14px]">
+                  <button onClick={calPrevMonth} className="w-[32px] h-[32px] flex items-center justify-center rounded-full transition-all" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                    <svg width="7" height="12" viewBox="0 0 7 12" fill="none"><path d="M6 1L1 6L6 11" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </button>
+                  <span className="text-[14px] font-semibold text-white">{MONTH_NAMES[calViewMonth]} {calViewYear}</span>
+                  <button onClick={calNextMonth} className="w-[32px] h-[32px] flex items-center justify-center rounded-full transition-all" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                    <svg width="7" height="12" viewBox="0 0 7 12" fill="none"><path d="M1 1L6 6L1 11" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </button>
+                </div>
+                <div className="mx-[20px]" style={{ height: "1px", background: "rgba(255,255,255,0.06)" }} />
+                {/* Day headers */}
+                <div className="grid grid-cols-7 px-[16px] pt-[12px] pb-[4px]">
+                  {DAY_NAMES.map(d => (
+                    <div key={d} className="text-center text-[11px] font-bold text-[rgba(255,255,255,0.3)]">{d}</div>
+                  ))}
+                </div>
+                {/* Date grid */}
+                <div className="grid grid-cols-7 px-[16px] pb-[18px] gap-y-[2px]" onMouseLeave={() => setCalHover(null)} role="grid" tabIndex={0} onKeyDown={() => {}}>
+                  {cells.map((day, i) => {
+                    if (day === null) return <div key={`e-${calViewYear}-${calViewMonth}-${i}`} className="h-[36px]" />;
+                    const ms = dayMs(day);
+                    const isStart = rangeFromMs !== null && ms === rangeFromMs;
+                    const isEnd   = rangeToMs   !== null && ms === rangeToMs;
+                    const inRange = rangeFromMs !== null && rangeToMs !== null && ms > rangeFromMs && ms < rangeToMs;
+                    const isEndpoint = isStart || isEnd;
+                    const isToday = new Date().getFullYear() === calViewYear && new Date().getMonth() === calViewMonth && new Date().getDate() === day;
+                    let btnBg = "transparent";
+                    if (isEndpoint) btnBg = "linear-gradient(135deg, #ff0f5f, #e0004a)";
+                    else if (isToday) btnBg = "rgba(255,15,95,0.12)";
+                    let btnColor = "rgba(255,255,255,0.8)";
+                    if (isEndpoint) btnColor = "white";
+                    else if (isToday) btnColor = "#ff0f5f";
+                    return (
+                      <div key={`cell-${calViewYear}-${calViewMonth}-${i}`} className="relative h-[36px] flex items-center justify-center">
+                        {inRange && <div className="absolute inset-0" style={{ background: "rgba(255,15,95,0.13)" }} />}
+                        {isStart && rangeToMs !== null && <div className="absolute top-0 bottom-0 right-0 w-1/2" style={{ background: "rgba(255,15,95,0.13)" }} />}
+                        {isEnd && rangeFromMs !== ms && <div className="absolute top-0 bottom-0 left-0 w-1/2" style={{ background: "rgba(255,15,95,0.13)" }} />}
+                        <button
+                          className="relative z-10 w-[34px] h-[34px] flex items-center justify-center text-[13px] rounded-full transition-all"
+                          style={{ background: btnBg, color: btnColor, fontWeight: isEndpoint || isToday ? 700 : 400, boxShadow: isEndpoint ? "0 4px 14px rgba(255,15,95,0.5)" : "none", outline: isToday && !isEndpoint ? "1px solid rgba(255,15,95,0.4)" : "none" }}
+                          onClick={() => handleCalDayClick(day)}
+                          onMouseEnter={() => { if (!calRangeEnd) setCalHover(new Date(calViewYear, calViewMonth, day)); }}
+                        >
+                          {day}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Footer */}
+                <div className="flex items-center justify-between px-[20px] py-[14px]" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                  <button
+                    onClick={() => { setCalRangeStart(null); setCalRangeEnd(null); setCalHover(null); setCalOpen(false); }}
+                    className="text-[13px] font-medium transition-colors"
+                    style={{ color: "rgba(255,255,255,0.4)" }}
+                  >
+                    Clear
+                  </button>
+                  <button
+                    onClick={() => setCalOpen(false)}
+                    disabled={!calRangeStart}
+                    className="text-[13px] font-semibold px-[20px] py-[8px] rounded-[10px] transition-all"
+                    style={{
+                      background: calRangeStart ? "linear-gradient(135deg, #ff0f5f, #e0004a)" : "rgba(255,255,255,0.08)",
+                      color: calRangeStart ? "white" : "rgba(255,255,255,0.3)",
+                      boxShadow: calRangeStart ? "0 4px 16px rgba(255,15,95,0.4)" : "none",
+                      cursor: calRangeStart ? "pointer" : "default",
+                    }}
+                  >
+                    Apply
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        );
+      })()}
 
       {/* ── Ledger ── */}
       <div className="flex flex-col gap-[6px]">
@@ -1623,9 +1716,12 @@ export const Reports = () => {
           isOpen={txOpen}
           onToggle={() => setTxOpen((o) => !o)}
           period={period}
-          onPeriodChange={selectPeriod}
+          calRangeStart={calRangeStart}
+          calRangeEnd={calRangeEnd}
           loading={adminTxLoading}
           money={money}
+          search={adminTxSearch}
+          onSearch={setAdminTxSearch}
         />
       ) : (
         <TxListCard
@@ -1633,7 +1729,8 @@ export const Reports = () => {
           isOpen={txOpen}
           onToggle={() => setTxOpen((o) => !o)}
           period={period}
-          onPeriodChange={selectPeriod}
+          calRangeStart={calRangeStart}
+          calRangeEnd={calRangeEnd}
           money={money}
         />
       )}

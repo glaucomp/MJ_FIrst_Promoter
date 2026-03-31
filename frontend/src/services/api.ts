@@ -414,6 +414,7 @@ export const transactionApi = {
     limit?: number;
     startDate?: string;
     endDate?: string;
+    search?: string;
   }): Promise<TransactionListResponse> {
     const query = new URLSearchParams();
     if (params?.startDate) {
@@ -422,8 +423,9 @@ export const transactionApi = {
     } else if (params?.period) {
       query.set('period', params.period);
     }
-    if (params?.page)  query.set('page',  String(params.page));
-    if (params?.limit) query.set('limit', String(params.limit));
+    if (params?.page)   query.set('page',   String(params.page));
+    if (params?.limit)  query.set('limit',  String(params.limit));
+    if (params?.search) query.set('search', params.search);
     const qs = query.toString();
     const url = qs ? `${API_URL}/transactions?${qs}` : `${API_URL}/transactions`;
     const response = await fetch(url, { headers: getAuthHeaders() });
