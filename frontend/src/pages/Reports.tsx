@@ -2482,28 +2482,25 @@ export const Reports = () => {
             { label: "Promoters", count: wf.promoters },
             { label: "Referral Managers", count: wf.referralManagers },
           ].map(({ label, count }) => (
-            <Card key={label}>
+            <Card key={label} radius="var(--radius-m)">
               <button
                 onClick={() => navigate("/models")}
-                className="w-full flex items-center justify-between px-[16px] py-[14px] hover:bg-[rgba(255,255,255,0.03)] transition-colors group"
+                className="w-full flex items-center justify-between hover:bg-[rgba(255,255,255,0.03)] transition-colors"
+                style={{ padding: 'var(--space-20)' }}
               >
-                <div className="text-left">
-                  <div
-                    className="text-[13px]"
-                    style={{ color: "var(--color-text-muted)" }}
-                  >
+                <div className="text-left flex flex-col gap-[var(--space-4)]">
+                  <div style={{ fontSize: 'var(--font-size-body-s)', fontWeight: 'var(--font-weight-medium)', lineHeight: '140%', letterSpacing: '0.2px', color: 'var(--color-text-muted)' }}>
                     {label}
                   </div>
-                  <div className="text-[20px] font-bold text-white mt-px">
+                  <div style={{ fontSize: 'var(--font-size-body-s)', fontWeight: 'var(--font-weight-medium)', lineHeight: '140%', letterSpacing: '0.2px', color: 'var(--color-text-primary)' }}>
                     {count.toLocaleString()}
                   </div>
                 </div>
-                <span
-                  className="text-[20px] group-hover:opacity-70 transition-opacity"
-                  style={{ color: "var(--color-text-subtle)" }}
-                >
-                  ›
-                </span>
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid var(--border-faint)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ color: 'var(--color-text-muted)', transform: 'rotate(-90deg)' }}>
+                    <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
               </button>
             </Card>
           ))}
