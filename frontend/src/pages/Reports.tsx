@@ -857,11 +857,11 @@ const AdminTxListCard = ({
               >
                 ‹
               </button>
-              {pages.map((p) => {
+              {pages.map((p, i) => {
                 if (p === "…") {
                   return (
                     <span
-                      key={`el-${page}`}
+                      key={`el-${i}`}
                       className="text-[12px] px-[2px]"
                       style={{ color: "var(--color-text-subtle)" }}
                     >
@@ -1193,11 +1193,11 @@ const TxListCard = ({
               >
                 ‹
               </button>
-              {pages.map((p) => {
+              {pages.map((p, i) => {
                 if (p === "…")
                   return (
                     <span
-                      key={`el-${page}`}
+                      key={`el-${i}`}
                       className="text-[12px] px-[2px]"
                       style={{ color: "var(--color-text-subtle)" }}
                     >
@@ -1942,9 +1942,6 @@ export const Reports = () => {
                         padding: "0 var(--space-16) var(--space-16)",
                       }}
                       onMouseLeave={() => setCalHover(null)}
-                      role="grid"
-                      tabIndex={0}
-                      onKeyDown={() => {}}
                     >
                       {cells.map((day, i) => {
                         if (day === null)

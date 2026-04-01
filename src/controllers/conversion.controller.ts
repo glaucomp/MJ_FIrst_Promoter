@@ -399,7 +399,7 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
       return res.status(404).json({ error: 'Original sale not found' });
     }
 
-    const refundRevenue = amount;
+    const refundRevenue = amount / 100; // amount is in cents, convert to dollars
     const campaign = customer.referral.campaign;
 
     // Find original transaction to link refund
