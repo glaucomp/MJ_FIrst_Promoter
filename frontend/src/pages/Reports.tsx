@@ -1513,11 +1513,12 @@ export const Reports = () => {
                   onClick={() => setPeriodOpen(false)}
                 />
                 <div
-                  className="absolute right-0 top-[48px] z-20 py-[4px] min-w-[150px]"
+                  className="absolute left-0 right-0 z-20 overflow-hidden"
                   style={{
+                    top: "calc(var(--button-m) + var(--space-4))",
                     borderRadius: "var(--radius-m)",
                     background: "var(--color-surface-raised)",
-                    border: "1px solid var(--border-hairline)",
+                    border: "1px solid var(--border-faint)",
                     boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
                   }}
                 >
@@ -1525,8 +1526,11 @@ export const Reports = () => {
                     <button
                       key={p}
                       onClick={() => selectPeriod(p)}
-                      className="w-full text-left px-[14px] py-[8px] text-[13px] transition-colors hover:bg-[rgba(255,255,255,0.06)]"
-                      style={{ color: period === p ? "var(--color-accent-bright)" : "var(--color-text-primary)" }}
+                      className="w-full text-left text-[14px] transition-colors hover:bg-[rgba(255,255,255,0.04)]"
+                      style={{
+                        padding: "var(--space-14) var(--space-16)",
+                        color: period === p ? "var(--color-accent-bright)" : "var(--color-text-primary)",
+                      }}
                     >
                       {PERIOD_LABELS[p]}
                     </button>
