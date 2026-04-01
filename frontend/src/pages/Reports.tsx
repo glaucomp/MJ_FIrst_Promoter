@@ -285,7 +285,7 @@ const TxRow = ({
           {saleAmt > 0 && (
             <div
               className="flex justify-between px-[14px] py-[9px]"
-              style={{ borderBottom: "1px solid var(--border-muted)" }}
+              style={{ borderBottom: "1px solid var(--border-elevated)" }}
             >
               <span style={{ color: "var(--color-text-faded)" }}>Sale Amount</span>
               <span className="font-semibold text-white">
@@ -295,7 +295,7 @@ const TxRow = ({
           )}
           <div
             className="flex justify-between px-[14px] py-[9px]"
-            style={{ borderBottom: "1px solid var(--border-muted)" }}
+            style={{ borderBottom: "1px solid var(--border-elevated)" }}
           >
             <span style={{ color: "var(--color-text-faded)" }}>Commission</span>
             <div className="flex items-center gap-[6px]">
@@ -311,7 +311,7 @@ const TxRow = ({
           {tx.customer && (
             <div
               className="flex justify-between px-[14px] py-[9px]"
-              style={{ borderBottom: "1px solid var(--border-muted)" }}
+              style={{ borderBottom: "1px solid var(--border-elevated)" }}
             >
               <span style={{ color: "var(--color-text-faded)" }}>Customer</span>
               <span style={{ color: "var(--color-text-dim)" }}>
@@ -433,7 +433,7 @@ const AdminTxRow = ({
           {tx.customer && (
             <div
               className="flex items-center justify-between px-[14px] py-[10px]"
-              style={{ borderBottom: "1px solid var(--border-muted)" }}
+              style={{ borderBottom: "1px solid var(--border-elevated)" }}
             >
               <span className="text-[11px] uppercase tracking-[0.07em]" style={{ color: "var(--color-text-faded)" }}>
                 Customer
@@ -455,7 +455,7 @@ const AdminTxRow = ({
           {tx.campaign && (
             <div
               className="flex items-center justify-between px-[14px] py-[10px]"
-              style={{ borderBottom: "1px solid var(--border-muted)" }}
+              style={{ borderBottom: "1px solid var(--border-elevated)" }}
             >
               <span className="text-[11px] uppercase tracking-[0.07em]" style={{ color: "var(--color-text-faded)" }}>
                 Campaign
@@ -476,7 +476,7 @@ const AdminTxRow = ({
           <div
             className="flex items-center justify-between px-[14px] py-[10px]"
             style={{
-              borderBottom: tx.commissions.length > 0 ? "1px solid var(--border-muted)" : "none",
+              borderBottom: tx.commissions.length > 0 ? "1px solid var(--border-elevated)" : "none",
             }}
           >
             <span className="text-[11px] uppercase tracking-[0.07em]" style={{ color: "var(--color-text-faded)" }}>
@@ -512,7 +512,7 @@ const AdminTxRow = ({
                     className="flex items-center gap-[10px] py-[8px] px-[10px] rounded-[8px]"
                     style={{
                       background: "var(--color-surface-inset)",
-                      border: "1px solid var(--border-muted)",
+                      border: "1px solid var(--border-elevated)",
                     }}
                   >
                     {/* Avatar */}
@@ -1542,8 +1542,8 @@ export const Reports = () => {
               width: "var(--button-m)",
               height: "var(--button-m)",
               background: "var(--color-surface-raised)",
-              borderRadius: "var(--radius-m)",
-              boxShadow: "var(--shadow-rim-light)",
+              borderRadius: "var(--radius-s)",
+              border: "1px solid var(--border-subtle)",
             }}
           >
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
