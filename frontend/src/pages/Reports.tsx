@@ -133,7 +133,7 @@ const Card = ({
 );
 
 const HDivider = () => (
-  <div className="h-px" style={{ background: "var(--border-faint)" }} />
+  <div style={{ height: "1px", background: "var(--border-faint)", margin: "0 16px" }} />
 );
 
 const SectionTitle = ({
@@ -231,180 +231,136 @@ const TxRow = ({
     `${tx.user.firstName?.[0] ?? ""}${tx.user.lastName?.[0] ?? ""}`.toUpperCase();
 
   return (
-    <div>
+    <div
+      style={{
+        margin: expanded ? "8px 0" : "0",
+        borderRadius: expanded ? "var(--radius-card)" : "0",
+        background: expanded ? "var(--color-surface)" : "transparent",
+        border: expanded ? "1px solid var(--border-subtle)" : "none",
+        overflow: "hidden",
+        transition: "margin 0.2s ease",
+      }}
+    >
       <button
         type="button"
-        className="w-full px-[16px] pt-[12px] pb-[10px] text-left bg-transparent border-none hover:bg-[rgba(255,255,255,0.02)] transition-colors"
+        className="w-full flex items-start gap-[12px] px-[16px] py-[16px] text-left bg-transparent border-none hover:bg-[rgba(255,255,255,0.02)] transition-colors"
         onClick={() => setExpanded((p) => !p)}
       >
-        {/* Line 1: type + tier | amount */}
-        <div className="flex items-center justify-between mb-[6px]">
-          <div className="flex items-center gap-[6px]">
-            {isRefund && (
-              <span
-                className="text-[13px]"
-                style={{ color: "var(--color-danger)" }}
-              >
-                ↩
+        {/* Avatar circle */}
+        <div
+          className="w-[32px] h-[32px] rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 mt-[1px]"
+          style={{ background: avatarBg, color: "var(--color-text-primary)" }}
+        >
+          {initials || "?"}
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          {/* Row 1: Sale + tier | amount */}
+          <div className="flex items-center justify-between mb-[4px]">
+            <div className="flex items-center gap-[6px]">
+              <span className="text-[14px] font-semibold text-white">
+                {isRefund ? "Refund" : "Sale"}
               </span>
-            )}
-            <span className="text-[14px] font-semibold text-white">Sale</span>
+              <span
+                className="text-[10px] font-bold px-[6px] py-px rounded-[4px]"
+                style={{ background: tierBg, color: tierText, border: `1px solid ${tierText}44` }}
+              >
+                {tierLabel}
+              </span>
+            </div>
             <span
-              className="text-[10px] font-bold px-[6px] py-px rounded-[4px]"
+              className="text-[14px] font-bold"
               style={{
-                background: tierBg,
-                color: tierText,
-                border: `1px solid ${tierText}44`,
+                color: positive ? "var(--color-positive)" : "var(--color-danger)",
+                textDecoration: isRefund ? "line-through" : "none",
               }}
             >
-              {tierLabel}
+              {positive ? "+ " : "− "}${money(Math.abs(tx.amount))}
             </span>
           </div>
-          <span
-            className="text-[14px] font-bold"
-            style={{
-              color: positive ? "var(--color-positive)" : "var(--color-danger)",
-              textDecoration: isRefund ? "line-through" : "none",
-            }}
-          >
-            {positive ? "+ " : "− "}${money(Math.abs(tx.amount))}
-          </span>
-        </div>
 
-        {/* Line 2: description | status badge */}
-        <div className="flex items-center justify-between mb-[6px]">
-          <span
-            className="text-[12px] truncate max-w-[60%]"
-            style={{ color: "var(--color-text-dim)" }}
-          >
-            {(() => {
-              const desc =
-                tx.description || `${tx.user.firstName} ${tx.user.lastName}`;
-              const match = /^(.*?from\s+)(\S+)([\s\S]*)$/.exec(desc);
-              if (match) {
-                return (
-                  <>
-                    {match[1]}
-                    <strong className="text-white">{match[2]}</strong>
-                    {match[3]}
-                  </>
-                );
-              }
-              return desc;
-            })()}
-          </span>
-          <span
-            className="text-[11px] font-semibold px-[9px] py-[2px] rounded-full capitalize"
-            style={{
-              background: statusStyle.bg,
-              color: statusStyle.text,
-              border: `1px solid ${statusStyle.text}33`,
-            }}
-          >
-            {tx.status}
-          </span>
-        </div>
+          {/* Row 2: description | status */}
+          <div className="flex items-center justify-between mb-[4px]">
+            <span className="text-[12px] truncate max-w-[60%]" style={{ color: "var(--color-text-dim)" }}>
+              {(() => {
+                const desc = tx.description || `${tx.user.firstName} ${tx.user.lastName}`;
+                const match = /^(.*?from\s+)(\S+)([\s\S]*)$/.exec(desc);
+                if (match) return (<>{match[1]}<strong className="text-white">{match[2]}</strong>{match[3]}</>);
+                return desc;
+              })()}
+            </span>
+            <span
+              className="text-[11px] font-semibold px-[9px] py-[2px] rounded-full capitalize"
+              style={{ background: statusStyle.bg, color: statusStyle.text, border: `1px solid ${statusStyle.text}33` }}
+            >
+              {tx.status}
+            </span>
+          </div>
 
-        {/* Line 3: date | chevron */}
-        <div className="flex items-center justify-between">
-          <span
-            className="text-[11px]"
-            style={{ color: "var(--color-text-subtle)" }}
-          >
-            {d}/{m}/{y} {hh}:{mn}:{sc}
-            {ap}
-          </span>
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 14 14"
-            fill="none"
-            className={`transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
-            style={{ color: "var(--color-text-subtle)" }}
-          >
-            <path
-              d="M3 5l4 4 4-4"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+          {/* Row 3: date | chevron */}
+          <div className="flex items-center justify-between">
+            <span className="text-[11px]" style={{ color: "var(--color-text-subtle)" }}>
+              {d}/{m}/{y} {hh}:{mn}:{sc}{ap}
+            </span>
+            <svg
+              width="14" height="14" viewBox="0 0 14 14" fill="none"
+              className={`transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
+              style={{ color: "var(--color-text-subtle)" }}
+            >
+              <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
         </div>
       </button>
 
       {/* ── Expanded detail ── */}
       {expanded && (
-        <div
-          className="mx-[16px] mb-[10px] rounded-[10px] overflow-hidden text-[12px]"
-          style={{
-            background: "var(--color-surface-inset)",
-            border: "1px solid var(--border-faint)",
-          }}
-        >
-          {saleAmt > 0 && (
+        <div className="tx-detail-enter px-[16px] pb-[20px] text-[12px]">
+          <div className="rounded-[10px] overflow-hidden" style={{ background: "var(--color-surface-inset)" }}>
+            {saleAmt > 0 && (
+              <div className="flex justify-between px-[14px] py-[10px]" style={{ borderBottom: "1px solid var(--border-elevated)" }}>
+                <span style={{ color: "var(--color-text-faded)" }}>Sale Amount</span>
+                <span className="font-semibold text-white">${money(saleAmt)}</span>
+              </div>
+            )}
             <div
-              className="flex justify-between px-[14px] py-[9px]"
-              style={{ borderBottom: "1px solid var(--border-elevated)" }}
+              className="flex justify-between px-[14px] py-[10px]"
+              style={{ borderBottom: tx.customer || tx.campaign ? "1px solid var(--border-elevated)" : "none" }}
             >
-              <span style={{ color: "var(--color-text-faded)" }}>
-                Sale Amount
-              </span>
-              <span className="font-semibold text-white">
-                ${money(saleAmt)}
-              </span>
+              <span style={{ color: "var(--color-text-faded)" }}>Commission</span>
+              <div className="flex items-center gap-[6px]">
+                <span className="font-bold" style={{ color: positive ? "var(--color-positive)" : "var(--color-danger)" }}>
+                  {positive ? "+" : "−"}${money(Math.abs(tx.amount))}
+                </span>
+                <span style={{ color: "var(--color-text-subtle)" }}>{tx.percentage}%</span>
+              </div>
             </div>
-          )}
-          <div
-            className="flex justify-between px-[14px] py-[9px]"
-            style={{ borderBottom: "1px solid var(--border-elevated)" }}
-          >
-            <span style={{ color: "var(--color-text-faded)" }}>Commission</span>
-            <div className="flex items-center gap-[6px]">
-              <span
-                className="font-bold"
-                style={{
-                  color: positive
-                    ? "var(--color-positive)"
-                    : "var(--color-danger)",
-                }}
+            {tx.customer && (
+              <div
+                className="flex justify-between px-[14px] py-[10px]"
+                style={{ borderBottom: tx.campaign ? "1px solid var(--border-elevated)" : "none" }}
               >
-                {positive ? "+" : "−"}${money(Math.abs(tx.amount))}
-              </span>
-              <span style={{ color: "var(--color-text-subtle)" }}>
-                {tx.percentage}%
-              </span>
-            </div>
+                <span style={{ color: "var(--color-text-faded)" }}>Customer</span>
+                <span style={{ color: "var(--color-text-dim)" }}>{tx.customer.email || tx.customer.name}</span>
+              </div>
+            )}
+            {tx.campaign && (
+              <div className="flex justify-between items-center px-[14px] py-[10px]">
+                <span style={{ color: "var(--color-text-faded)" }}>Campaign</span>
+                <span
+                  className="text-[10px] font-semibold px-[8px] py-[2px] rounded-full text-white"
+                  style={{ background: "var(--color-accent-bg)", border: "1px solid rgba(255,15,95,0.3)" }}
+                >
+                  {tx.campaign.name}
+                </span>
+              </div>
+            )}
           </div>
-          {tx.customer && (
-            <div
-              className="flex justify-between px-[14px] py-[9px]"
-              style={{ borderBottom: "1px solid var(--border-elevated)" }}
-            >
-              <span style={{ color: "var(--color-text-faded)" }}>Customer</span>
-              <span style={{ color: "var(--color-text-dim)" }}>
-                {tx.customer.email || tx.customer.name}
-              </span>
-            </div>
-          )}
-          {tx.campaign && (
-            <div className="flex justify-between items-center px-[14px] py-[9px]">
-              <span style={{ color: "var(--color-text-faded)" }}>Campaign</span>
-              <span
-                className="text-[10px] font-semibold px-[8px] py-[2px] rounded-full text-white"
-                style={{
-                  background: "var(--color-accent-bg)",
-                  border: "1px solid rgba(255,15,95,0.3)",
-                }}
-              >
-                {tx.campaign.name}
-              </span>
-            </div>
-          )}
         </div>
       )}
 
-      <HDivider />
+      {!expanded && <HDivider />}
     </div>
   );
 };
@@ -431,10 +387,19 @@ const AdminTxRow = ({
   const customerLabel = tx.customer?.name || tx.customer?.email || "—";
 
   return (
-    <div>
+    <div
+      style={{
+        margin: expanded ? "8px 0" : "0",
+        borderRadius: expanded ? "var(--radius-card)" : "0",
+        background: expanded ? "var(--color-surface)" : "transparent",
+        border: expanded ? "1px solid var(--border-subtle)" : "none",
+        overflow: "hidden",
+        transition: "margin 0.2s ease",
+      }}
+    >
       <button
         type="button"
-        className="w-full flex items-center gap-[12px] px-[16px] py-[13px] text-left bg-transparent border-none hover:bg-[rgba(255,255,255,0.02)] transition-colors"
+        className="w-full flex items-center gap-[12px] px-[16px] py-[16px] text-left bg-transparent border-none hover:bg-[rgba(255,255,255,0.02)] transition-colors"
         onClick={() => setExpanded((p) => !p)}
       >
         {/* Type badge */}
@@ -504,13 +469,8 @@ const AdminTxRow = ({
 
       {/* ── Expanded detail ── */}
       {expanded && (
-        <div
-          className="mx-[16px] mb-[12px] rounded-[10px] overflow-hidden"
-          style={{
-            background: "var(--color-surface-inset)",
-            border: "1px solid var(--border-faint)",
-          }}
-        >
+        <div className="tx-detail-enter px-[16px] pb-[28px]">
+          <div className="rounded-[10px] overflow-hidden" style={{ background: "var(--color-surface-inset)" }}>
           {/* Customer */}
           {tx.customer && (
             <div
@@ -677,10 +637,11 @@ const AdminTxRow = ({
               })}
             </div>
           )}
+          </div>
         </div>
       )}
 
-      <HDivider />
+      {!expanded && <HDivider />}
     </div>
   );
 };
