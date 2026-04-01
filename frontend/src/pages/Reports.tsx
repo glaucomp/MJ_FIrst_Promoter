@@ -108,18 +108,21 @@ const Card = ({
   children,
   className = "",
   radius = "var(--radius-card)",
+  noBorder = false,
 }: {
   children: React.ReactNode;
   className?: string;
   radius?: string;
+  noBorder?: boolean;
 }) => (
   <div
     className={`overflow-hidden ${className}`}
     style={{
       borderRadius: radius,
-      background:
-        "linear-gradient(180deg,var(--color-surface) 0%,var(--color-surface-end) 100%)",
-      border: "1px solid var(--border-subtle)",
+      background: noBorder
+        ? "transparent"
+        : "linear-gradient(180deg,var(--color-surface) 0%,var(--color-surface-end) 100%)",
+      border: noBorder ? "none" : "1px solid var(--border-subtle)",
     }}
   >
     {children}
@@ -732,37 +735,38 @@ const AdminTxListCard = ({
   }, [totalPages, page]);
 
   return (
-    <Card>
+    <Card noBorder>
       {/* Header */}
       <button
         type="button"
         onClick={onToggle}
         className="w-full flex items-center justify-between px-[16px] py-[14px] hover:bg-[rgba(255,255,255,0.02)] transition-colors text-left bg-transparent border-none"
       >
-        <span className="text-[14px] font-semibold text-white">
+        <span style={{ fontSize: 'var(--font-size-body-m)', fontWeight: 'var(--font-weight-medium)', lineHeight: '140%', letterSpacing: '0.2px', color: 'var(--color-text-muted)' }}>
           Transactions List
         </span>
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 14 14"
-          fill="none"
-          className={`transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
-          style={{ color: "var(--color-text-muted)" }}
-        >
-          <path
-            d="M3 5l4 4 4-4"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
+        <div style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid var(--border-faint)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 14 14"
+            fill="none"
+            className={`transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+            style={{ color: "var(--color-text-muted)" }}
+          >
+            <path
+              d="M3 5l4 4 4-4"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
       </button>
 
       {isOpen && (
         <>
-          <HDivider />
 
           {/* Active period label */}
           <div className="flex items-center gap-[6px] px-[16px] py-[10px]">
@@ -1044,37 +1048,38 @@ const TxListCard = ({
   ];
 
   return (
-    <Card>
+    <Card noBorder>
       {/* Header */}
       <button
         type="button"
         onClick={onToggle}
         className="w-full flex items-center justify-between px-[16px] py-[14px] hover:bg-[rgba(255,255,255,0.02)] transition-colors text-left bg-transparent border-none"
       >
-        <span className="text-[14px] font-semibold text-white">
+        <span style={{ fontSize: 'var(--font-size-body-m)', fontWeight: 'var(--font-weight-medium)', lineHeight: '140%', letterSpacing: '0.2px', color: 'var(--color-text-muted)' }}>
           Transactions List
         </span>
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 14 14"
-          fill="none"
-          className={`transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
-          style={{ color: "var(--color-text-muted)" }}
-        >
-          <path
-            d="M3 5l4 4 4-4"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
+        <div style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid var(--border-faint)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 14 14"
+            fill="none"
+            className={`transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+            style={{ color: "var(--color-text-muted)" }}
+          >
+            <path
+              d="M3 5l4 4 4-4"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
       </button>
 
       {isOpen && (
         <>
-          <HDivider />
 
           {/* Active period label */}
           <div className="flex items-center gap-[6px] px-[16px] py-[10px]">
