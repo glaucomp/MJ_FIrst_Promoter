@@ -142,7 +142,7 @@ export const Campaigns = () => {
           <p className="text-[16px] text-[#9e9e9e]">{campaigns.length} total</p>
           <button
             onClick={openCreate}
-            className="bg-gradient-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
           >
             + Create Campaign
           </button>
@@ -162,7 +162,7 @@ export const Campaigns = () => {
           {campaigns.map(c => (
             <div
               key={c.id}
-              className="bg-gradient-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[16px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)]"
+              className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[16px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)]"
             >
               <div className="flex flex-col gap-[12px]">
                 {/* Top row */}
@@ -276,7 +276,7 @@ export const Campaigns = () => {
           ))}
 
           {campaigns.length === 0 && (
-            <div className="bg-gradient-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] text-center">
+            <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] text-center">
               <p className="text-[#9e9e9e] text-[16px]">No campaigns yet. Create the first one.</p>
             </div>
           )}
@@ -286,7 +286,7 @@ export const Campaigns = () => {
       {/* Create / Edit Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-[20px] py-[20px]">
-          <div className="bg-gradient-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1)] w-full max-w-[540px] max-h-[90vh] overflow-y-auto">
+          <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1)] w-full max-w-[540px] max-h-[90vh] overflow-y-auto">
             <div className="flex flex-col gap-[18px]">
               {/* Modal header */}
               <div className="flex items-center justify-between">
@@ -426,7 +426,7 @@ export const Campaigns = () => {
               <button
                 onClick={handleSave}
                 disabled={isSaving}
-                className="bg-gradient-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[24px] py-[14px] text-white text-[16px] font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[24px] py-[14px] text-white text-[16px] font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSaving ? 'Saving...' : editingCampaign ? 'Save Changes' : 'Create Campaign'}
               </button>
