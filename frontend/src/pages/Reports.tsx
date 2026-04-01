@@ -2301,16 +2301,11 @@ export const Reports = () => {
           </Card>
 
           {/* USERS stat card */}
-          <Card>
+          <Card radius="var(--radius-m)">
             {/* Total */}
-            <div className="px-[16px] py-[14px]">
+            <div style={{ padding: 'var(--space-20) var(--space-20) var(--space-16)' }}>
               <div className="flex items-center justify-between">
-                <span
-                  className="text-[11px] font-bold uppercase tracking-[0.08em]"
-                  style={{ color: "var(--color-text-muted)" }}
-                >
-                  Users
-                </span>
+                <span className="stat-label">Users</span>
                 {newCustomerCount > 0 && (
                   <span
                     className="inline-flex items-center gap-[3px] text-[12px] font-bold px-[10px] py-[4px] rounded-full text-white"
@@ -2325,49 +2320,33 @@ export const Reports = () => {
               </div>
             </div>
 
-            <HDivider />
-
-            <div className="flex items-center justify-between px-[16px] py-[12px]">
-              <span
-                className="text-[14px]"
-                style={{ color: "var(--color-text-muted)" }}
-              >
-                Idle
-              </span>
-              <span className="text-[14px] font-semibold text-white">
+            <div className="flex items-center justify-between" style={{ padding: 'var(--space-8) var(--space-20)' }}>
+              <span style={{ fontSize: 'var(--font-size-body-s)', color: 'var(--color-text-muted)' }}>Idle</span>
+              <span style={{ fontSize: 'var(--font-size-body-s)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--color-text-primary)' }}>
                 {idleCustomerCount.toLocaleString()}
               </span>
             </div>
 
-            <HDivider />
-
-            <div className="flex items-center justify-between px-[16px] py-[12px]">
-              <span
-                className="text-[14px]"
-                style={{ color: "var(--color-text-muted)" }}
-              >
-                Unpaid
-              </span>
-              <span className="text-[14px] font-semibold text-white">
+            <div className="flex items-center justify-between" style={{ padding: 'var(--space-8) var(--space-20)' }}>
+              <span style={{ fontSize: 'var(--font-size-body-s)', color: 'var(--color-text-muted)' }}>Unpaid</span>
+              <span style={{ fontSize: 'var(--font-size-body-s)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--color-text-primary)' }}>
                 {unpaidCustomerCount.toLocaleString()}
               </span>
             </div>
 
-            <HDivider />
-
             <button
               onClick={() => navigate("/models")}
-              className="w-full flex items-center justify-between px-[16px] py-[13px] hover:bg-[rgba(255,255,255,0.03)] transition-colors group"
+              className="w-full flex items-center justify-between hover:bg-[rgba(255,255,255,0.03)] transition-colors"
+              style={{ padding: 'var(--space-12) var(--space-20)' }}
             >
-              <span className="text-[14px] font-medium text-white">
+              <span style={{ fontSize: 'var(--font-size-body-s)', fontWeight: 'var(--font-weight-medium)', color: 'var(--color-text-primary)' }}>
                 View Details
               </span>
-              <span
-                className="text-[20px] group-hover:opacity-70 transition-opacity"
-                style={{ color: "var(--color-text-subtle)" }}
-              >
-                ›
-              </span>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid var(--border-faint)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ color: 'var(--color-text-muted)', transform: 'rotate(-90deg)' }}>
+                  <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
             </button>
           </Card>
         </>
@@ -2511,16 +2490,11 @@ export const Reports = () => {
       {isAdmin && (
         <div className="flex flex-col gap-[6px]">
           <SectionTitle icon={<img src={usersIcon} width="16" height="16" alt="" />} label="Users" />
-          <Card>
+          <Card radius="var(--radius-m)">
             {/* USERS total */}
-            <div className="px-[16px] py-[14px]">
+            <div style={{ padding: 'var(--space-20) var(--space-20) var(--space-16)' }}>
               <div className="flex items-center justify-between">
-                <span
-                  className="text-[11px] font-bold uppercase tracking-[0.08em]"
-                  style={{ color: "var(--color-text-muted)" }}
-                >
-                  Users
-                </span>
+                <span className="stat-label">Users</span>
                 {newUsersCount > 0 && (
                   <span
                     className="inline-flex items-center gap-[3px] text-[12px] font-bold px-[10px] py-[4px] rounded-full text-white"
@@ -2535,49 +2509,33 @@ export const Reports = () => {
               </div>
             </div>
 
-            <HDivider />
-
-            <div className="flex items-center justify-between px-[16px] py-[12px]">
-              <span
-                className="text-[14px]"
-                style={{ color: "var(--color-text-muted)" }}
-              >
-                Idle
-              </span>
-              <span className="text-[14px] font-semibold text-white">
+            <div className="flex items-center justify-between" style={{ padding: 'var(--space-8) var(--space-20)' }}>
+              <span style={{ fontSize: 'var(--font-size-body-s)', color: 'var(--color-text-muted)' }}>Idle</span>
+              <span style={{ fontSize: 'var(--font-size-body-s)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--color-text-primary)' }}>
                 {idleCount.toLocaleString()}
               </span>
             </div>
 
-            <HDivider />
-
-            <div className="flex items-center justify-between px-[16px] py-[12px]">
-              <span
-                className="text-[14px]"
-                style={{ color: "var(--color-text-muted)" }}
-              >
-                Unpaid
-              </span>
-              <span className="text-[14px] font-semibold text-white">
+            <div className="flex items-center justify-between" style={{ padding: 'var(--space-8) var(--space-20)' }}>
+              <span style={{ fontSize: 'var(--font-size-body-s)', color: 'var(--color-text-muted)' }}>Unpaid</span>
+              <span style={{ fontSize: 'var(--font-size-body-s)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--color-text-primary)' }}>
                 {unpaidCount.toLocaleString()}
               </span>
             </div>
 
-            <HDivider />
-
             <button
               onClick={() => navigate("/models")}
-              className="w-full flex items-center justify-between px-[16px] py-[13px] hover:bg-[rgba(255,255,255,0.03)] transition-colors group"
+              className="w-full flex items-center justify-between hover:bg-[rgba(255,255,255,0.03)] transition-colors"
+              style={{ padding: 'var(--space-12) var(--space-20)' }}
             >
-              <span className="text-[14px] font-medium text-white">
+              <span style={{ fontSize: 'var(--font-size-body-s)', fontWeight: 'var(--font-weight-medium)', color: 'var(--color-text-primary)' }}>
                 View Details
               </span>
-              <span
-                className="text-[20px] group-hover:opacity-70 transition-opacity"
-                style={{ color: "var(--color-text-subtle)" }}
-              >
-                ›
-              </span>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid var(--border-faint)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ color: 'var(--color-text-muted)', transform: 'rotate(-90deg)' }}>
+                  <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
             </button>
           </Card>
         </div>

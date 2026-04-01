@@ -50,7 +50,7 @@
   /* ── Borders (token-matched) ── */
   --border-subtle:   rgba(255, 255, 255, 0.03);  /* border-subtle token  ~3%  */
   --border-elevated: rgba(255, 255, 255, 0.05);  /* border-elevated token ~5% */
-  --border-faint:    rgba(255, 255, 255, 0.06);
+  --border-faint:    rgba(255, 255, 255, 0.10);
   --border-medium:   rgba(255, 255, 255, 0.08);
   --border-strong:   rgba(255, 255, 255, 0.1);
   --border-hairline: rgba(255, 255, 255, 0.12);
