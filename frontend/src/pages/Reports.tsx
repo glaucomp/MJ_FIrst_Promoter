@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import calenderIcon from "../assets/calender.svg";
 import ledgerIcon from "../assets/ledger.svg";
+import networkIcon from "../assets/network.svg";
+import usersIcon from "../assets/users.svg";
 import { Chart } from "../components/Chart";
 import { useAuth } from "../contexts/AuthContext";
 import {
@@ -2474,7 +2476,7 @@ export const Reports = () => {
       {/* ── Network ── (admin only) */}
       {isAdmin && (
         <div className="flex flex-col gap-[6px]">
-          <SectionTitle icon="△" label="Network" />
+          <SectionTitle icon={<img src={networkIcon} width="16" height="16" alt="" />} label="Network" />
           {[
             { label: "Account Managers", count: wf.accountManagers },
             { label: "Promoters", count: wf.promoters },
@@ -2511,7 +2513,7 @@ export const Reports = () => {
       {/* ── Users ── (admin only) */}
       {isAdmin && (
         <div className="flex flex-col gap-[6px]">
-          <SectionTitle icon="👥" label="Users" />
+          <SectionTitle icon={<img src={usersIcon} width="16" height="16" alt="" />} label="Users" />
           <Card>
             {/* USERS total */}
             <div className="px-[16px] py-[14px]">
