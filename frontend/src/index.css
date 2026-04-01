@@ -31,10 +31,11 @@
   /* ── Text (tm-text) ── */
   --color-text-primary:   #FFFFFF;
   --color-text-secondary: #F5F5F5;
+  --color-text-label:     #C7C7C7; /* tm-text-color05 */
+  --color-text-dim:       #CCCCCC;
   --color-text-muted:     #9E9E9E;
   --color-text-subtle:    #555555;
   --color-text-faded:     #666666;
-  --color-text-dim:       #CCCCCC;
 
   /* ── Surfaces (tm-neutral) ── */
   --color-bg:             #212121;

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import calenderIcon from "../assets/calender.svg";
+import ledgerIcon from "../assets/ledger.svg";
 import { Chart } from "../components/Chart";
 import { useAuth } from "../contexts/AuthContext";
 import {
@@ -135,14 +137,19 @@ const SectionTitle = ({
 }) => (
   <div className="flex items-center gap-[6px] py-[6px]">
     <span
-      className="text-[14px] leading-none"
+      className="flex items-center leading-none"
       style={{ color: "var(--color-text-muted)" }}
     >
       {icon}
     </span>
     <span
-      className="text-[13px] font-semibold"
-      style={{ color: "var(--color-text-muted)" }}
+      className="font-medium"
+      style={{
+        color: "var(--color-text-label)",
+        fontSize: "var(--text-body-size, 13px)",
+        lineHeight: "140%",
+        letterSpacing: "0.2px",
+      }}
     >
       {label}
     </span>
@@ -1792,58 +1799,7 @@ export const Reports = () => {
               border: "1px solid var(--border-subtle)",
             }}
           >
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-              <rect
-                x="2"
-                y="3.5"
-                width="14"
-                height="12"
-                rx="2"
-                stroke="var(--color-text-muted)"
-                strokeWidth="1.4"
-              />
-              <path
-                d="M2 7.5H16"
-                stroke="var(--color-text-muted)"
-                strokeWidth="1.4"
-              />
-              <path
-                d="M6 2V5"
-                stroke="var(--color-text-muted)"
-                strokeWidth="1.4"
-                strokeLinecap="round"
-              />
-              <path
-                d="M12 2V5"
-                stroke="var(--color-text-muted)"
-                strokeWidth="1.4"
-                strokeLinecap="round"
-              />
-              <rect
-                x="5"
-                y="10"
-                width="2"
-                height="2"
-                rx="0.5"
-                fill="var(--color-text-muted)"
-              />
-              <rect
-                x="8.5"
-                y="10"
-                width="2"
-                height="2"
-                rx="0.5"
-                fill="var(--color-text-muted)"
-              />
-              <rect
-                x="12"
-                y="10"
-                width="2"
-                height="2"
-                rx="0.5"
-                fill="var(--color-text-muted)"
-              />
-            </svg>
+            <img src={calenderIcon} width="18" height="20" alt="calendar" />
           </button>
 
           {/* ── Calendar range overlay ── */}
@@ -2157,7 +2113,10 @@ export const Reports = () => {
 
       {/* ── Ledger ── */}
       <div className="flex flex-col gap-[6px]">
-        <SectionTitle icon="▐" label="Ledger" />
+        <SectionTitle
+          icon={<img src={ledgerIcon} width="16" height="16" alt="" />}
+          label="Ledger"
+        />
 
         {/* Chart */}
         <Card>
