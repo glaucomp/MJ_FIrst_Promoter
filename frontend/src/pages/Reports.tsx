@@ -113,7 +113,8 @@ const Card = ({
     className={`overflow-hidden ${className}`}
     style={{
       borderRadius: "var(--radius-card)",
-      background: "linear-gradient(180deg,var(--color-surface) 0%,var(--color-surface-end) 100%)",
+      background:
+        "linear-gradient(180deg,var(--color-surface) 0%,var(--color-surface-end) 100%)",
       border: "1px solid var(--border-subtle)",
     }}
   >
@@ -121,7 +122,9 @@ const Card = ({
   </div>
 );
 
-const HDivider = () => <div className="h-px" style={{ background: "var(--border-faint)" }} />;
+const HDivider = () => (
+  <div className="h-px" style={{ background: "var(--border-faint)" }} />
+);
 
 const SectionTitle = ({
   icon,
@@ -131,8 +134,18 @@ const SectionTitle = ({
   label: string;
 }) => (
   <div className="flex items-center gap-[6px] py-[6px]">
-    <span className="text-[14px] leading-none" style={{ color: "var(--color-text-muted)" }}>{icon}</span>
-    <span className="text-[13px] font-semibold" style={{ color: "var(--color-text-muted)" }}>{label}</span>
+    <span
+      className="text-[14px] leading-none"
+      style={{ color: "var(--color-text-muted)" }}
+    >
+      {icon}
+    </span>
+    <span
+      className="text-[13px] font-semibold"
+      style={{ color: "var(--color-text-muted)" }}
+    >
+      {label}
+    </span>
   </div>
 );
 
@@ -155,9 +168,9 @@ const ChangeBadge = ({ value, positive }: BadgeProps) => (
 // ─── TxRow (non-admin) ────────────────────────────────────────────────────────
 
 const statusColors: Record<string, { bg: string; text: string }> = {
-  paid:    { bg: "var(--color-success-bg)", text: "var(--color-success)" },
+  paid: { bg: "var(--color-success-bg)", text: "var(--color-success)" },
   pending: { bg: "var(--color-warning-bg)", text: "var(--color-warning)" },
-  unpaid:  { bg: "var(--border-faint)",     text: "var(--color-text-muted)" },
+  unpaid: { bg: "var(--border-faint)", text: "var(--color-text-muted)" },
 };
 
 const TxRow = ({
@@ -173,9 +186,21 @@ const TxRow = ({
   const tier1 = isTier1(tx);
   const tier3 = !tier1 && isTier3(tx);
   const tierLabel = tier1 ? "T1" : tier3 ? "T3" : "T2";
-  const tierBg = tier1 ? "var(--color-t1-bg)" : tier3 ? "var(--color-t3-bg)" : "var(--color-t2-bg)";
-  const tierText = tier1 ? "var(--color-t1)" : tier3 ? "var(--color-t3)" : "var(--color-t2)";
-  const avatarBg = tier1 ? "var(--color-t1-avatar)" : tier3 ? "var(--color-t3-avatar)" : "var(--color-t2-avatar)";
+  const tierBg = tier1
+    ? "var(--color-t1-bg)"
+    : tier3
+      ? "var(--color-t3-bg)"
+      : "var(--color-t2-bg)";
+  const tierText = tier1
+    ? "var(--color-t1)"
+    : tier3
+      ? "var(--color-t3)"
+      : "var(--color-t2)";
+  const avatarBg = tier1
+    ? "var(--color-t1-avatar)"
+    : tier3
+      ? "var(--color-t3-avatar)"
+      : "var(--color-t2-avatar)";
   const dt = new Date(tx.createdAt);
   const d = String(dt.getDate()).padStart(2, "0");
   const m = String(dt.getMonth() + 1).padStart(2, "0");
@@ -200,7 +225,14 @@ const TxRow = ({
         {/* Line 1: type + tier | amount */}
         <div className="flex items-center justify-between mb-[6px]">
           <div className="flex items-center gap-[6px]">
-            {isRefund && <span className="text-[13px]" style={{ color: "var(--color-danger)" }}>↩</span>}
+            {isRefund && (
+              <span
+                className="text-[13px]"
+                style={{ color: "var(--color-danger)" }}
+              >
+                ↩
+              </span>
+            )}
             <span className="text-[14px] font-semibold text-white">Sale</span>
             <span
               className="text-[10px] font-bold px-[6px] py-px rounded-[4px]"
@@ -226,12 +258,22 @@ const TxRow = ({
 
         {/* Line 2: description | status badge */}
         <div className="flex items-center justify-between mb-[6px]">
-          <span className="text-[12px] truncate max-w-[60%]" style={{ color: "var(--color-text-dim)" }}>
+          <span
+            className="text-[12px] truncate max-w-[60%]"
+            style={{ color: "var(--color-text-dim)" }}
+          >
             {(() => {
-              const desc = tx.description || `${tx.user.firstName} ${tx.user.lastName}`;
+              const desc =
+                tx.description || `${tx.user.firstName} ${tx.user.lastName}`;
               const match = /^(.*?from\s+)(\S+)([\s\S]*)$/.exec(desc);
               if (match) {
-                return <>{match[1]}<strong className="text-white">{match[2]}</strong>{match[3]}</>;
+                return (
+                  <>
+                    {match[1]}
+                    <strong className="text-white">{match[2]}</strong>
+                    {match[3]}
+                  </>
+                );
               }
               return desc;
             })()}
@@ -250,7 +292,10 @@ const TxRow = ({
 
         {/* Line 3: date | chevron */}
         <div className="flex items-center justify-between">
-          <span className="text-[11px]" style={{ color: "var(--color-text-subtle)" }}>
+          <span
+            className="text-[11px]"
+            style={{ color: "var(--color-text-subtle)" }}
+          >
             {d}/{m}/{y} {hh}:{mn}:{sc}
             {ap}
           </span>
@@ -287,7 +332,9 @@ const TxRow = ({
               className="flex justify-between px-[14px] py-[9px]"
               style={{ borderBottom: "1px solid var(--border-elevated)" }}
             >
-              <span style={{ color: "var(--color-text-faded)" }}>Sale Amount</span>
+              <span style={{ color: "var(--color-text-faded)" }}>
+                Sale Amount
+              </span>
               <span className="font-semibold text-white">
                 ${money(saleAmt)}
               </span>
@@ -301,11 +348,17 @@ const TxRow = ({
             <div className="flex items-center gap-[6px]">
               <span
                 className="font-bold"
-                style={{ color: positive ? "var(--color-positive)" : "var(--color-danger)" }}
+                style={{
+                  color: positive
+                    ? "var(--color-positive)"
+                    : "var(--color-danger)",
+                }}
               >
                 {positive ? "+" : "−"}${money(Math.abs(tx.amount))}
               </span>
-              <span style={{ color: "var(--color-text-subtle)" }}>{tx.percentage}%</span>
+              <span style={{ color: "var(--color-text-subtle)" }}>
+                {tx.percentage}%
+              </span>
             </div>
           </div>
           {tx.customer && (
@@ -372,7 +425,11 @@ const AdminTxRow = ({
         {/* Type badge */}
         <div
           className="w-[28px] h-[28px] rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0"
-          style={{ background: isDeposit ? "var(--color-success)" : "var(--color-danger)" }}
+          style={{
+            background: isDeposit
+              ? "var(--color-success)"
+              : "var(--color-danger)",
+          }}
         >
           {isDeposit ? "↑" : "↩"}
         </div>
@@ -383,11 +440,17 @@ const AdminTxRow = ({
             <span className="text-[14px] font-semibold text-white">
               {isDeposit ? "Deposit" : "Refund"}
             </span>
-            <span className="text-[12px] truncate" style={{ color: "var(--color-text-muted)" }}>
+            <span
+              className="text-[12px] truncate"
+              style={{ color: "var(--color-text-muted)" }}
+            >
               {customerLabel}
             </span>
           </div>
-          <div className="text-[11px] mt-px" style={{ color: "var(--color-text-subtle)" }}>
+          <div
+            className="text-[11px] mt-px"
+            style={{ color: "var(--color-text-subtle)" }}
+          >
             {d}/{m}/{y} {hh}:{min}:{sec}
             {ampm}
           </div>
@@ -397,7 +460,11 @@ const AdminTxRow = ({
         <div className="flex items-center gap-[8px] shrink-0">
           <span
             className="text-[14px] font-bold"
-            style={{ color: isDeposit ? "var(--color-positive)" : "var(--color-danger)" }}
+            style={{
+              color: isDeposit
+                ? "var(--color-positive)"
+                : "var(--color-danger)",
+            }}
           >
             {isDeposit ? "+ " : "− "}${money(tx.saleAmount)}
           </span>
@@ -435,7 +502,10 @@ const AdminTxRow = ({
               className="flex items-center justify-between px-[14px] py-[10px]"
               style={{ borderBottom: "1px solid var(--border-elevated)" }}
             >
-              <span className="text-[11px] uppercase tracking-[0.07em]" style={{ color: "var(--color-text-faded)" }}>
+              <span
+                className="text-[11px] uppercase tracking-[0.07em]"
+                style={{ color: "var(--color-text-faded)" }}
+              >
                 Customer
               </span>
               <div className="text-right">
@@ -443,7 +513,10 @@ const AdminTxRow = ({
                   {tx.customer.name || tx.customer.email}
                 </div>
                 {tx.customer.name && tx.customer.email && (
-                  <div className="text-[10px]" style={{ color: "var(--color-text-faded)" }}>
+                  <div
+                    className="text-[10px]"
+                    style={{ color: "var(--color-text-faded)" }}
+                  >
                     {tx.customer.email}
                   </div>
                 )}
@@ -457,7 +530,10 @@ const AdminTxRow = ({
               className="flex items-center justify-between px-[14px] py-[10px]"
               style={{ borderBottom: "1px solid var(--border-elevated)" }}
             >
-              <span className="text-[11px] uppercase tracking-[0.07em]" style={{ color: "var(--color-text-faded)" }}>
+              <span
+                className="text-[11px] uppercase tracking-[0.07em]"
+                style={{ color: "var(--color-text-faded)" }}
+              >
                 Campaign
               </span>
               <span
@@ -476,15 +552,25 @@ const AdminTxRow = ({
           <div
             className="flex items-center justify-between px-[14px] py-[10px]"
             style={{
-              borderBottom: tx.commissions.length > 0 ? "1px solid var(--border-elevated)" : "none",
+              borderBottom:
+                tx.commissions.length > 0
+                  ? "1px solid var(--border-elevated)"
+                  : "none",
             }}
           >
-            <span className="text-[11px] uppercase tracking-[0.07em]" style={{ color: "var(--color-text-faded)" }}>
+            <span
+              className="text-[11px] uppercase tracking-[0.07em]"
+              style={{ color: "var(--color-text-faded)" }}
+            >
               {isDeposit ? "Sale Amount" : "Refund Amount"}
             </span>
             <span
               className="text-[13px] font-bold"
-              style={{ color: isDeposit ? "var(--color-positive)" : "var(--color-danger)" }}
+              style={{
+                color: isDeposit
+                  ? "var(--color-positive)"
+                  : "var(--color-danger)",
+              }}
             >
               {isDeposit ? "+ " : "− "}${money(tx.saleAmount)}
             </span>
@@ -493,17 +579,24 @@ const AdminTxRow = ({
           {/* Commissions breakdown */}
           {tx.commissions.length > 0 && (
             <div className="px-[14px] py-[10px] flex flex-col gap-[8px]">
-              <span className="text-[11px] uppercase tracking-[0.07em]" style={{ color: "var(--color-text-faded)" }}>
+              <span
+                className="text-[11px] uppercase tracking-[0.07em]"
+                style={{ color: "var(--color-text-faded)" }}
+              >
                 Commissions
               </span>
               {tx.commissions.map((c) => {
                 const desc = (c.description ?? "").toLowerCase();
                 const isT3 = desc.includes("t3");
-                const isT1 = !isT3 && (
-                  desc.includes("direct") ||
-                  c.percentage === tx.campaign?.commissionRate
-                );
-                const tierAvatar = isT1 ? "var(--color-t1-avatar)" : isT3 ? "var(--color-t3-avatar)" : "var(--color-t2-avatar)";
+                const isT1 =
+                  !isT3 &&
+                  (desc.includes("direct") ||
+                    c.percentage === tx.campaign?.commissionRate);
+                const tierAvatar = isT1
+                  ? "var(--color-t1-avatar)"
+                  : isT3
+                    ? "var(--color-t3-avatar)"
+                    : "var(--color-t2-avatar)";
                 const commPositive = c.amount >= 0;
                 const cStatus = statusColors[c.status] ?? statusColors.unpaid;
                 return (
@@ -528,18 +621,28 @@ const AdminTxRow = ({
                       <div className="text-[12px] font-medium text-white truncate">
                         {c.user.firstName} {c.user.lastName}
                       </div>
-                      <div className="text-[10px] truncate" style={{ color: "var(--color-text-faded)" }}>
+                      <div
+                        className="text-[10px] truncate"
+                        style={{ color: "var(--color-text-faded)" }}
+                      >
                         {c.user.email}
                       </div>
                     </div>
                     {/* Rate */}
-                    <span className="text-[11px] shrink-0" style={{ color: "var(--color-text-subtle)" }}>
+                    <span
+                      className="text-[11px] shrink-0"
+                      style={{ color: "var(--color-text-subtle)" }}
+                    >
                       {c.percentage}%
                     </span>
                     {/* Amount */}
                     <span
                       className="text-[13px] font-bold shrink-0"
-                      style={{ color: commPositive ? "var(--color-positive)" : "var(--color-danger)" }}
+                      style={{
+                        color: commPositive
+                          ? "var(--color-positive)"
+                          : "var(--color-danger)",
+                      }}
                     >
                       {commPositive ? "+" : "−"}${money(Math.abs(c.amount))}
                     </span>
@@ -600,7 +703,6 @@ const AdminTxListCard = ({
   search,
   onSearch,
 }: AdminTxListCardProps) => {
-
   const pages = useMemo(() => {
     const arr: (number | "…")[] = [];
     if (totalPages <= 6) {
@@ -655,12 +757,34 @@ const AdminTxListCard = ({
 
           {/* Active period label */}
           <div className="flex items-center gap-[6px] px-[16px] py-[10px]">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ color: "var(--color-text-faded)" }}>
-              <rect x="1" y="1.5" width="10" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
-              <path d="M1 4.5h10" stroke="currentColor" strokeWidth="1.2"/>
-              <path d="M4 0.5v2M8 0.5v2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 12 12"
+              fill="none"
+              style={{ color: "var(--color-text-faded)" }}
+            >
+              <rect
+                x="1"
+                y="1.5"
+                width="10"
+                height="9"
+                rx="1.5"
+                stroke="currentColor"
+                strokeWidth="1.2"
+              />
+              <path d="M1 4.5h10" stroke="currentColor" strokeWidth="1.2" />
+              <path
+                d="M4 0.5v2M8 0.5v2"
+                stroke="currentColor"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+              />
             </svg>
-            <span className="text-[12px]" style={{ color: "var(--color-text-muted)" }}>
+            <span
+              className="text-[12px]"
+              style={{ color: "var(--color-text-muted)" }}
+            >
               {calRangeStart && calRangeEnd
                 ? `${calRangeStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${calRangeEnd.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
                 : calRangeStart
@@ -672,9 +796,27 @@ const AdminTxListCard = ({
           {/* Search */}
           <div className="px-[16px] pb-[10px]">
             <div className="relative">
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="absolute left-[10px] top-1/2 -translate-y-1/2" style={{ color: "var(--color-text-faded)" }}>
-                <circle cx="6" cy="6" r="4" stroke="currentColor" strokeWidth="1.3" />
-                <path d="M9.5 9.5l2.5 2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 14 14"
+                fill="none"
+                className="absolute left-[10px] top-1/2 -translate-y-1/2"
+                style={{ color: "var(--color-text-faded)" }}
+              >
+                <circle
+                  cx="6"
+                  cy="6"
+                  r="4"
+                  stroke="currentColor"
+                  strokeWidth="1.3"
+                />
+                <path
+                  d="M9.5 9.5l2.5 2.5"
+                  stroke="currentColor"
+                  strokeWidth="1.3"
+                  strokeLinecap="round"
+                />
               </svg>
               <input
                 type="text"
@@ -696,7 +838,10 @@ const AdminTxListCard = ({
           {/* Rows */}
           {loading && (
             <div className="flex items-center justify-center py-[40px]">
-              <span className="text-[14px]" style={{ color: "var(--color-text-muted)" }}>
+              <span
+                className="text-[14px]"
+                style={{ color: "var(--color-text-muted)" }}
+              >
                 Loading transactions…
               </span>
             </div>
@@ -704,7 +849,10 @@ const AdminTxListCard = ({
           {!loading && transactions.length === 0 && (
             <div className="flex flex-col items-center py-[40px] gap-[8px]">
               <span className="text-[32px]">📊</span>
-              <span className="text-[14px]" style={{ color: "var(--color-text-muted)" }}>
+              <span
+                className="text-[14px]"
+                style={{ color: "var(--color-text-muted)" }}
+              >
                 No transactions for this period
               </span>
             </div>
@@ -723,7 +871,10 @@ const AdminTxListCard = ({
                 disabled={page === 1}
                 onClick={() => setPage(Math.max(1, page - 1))}
                 className="w-[28px] h-[28px] rounded-[6px] text-[13px] hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                style={{ color: "var(--color-text-muted)", border: "1px solid var(--border-subtle)" }}
+                style={{
+                  color: "var(--color-text-muted)",
+                  border: "1px solid var(--border-subtle)",
+                }}
               >
                 ‹
               </button>
@@ -746,9 +897,16 @@ const AdminTxListCard = ({
                     onClick={() => setPage(p)}
                     className="w-[28px] h-[28px] rounded-[6px] text-[13px] font-medium transition-colors"
                     style={{
-                      background: page === p ? "var(--color-accent-bright)" : "transparent",
-                      color: page === p ? "var(--color-text-primary)" : "var(--color-text-muted)",
-                      border: page === p ? "none" : "1px solid var(--border-subtle)",
+                      background:
+                        page === p
+                          ? "var(--color-accent-bright)"
+                          : "transparent",
+                      color:
+                        page === p
+                          ? "var(--color-text-primary)"
+                          : "var(--color-text-muted)",
+                      border:
+                        page === p ? "none" : "1px solid var(--border-subtle)",
                     }}
                   >
                     {p}
@@ -760,7 +918,10 @@ const AdminTxListCard = ({
                 disabled={page === totalPages}
                 onClick={() => setPage(Math.min(totalPages, page + 1))}
                 className="w-[28px] h-[28px] rounded-[6px] text-[13px] hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                style={{ color: "var(--color-text-muted)", border: "1px solid var(--border-subtle)" }}
+                style={{
+                  color: "var(--color-text-muted)",
+                  border: "1px solid var(--border-subtle)",
+                }}
               >
                 ›
               </button>
@@ -908,12 +1069,34 @@ const TxListCard = ({
 
           {/* Active period label */}
           <div className="flex items-center gap-[6px] px-[16px] py-[10px]">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ color: "var(--color-text-faded)" }}>
-              <rect x="1" y="1.5" width="10" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
-              <path d="M1 4.5h10" stroke="currentColor" strokeWidth="1.2"/>
-              <path d="M4 0.5v2M8 0.5v2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 12 12"
+              fill="none"
+              style={{ color: "var(--color-text-faded)" }}
+            >
+              <rect
+                x="1"
+                y="1.5"
+                width="10"
+                height="9"
+                rx="1.5"
+                stroke="currentColor"
+                strokeWidth="1.2"
+              />
+              <path d="M1 4.5h10" stroke="currentColor" strokeWidth="1.2" />
+              <path
+                d="M4 0.5v2M8 0.5v2"
+                stroke="currentColor"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+              />
             </svg>
-            <span className="text-[12px]" style={{ color: "var(--color-text-muted)" }}>
+            <span
+              className="text-[12px]"
+              style={{ color: "var(--color-text-muted)" }}
+            >
               {calRangeStart && calRangeEnd
                 ? `${calRangeStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${calRangeEnd.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
                 : calRangeStart
@@ -934,16 +1117,24 @@ const TxListCard = ({
                   onClick={() => setStatusTab(key)}
                   className="flex items-center gap-[5px] px-[10px] py-[5px] rounded-full text-[12px] font-medium whitespace-nowrap transition-all shrink-0"
                   style={{
-                    background: active ? "var(--color-accent-bg)" : "var(--color-surface-item)",
-                    border: active ? "1px solid var(--color-accent-border)" : "1px solid var(--border-subtle)",
-                    color: active ? "var(--color-accent)" : "var(--color-text-muted)",
+                    background: active
+                      ? "var(--color-accent-bg)"
+                      : "var(--color-surface-item)",
+                    border: active
+                      ? "1px solid var(--color-accent-border)"
+                      : "1px solid var(--border-subtle)",
+                    color: active
+                      ? "var(--color-accent)"
+                      : "var(--color-text-muted)",
                   }}
                 >
                   {key === "all" && count > 0 && (
                     <span
                       className="text-[10px] font-bold px-[5px] py-px rounded-full"
                       style={{
-                        background: active ? "var(--color-accent-bright)" : "rgba(255,255,255,0.1)",
+                        background: active
+                          ? "var(--color-accent-bright)"
+                          : "rgba(255,255,255,0.1)",
                         color: "var(--color-text-primary)",
                       }}
                     >
@@ -1005,7 +1196,10 @@ const TxListCard = ({
           {pageTx.length === 0 ? (
             <div className="flex flex-col items-center py-[40px] gap-[8px]">
               <span className="text-[32px]">📊</span>
-              <span className="text-[14px]" style={{ color: "var(--color-text-muted)" }}>
+              <span
+                className="text-[14px]"
+                style={{ color: "var(--color-text-muted)" }}
+              >
                 No transactions found
               </span>
             </div>
@@ -1021,7 +1215,10 @@ const TxListCard = ({
                 disabled={page === 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 className="w-[28px] h-[28px] rounded-[6px] text-[13px] hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                style={{ color: "var(--color-text-muted)", border: "1px solid var(--border-subtle)" }}
+                style={{
+                  color: "var(--color-text-muted)",
+                  border: "1px solid var(--border-subtle)",
+                }}
               >
                 ‹
               </button>
@@ -1043,9 +1240,16 @@ const TxListCard = ({
                     onClick={() => setPage(p)}
                     className="w-[28px] h-[28px] rounded-[6px] text-[13px] font-medium transition-colors"
                     style={{
-                      background: page === p ? "var(--color-accent-bright)" : "transparent",
-                      color: page === p ? "var(--color-text-primary)" : "var(--color-text-muted)",
-                      border: page === p ? "none" : "1px solid var(--border-subtle)",
+                      background:
+                        page === p
+                          ? "var(--color-accent-bright)"
+                          : "transparent",
+                      color:
+                        page === p
+                          ? "var(--color-text-primary)"
+                          : "var(--color-text-muted)",
+                      border:
+                        page === p ? "none" : "1px solid var(--border-subtle)",
                     }}
                   >
                     {p}
@@ -1057,7 +1261,10 @@ const TxListCard = ({
                 disabled={page === totalPages}
                 onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
                 className="w-[28px] h-[28px] rounded-[6px] text-[13px] hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                style={{ color: "var(--color-text-muted)", border: "1px solid var(--border-subtle)" }}
+                style={{
+                  color: "var(--color-text-muted)",
+                  border: "1px solid var(--border-subtle)",
+                }}
               >
                 ›
               </button>
@@ -1143,11 +1350,12 @@ export const Reports = () => {
       limit: ITEMS_PER_PAGE,
     };
     if (calRangeStart) {
-      const s = new Date(calRangeStart); s.setHours(0, 0, 0, 0);
+      const s = new Date(calRangeStart);
+      s.setHours(0, 0, 0, 0);
       const e = calRangeEnd ? new Date(calRangeEnd) : new Date(calRangeStart);
       e.setHours(23, 59, 59, 999);
       params.startDate = s.toISOString();
-      params.endDate   = e.toISOString();
+      params.endDate = e.toISOString();
     } else {
       params.period = period;
     }
@@ -1169,7 +1377,8 @@ export const Reports = () => {
 
   const curr = useMemo(() => {
     if (calRangeStart) {
-      const s = new Date(calRangeStart); s.setHours(0, 0, 0, 0);
+      const s = new Date(calRangeStart);
+      s.setHours(0, 0, 0, 0);
       const e = calRangeEnd ? new Date(calRangeEnd) : new Date(calRangeStart);
       e.setHours(23, 59, 59, 999);
       const [from, to] = s <= e ? [s, e] : [e, s];
@@ -1269,10 +1478,12 @@ export const Reports = () => {
     let fromMs = 0;
     let toMs = Infinity;
     if (calRangeStart) {
-      const s = new Date(calRangeStart); s.setHours(0, 0, 0, 0);
+      const s = new Date(calRangeStart);
+      s.setHours(0, 0, 0, 0);
       const e = calRangeEnd ? new Date(calRangeEnd) : new Date(calRangeStart);
       e.setHours(23, 59, 59, 999);
-      [fromMs, toMs] = s <= e ? [s.getTime(), e.getTime()] : [e.getTime(), s.getTime()];
+      [fromMs, toMs] =
+        s <= e ? [s.getTime(), e.getTime()] : [e.getTime(), s.getTime()];
     } else {
       fromMs = period === "all" ? 0 : cutoffMs(PERIOD_DAYS[period]);
     }
@@ -1419,20 +1630,33 @@ export const Reports = () => {
 
   // ── Calendar helpers ──────────────────────────────────────────────────────
   const calPrevMonth = () => {
-    if (calViewMonth === 0) { setCalViewMonth(11); setCalViewYear((y) => y - 1); }
-    else setCalViewMonth((m) => m - 1);
+    if (calViewMonth === 0) {
+      setCalViewMonth(11);
+      setCalViewYear((y) => y - 1);
+    } else setCalViewMonth((m) => m - 1);
   };
   const calNextMonth = () => {
-    if (calViewMonth === 11) { setCalViewMonth(0); setCalViewYear((y) => y + 1); }
-    else setCalViewMonth((m) => m + 1);
+    if (calViewMonth === 11) {
+      setCalViewMonth(0);
+      setCalViewYear((y) => y + 1);
+    } else setCalViewMonth((m) => m + 1);
   };
-  const calToMs = (d: Date) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x.getTime(); };
-  const calFmt = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const calToMs = (d: Date) => {
+    const x = new Date(d);
+    x.setHours(0, 0, 0, 0);
+    return x.getTime();
+  };
   const calEffectiveEnd = calRangeEnd ?? calHover;
   const calRangeStartMs = calRangeStart ? calToMs(calRangeStart) : null;
-  const calRangeEndMs   = calEffectiveEnd ? calToMs(calEffectiveEnd) : null;
-  const calFromMs = calRangeStartMs !== null && calRangeEndMs !== null ? Math.min(calRangeStartMs, calRangeEndMs) : calRangeStartMs;
-  const calToMsVal = calRangeStartMs !== null && calRangeEndMs !== null ? Math.max(calRangeStartMs, calRangeEndMs) : calRangeStartMs;
+  const calRangeEndMs = calEffectiveEnd ? calToMs(calEffectiveEnd) : null;
+  const calFromMs =
+    calRangeStartMs !== null && calRangeEndMs !== null
+      ? Math.min(calRangeStartMs, calRangeEndMs)
+      : calRangeStartMs;
+  const calToMsVal =
+    calRangeStartMs !== null && calRangeEndMs !== null
+      ? Math.max(calRangeStartMs, calRangeEndMs)
+      : calRangeStartMs;
 
   const buildCalCells = (year: number, month: number): (number | null)[] => {
     const firstDay = new Date(year, month, 1).getDay();
@@ -1455,8 +1679,12 @@ export const Reports = () => {
     } else {
       const s = calToMs(calRangeStart);
       const c = calToMs(clicked);
-      if (c >= s) { setCalRangeEnd(clicked); }
-      else { setCalRangeEnd(calRangeStart); setCalRangeStart(clicked); }
+      if (c >= s) {
+        setCalRangeEnd(clicked);
+      } else {
+        setCalRangeEnd(calRangeStart);
+        setCalRangeStart(clicked);
+      }
       setCalHover(null);
       setAdminTxPage(1);
     }
@@ -1465,7 +1693,12 @@ export const Reports = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-[80px]">
-        <span className="text-[16px]" style={{ color: "var(--color-text-muted)" }}>Loading reports…</span>
+        <span
+          className="text-[16px]"
+          style={{ color: "var(--color-text-muted)" }}
+        >
+          Loading reports…
+        </span>
       </div>
     );
   }
@@ -1477,7 +1710,7 @@ export const Reports = () => {
         <h1 className="text-[28px] font-bold text-white font-['DM_Sans',sans-serif]">
           Reports
         </h1>
-        <div className="flex items-center gap-[8px]">
+        <div className="relative flex items-center gap-[8px]">
           <div className="relative flex-1">
             <button
               onClick={() => setPeriodOpen((o) => !o)}
@@ -1501,7 +1734,13 @@ export const Reports = () => {
                 return PERIOD_LABELS[period];
               })()}
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M3 5L7 9L11 5" stroke="var(--color-text-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path
+                  d="M3 5L7 9L11 5"
+                  stroke="var(--color-text-muted)"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
               </svg>
             </button>
             {periodOpen && (
@@ -1529,7 +1768,10 @@ export const Reports = () => {
                       className="w-full text-left text-[14px] transition-colors hover:bg-[rgba(255,255,255,0.04)]"
                       style={{
                         padding: "var(--space-14) var(--space-16)",
-                        color: period === p ? "var(--color-accent-bright)" : "var(--color-text-primary)",
+                        color:
+                          period === p
+                            ? "var(--color-accent-bright)"
+                            : "var(--color-text-primary)",
                       }}
                     >
                       {PERIOD_LABELS[p]}
@@ -1551,143 +1793,367 @@ export const Reports = () => {
             }}
           >
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-              <rect x="2" y="3.5" width="14" height="12" rx="2" stroke="var(--color-text-muted)" strokeWidth="1.4"/>
-              <path d="M2 7.5H16" stroke="var(--color-text-muted)" strokeWidth="1.4"/>
-              <path d="M6 2V5" stroke="var(--color-text-muted)" strokeWidth="1.4" strokeLinecap="round"/>
-              <path d="M12 2V5" stroke="var(--color-text-muted)" strokeWidth="1.4" strokeLinecap="round"/>
-              <rect x="5" y="10" width="2" height="2" rx="0.5" fill="var(--color-text-muted)"/>
-              <rect x="8.5" y="10" width="2" height="2" rx="0.5" fill="var(--color-text-muted)"/>
-              <rect x="12" y="10" width="2" height="2" rx="0.5" fill="var(--color-text-muted)"/>
+              <rect
+                x="2"
+                y="3.5"
+                width="14"
+                height="12"
+                rx="2"
+                stroke="var(--color-text-muted)"
+                strokeWidth="1.4"
+              />
+              <path
+                d="M2 7.5H16"
+                stroke="var(--color-text-muted)"
+                strokeWidth="1.4"
+              />
+              <path
+                d="M6 2V5"
+                stroke="var(--color-text-muted)"
+                strokeWidth="1.4"
+                strokeLinecap="round"
+              />
+              <path
+                d="M12 2V5"
+                stroke="var(--color-text-muted)"
+                strokeWidth="1.4"
+                strokeLinecap="round"
+              />
+              <rect
+                x="5"
+                y="10"
+                width="2"
+                height="2"
+                rx="0.5"
+                fill="var(--color-text-muted)"
+              />
+              <rect
+                x="8.5"
+                y="10"
+                width="2"
+                height="2"
+                rx="0.5"
+                fill="var(--color-text-muted)"
+              />
+              <rect
+                x="12"
+                y="10"
+                width="2"
+                height="2"
+                rx="0.5"
+                fill="var(--color-text-muted)"
+              />
             </svg>
           </button>
-        </div>
-      </div>
 
-      {/* ── Calendar range overlay ── */}
-      {calOpen && (() => {
-        const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-        const DAY_NAMES = ["Su","Mo","Tu","We","Th","Fr","Sa"];
-        const cells = buildCalCells(calViewYear, calViewMonth);
-        const dayMs = (day: number) => calToMs(new Date(calViewYear, calViewMonth, day));
-        const rangeFromMs = calFromMs;
-        const rangeToMs   = calToMsVal;
-        let headerLabel = "Select start date";
-        if (calRangeStart && calRangeEnd) headerLabel = `${calFmt(calRangeStart)} – ${calFmt(calRangeEnd)}`;
-        else if (calRangeStart) headerLabel = `${calFmt(calRangeStart)} → Select end`;
-        return (
-          <>
-            <button
-              type="button"
-              aria-label="Close calendar"
-              className="fixed inset-0 z-40 cursor-default border-none p-0"
-              style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}
-              onClick={() => setCalOpen(false)}
-            />
-            <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
-              <div
-                className="pointer-events-auto w-[340px] rounded-[24px] overflow-hidden"
-                style={{
-                  background: "linear-gradient(160deg, #1e1e26 0%, #141418 100%)",
-                  border: "1px solid var(--border-subtle)",
-                  boxShadow: "0 32px 80px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,15,95,0.08), inset 0 1px 0 var(--border-faint)",
-                }}
-              >
-                {/* Header */}
-                <div
-                  className="px-[24px] pt-[22px] pb-[18px] relative overflow-hidden"
-                  style={{ background: "linear-gradient(135deg, #1a0a10 0%, #2a0d1a 60%, #1e1018 100%)" }}
-                >
-                  <div className="absolute top-[-20px] right-[-20px] w-[130px] h-[130px] rounded-full pointer-events-none" style={{ background: "radial-gradient(circle, rgba(255,15,95,0.28) 0%, transparent 70%)" }} />
-                  <p className="text-[11px] font-semibold text-[rgba(255,255,255,0.35)] tracking-widest uppercase mb-[6px]">Date Range</p>
-                  <p className="text-[20px] font-bold text-white leading-tight">{headerLabel}</p>
-                  <div className="flex items-center gap-[8px] mt-[12px]">
-                    <div className="flex-1 rounded-[8px] px-[10px] py-[6px] text-[12px] font-medium" style={{ background: calRangeStart ? "rgba(255,15,95,0.25)" : "var(--border-faint)", color: calRangeStart ? "var(--color-text-primary)" : "rgba(255,255,255,0.3)", border: `1px solid ${calRangeStart ? "rgba(255,15,95,0.4)" : "var(--border-subtle)"}` }}>
-                      {calRangeStart ? calFmt(calRangeStart) : "Start"}
-                    </div>
-                    <svg width="16" height="10" viewBox="0 0 16 10" fill="none"><path d="M1 5H15M15 5L11 1M15 5L11 9" stroke="rgba(255,255,255,0.3)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                    <div className="flex-1 rounded-[8px] px-[10px] py-[6px] text-[12px] font-medium" style={{ background: calRangeEnd ? "rgba(255,15,95,0.25)" : "var(--border-faint)", color: calRangeEnd ? "var(--color-text-primary)" : "rgba(255,255,255,0.3)", border: `1px solid ${calRangeEnd ? "rgba(255,15,95,0.4)" : "var(--border-subtle)"}` }}>
-                      {calRangeEnd ? calFmt(calRangeEnd) : "End"}
-                    </div>
-                  </div>
-                </div>
-                {/* Month nav */}
-                <div className="flex items-center justify-between px-[20px] py-[14px]">
-                  <button onClick={calPrevMonth} className="w-[32px] h-[32px] flex items-center justify-center rounded-full transition-all" style={{ background: "var(--border-faint)", border: "1px solid var(--border-subtle)" }}>
-                    <svg width="7" height="12" viewBox="0 0 7 12" fill="none"><path d="M6 1L1 6L6 11" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  </button>
-                  <span className="text-[14px] font-semibold text-white">{MONTH_NAMES[calViewMonth]} {calViewYear}</span>
-                  <button onClick={calNextMonth} className="w-[32px] h-[32px] flex items-center justify-center rounded-full transition-all" style={{ background: "var(--border-faint)", border: "1px solid var(--border-subtle)" }}>
-                    <svg width="7" height="12" viewBox="0 0 7 12" fill="none"><path d="M1 1L6 6L1 11" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  </button>
-                </div>
-                <div className="mx-[20px]" style={{ height: "1px", background: "var(--border-faint)" }} />
-                {/* Day headers */}
-                <div className="grid grid-cols-7 px-[16px] pt-[12px] pb-[4px]">
-                  {DAY_NAMES.map(d => (
-                    <div key={d} className="text-center text-[11px] font-bold text-[rgba(255,255,255,0.3)]">{d}</div>
-                  ))}
-                </div>
-                {/* Date grid */}
-                <div className="grid grid-cols-7 px-[16px] pb-[18px] gap-y-[2px]" onMouseLeave={() => setCalHover(null)} role="grid" tabIndex={0} onKeyDown={() => {}}>
-                  {cells.map((day, i) => {
-                    if (day === null) return <div key={`e-${calViewYear}-${calViewMonth}-${i}`} className="h-[36px]" />;
-                    const ms = dayMs(day);
-                    const isStart = rangeFromMs !== null && ms === rangeFromMs;
-                    const isEnd   = rangeToMs   !== null && ms === rangeToMs;
-                    const inRange = rangeFromMs !== null && rangeToMs !== null && ms > rangeFromMs && ms < rangeToMs;
-                    const isEndpoint = isStart || isEnd;
-                    const isToday = new Date().getFullYear() === calViewYear && new Date().getMonth() === calViewMonth && new Date().getDate() === day;
-                    let btnBg = "transparent";
-                    if (isEndpoint) btnBg = "linear-gradient(135deg, var(--color-accent-bright), var(--color-accent-dark))";
-                    else if (isToday) btnBg = "rgba(255,15,95,0.12)";
-                    let btnColor = "rgba(255,255,255,0.8)";
-                    if (isEndpoint) btnColor = "var(--color-text-primary)";
-                    else if (isToday) btnColor = "var(--color-accent-bright)";
-                    return (
-                      <div key={`cell-${calViewYear}-${calViewMonth}-${i}`} className="relative h-[36px] flex items-center justify-center">
-                        {inRange && <div className="absolute inset-0" style={{ background: "rgba(255,15,95,0.13)" }} />}
-                        {isStart && rangeToMs !== null && <div className="absolute top-0 bottom-0 right-0 w-1/2" style={{ background: "rgba(255,15,95,0.13)" }} />}
-                        {isEnd && rangeFromMs !== ms && <div className="absolute top-0 bottom-0 left-0 w-1/2" style={{ background: "rgba(255,15,95,0.13)" }} />}
-                        <button
-                          className="relative z-10 w-[34px] h-[34px] flex items-center justify-center text-[13px] rounded-full transition-all"
-                          style={{ background: btnBg, color: btnColor, fontWeight: isEndpoint || isToday ? 700 : 400, boxShadow: isEndpoint ? "0 4px 14px rgba(255,15,95,0.5)" : "none", outline: isToday && !isEndpoint ? "1px solid rgba(255,15,95,0.4)" : "none" }}
-                          onClick={() => handleCalDayClick(day)}
-                          onMouseEnter={() => { if (!calRangeEnd) setCalHover(new Date(calViewYear, calViewMonth, day)); }}
-                        >
-                          {day}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-                {/* Footer */}
-                <div className="flex items-center justify-between px-[20px] py-[14px]" style={{ borderTop: "1px solid var(--border-faint)" }}>
+          {/* ── Calendar range overlay ── */}
+          {calOpen &&
+            (() => {
+              const MONTH_NAMES = [
+                "January",
+                "February",
+                "March",
+                "April",
+                "May",
+                "June",
+                "July",
+                "August",
+                "September",
+                "October",
+                "November",
+                "December",
+              ];
+              const DAY_NAMES = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+              const cells = buildCalCells(calViewYear, calViewMonth);
+              const dayMs = (day: number) =>
+                calToMs(new Date(calViewYear, calViewMonth, day));
+              const rangeFromMs = calFromMs;
+              const rangeToMs = calToMsVal;
+
+              const headerYear = calRangeStart
+                ? calRangeStart.getFullYear()
+                : calViewYear;
+              const headerDate = calRangeStart
+                ? calRangeStart.toLocaleDateString("en-US", {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                  })
+                : "Select date";
+
+              return (
+                <>
+                  {/* Transparent backdrop to close */}
                   <button
-                    onClick={() => { setCalRangeStart(null); setCalRangeEnd(null); setCalHover(null); setCalOpen(false); }}
-                    className="text-[13px] font-medium transition-colors"
-                    style={{ color: "rgba(255,255,255,0.4)" }}
-                  >
-                    Clear
-                  </button>
-                  <button
+                    type="button"
+                    aria-label="Close calendar"
+                    className="fixed inset-0 z-40 cursor-default border-none p-0 bg-transparent"
                     onClick={() => setCalOpen(false)}
-                    disabled={!calRangeStart}
-                    className="text-[13px] font-semibold px-[20px] py-[8px] rounded-[10px] transition-all"
+                  />
+                  {/* Calendar dropdown */}
+                  <div
+                    className="absolute left-0 right-0 z-50 overflow-hidden"
                     style={{
-                      background: calRangeStart ? "linear-gradient(135deg, var(--color-accent-bright), var(--color-accent-dark))" : "var(--border-subtle)",
-                      color: calRangeStart ? "var(--color-text-primary)" : "rgba(255,255,255,0.3)",
-                      boxShadow: calRangeStart ? "0 4px 16px rgba(255,15,95,0.4)" : "none",
-                      cursor: calRangeStart ? "pointer" : "default",
+                      top: "calc(var(--button-m) + var(--space-4))",
+                      borderRadius: "var(--radius-m)",
+                      background: "var(--color-surface-raised)",
+                      border: "1px solid var(--border-faint)",
+                      boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
                     }}
                   >
-                    Apply
-                  </button>
-                </div>
-              </div>
-            </div>
-          </>
-        );
-      })()}
+                    {/* Header */}
+                    <div
+                      style={{
+                        padding:
+                          "var(--space-16) var(--space-16) var(--space-12)",
+                      }}
+                    >
+                      <div
+                        className="text-[12px]"
+                        style={{
+                          color: "var(--color-text-muted)",
+                          marginBottom: "2px",
+                        }}
+                      >
+                        {headerYear}
+                      </div>
+                      <div className="text-[22px] font-semibold text-white leading-tight">
+                        {headerDate}
+                        {calRangeEnd && (
+                          <span style={{ color: "var(--color-text-muted)" }}>
+                            {" – "}
+                            {calRangeEnd.toLocaleDateString("en-US", {
+                              weekday: "short",
+                              month: "short",
+                              day: "numeric",
+                            })}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        height: "1px",
+                        background: "var(--border-faint)",
+                      }}
+                    />
+                    {/* Month nav */}
+                    <div
+                      className="flex items-center justify-between"
+                      style={{
+                        padding: "var(--space-12) var(--space-16)",
+                      }}
+                    >
+                      <button
+                        onClick={calPrevMonth}
+                        className="w-[28px] h-[28px] flex items-center justify-center transition-opacity hover:opacity-70"
+                        style={{ color: "var(--color-text-muted)" }}
+                      >
+                        <svg
+                          width="7"
+                          height="12"
+                          viewBox="0 0 7 12"
+                          fill="none"
+                        >
+                          <path
+                            d="M6 1L1 6L6 11"
+                            stroke="currentColor"
+                            strokeWidth="1.6"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </button>
+                      <span
+                        className="text-[14px] font-semibold"
+                        style={{ color: "var(--color-text-primary)" }}
+                      >
+                        {MONTH_NAMES[calViewMonth]} {calViewYear}
+                      </span>
+                      <button
+                        onClick={calNextMonth}
+                        className="w-[28px] h-[28px] flex items-center justify-center transition-opacity hover:opacity-70"
+                        style={{ color: "var(--color-text-muted)" }}
+                      >
+                        <svg
+                          width="7"
+                          height="12"
+                          viewBox="0 0 7 12"
+                          fill="none"
+                        >
+                          <path
+                            d="M1 1L6 6L1 11"
+                            stroke="currentColor"
+                            strokeWidth="1.6"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                    <div
+                      style={{
+                        height: "1px",
+                        background: "var(--border-faint)",
+                      }}
+                    />
+                    {/* Day headers */}
+                    <div
+                      className="grid grid-cols-7"
+                      style={{
+                        padding:
+                          "var(--space-12) var(--space-16) var(--space-4)",
+                      }}
+                    >
+                      {DAY_NAMES.map((d) => (
+                        <div
+                          key={d}
+                          className="text-center text-[11px] font-bold"
+                          style={{ color: "rgba(255,255,255,0.3)" }}
+                        >
+                          {d}
+                        </div>
+                      ))}
+                    </div>
+                    {/* Date grid */}
+                    <div
+                      className="grid grid-cols-7 gap-y-[2px]"
+                      style={{
+                        padding: "0 var(--space-16) var(--space-16)",
+                      }}
+                      onMouseLeave={() => setCalHover(null)}
+                      role="grid"
+                      tabIndex={0}
+                      onKeyDown={() => {}}
+                    >
+                      {cells.map((day, i) => {
+                        if (day === null)
+                          return (
+                            <div
+                              key={`e-${calViewYear}-${calViewMonth}-${i}`}
+                              className="h-[36px]"
+                            />
+                          );
+                        const ms = dayMs(day);
+                        const isStart =
+                          rangeFromMs !== null && ms === rangeFromMs;
+                        const isEnd = rangeToMs !== null && ms === rangeToMs;
+                        const inRange =
+                          rangeFromMs !== null &&
+                          rangeToMs !== null &&
+                          ms > rangeFromMs &&
+                          ms < rangeToMs;
+                        const isEndpoint = isStart || isEnd;
+                        const isToday =
+                          new Date().getFullYear() === calViewYear &&
+                          new Date().getMonth() === calViewMonth &&
+                          new Date().getDate() === day;
+                        let btnBg = "transparent";
+                        if (isEndpoint)
+                          btnBg =
+                            "linear-gradient(135deg, var(--color-accent-bright), var(--color-accent-dark))";
+                        else if (isToday) btnBg = "rgba(255,15,95,0.12)";
+                        let btnColor = "rgba(255,255,255,0.8)";
+                        if (isEndpoint) btnColor = "var(--color-text-primary)";
+                        else if (isToday)
+                          btnColor = "var(--color-accent-bright)";
+                        return (
+                          <div
+                            key={`cell-${calViewYear}-${calViewMonth}-${i}`}
+                            className="relative h-[36px] flex items-center justify-center"
+                          >
+                            {inRange && (
+                              <div
+                                className="absolute inset-0"
+                                style={{ background: "rgba(255,15,95,0.13)" }}
+                              />
+                            )}
+                            {isStart && rangeToMs !== null && (
+                              <div
+                                className="absolute top-0 bottom-0 right-0 w-1/2"
+                                style={{ background: "rgba(255,15,95,0.13)" }}
+                              />
+                            )}
+                            {isEnd && rangeFromMs !== ms && (
+                              <div
+                                className="absolute top-0 bottom-0 left-0 w-1/2"
+                                style={{ background: "rgba(255,15,95,0.13)" }}
+                              />
+                            )}
+                            <button
+                              className="relative z-10 w-[34px] h-[34px] flex items-center justify-center text-[13px] rounded-full transition-all"
+                              style={{
+                                background: btnBg,
+                                color: btnColor,
+                                fontWeight: isEndpoint || isToday ? 700 : 400,
+                                boxShadow: isEndpoint
+                                  ? "0 4px 14px rgba(255,15,95,0.5)"
+                                  : "none",
+                                outline:
+                                  isToday && !isEndpoint
+                                    ? "1px solid rgba(255,15,95,0.4)"
+                                    : "none",
+                              }}
+                              onClick={() => handleCalDayClick(day)}
+                              onMouseEnter={() => {
+                                if (!calRangeEnd)
+                                  setCalHover(
+                                    new Date(calViewYear, calViewMonth, day),
+                                  );
+                              }}
+                            >
+                              {day}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {/* Footer */}
+                    <div
+                      className="flex items-center justify-between"
+                      style={{
+                        padding: "var(--space-12) var(--space-16)",
+                        borderTop: "1px solid var(--border-faint)",
+                      }}
+                    >
+                      <button
+                        onClick={() => {
+                          setCalRangeStart(null);
+                          setCalRangeEnd(null);
+                          setCalHover(null);
+                          setCalOpen(false);
+                        }}
+                        className="text-[13px] font-medium transition-colors hover:opacity-70"
+                        style={{ color: "var(--color-text-muted)" }}
+                      >
+                        Clear
+                      </button>
+                      <button
+                        onClick={() => setCalOpen(false)}
+                        disabled={!calRangeStart}
+                        className="text-[13px] font-semibold px-[20px] py-[8px] rounded-[8px] transition-all"
+                        style={{
+                          background: calRangeStart
+                            ? "linear-gradient(135deg, var(--color-accent-bright), var(--color-accent-dark))"
+                            : "var(--border-faint)",
+                          color: calRangeStart
+                            ? "var(--color-text-primary)"
+                            : "rgba(255,255,255,0.3)",
+                          boxShadow: calRangeStart
+                            ? "0 4px 16px rgba(255,15,95,0.4)"
+                            : "none",
+                          cursor: calRangeStart ? "pointer" : "default",
+                        }}
+                      >
+                        Apply
+                      </button>
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
+        </div>
+      </div>
 
       {/* ── Ledger ── */}
       <div className="flex flex-col gap-[6px]">
@@ -1704,7 +2170,10 @@ export const Reports = () => {
         {isAdmin && (
           <Card>
             <div className="px-[16px] py-[14px] flex flex-col gap-[6px]">
-              <span className="text-[11px] font-bold uppercase tracking-[0.08em]" style={{ color: "var(--color-text-muted)" }}>
+              <span
+                className="text-[11px] font-bold uppercase tracking-[0.08em]"
+                style={{ color: "var(--color-text-muted)" }}
+              >
                 Transactions
               </span>
               <span className="text-[26px] font-bold text-white leading-none">
@@ -1712,7 +2181,10 @@ export const Reports = () => {
               </span>
               {totalChange !== null && (
                 <div>
-                  <ChangeBadge value={totalChange} positive={totalChange >= 0} />
+                  <ChangeBadge
+                    value={totalChange}
+                    positive={totalChange >= 0}
+                  />
                 </div>
               )}
             </div>
@@ -1723,14 +2195,28 @@ export const Reports = () => {
         <div className="grid grid-cols-2 gap-[6px]">
           <Card>
             <div className="px-[14px] py-[12px] flex flex-col gap-[5px]">
-              <span className="text-[10px] font-bold uppercase tracking-[0.06em]" style={{ color: "var(--color-text-muted)" }}>Paid</span>
-              <span className="text-[18px] font-bold text-white">${money(currPaid)}</span>
+              <span
+                className="text-[10px] font-bold uppercase tracking-[0.06em]"
+                style={{ color: "var(--color-text-muted)" }}
+              >
+                Paid
+              </span>
+              <span className="text-[18px] font-bold text-white">
+                ${money(currPaid)}
+              </span>
             </div>
           </Card>
           <Card>
             <div className="px-[14px] py-[12px] flex flex-col gap-[5px]">
-              <span className="text-[10px] font-bold uppercase tracking-[0.06em]" style={{ color: "var(--color-text-muted)" }}>Pending</span>
-              <span className="text-[18px] font-bold text-white">${money(currPending)}</span>
+              <span
+                className="text-[10px] font-bold uppercase tracking-[0.06em]"
+                style={{ color: "var(--color-text-muted)" }}
+              >
+                Pending
+              </span>
+              <span className="text-[18px] font-bold text-white">
+                ${money(currPending)}
+              </span>
             </div>
           </Card>
         </div>
@@ -1738,9 +2224,16 @@ export const Reports = () => {
         {/* Refunded */}
         <Card>
           <div className="px-[14px] py-[12px] flex flex-col gap-[5px]">
-              <span className="text-[10px] font-bold uppercase tracking-[0.06em]" style={{ color: "var(--color-text-muted)" }}>Refunded</span>
+            <span
+              className="text-[10px] font-bold uppercase tracking-[0.06em]"
+              style={{ color: "var(--color-text-muted)" }}
+            >
+              Refunded
+            </span>
             <div className="flex items-center justify-between">
-              <span className="text-[18px] font-bold text-white">${money(currRefunded)}</span>
+              <span className="text-[18px] font-bold text-white">
+                ${money(currRefunded)}
+              </span>
               {refundChange !== null && refundChange !== 0 && (
                 <ChangeBadge value={refundChange} positive={refundChange < 0} />
               )}
@@ -1753,14 +2246,28 @@ export const Reports = () => {
           <div className="grid grid-cols-2 gap-[6px]">
             <Card>
               <div className="px-[14px] py-[12px] flex flex-col gap-[5px]">
-                <span className="text-[10px] font-bold uppercase tracking-[0.06em]" style={{ color: "var(--color-text-muted)" }}>Promoters</span>
-                <span className="text-[18px] font-bold text-white">{promoterCount}</span>
+                <span
+                  className="text-[10px] font-bold uppercase tracking-[0.06em]"
+                  style={{ color: "var(--color-text-muted)" }}
+                >
+                  Promoters
+                </span>
+                <span className="text-[18px] font-bold text-white">
+                  {promoterCount}
+                </span>
               </div>
             </Card>
             <Card>
               <div className="px-[14px] py-[12px] flex flex-col gap-[5px]">
-                <span className="text-[10px] font-bold uppercase tracking-[0.06em]" style={{ color: "var(--color-text-muted)" }}>Users</span>
-                <span className="text-[18px] font-bold text-white">{managedCustomerCount}</span>
+                <span
+                  className="text-[10px] font-bold uppercase tracking-[0.06em]"
+                  style={{ color: "var(--color-text-muted)" }}
+                >
+                  Users
+                </span>
+                <span className="text-[18px] font-bold text-white">
+                  {managedCustomerCount}
+                </span>
               </div>
             </Card>
           </div>
@@ -1801,8 +2308,16 @@ export const Reports = () => {
         <>
           <Card>
             <div className="flex items-center gap-[6px] px-[16px] pt-[14px] pb-[10px]">
-              <span className="text-[14px]" style={{ color: "var(--color-text-muted)" }}>≡</span>
-              <span className="text-[13px] font-semibold" style={{ color: "var(--color-text-muted)" }}>
+              <span
+                className="text-[14px]"
+                style={{ color: "var(--color-text-muted)" }}
+              >
+                ≡
+              </span>
+              <span
+                className="text-[13px] font-semibold"
+                style={{ color: "var(--color-text-muted)" }}
+              >
                 Top Users
               </span>
             </div>
@@ -1811,7 +2326,10 @@ export const Reports = () => {
             {topCustomers.length === 0 ? (
               <div className="flex flex-col items-center py-[32px] gap-[8px]">
                 <span className="text-[28px]">👤</span>
-                <span className="text-[13px]" style={{ color: "var(--color-text-muted)" }}>
+                <span
+                  className="text-[13px]"
+                  style={{ color: "var(--color-text-muted)" }}
+                >
                   No customer data for this period
                 </span>
               </div>
@@ -1865,11 +2383,17 @@ export const Reports = () => {
             {/* Total */}
             <div className="px-[16px] py-[14px]">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-[0.08em]" style={{ color: "var(--color-text-muted)" }}>
+                <span
+                  className="text-[11px] font-bold uppercase tracking-[0.08em]"
+                  style={{ color: "var(--color-text-muted)" }}
+                >
                   Users
                 </span>
                 {newCustomerCount > 0 && (
-                  <span className="inline-flex items-center gap-[3px] text-[12px] font-bold px-[10px] py-[4px] rounded-full text-white" style={{ background: "var(--color-success)" }}>
+                  <span
+                    className="inline-flex items-center gap-[3px] text-[12px] font-bold px-[10px] py-[4px] rounded-full text-white"
+                    style={{ background: "var(--color-success)" }}
+                  >
                     ↑ {newCustomerCount}
                   </span>
                 )}
@@ -1882,7 +2406,12 @@ export const Reports = () => {
             <HDivider />
 
             <div className="flex items-center justify-between px-[16px] py-[12px]">
-              <span className="text-[14px]" style={{ color: "var(--color-text-muted)" }}>Idle</span>
+              <span
+                className="text-[14px]"
+                style={{ color: "var(--color-text-muted)" }}
+              >
+                Idle
+              </span>
               <span className="text-[14px] font-semibold text-white">
                 {idleCustomerCount.toLocaleString()}
               </span>
@@ -1891,7 +2420,12 @@ export const Reports = () => {
             <HDivider />
 
             <div className="flex items-center justify-between px-[16px] py-[12px]">
-              <span className="text-[14px]" style={{ color: "var(--color-text-muted)" }}>Unpaid</span>
+              <span
+                className="text-[14px]"
+                style={{ color: "var(--color-text-muted)" }}
+              >
+                Unpaid
+              </span>
               <span className="text-[14px] font-semibold text-white">
                 {unpaidCustomerCount.toLocaleString()}
               </span>
@@ -1906,7 +2440,10 @@ export const Reports = () => {
               <span className="text-[14px] font-medium text-white">
                 View Details
               </span>
-              <span className="text-[20px] group-hover:opacity-70 transition-opacity" style={{ color: "var(--color-text-subtle)" }}>
+              <span
+                className="text-[20px] group-hover:opacity-70 transition-opacity"
+                style={{ color: "var(--color-text-subtle)" }}
+              >
                 ›
               </span>
             </button>
@@ -1919,8 +2456,16 @@ export const Reports = () => {
         <Card>
           {/* Section header */}
           <div className="flex items-center gap-[6px] px-[16px] pt-[14px] pb-[10px]">
-            <span className="text-[14px]" style={{ color: "var(--color-text-muted)" }}>≡</span>
-            <span className="text-[13px] font-semibold" style={{ color: "var(--color-text-muted)" }}>
+            <span
+              className="text-[14px]"
+              style={{ color: "var(--color-text-muted)" }}
+            >
+              ≡
+            </span>
+            <span
+              className="text-[13px] font-semibold"
+              style={{ color: "var(--color-text-muted)" }}
+            >
               Top Performers
             </span>
           </div>
@@ -1929,7 +2474,10 @@ export const Reports = () => {
           {topPerformers.length === 0 ? (
             <div className="flex flex-col items-center py-[32px] gap-[8px]">
               <span className="text-[28px]">📈</span>
-              <span className="text-[13px]" style={{ color: "var(--color-text-muted)" }}>
+              <span
+                className="text-[13px]"
+                style={{ color: "var(--color-text-muted)" }}
+              >
                 No performance data for this period
               </span>
             </div>
@@ -2018,12 +2566,20 @@ export const Reports = () => {
                 className="w-full flex items-center justify-between px-[16px] py-[14px] hover:bg-[rgba(255,255,255,0.03)] transition-colors group"
               >
                 <div className="text-left">
-                  <div className="text-[13px]" style={{ color: "var(--color-text-muted)" }}>{label}</div>
+                  <div
+                    className="text-[13px]"
+                    style={{ color: "var(--color-text-muted)" }}
+                  >
+                    {label}
+                  </div>
                   <div className="text-[20px] font-bold text-white mt-px">
                     {count.toLocaleString()}
                   </div>
                 </div>
-                <span className="text-[20px] group-hover:opacity-70 transition-opacity" style={{ color: "var(--color-text-subtle)" }}>
+                <span
+                  className="text-[20px] group-hover:opacity-70 transition-opacity"
+                  style={{ color: "var(--color-text-subtle)" }}
+                >
                   ›
                 </span>
               </button>
@@ -2040,11 +2596,17 @@ export const Reports = () => {
             {/* USERS total */}
             <div className="px-[16px] py-[14px]">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-[0.08em]" style={{ color: "var(--color-text-muted)" }}>
+                <span
+                  className="text-[11px] font-bold uppercase tracking-[0.08em]"
+                  style={{ color: "var(--color-text-muted)" }}
+                >
                   Users
                 </span>
                 {newUsersCount > 0 && (
-                  <span className="inline-flex items-center gap-[3px] text-[12px] font-bold px-[10px] py-[4px] rounded-full text-white" style={{ background: "var(--color-success)" }}>
+                  <span
+                    className="inline-flex items-center gap-[3px] text-[12px] font-bold px-[10px] py-[4px] rounded-full text-white"
+                    style={{ background: "var(--color-success)" }}
+                  >
                     ↑ {newUsersCount}
                   </span>
                 )}
@@ -2057,7 +2619,12 @@ export const Reports = () => {
             <HDivider />
 
             <div className="flex items-center justify-between px-[16px] py-[12px]">
-              <span className="text-[14px]" style={{ color: "var(--color-text-muted)" }}>Idle</span>
+              <span
+                className="text-[14px]"
+                style={{ color: "var(--color-text-muted)" }}
+              >
+                Idle
+              </span>
               <span className="text-[14px] font-semibold text-white">
                 {idleCount.toLocaleString()}
               </span>
@@ -2066,7 +2633,12 @@ export const Reports = () => {
             <HDivider />
 
             <div className="flex items-center justify-between px-[16px] py-[12px]">
-              <span className="text-[14px]" style={{ color: "var(--color-text-muted)" }}>Unpaid</span>
+              <span
+                className="text-[14px]"
+                style={{ color: "var(--color-text-muted)" }}
+              >
+                Unpaid
+              </span>
               <span className="text-[14px] font-semibold text-white">
                 {unpaidCount.toLocaleString()}
               </span>
@@ -2081,7 +2653,10 @@ export const Reports = () => {
               <span className="text-[14px] font-medium text-white">
                 View Details
               </span>
-              <span className="text-[20px] group-hover:opacity-70 transition-opacity" style={{ color: "var(--color-text-subtle)" }}>
+              <span
+                className="text-[20px] group-hover:opacity-70 transition-opacity"
+                style={{ color: "var(--color-text-subtle)" }}
+              >
                 ›
               </span>
             </button>
