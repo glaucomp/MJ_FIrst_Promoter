@@ -810,7 +810,7 @@ const AdminTxListCard = ({
           </div>
 
           {/* Search */}
-          <div className="px-[16px] pb-[10px]">
+          <div style={{ padding: 'var(--space-12) 0' }}>
             <div className="relative">
               <svg
                 width="14"
@@ -839,17 +839,19 @@ const AdminTxListCard = ({
                 value={search}
                 onChange={(e) => onSearch(e.target.value)}
                 placeholder="Name, Email, Campaign, Customer"
-                className="w-full pl-[30px] pr-[12px] py-[8px] text-[13px] text-white focus:outline-none"
+                className="w-full text-white focus:outline-none"
                 style={{
-                  borderRadius: "var(--radius-m)",
-                  background: "var(--color-surface-item)",
-                  border: "1px solid var(--border-subtle)",
+                  paddingLeft: '30px',
+                  paddingRight: '12px',
+                  height: 'var(--button-m)',
+                  borderRadius: 'var(--radius-round)',
+                  background: 'var(--color-surface-raised)',
+                  border: '1px solid var(--border-faint)',
+                  fontSize: 'var(--font-size-body-s)',
                 }}
               />
             </div>
           </div>
-
-          <HDivider />
 
           {/* Rows */}
           {loading && (
@@ -1123,8 +1125,8 @@ const TxListCard = ({
           </div>
 
           {/* Status tabs */}
-          <div className="flex items-center gap-[6px] px-[16px] pb-[10px] overflow-x-auto">
-            {tabDefs.map(({ key, label }) => {
+          <div style={{ display: 'flex', height: '52px', borderRadius: 'var(--radius-m)', background: '#292929', border: '1px solid #333333', overflow: 'hidden', marginTop: 'var(--space-8)' }}>
+            {tabDefs.map(({ key, label }, idx) => {
               const active = statusTab === key;
               const count = counts[key];
               return (
@@ -1132,43 +1134,32 @@ const TxListCard = ({
                   key={key}
                   type="button"
                   onClick={() => setStatusTab(key)}
-                  className="flex items-center gap-[5px] px-[10px] py-[5px] rounded-full text-[12px] font-medium whitespace-nowrap transition-all shrink-0"
                   style={{
-                    background: active
-                      ? "var(--color-accent-bg)"
-                      : "var(--color-surface-item)",
-                    border: active
-                      ? "1px solid var(--color-accent-border)"
-                      : "1px solid var(--border-subtle)",
-                    color: active
-                      ? "var(--color-accent)"
-                      : "var(--color-text-muted)",
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '3px',
+                    background: 'transparent',
+                    border: 'none',
+                    borderLeft: idx > 0 ? '1px solid #333333' : 'none',
+                    cursor: 'pointer',
                   }}
                 >
-                  {key === "all" && count > 0 && (
-                    <span
-                      className="text-[10px] font-bold px-[5px] py-px rounded-full"
-                      style={{
-                        background: active
-                          ? "var(--color-accent-bright)"
-                          : "rgba(255,255,255,0.1)",
-                        color: "var(--color-text-primary)",
-                      }}
-                    >
-                      {count}
-                    </span>
-                  )}
-                  {label}
-                  {key !== "all" && (
-                    <span className="text-[10px] opacity-60">{count}</span>
-                  )}
+                  <span style={{ fontSize: 'var(--font-size-body-s)', fontWeight: 'var(--font-weight-medium)', lineHeight: 1, color: active ? 'var(--color-accent-bright)' : 'var(--color-text-primary)' }}>
+                    {count}
+                  </span>
+                  <span style={{ fontSize: '11px', fontWeight: 'var(--font-weight-medium)', lineHeight: 1, color: active ? 'var(--color-accent-bright)' : 'var(--color-text-muted)' }}>
+                    {label}
+                  </span>
                 </button>
               );
             })}
           </div>
 
           {/* Search */}
-          <div className="px-[16px] pb-[10px]">
+          <div style={{ padding: 'var(--space-12) 0' }}>
             <div className="relative">
               <svg
                 width="14"
@@ -1197,17 +1188,19 @@ const TxListCard = ({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Name, Email, Campaign"
-                className="w-full pl-[30px] pr-[12px] py-[8px] text-[13px] text-white focus:outline-none"
+                className="w-full text-white focus:outline-none"
                 style={{
-                  borderRadius: "var(--radius-m)",
-                  background: "var(--color-surface-item)",
-                  border: "1px solid var(--border-subtle)",
+                  paddingLeft: '30px',
+                  paddingRight: '12px',
+                  height: 'var(--button-m)',
+                  borderRadius: 'var(--radius-round)',
+                  background: 'var(--color-surface-raised)',
+                  border: '1px solid var(--border-faint)',
+                  fontSize: 'var(--font-size-body-s)',
                 }}
               />
             </div>
           </div>
-
-          <HDivider />
 
           {/* Rows */}
           {pageTx.length === 0 ? (
