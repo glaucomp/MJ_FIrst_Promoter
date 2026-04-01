@@ -39,12 +39,13 @@
 
   /* ── Surfaces (tm-neutral) ── */
   --color-bg:             #212121;
-  --color-surface:        #252628;
-  --color-surface-end:    #202022;
-  --color-surface-raised: #292929;
-  --color-surface-hover:  rgba(255, 255, 255, 0.02);
-  --color-surface-item:   rgba(255, 255, 255, 0.05);
-  --color-surface-inset:  rgba(255, 255, 255, 0.03);
+  --color-surface:         #252628;
+  --color-surface-end:     #202022;
+  --color-surface-raised:  #292929;
+  --color-surface-overlay: #3A3E48; /* chart bar / inactive element fill */
+  --color-surface-hover:   rgba(255, 255, 255, 0.02);
+  --color-surface-item:    rgba(255, 255, 255, 0.05);
+  --color-surface-inset:   rgba(255, 255, 255, 0.03);
 
   /* ── Borders (token-matched) ── */
   --border-subtle:   rgba(255, 255, 255, 0.03);  /* border-subtle token  ~3%  */

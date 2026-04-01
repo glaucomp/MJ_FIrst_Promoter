@@ -2119,11 +2119,7 @@ export const Reports = () => {
         />
 
         {/* Chart */}
-        <Card>
-          <div className="p-[12px]">
-            <Chart data={chartData} className="h-[130px]" />
-          </div>
-        </Card>
+        <Chart data={chartData} className="h-[180px] w-full" />
 
         {/* Transactions total — admin only */}
         {isAdmin && (
