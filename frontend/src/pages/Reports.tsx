@@ -4,6 +4,7 @@ import calenderIcon from "../assets/calender.svg";
 import ledgerIcon from "../assets/ledger.svg";
 import networkIcon from "../assets/network.svg";
 import usersIcon from "../assets/users.svg";
+import topUsersIcon from "../assets/top_users.svg";
 import { Chart } from "../components/Chart";
 import { useAuth } from "../contexts/AuthContext";
 import {
@@ -150,10 +151,10 @@ const SectionTitle = ({
       {icon}
     </span>
     <span
-      className="font-medium"
       style={{
         color: "var(--color-text-label)",
-        fontSize: "var(--text-body-size, 13px)",
+        fontSize: "var(--font-size-body-s)",
+        fontWeight: "var(--font-weight-medium)",
         lineHeight: "140%",
         letterSpacing: "0.2px",
       }}
@@ -2228,30 +2229,13 @@ export const Reports = () => {
       {/* ── Top Users ── (promoter only) */}
       {isPromoter && (
         <>
-          <Card>
-            <div className="flex items-center gap-[6px] px-[16px] pt-[14px] pb-[10px]">
-              <span
-                className="text-[14px]"
-                style={{ color: "var(--color-text-muted)" }}
-              >
-                ≡
-              </span>
-              <span
-                className="text-[13px] font-semibold"
-                style={{ color: "var(--color-text-muted)" }}
-              >
-                Top Users
-              </span>
-            </div>
-            <HDivider />
+          <div className="flex flex-col gap-[var(--space-8)]">
+            <SectionTitle icon={<img src={topUsersIcon} width="12" height="12" alt="" />} label="Top Users" />
 
             {topCustomers.length === 0 ? (
               <div className="flex flex-col items-center py-[32px] gap-[8px]">
                 <span className="text-[28px]">👤</span>
-                <span
-                  className="text-[13px]"
-                  style={{ color: "var(--color-text-muted)" }}
-                >
+                <span style={{ fontSize: 'var(--font-size-body-s)', color: 'var(--color-text-muted)' }}>
                   No customer data for this period
                 </span>
               </div>
@@ -2278,27 +2262,34 @@ export const Reports = () => {
                 ];
                 const avatarBg = avatarColors[idx % avatarColors.length];
                 return (
-                  <div key={name}>
-                    {idx > 0 && <HDivider />}
-                    <div className="flex items-center gap-[12px] px-[16px] py-[12px] hover:bg-[rgba(255,255,255,0.02)] transition-colors">
-                      <div
-                        className="w-[36px] h-[36px] rounded-full flex items-center justify-center text-[13px] font-bold text-white shrink-0"
-                        style={{ background: avatarBg }}
-                      >
-                        {initials}
-                      </div>
-                      <span className="flex-1 text-[14px] text-white truncate">
-                        {name}
-                      </span>
-                      <span className="text-[14px] font-semibold text-white shrink-0">
-                        ${money(revenue)}
-                      </span>
+                  <div
+                    key={`${name}-${idx}`}
+                    className="flex items-center gap-[12px]"
+                    style={{
+                      padding: '0 var(--space-16)',
+                      height: 'var(--button-m)',
+                      borderRadius: 'var(--radius-round)',
+                      background: 'var(--color-surface-end)',
+                      boxShadow: '0 -1px 0 0 rgba(255,255,255,0.10)',
+                    }}
+                  >
+                    <div
+                      className="rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0"
+                      style={{ width: '16px', height: '16px', background: avatarBg, fontSize: '7px' }}
+                    >
+                      {initials}
                     </div>
+                    <span className="flex-1 truncate" style={{ fontSize: 'var(--font-size-body-s)', fontWeight: 'var(--font-weight-medium)', lineHeight: '140%', letterSpacing: '0.2px', color: '#7A7A7A' }}>
+                      {name}
+                    </span>
+                    <span className="shrink-0" style={{ fontSize: 'var(--font-size-body-s)', fontWeight: 'var(--font-weight-medium)', lineHeight: '140%', letterSpacing: '0.2px', color: 'var(--color-text-primary)' }}>
+                      ${money(revenue)}
+                    </span>
                   </div>
                 );
               })
             )}
-          </Card>
+          </div>
 
           {/* USERS stat card */}
           <Card radius="var(--radius-m)">
@@ -2354,31 +2345,13 @@ export const Reports = () => {
 
       {/* ── Top Performers ── (manager only) */}
       {isManager && (
-        <Card>
-          {/* Section header */}
-          <div className="flex items-center gap-[6px] px-[16px] pt-[14px] pb-[10px]">
-            <span
-              className="text-[14px]"
-              style={{ color: "var(--color-text-muted)" }}
-            >
-              ≡
-            </span>
-            <span
-              className="text-[13px] font-semibold"
-              style={{ color: "var(--color-text-muted)" }}
-            >
-              Top Performers
-            </span>
-          </div>
-          <HDivider />
+        <div className="flex flex-col gap-[var(--space-8)]">
+          <SectionTitle icon={<img src={topUsersIcon} width="12" height="12" alt="" />} label="Top Performers" />
 
           {topPerformers.length === 0 ? (
             <div className="flex flex-col items-center py-[32px] gap-[8px]">
               <span className="text-[28px]">📈</span>
-              <span
-                className="text-[13px]"
-                style={{ color: "var(--color-text-muted)" }}
-              >
+              <span style={{ fontSize: 'var(--font-size-body-s)', color: 'var(--color-text-muted)' }}>
                 No performance data for this period
               </span>
             </div>
@@ -2403,53 +2376,47 @@ export const Reports = () => {
                 "#6366f1",
               ];
               const avatarBg = avatarColors[idx % avatarColors.length];
-
               return (
-                <div key={name}>
-                  {idx > 0 && <HDivider />}
-                  <div className="flex items-center gap-[12px] px-[16px] py-[12px] hover:bg-[rgba(255,255,255,0.02)] transition-colors">
-                    {/* Avatar */}
-                    <div
-                      className="w-[36px] h-[36px] rounded-full flex items-center justify-center text-[13px] font-bold text-white shrink-0"
-                      style={{ background: avatarBg }}
-                    >
-                      {initials}
-                    </div>
-                    {/* Name */}
-                    <span className="flex-1 text-[14px] text-white">
-                      {name}
-                    </span>
-                    {/* Revenue */}
-                    <span className="text-[14px] font-semibold text-white">
-                      ${money(revenue)}
-                    </span>
+                <div
+                  key={`${name}-${idx}`}
+                  className="flex items-center gap-[12px]"
+                  style={{
+                    padding: '0 var(--space-16)',
+                    height: 'var(--button-m)',
+                    borderRadius: 'var(--radius-round)',
+                    background: 'var(--color-surface-end)',
+                    boxShadow: '0 -1px 0 0 rgba(255,255,255,0.10)',
+                  }}
+                >
+                  <div
+                    className="rounded-full flex items-center justify-center font-bold text-white shrink-0"
+                    style={{ width: '16px', height: '16px', background: avatarBg, fontSize: '7px' }}
+                  >
+                    {initials}
                   </div>
+                  <span className="flex-1 truncate" style={{ fontSize: 'var(--font-size-body-s)', fontWeight: 'var(--font-weight-medium)', lineHeight: '140%', letterSpacing: '0.2px', color: '#7A7A7A' }}>
+                    {name}
+                  </span>
+                  <span className="shrink-0" style={{ fontSize: 'var(--font-size-body-s)', fontWeight: 'var(--font-weight-medium)', lineHeight: '140%', letterSpacing: '0.2px', color: 'var(--color-text-primary)' }}>
+                    ${money(revenue)}
+                  </span>
                 </div>
               );
             })
           )}
 
-          <HDivider />
-
           {/* Manage Influencers link */}
           <button
             onClick={() => navigate("/models")}
-            className="w-full flex items-center justify-between px-[16px] py-[13px] hover:bg-[rgba(255,255,255,0.03)] transition-colors group"
+            className="w-full flex items-center justify-between hover:opacity-70 transition-opacity"
+            style={{ padding: 'var(--space-8) 0' }}
           >
-            <span
-              className="text-[14px] font-medium"
-              style={{ color: "var(--color-accent-bright)" }}
-            >
+            <span style={{ fontSize: 'var(--font-size-body-s)', fontWeight: 'var(--font-weight-medium)', color: 'var(--color-accent-bright)' }}>
               Manage Influencers
             </span>
-            <span
-              className="text-[18px] group-hover:translate-x-[2px] transition-transform"
-              style={{ color: "var(--color-accent-bright)" }}
-            >
-              ›
-            </span>
+            <span style={{ color: 'var(--color-accent-bright)', fontSize: '18px' }}>›</span>
           </button>
-        </Card>
+        </div>
       )}
 
       {/* ── Network ── (admin only) */}
