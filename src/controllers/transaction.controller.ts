@@ -24,19 +24,53 @@ export const getAllTransactions = async (req: AuthRequest, res: Response) => {
     const period = (req.query.period as string) ?? "all";
     const page = (req.query.page as string) ?? "1";
     const limit = (req.query.limit as string) ?? "10";
+    const search = (req.query.search as string | undefined)?.trim();
+    const startDate = req.query.startDate as string | undefined;
+    const endDate   = req.query.endDate   as string | undefined;
 
     const isAdmin =
       user.role === UserRole.ADMIN || user.userType === UserType.ADMIN;
     const pageNum = Math.max(1, Number.parseInt(page, 10));
     const limitNum = Math.min(100, Math.max(1, Number.parseInt(limit, 10)));
     const skip = (pageNum - 1) * limitNum;
-    const periodDate = getPeriodDate(period);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: any = {};
 
-    if (periodDate) {
-      where.createdAt = { gte: periodDate };
+    if (startDate || endDate) {
+      const parsedStart = startDate ? new Date(startDate) : null;
+      const parsedEnd   = endDate   ? new Date(endDate)   : null;
+
+      if (parsedStart && isNaN(parsedStart.valueOf())) {
+        return res.status(400).json({ error: "Invalid startDate" });
+      }
+      if (parsedEnd && isNaN(parsedEnd.valueOf())) {
+        return res.status(400).json({ error: "Invalid endDate" });
+      }
+      if (parsedStart && parsedEnd && parsedStart > parsedEnd) {
+        return res.status(400).json({ error: "startDate must not be after endDate" });
+      }
+
+      where.createdAt = {};
+      if (parsedStart) where.createdAt.gte = parsedStart;
+      if (parsedEnd)   where.createdAt.lte = parsedEnd;
+    } else {
+      const periodDate = getPeriodDate(period);
+      if (periodDate) where.createdAt = { gte: periodDate };
+    }
+
+    if (search) {
+      where.OR = [
+        { eventId: { contains: search, mode: "insensitive" } },
+        { customer: { email: { contains: search, mode: "insensitive" } } },
+        { customer: { name:  { contains: search, mode: "insensitive" } } },
+        { campaign: { name:  { contains: search, mode: "insensitive" } } },
+        {
+          referral: {
+            referrer: { email: { contains: search, mode: "insensitive" } },
+          },
+        },
+      ];
     }
 
     if (!isAdmin) {
@@ -72,7 +106,12 @@ export const getAllTransactions = async (req: AuthRequest, res: Response) => {
                 userType: { not: UserType.ADMIN },
               },
             },
-            include: {
+            select: {
+              id: true,
+              amount: true,
+              percentage: true,
+              status: true,
+              description: true,
               user: {
                 select: {
                   id: true,

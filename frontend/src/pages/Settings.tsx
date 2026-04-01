@@ -14,7 +14,7 @@ export const Settings = () => {
 
       {/* View Selection - Only for Team Managers */}
       {user?.baseRole === 'team_manager' && user?.canSwitchToPromoter && (
-        <div className="bg-gradient-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-[20px]">
+        <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-[20px]">
           <div className="flex flex-col gap-[8px]">
             <h2 className="text-[20px] leading-[1.4] font-bold text-white">
               View Selection
@@ -29,7 +29,7 @@ export const Settings = () => {
               onClick={() => handleRoleSwitch('team_manager')}
               className={`relative flex flex-col items-center gap-[12px] p-[20px] rounded-[8px] border-2 transition-all ${
                 user?.role === 'team_manager'
-                  ? 'bg-gradient-to-b from-[#ff0f5f] to-[#cc0047] border-[#ff0f5f] shadow-[0px_0px_20px_rgba(255,15,95,0.3)]'
+                  ? 'bg-linear-to-b from-[#ff0f5f] to-[#cc0047] border-[#ff0f5f] shadow-[0px_0px_20px_rgba(255,15,95,0.3)]'
                   : 'bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] hover:border-[#ff0f5f] hover:shadow-[0px_0px_12px_rgba(255,15,95,0.15)]'
               }`}
             >
@@ -55,7 +55,7 @@ export const Settings = () => {
               onClick={() => handleRoleSwitch('promoter')}
               className={`relative flex flex-col items-center gap-[12px] p-[20px] rounded-[8px] border-2 transition-all ${
                 user?.role === 'promoter'
-                  ? 'bg-gradient-to-b from-[#ff0f5f] to-[#cc0047] border-[#ff0f5f] shadow-[0px_0px_20px_rgba(255,15,95,0.3)]'
+                  ? 'bg-linear-to-b from-[#ff0f5f] to-[#cc0047] border-[#ff0f5f] shadow-[0px_0px_20px_rgba(255,15,95,0.3)]'
                   : 'bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] hover:border-[#ff0f5f] hover:shadow-[0px_0px_12px_rgba(255,15,95,0.15)]'
               }`}
             >
@@ -81,7 +81,7 @@ export const Settings = () => {
       )}
 
       {/* Profile Information */}
-      <div className="bg-gradient-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-[20px]">
+      <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-[20px]">
         <h2 className="text-[20px] leading-[1.4] font-bold text-white">
           Profile Information
         </h2>
@@ -125,7 +125,7 @@ export const Settings = () => {
       </div>
 
       {/* Preferences */}
-      <div className="bg-gradient-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-[20px]">
+      <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-[20px]">
         <h2 className="text-[20px] leading-[1.4] font-bold text-white">
           Preferences
         </h2>

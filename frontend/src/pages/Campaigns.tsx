@@ -142,7 +142,7 @@ export const Campaigns = () => {
           <p className="text-[16px] text-[#9e9e9e]">{campaigns.length} total</p>
           <button
             onClick={openCreate}
-            className="bg-gradient-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
           >
             + Create Campaign
           </button>
@@ -162,7 +162,7 @@ export const Campaigns = () => {
           {campaigns.map(c => (
             <div
               key={c.id}
-              className="bg-gradient-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[16px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)]"
+              className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[16px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)]"
             >
               <div className="flex flex-col gap-[12px]">
                 {/* Top row */}
@@ -212,9 +212,9 @@ export const Campaigns = () => {
                       <p className="text-white text-[15px] font-bold">{c.secondaryRate}%</p>
                     </div>
                   )}
-                  {c.recurringRate != null && c.recurringRate > 0 && (
+                  {c.recurringRate != null && c.recurringRate > 0 && c.visibleToPromoters && (
                     <div className="flex flex-col gap-[2px]">
-                      <p className="text-[#666] text-[11px] uppercase tracking-[0.5px]">Recurring</p>
+                      <p className="text-[#666] text-[11px] uppercase tracking-[0.5px]">Acc Mgr</p>
                       <p className="text-white text-[15px] font-bold">{c.recurringRate}%</p>
                     </div>
                   )}
@@ -276,7 +276,7 @@ export const Campaigns = () => {
           ))}
 
           {campaigns.length === 0 && (
-            <div className="bg-gradient-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] text-center">
+            <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] text-center">
               <p className="text-[#9e9e9e] text-[16px]">No campaigns yet. Create the first one.</p>
             </div>
           )}
@@ -286,7 +286,7 @@ export const Campaigns = () => {
       {/* Create / Edit Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-[20px] py-[20px]">
-          <div className="bg-gradient-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1)] w-full max-w-[540px] max-h-[90vh] overflow-y-auto">
+          <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1)] w-full max-w-[540px] max-h-[90vh] overflow-y-auto">
             <div className="flex flex-col gap-[18px]">
               {/* Modal header */}
               <div className="flex items-center justify-between">
@@ -361,36 +361,20 @@ export const Campaigns = () => {
                     className={inputCls}
                   />
                 </Field>
-                <div className="flex flex-col gap-[6px] flex-1">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[#9e9e9e] text-[12px] font-bold uppercase tracking-[0.2px]">
-                      Recurring %
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setForm(f => ({
-                        ...f,
-                        recurringRate: f.recurringRate == null ? 30 : null,
-                      }))}
-                      className={`text-[10px] font-bold px-[8px] py-[2px] rounded-full border transition-colors ${
-                        form.recurringRate != null
-                          ? 'bg-[#ff0f5f]/10 border-[#ff0f5f] text-[#ff0f5f]'
-                          : 'bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#555] hover:border-[rgba(255,255,255,0.2)] hover:text-[#9e9e9e]'
-                      }`}
-                    >
-                      {form.recurringRate != null ? 'ON' : 'OFF'}
-                    </button>
-                  </div>
-                  <input
-                    type="number"
-                    min={0} max={100} step={0.1}
-                    value={form.recurringRate ?? ''}
-                    placeholder="—"
-                    disabled={form.recurringRate == null}
-                    onChange={e => setForm(f => ({ ...f, recurringRate: parseFloat(e.target.value) || 0 }))}
-                    className={`${inputCls} ${form.recurringRate == null ? 'opacity-30 cursor-not-allowed' : ''}`}
-                  />
-                </div>
+                {form.visibleToPromoters && (
+                  <Field label="Acc Manager %" className="flex-1">
+                    <input
+                      type="number"
+                      min={0} max={100} step={0.1}
+                      value={form.recurringRate ?? 0}
+                      onChange={e => {
+                        const v = Number.parseFloat(e.target.value);
+                        setForm(f => ({ ...f, recurringRate: v > 0 ? v : null }));
+                      }}
+                      className={inputCls}
+                    />
+                  </Field>
+                )}
               </div>
 
               {/* Cookie + Invites row */}
@@ -424,7 +408,7 @@ export const Campaigns = () => {
                 <Toggle
                   label="Visible to Promoters"
                   value={form.visibleToPromoters ?? true}
-                  onChange={v => setForm(f => ({ ...f, visibleToPromoters: v }))}
+                  onChange={v => setForm(f => ({ ...f, visibleToPromoters: v, ...(!v && { recurringRate: null }) }))}
                 />
                 <Toggle
                   label="Auto Approve"
@@ -442,7 +426,7 @@ export const Campaigns = () => {
               <button
                 onClick={handleSave}
                 disabled={isSaving}
-                className="bg-gradient-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[24px] py-[14px] text-white text-[16px] font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[24px] py-[14px] text-white text-[16px] font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSaving ? 'Saving...' : editingCampaign ? 'Save Changes' : 'Create Campaign'}
               </button>
