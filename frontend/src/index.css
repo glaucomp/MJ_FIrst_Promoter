@@ -38,10 +38,10 @@
   --color-text-faded:     #666666;
 
   /* ── Surfaces (tm-neutral) ── */
-  --color-bg:             #212121;
-  --color-surface:         #252628;
-  --color-surface-end:     #202022;
-  --color-surface-raised:  #292929;
+  --color-bg:             #1C1C1C;  /* tm-neutral-color07 — page background */
+  --color-surface:        #212121;  /* tm-neutral-color06 — card gradient start */
+  --color-surface-end:    #23252A;  /* tm-neutral-color05 — card gradient end */
+  --color-surface-raised: #292929;  /* tm-neutral-color04 */
   --color-surface-overlay: #3A3E48; /* chart bar / inactive element fill */
   --color-surface-hover:   rgba(255, 255, 255, 0.02);
   --color-surface-item:    rgba(255, 255, 255, 0.05);
@@ -55,20 +55,21 @@
   --border-strong:   rgba(255, 255, 255, 0.1);
   --border-hairline: rgba(255, 255, 255, 0.12);
 
-  /* ── Spacing (from tokens) ── */
-  --space-4:  4px;
+  /* ── Spacing — maps to Figma spacing/space-px-N tokens ── */
+  --space-4:  4px;   /* space-px-4  */
   --space-6:  6px;
-  --space-8:  8px;
+  --space-8:  8px;   /* space-px-8  */
   --space-10: 10px;
-  --space-12: 12px;
+  --space-12: 12px;  /* space-px-12 */
   --space-14: 14px;
-  --space-16: 16px;
-  --space-20: 20px;
-  --space-24: 24px;
-  --space-28: 28px;
-  --space-32: 32px;
-  --space-44: 44px;
-  --space-52: 52px;
+  --space-16: 16px;  /* space-px-16 */
+  --space-18: 18px;  /* space-px-18 */
+  --space-20: 20px;  /* space-px-20 */
+  --space-24: 24px;  /* space-px-24 */
+  --space-28: 28px;  /* space-px-28 */
+  --space-32: 32px;  /* space-px-32 */
+  --space-44: 44px;  /* space-px-44 */
+  --space-52: 52px;  /* space-px-52 */
 
   /* ── Component sizes (from tokens) ── */
   --button-s: var(--space-24);
@@ -93,14 +94,19 @@
   --desktop-max-width:    960px;
 
   /* ── Typography (from tokens) ── */
-  --font-family-primary:   'DM Sans', sans-serif;
-  --font-size-label:       12px;
-  --font-size-body-s:      14px;
-  --font-size-body-m:      16px;
-  --font-size-body-l:      20px;
-  --font-weight-regular:   400;
-  --font-weight-semibold:  500;
-  --font-weight-bold:      600;
+  --font-family-primary:      'DM Sans', sans-serif;
+  --font-size-label:          12px;   /* font-size-body-label */
+  --font-size-body-s:         14px;   /* font-size-body-s */
+  --font-size-body-m:         16px;   /* font-size-body-m */
+  --font-size-body-l:         20px;   /* font-size-body-l */
+  --font-size-heading-m:      32px;   /* font-size-desktop-heading-m */
+  --line-height-heading-m:    40px;
+  --font-size-heading-l:      40px;   /* font-size-desktop-heading-l */
+  --line-height-heading-l:    48px;
+  --font-weight-regular:      400;
+  --font-weight-medium:       500;
+  --font-weight-semibold:     600;
+  --font-weight-bold:         700;
 }
 
 * {
@@ -120,6 +126,25 @@ body {
   color: var(--color-text-secondary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Stat card typography (from Figma block01 tokens) ── */
+.stat-label {
+  font-size: var(--font-size-label);   /* 12px — text/body/font-size-label */
+  font-weight: var(--font-weight-bold); /* 700 — Bold */
+  line-height: 140%;
+  letter-spacing: 0px;
+  text-transform: uppercase;
+  color: var(--color-text-muted);      /* #9E9E9E — tm-text-color08 */
+}
+
+.stat-value {
+  display: block;                            /* Width: Fill */
+  width: 100%;
+  font-size: var(--font-size-heading-m);     /* 32px — font-size-desktop-heading-m */
+  line-height: var(--line-height-heading-m); /* 40px */
+  font-weight: var(--font-weight-bold);      /* 700 */
+  color: var(--color-text-primary);          /* #FFFFFF */
 }
 
 #root {
