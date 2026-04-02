@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import networkIcon from "../assets/network.svg";
 
 interface NavItem {
   id: string;
@@ -11,11 +12,11 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { id: 'dashboard', icon: '📊', label: 'Dashboard', path: '/dashboard' },
-  { id: 'models', icon: '👥', label: 'Models', path: '/models' },
-  { id: 'campaigns', icon: '🎯', label: 'Campaigns', path: '/campaigns', adminOnly: true },
-  { id: 'reports', icon: '📈', label: 'Reports', path: '/reports' },
-  { id: 'settings', icon: '⚙️', label: 'Settings', path: '/settings' },
+  { id: 'dashboard', icon: networkIcon, label: 'Dashboard', path: '/dashboard' },
+  { id: 'models', icon: networkIcon, label: 'Models', path: '/models' },
+  { id: 'campaigns', icon: networkIcon, label: 'Campaigns', path: '/campaigns', adminOnly: true },
+  { id: 'reports', icon: networkIcon, label: 'Reports', path: '/reports' },
+  { id: 'settings', icon: networkIcon, label: 'Settings', path: '/settings' },
 ];
 
 interface SidebarProps {
@@ -91,7 +92,8 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
                         : 'hover:bg-[#292929]/50'
                     }`}
                   >
-                    <span className="text-[16px] leading-none shrink-0" aria-hidden="true">{item.icon}</span>
+                    <span className="text-[16px] leading-none shrink-0" aria-hidden="true"></span>
+                    <img src={item.icon} alt="" />
                     <span
                       className={`text-[16px] font-medium leading-[1.4] tracking-[0.2px] flex-1 text-left ${
                         isActive ? 'text-[#ff2a71]' : 'text-white'
