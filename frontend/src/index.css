@@ -1,5 +1,114 @@
 @import "tailwindcss";
 
+:root {
+  /* ── Brand / Accent (tm-primary) ── */
+  --color-accent:        #FF2A71;
+  --color-accent-bright: #FF0F5F;
+  --color-accent-dark:   #E0004B;
+  --color-accent-bg:     rgba(255, 15, 95, 0.15);
+  --color-accent-border: rgba(255, 15, 95, 0.5);
+
+  /* ── Semantic status ── */
+  --color-success:    #10B981;
+  --color-success-bg: rgba(16, 185, 129, 0.15);
+  --color-danger:     #EF4444;
+  --color-danger-bg:  rgba(239, 68, 68, 0.15);
+  --color-warning:    #FBBF24;
+  --color-warning-bg: rgba(251, 191, 36, 0.15);
+  --color-positive:   #00E676;
+
+  /* ── Tier colors ── */
+  --color-t1:        #60A5FA;
+  --color-t1-bg:     rgba(59, 130, 246, 0.2);
+  --color-t1-avatar: #3B82F6;
+  --color-t2:        #FBBF24;
+  --color-t2-bg:     rgba(245, 158, 11, 0.2);
+  --color-t2-avatar: #F59E0B;
+  --color-t3:        #4ADE80;
+  --color-t3-bg:     rgba(34, 197, 94, 0.2);
+  --color-t3-avatar: #22C55E;
+
+  /* ── Text (tm-text) ── */
+  --color-text-primary:   #FFFFFF;
+  --color-text-secondary: #F5F5F5;
+  --color-text-label:     #C7C7C7; /* tm-text-color05 */
+  --color-text-dim:       #CCCCCC;
+  --color-text-muted:     #9E9E9E;
+  --color-text-subtle:    #555555;
+  --color-text-faded:     #666666;
+
+  /* ── Surfaces (tm-neutral) ── */
+  --color-bg:             #1C1C1C;  /* tm-neutral-color07 — page background */
+  --color-surface:        #212121;  /* tm-neutral-color06 — card gradient start */
+  --color-surface-end:    #23252A;  /* tm-neutral-color05 — card gradient end */
+  --color-surface-raised: #292929;  /* tm-neutral-color04 */
+  --color-surface-overlay: #3A3E48; /* chart bar / inactive element fill */
+  --color-surface-hover:   rgba(255, 255, 255, 0.02);
+  --color-surface-item:    rgba(255, 255, 255, 0.05);
+  --color-surface-inset:   rgba(255, 255, 255, 0.03);
+
+  /* ── Borders (token-matched) ── */
+  --border-subtle:   rgba(255, 255, 255, 0.03);  /* border-subtle token  ~3%  */
+  --border-elevated: rgba(255, 255, 255, 0.05);  /* border-elevated token ~5% */
+  --border-faint:    rgba(255, 255, 255, 0.10);
+  --border-medium:   rgba(255, 255, 255, 0.08);
+  --border-strong:   rgba(255, 255, 255, 0.1);
+  --border-hairline: rgba(255, 255, 255, 0.12);
+
+  /* ── Spacing — maps to Figma spacing/space-px-N tokens ── */
+  --space-4:  4px;   /* space-px-4  */
+  --space-6:  6px;
+  --space-8:  8px;   /* space-px-8  */
+  --space-10: 10px;
+  --space-12: 12px;  /* space-px-12 */
+  --space-14: 14px;
+  --space-16: 16px;  /* space-px-16 */
+  --space-18: 18px;  /* space-px-18 */
+  --space-20: 20px;  /* space-px-20 */
+  --space-24: 24px;  /* space-px-24 */
+  --space-28: 28px;  /* space-px-28 */
+  --space-32: 32px;  /* space-px-32 */
+  --space-44: 44px;  /* space-px-44 */
+  --space-52: 52px;  /* space-px-52 */
+
+  /* ── Component sizes (from tokens) ── */
+  --button-s: var(--space-24);
+  --button-m: var(--space-44);
+  --button-l: var(--space-52);
+
+  /* ── Shadow tokens ── */
+  --shadow-rim-light: 0 -1px 0 0 rgba(255, 255, 255, 0.1);
+
+  /* ── Border radius (from tokens) ── */
+  --radius-s:    4px;
+  --radius-m:    8px;
+  --radius-card: 12px;
+  --radius-l:    16px;
+  --radius-xl:   20px;
+  --radius-round: 100px;
+
+  /* ── Layout (from tokens) ── */
+  --mobile-top-spacer:    64px;
+  --mobile-max-width:     362px;
+  --tablet-max-width:     754px;
+  --desktop-max-width:    960px;
+
+  /* ── Typography (from tokens) ── */
+  --font-family-primary:      'DM Sans', sans-serif;
+  --font-size-label:          12px;   /* font-size-body-label */
+  --font-size-body-s:         14px;   /* font-size-body-s */
+  --font-size-body-m:         16px;   /* font-size-body-m */
+  --font-size-body-l:         20px;   /* font-size-body-l */
+  --font-size-heading-m:      32px;   /* font-size-desktop-heading-m */
+  --line-height-heading-m:    40px;
+  --font-size-heading-l:      40px;   /* font-size-desktop-heading-l */
+  --line-height-heading-l:    48px;
+  --font-weight-regular:      400;
+  --font-weight-medium:       500;
+  --font-weight-semibold:     600;
+  --font-weight-bold:         700;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -7,14 +116,51 @@
 }
 
 body {
-  font-family: 'DM Sans', sans-serif;
-  background-color: #212121;
-  color: #f5f5f5;
+  font-family: var(--font-family-primary);
+  background-color: var(--color-bg);
+  color: var(--color-text-secondary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Stat card typography (from Figma block01 tokens) ── */
+.stat-label {
+  font-size: var(--font-size-label);   /* 12px — text/body/font-size-label */
+  font-weight: var(--font-weight-bold); /* 700 — Bold */
+  line-height: 140%;
+  letter-spacing: 0px;
+  text-transform: uppercase;
+  color: var(--color-text-muted);      /* #9E9E9E — tm-text-color08 */
+}
+
+.stat-value {
+  display: block;                            /* Width: Fill */
+  width: 100%;
+  font-size: var(--font-size-heading-m);     /* 32px — font-size-desktop-heading-m */
+  line-height: var(--line-height-heading-m); /* 40px */
+  font-weight: var(--font-weight-bold);      /* 700 */
+  color: var(--color-text-primary);          /* #FFFFFF */
 }
 
 #root {
   min-height: 100vh;
   width: 100%;
+}
+
+@keyframes tx-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    max-height: 600px;
+  }
+}
+
+.tx-detail-enter {
+  animation: tx-slide-down 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  overflow: hidden;
 }

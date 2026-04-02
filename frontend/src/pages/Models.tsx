@@ -13,7 +13,7 @@ const SessionExpiredBanner = ({ onLogout }: { onLogout: () => void }) => (
     </p>
     <button
       onClick={onLogout}
-      className="self-start bg-gradient-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+      className="self-start bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
     >
       Log out &amp; log back in
     </button>
@@ -106,7 +106,7 @@ export const Models = () => {
             <p className="text-[16px] text-[#9e9e9e]">{allUsers.length} total</p>
             <button
               onClick={() => setIsCreateUserModalOpen(true)}
-              className="bg-gradient-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+              className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
             >
               + Create User
             </button>
@@ -125,7 +125,7 @@ export const Models = () => {
           {allUsers.map((apiUser) => (
             <div
               key={apiUser.id}
-              className="bg-gradient-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[16px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)]"
+              className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[16px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)]"
             >
               <div className="flex items-start justify-between gap-[12px]">
                 <div className="flex flex-col gap-[8px]">
@@ -193,7 +193,7 @@ export const Models = () => {
           ))}
 
           {allUsers.length === 0 && (
-            <div className="bg-gradient-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] text-center">
+            <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] text-center">
               <p className="text-[#9e9e9e] text-[16px]">No users found.</p>
             </div>
           )}
@@ -218,7 +218,7 @@ export const Models = () => {
           <h1 className="text-[28px] leading-[36px] font-semibold text-white">My Promoters</h1>
           <button
             onClick={() => handleOpenInviteModal('referral')}
-            className="bg-gradient-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
           >
             + Create Referral Link
           </button>
@@ -260,7 +260,7 @@ export const Models = () => {
 
         <button
           onClick={() => handleOpenInviteModal('referral')}
-          className="bg-gradient-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[14px] text-white text-[16px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all w-full"
+          className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[14px] text-white text-[16px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all w-full"
         >
           + Create Referral Link
         </button>
@@ -283,7 +283,7 @@ export const Models = () => {
           <h1 className="text-[28px] leading-[36px] font-semibold text-white">My Team</h1>
           <button
             onClick={() => handleOpenInviteModal('referral')}
-            className="bg-gradient-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
           >
             + Create Referral Link
           </button>
@@ -319,7 +319,7 @@ export const Models = () => {
           <h1 className="text-[28px] leading-[36px] font-semibold text-white">My Tracking Links</h1>
           <button
             onClick={() => handleOpenInviteModal('tracking')}
-            className="bg-gradient-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
           >
             + Create Link
           </button>
@@ -333,7 +333,7 @@ export const Models = () => {
           {trackingLinks.map((link) => (
             <div
               key={link.id}
-              className="bg-gradient-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[16px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)]"
+              className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[16px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)]"
             >
               <div className="flex flex-col gap-[12px]">
                 <div className="flex items-center justify-between">
@@ -369,7 +369,7 @@ export const Models = () => {
           ))}
 
           {trackingLinks.length === 0 && (
-            <div className="bg-gradient-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] text-center">
+            <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] text-center">
               <p className="text-[#9e9e9e] text-[16px]">
                 No tracking links yet. Create your first link to start earning commissions.
               </p>
@@ -399,7 +399,7 @@ export const Models = () => {
 const ReferralList = ({ referrals }: { referrals: Referral[] }) => {
   if (referrals.length === 0) {
     return (
-      <div className="bg-gradient-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] text-center">
+      <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] text-center">
         <p className="text-[#9e9e9e] text-[16px]">
           No referrals yet. Create a referral link to get started.
         </p>
@@ -412,7 +412,7 @@ const ReferralList = ({ referrals }: { referrals: Referral[] }) => {
       {referrals.map((referral) => (
         <div
           key={referral.id}
-          className="bg-gradient-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[16px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)]"
+          className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[16px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)]"
         >
           <div className="flex items-center justify-between">
             <div className="flex flex-col gap-[8px]">

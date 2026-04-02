@@ -20,7 +20,7 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#212121] flex items-center justify-center">
+      <div className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center">
         <div className="text-white text-[18px]">Loading...</div>
       </div>
     );
@@ -42,7 +42,7 @@ const PublicRoute = ({ children }: { children: ReactNode }) => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#212121] flex items-center justify-center">
+      <div className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center">
         <div className="text-white text-[18px]">Loading...</div>
       </div>
     );
@@ -120,7 +120,7 @@ function AppRoutes() {
       <Route
         path="*"
         element={
-          <div className="min-h-screen bg-[#212121] flex flex-col items-center justify-center gap-[16px]">
+          <div className="min-h-screen bg-[var(--color-bg)] flex flex-col items-center justify-center gap-[16px]">
             <p className="text-white text-[32px] font-bold">404</p>
             <p className="text-[#9e9e9e] text-[16px]">Page not found</p>
             <Link
