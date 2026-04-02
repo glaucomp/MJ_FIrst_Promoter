@@ -62,12 +62,14 @@ export const getAllTransactions = async (req: AuthRequest, res: Response) => {
     if (search) {
       where.OR = [
         { eventId: { contains: search, mode: "insensitive" } },
-        { customer: { email: { contains: search, mode: "insensitive" } } },
-        { customer: { name:  { contains: search, mode: "insensitive" } } },
-        { campaign: { name:  { contains: search, mode: "insensitive" } } },
+        { customer: { is: { email: { contains: search, mode: "insensitive" } } } },
+        { customer: { is: { name:  { contains: search, mode: "insensitive" } } } },
+        { campaign: { is: { name:  { contains: search, mode: "insensitive" } } } },
         {
           referral: {
-            referrer: { email: { contains: search, mode: "insensitive" } },
+            is: {
+              referrer: { email: { contains: search, mode: "insensitive" } },
+            },
           },
         },
       ];

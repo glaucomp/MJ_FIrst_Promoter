@@ -103,6 +103,20 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
                       firstName: true,
                       lastName: true
                     }
+                  },
+                  parentReferral: {
+                    select: {
+                      id: true,
+                      referrerId: true,
+                      referrer: {
+                        select: {
+                          id: true,
+                          email: true,
+                          firstName: true,
+                          lastName: true
+                        }
+                      }
+                    }
                   }
                 }
               }

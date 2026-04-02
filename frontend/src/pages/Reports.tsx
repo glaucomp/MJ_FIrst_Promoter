@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import calenderIcon from "../assets/calender.svg";
 import ledgerIcon from "../assets/ledger.svg";
@@ -113,7 +113,7 @@ const Card = ({
   radius = "var(--radius-card)",
   noBorder = false,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   className?: string;
   radius?: string;
   noBorder?: boolean;
@@ -140,7 +140,7 @@ const SectionTitle = ({
   icon,
   label,
 }: {
-  icon: React.ReactNode;
+  icon: ReactNode;
   label: string;
 }) => (
   <div className="flex items-center gap-[6px] py-[6px]">

@@ -110,7 +110,7 @@ export interface Referral {
     firstName: string;
     lastName: string;
   };
-  commissions: ReferralCommission[];
+  commissions?: ReferralCommission[];
   childReferrals?: Array<{
     id: string;
     referredUser?: {
@@ -119,7 +119,7 @@ export interface Referral {
       firstName: string;
       lastName: string;
     };
-    commissions: ReferralCommission[];
+    commissions?: ReferralCommission[];
   }>;
   createdAt: string;
 }
