@@ -1,7 +1,12 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import networkIcon from "../assets/network.svg";
+import iconDashboard from '../assets/iconDashboard.svg';
+import iconModels from '../assets/iconProfile.svg';
+import iconCampaigns from '../assets/iconInvite.svg';
+import iconReports from '../assets/iconReport.svg';
+import iconSettings from '../assets/iconSettings.svg';
+import iconLogout from '../assets/iconLogout.svg';
 
 interface NavItem {
   id: string;
@@ -12,11 +17,11 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { id: 'dashboard', icon: networkIcon, label: 'Dashboard', path: '/dashboard' },
-  { id: 'models', icon: networkIcon, label: 'Models', path: '/models' },
-  { id: 'campaigns', icon: networkIcon, label: 'Campaigns', path: '/campaigns', adminOnly: true },
-  { id: 'reports', icon: networkIcon, label: 'Reports', path: '/reports' },
-  { id: 'settings', icon: networkIcon, label: 'Settings', path: '/settings' },
+  { id: 'dashboard', icon: iconDashboard, label: 'Dashboard', path: '/dashboard' },
+  { id: 'models', icon: iconModels, label: 'Models', path: '/models' },
+  { id: 'campaigns', icon: iconCampaigns, label: 'Campaigns', path: '/campaigns', adminOnly: true },
+  { id: 'reports', icon: iconReports, label: 'Reports', path: '/reports' },
+  { id: 'settings', icon: iconSettings, label: 'Settings', path: '/settings' },
 ];
 
 interface SidebarProps {
@@ -92,7 +97,7 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
                         : 'hover:bg-[#292929]/50'
                     }`}
                   >
-                    <span className="text-[16px] leading-none shrink-0" aria-hidden="true"><img src={item.icon} alt="" /></span>
+                    <img src={item.icon} alt="" className="w-[18px] h-[18px] object-contain shrink-0" aria-hidden="true" />
                     <span
                       className={`text-[16px] font-medium leading-[1.4] tracking-[0.2px] flex-1 text-left ${
                         isActive ? 'text-[#ff2a71]' : 'text-white'
@@ -117,7 +122,7 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
                       : 'hover:bg-[#292929]/50'
                   }`}
                 >
-                  <span className="text-[16px] leading-none" aria-hidden="true">{item.icon}</span>
+                  <img src={item.icon} alt="" className="w-[18px] h-[18px] object-contain" aria-hidden="true" />
                 </button>
               );
             })}
@@ -127,7 +132,7 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
             onClick={logout}
             className="flex items-center justify-center px-[12px] py-[4px] rounded-[4px] hover:bg-[#292929]/50 h-[40px] w-full"
           >
-            <span className="text-[18px] leading-none">🚪</span>
+            <img src={iconLogout} alt="" className="w-[18px] h-[18px] object-contain" aria-hidden="true" />
           </button>
         </div>
       </div>

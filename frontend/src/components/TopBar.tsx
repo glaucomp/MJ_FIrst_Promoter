@@ -1,5 +1,11 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import iconDashboard from '../assets/iconDashboard.svg';
+import iconModels from '../assets/iconProfile.svg';
+import iconCampaigns from '../assets/iconInvite.svg';
+import iconReports from '../assets/iconReport.svg';
+import iconSettings from '../assets/iconSettings.svg';
+import iconLogout from '../assets/iconLogout.svg';
 
 interface NavItem {
   id: string;
@@ -10,11 +16,11 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { id: 'dashboard', icon: '📊', label: 'Dashboard', path: '/dashboard' },
-  { id: 'models', icon: '👥', label: 'Models', path: '/models' },
-  { id: 'campaigns', icon: '🎯', label: 'Campaigns', path: '/campaigns', adminOnly: true },
-  { id: 'reports', icon: '📈', label: 'Reports', path: '/reports' },
-  { id: 'settings', icon: '⚙️', label: 'Settings', path: '/settings' },
+  { id: 'dashboard', icon: iconDashboard, label: 'Dashboard', path: '/dashboard' },
+  { id: 'models', icon: iconModels, label: 'Models', path: '/models' },
+  { id: 'campaigns', icon: iconCampaigns, label: 'Campaigns', path: '/campaigns', adminOnly: true },
+  { id: 'reports', icon: iconReports, label: 'Reports', path: '/reports' },
+  { id: 'settings', icon: iconSettings, label: 'Settings', path: '/settings' },
 ];
 
 export const TopBar = () => {
@@ -53,7 +59,7 @@ export const TopBar = () => {
                     : 'hover:bg-[#292929]/50'
                 }`}
               >
-                <span className="text-[14px]">{item.icon}</span>
+                <img src={item.icon} alt="" className="w-[16px] h-[16px] object-contain shrink-0" aria-hidden="true" />
                 <span className={`text-[13px] font-medium ${
                   isActive ? 'text-[#ff2a71]' : 'text-[#9e9e9e]'
                 }`}>
@@ -70,7 +76,7 @@ export const TopBar = () => {
           aria-label="Log out"
           className="flex items-center justify-center w-[36px] h-[36px] rounded-[6px] hover:bg-[#292929]/50 transition-all"
         >
-          <span className="text-[16px]" aria-hidden="true">🚪</span>
+          <img src={iconLogout} alt="" className="w-[18px] h-[18px] object-contain" aria-hidden="true" />
         </button>
       </div>
     </div>
