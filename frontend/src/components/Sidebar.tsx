@@ -92,8 +92,7 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
                         : 'hover:bg-[#292929]/50'
                     }`}
                   >
-                    <span className="text-[16px] leading-none shrink-0" aria-hidden="true"></span>
-                    <img src={item.icon} alt="" />
+                    <span className="text-[16px] leading-none shrink-0" aria-hidden="true"><img src={item.icon} alt="" /></span>
                     <span
                       className={`text-[16px] font-medium leading-[1.4] tracking-[0.2px] flex-1 text-left ${
                         isActive ? 'text-[#ff2a71]' : 'text-white'
