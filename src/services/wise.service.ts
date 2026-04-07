@@ -31,9 +31,11 @@ function loadPrivateKey(): string | null {
 }
 
 /**
- * Derive a deterministic UUID (v5-like) from an arbitrary string.
- * Uses SHA-1 internally so it is stable across calls with the same input,
- * which is required for Wise's `customerTransactionId` idempotency key.
+ * Derive a deterministic UUID from an arbitrary string by hashing it with
+ * SHA-1 and encoding the result as a UUID (version bits set to 5, variant
+ * bits per RFC 4122).  Note: this is NOT a true RFC 4122 v5 UUID because no
+ * namespace is prepended – it is a custom stable identifier suitable for use
+ * as Wise's `customerTransactionId` idempotency key.
  */
 function deterministicUUID(input: string): string {
   const hash = createHash("sha1").update(input).digest();
