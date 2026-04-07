@@ -75,7 +75,7 @@ export const Commissions = () => {
         const q = search.toLowerCase();
         const name = `${c.user.firstName} ${c.user.lastName}`.toLowerCase();
         const email = c.user.email.toLowerCase();
-        const campaign = c.referral?.campaign?.name?.toLowerCase() ?? '';
+        const campaign = c.campaign?.name?.toLowerCase() ?? '';
         const customer = c.customer?.email?.toLowerCase() ?? '';
         if (!name.includes(q) && !email.includes(q) && !campaign.includes(q) && !customer.includes(q)) {
           return false;

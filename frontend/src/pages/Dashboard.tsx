@@ -63,7 +63,7 @@ export const Dashboard = () => {
           <>
             <StatCard
               label="Models"
-              value={stats.models !== undefined && stats.models < 10 ? `0${stats.models}` : stats.models}
+              value={stats.models !== undefined && stats.models < 10 ? `0${stats.models}` : stats.models ?? 0}
               change={stats.modelsChange}
               className="h-[129px]"
             />
