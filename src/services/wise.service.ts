@@ -14,21 +14,12 @@
  *   WISE_API_TOKEN   – your Wise API token
  *   WISE_PROFILE_ID  – optional; auto-detected from /v1/profiles if omitted
  *   WISE_SANDBOX     – set to "true" for the sandbox environment
+ *
+ * Note: SCA (Strong Customer Authentication) via RSA private key is not used.
+ * This works for Personal accounts and the sandbox environment.
  */
 
-import { createSign, createHash } from "crypto";
-import { readFileSync } from "fs";
-import { resolve } from "path";
-
-function loadPrivateKey(): string | null {
-  const keyPath = process.env.WISE_PRIVATE_KEY_PATH;
-  if (!keyPath) return null;
-  try {
-    return readFileSync(resolve(keyPath), "utf8");
-  } catch {
-    return null;
-  }
-}
+import { createHash } from "crypto";
 
 /**
  * Derive a deterministic UUID from an arbitrary string by hashing it with
@@ -46,12 +37,6 @@ function deterministicUUID(input: string): string {
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`;
 }
 
-function signOtt(ott: string, privateKey: string): string {
-  const signer = createSign("SHA256");
-  signer.update(ott);
-  signer.end();
-  return signer.sign(privateKey, "base64");
-}
 
 const WISE_BASE_URL =
   process.env.WISE_SANDBOX === "true"
@@ -402,14 +387,7 @@ export async function createTransfer(
 
 // ─── Step 6: Fund transfer ────────────────────────────────────────────────────
 
-/**
- * Fund an approved transfer from the Wise BALANCE.
- *
- * Wise Business accounts require SCA (Strong Customer Authentication):
- *   1st call → 403 with x-2fa-approval OTT token
- *   Sign OTT with RSA private key (WISE_PRIVATE_KEY_PATH)
- *   2nd call → same request + x-2fa-approval + x-signature headers
- */
+/** Fund an approved transfer from the Wise BALANCE. */
 export async function fundTransfer(
   profileId: number,
   transferId: number,
@@ -430,41 +408,6 @@ export async function fundTransfer(
 
   if (firstRes.ok) {
     return firstRes.json() as Promise<WiseFundResult>;
-  }
-
-  const ott = firstRes.headers.get("x-2fa-approval");
-  if (firstRes.status === 403 && ott) {
-    const privateKey = loadPrivateKey();
-    if (!privateKey) {
-      throw new Error(
-        "Wise SCA required but WISE_PRIVATE_KEY_PATH is not set. " +
-          "Generate an RSA key pair and register the public key in Wise settings.",
-      );
-    }
-
-    const signature = signOtt(ott, privateKey);
-    const secondRes = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-        "x-2fa-approval": ott,
-        "x-signature": signature,
-      },
-      body: JSON.stringify(body),
-    });
-
-    const text = await secondRes.text();
-    let data: unknown;
-    try { data = JSON.parse(text); } catch { data = text; }
-
-    if (!secondRes.ok) {
-      const detail = typeof data === "object" ? JSON.stringify(data) : String(data);
-      console.error("Wise SCA funding error", { path, status: secondRes.status, detail });
-      throw new Error(`Wise API error: ${secondRes.status} on SCA POST ${path}`);
-    }
-
-    return data as WiseFundResult;
   }
 
   const errText = await firstRes.text();
