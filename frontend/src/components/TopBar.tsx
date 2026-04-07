@@ -14,6 +14,7 @@ const navItems: NavItem[] = [
   { id: 'models', icon: '👥', label: 'Models', path: '/models' },
   { id: 'campaigns', icon: '🎯', label: 'Campaigns', path: '/campaigns', adminOnly: true },
   { id: 'reports', icon: '📈', label: 'Reports', path: '/reports' },
+  { id: 'payouts', icon: '💸', label: 'Payouts', path: '/payouts', adminOnly: true },
   { id: 'settings', icon: '⚙️', label: 'Settings', path: '/settings' },
 ];
 

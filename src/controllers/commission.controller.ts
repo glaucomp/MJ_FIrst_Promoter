@@ -16,6 +16,7 @@ export const getAllCommissions = async (req: AuthRequest, res: Response) => {
 
     const commissions = await prisma.commission.findMany({
       where,
+      // wiseTransferId and wiseStatus are returned by default (not excluded)
       include: {
         user: {
           select: {
@@ -24,6 +25,9 @@ export const getAllCommissions = async (req: AuthRequest, res: Response) => {
             lastName: true,
             email: true,
             userType: true,
+            wiseEmail: true,
+            wiseRecipientId: true,
+            wiseRecipientType: true,
           },
         },
         campaign: {

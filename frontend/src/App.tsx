@@ -6,6 +6,7 @@ import { Models } from './pages/Models';
 import { Reports } from './pages/Reports';
 import { Settings } from './pages/Settings';
 import { Campaigns } from './pages/Campaigns';
+import { Payouts } from './pages/Payouts';
 import { Login } from './pages/Login';
 import type { ReactNode } from 'react';
 import type { UserRole } from './types';
@@ -93,6 +94,16 @@ function AppRoutes() {
           <ProtectedRoute allowedRoles={['admin']}>
             <DashboardLayout>
               <Campaigns />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/payouts"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <DashboardLayout>
+              <Payouts />
             </DashboardLayout>
           </ProtectedRoute>
         }

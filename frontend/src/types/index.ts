@@ -7,6 +7,9 @@ export interface User {
   role: UserRole;
   baseRole: UserRole; // The user's actual role in the system
   canSwitchToPromoter?: boolean; // Only team_managers have this
+  wiseEmail?: string | null;
+  wiseRecipientId?: string | null;
+  wiseRecipientType?: string | null;
 }
 
 export interface DashboardStats {
