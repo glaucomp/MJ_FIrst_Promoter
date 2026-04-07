@@ -364,12 +364,18 @@ export interface Commission {
   status: 'unpaid' | 'pending' | 'paid';
   description: string | null;
   createdAt: string;
+  paidAt?: string | null;
+  wiseTransferId?: string | null;
+  wiseStatus?: string | null;
   user: {
     id: string;
     firstName: string;
     lastName: string;
     email: string;
     userType: string;
+    wiseEmail?: string | null;
+    wiseRecipientId?: string | null;
+    wiseRecipientType?: string | null;
   };
   campaign: {
     name: string;
@@ -444,6 +450,129 @@ export const transactionApi = {
     const url = qs ? `${API_URL}/transactions?${qs}` : `${API_URL}/transactions`;
     const response = await fetch(url, { headers: getAuthHeaders() });
     return handleResponse(response, 'Failed to fetch transactions');
+  },
+};
+
+export interface WiseProfile {
+  id: number;
+  type: 'personal' | 'business';
+  details: { firstName?: string; lastName?: string; name?: string };
+}
+
+export interface WiseBalance {
+  id: number;
+  currency: string;
+  amount: { value: number; currency: string };
+}
+
+export interface WiseTransfer {
+  id: number;
+  status: string;
+  targetValue: number;
+  targetCurrency: string;
+  created: string;
+}
+
+export interface WisePayoutResult {
+  commissionId: string;
+  success: boolean;
+  transferId?: number;
+  error?: string;
+}
+
+export const wiseApi = {
+  /** Admin: get Wise profile info + balances */
+  async getProfile(): Promise<{ profile: WiseProfile; profileId: number; balances: WiseBalance[] }> {
+    const response = await fetch(`${API_URL}/wise/profile`, {
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response, 'Failed to fetch Wise profile');
+  },
+
+  /**
+   * Any user: save their Wise recipient account ID (and optional email).
+   * wiseRecipientId is the numeric Wise account ID.
+   */
+  async saveRecipient(data: {
+    wiseRecipientId: string | null;
+    wiseEmail?: string | null;
+    wiseRecipientType?: string | null;
+  }): Promise<{ user: { id: string; email: string; wiseRecipientId: string | null; wiseEmail: string | null; wiseRecipientType: string | null } }> {
+    const response = await fetch(`${API_URL}/wise/recipient`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+    return handleResponse(response, 'Failed to save Wise recipient');
+  },
+
+  /**
+   * Any authenticated user: create their own Wise recipient by providing bank
+   * details. Wise API creates the account and the returned ID is auto-saved.
+   */
+  async createOwnRecipient(recipient: object): Promise<{
+    wiseAccount: { id: number; type: string; accountHolderName: string };
+    user: { id: string; email: string; wiseRecipientId: string | null; wiseEmail: string | null; wiseRecipientType: string | null };
+    message: string;
+  }> {
+    const response = await fetch(`${API_URL}/wise/me/recipient`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ recipient }),
+    });
+    return handleResponse(response, 'Failed to create Wise recipient');
+  },
+
+  /**
+   * Admin: create a new Wise recipient account for a user via Wise API.
+   * recipient follows the Wise /v1/accounts body format.
+   */
+  async createRecipientForUser(userId: string, recipient: object): Promise<{
+    wiseAccount: { id: number; type: string; accountHolderName: string };
+    message: string;
+  }> {
+    const response = await fetch(`${API_URL}/wise/recipients`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ userId, recipient }),
+    });
+    return handleResponse(response, 'Failed to create Wise recipient');
+  },
+
+  /** Admin: initiate a payout for a single commission */
+  async initiatePayout(commissionId: string): Promise<{
+    commission: Commission;
+    transfer: WiseTransfer;
+    message: string;
+  }> {
+    const response = await fetch(`${API_URL}/wise/payout`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ commissionId }),
+    });
+    return handleResponse(response, 'Failed to initiate Wise payout');
+  },
+
+  /** Admin: initiate payouts for multiple commissions */
+  async initiateBulkPayout(commissionIds: string[]): Promise<{
+    results: WisePayoutResult[];
+    succeeded: number;
+    failed: number;
+  }> {
+    const response = await fetch(`${API_URL}/wise/payout/bulk`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ commissionIds }),
+    });
+    return handleResponse(response, 'Failed to initiate bulk Wise payout');
+  },
+
+  /** Admin: refresh transfer status for a commission */
+  async getPayoutStatus(commissionId: string): Promise<{ transfer: WiseTransfer; commission: Commission }> {
+    const response = await fetch(`${API_URL}/wise/payout/${commissionId}`, {
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response, 'Failed to get payout status');
   },
 };
 

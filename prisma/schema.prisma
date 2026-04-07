@@ -65,6 +65,11 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  // Wise payout
+  wiseEmail             String?            // Contact / display email (optional)
+  wiseRecipientId       String?            // Wise recipient account ID (number stored as string)
+  wiseRecipientType     String?            // e.g. "aba", "iban", "email", "australian"
+
   // Relationships
   createdCampaigns      Campaign[]         @relation("CampaignCreator")
   referralsMade         Referral[]         @relation("ReferrerReferrals")
@@ -263,6 +268,8 @@ model Commission {
   description     String?
   createdAt       DateTime @default(now())
   paidAt          DateTime?
+  wiseTransferId  String?    // Wise transfer ID when paid via Wise
+  wiseStatus      String?    // Wise transfer status (e.g. processing, outgoing_payment_sent, funds_converted)
 
   // Relationships
   userId          String

@@ -9,6 +9,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   switchRole: (role: UserRole) => void;
+  updateUser: (patch: Partial<User>) => void;
   isLoading: boolean;
 }
 
@@ -28,6 +29,9 @@ const mapApiUserToUser = (apiUser: any): User => {
     role: role,
     baseRole: role,
     canSwitchToPromoter: role === 'team_manager',
+    wiseEmail: apiUser.wiseEmail ?? null,
+    wiseRecipientId: apiUser.wiseRecipientId ?? null,
+    wiseRecipientType: apiUser.wiseRecipientType ?? null,
   };
 };
 
@@ -76,6 +80,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem('auth_user');
   };
 
+  const updateUser = (patch: Partial<User>) => {
+    if (!user) return;
+    const updated = { ...user, ...patch };
+    setUser(updated);
+    localStorage.setItem('auth_user', JSON.stringify(updated));
+  };
+
   const switchRole = (role: UserRole) => {
     if (user && user.canSwitchToPromoter) {
       if (role === 'team_manager' || role === 'promoter') {
@@ -87,7 +98,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, switchRole, isLoading }}>
+    <AuthContext.Provider value={{ user, token, login, logout, switchRole, updateUser, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

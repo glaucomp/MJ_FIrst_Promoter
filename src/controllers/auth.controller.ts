@@ -390,6 +390,9 @@ export const getCurrentUser = async (req: AuthRequest, res: Response) => {
         userType: true,
         isActive: true,
         createdAt: true,
+        wiseEmail: true,
+        wiseRecipientId: true,
+        wiseRecipientType: true,
       },
     });
 
