@@ -347,7 +347,7 @@ export const initiateBulkWisePayout = async (req: AuthRequest, res: Response) =>
           amount: totalAmount,
           sourceCurrency: currency,
           targetCurrency: currency,
-          commissionId: eligible.map((c) => c.id).join(","),
+          commissionId: eligible.map((c) => c.id).sort().join(","),
           reference: "Commission payout",
         },
       );

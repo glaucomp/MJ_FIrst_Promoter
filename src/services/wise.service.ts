@@ -16,7 +16,7 @@
  *   WISE_SANDBOX     – set to "true" for the sandbox environment
  */
 
-import { randomUUID, createSign } from "crypto";
+import { createSign, createHash } from "crypto";
 import { readFileSync } from "fs";
 import { resolve } from "path";
 
@@ -28,6 +28,20 @@ function loadPrivateKey(): string | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * Derive a deterministic UUID (v5-like) from an arbitrary string.
+ * Uses SHA-1 internally so it is stable across calls with the same input,
+ * which is required for Wise's `customerTransactionId` idempotency key.
+ */
+function deterministicUUID(input: string): string {
+  const hash = createHash("sha1").update(input).digest();
+  // Set version bits (version 5) and variant bits per RFC 4122
+  hash[6] = (hash[6] & 0x0f) | 0x50;
+  hash[8] = (hash[8] & 0x3f) | 0x80;
+  const h = hash.toString("hex");
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`;
 }
 
 function signOtt(ott: string, privateKey: string): string {
@@ -276,7 +290,7 @@ export async function createRecipientAccount(
     body = {
       accountHolderName: input.accountHolderName,
       currency: "USD",
-      type: "ABA",
+      type: "aba",
       profile: profileId,
       details: {
         legalType: "PRIVATE",
@@ -516,11 +530,12 @@ export async function payExistingRecipient(
   // 4. Attach recipient to quote
   await updateQuoteWithRecipient(profileId, quote.id, recipientAccountId);
 
-  // 5. Create transfer  (Wise requires customerTransactionId as UUID)
+  // 5. Create transfer  (Wise requires customerTransactionId as UUID; derive
+  //    it deterministically from commissionId so retries are idempotent)
   const transfer = await createTransfer(
     recipientAccountId,
     quote.id,
-    randomUUID(),
+    deterministicUUID(opts.commissionId),
     opts.reference ?? "Commission payout",
   );
 
@@ -562,11 +577,12 @@ export async function payNewRecipient(
   // 4. Attach recipient to quote
   await updateQuoteWithRecipient(profileId, quote.id, recipient.id);
 
-  // 5. Create transfer  (Wise requires customerTransactionId as UUID)
+  // 5. Create transfer  (Wise requires customerTransactionId as UUID; derive
+  //    it deterministically from commissionId so retries are idempotent)
   const transfer = await createTransfer(
     recipient.id,
     quote.id,
-    randomUUID(),
+    deterministicUUID(opts.commissionId),
     opts.reference ?? "Commission payout",
   );
 

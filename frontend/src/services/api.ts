@@ -540,7 +540,7 @@ export const wiseApi = {
   },
 
   /** Admin: initiate a payout for a single commission */
-  async initiatePayout(commissionId: string, currency = 'USD'): Promise<{
+  async initiatePayout(commissionId: string): Promise<{
     commission: Commission;
     transfer: WiseTransfer;
     message: string;
@@ -548,13 +548,13 @@ export const wiseApi = {
     const response = await fetch(`${API_URL}/wise/payout`, {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify({ commissionId, currency }),
+      body: JSON.stringify({ commissionId }),
     });
     return handleResponse(response, 'Failed to initiate Wise payout');
   },
 
   /** Admin: initiate payouts for multiple commissions */
-  async initiateBulkPayout(commissionIds: string[], currency = 'USD'): Promise<{
+  async initiateBulkPayout(commissionIds: string[]): Promise<{
     results: WisePayoutResult[];
     succeeded: number;
     failed: number;
@@ -562,7 +562,7 @@ export const wiseApi = {
     const response = await fetch(`${API_URL}/wise/payout/bulk`, {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify({ commissionIds, currency }),
+      body: JSON.stringify({ commissionIds }),
     });
     return handleResponse(response, 'Failed to initiate bulk Wise payout');
   },

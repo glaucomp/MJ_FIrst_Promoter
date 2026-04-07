@@ -93,8 +93,15 @@ function buildRecipient(f: RecipientFields): { recipient: object } | { error: st
     };
   }
 
-  if (!f.wiseEmail) return { error: 'Wise email is required' };
-  return { recipient: { type: 'email', email: f.wiseEmail.trim(), currency: 'USD' } };
+  if (!name || !f.wiseEmail) return { error: 'Account holder name and Wise email are required' };
+  return {
+    recipient: {
+      type: 'email',
+      accountHolderName: name.trim(),
+      email: f.wiseEmail.trim(),
+      currency: 'USD',
+    },
+  };
 }
 
 export const Settings = () => {
@@ -120,10 +127,13 @@ export const Settings = () => {
   useEffect(() => {
     if (user) {
       const anyUser = user as any;
-      if (anyUser.wiseRecipientType === 'iban') setBankType('iban');
-      else if (anyUser.wiseRecipientType === 'email') setBankType('email');
-      else if (anyUser.wiseRecipientType === 'australian') setBankType('australian');
-      else setBankType('australian'); // default to AUD for Australian users
+      const recipientType = anyUser.wiseRecipientType;
+
+      if (recipientType === 'iban' || recipientType === 'email' || recipientType === 'australian') {
+        setBankType(recipientType);
+      } else if (recipientType === 'aba') {
+        setBankType('aba');
+      }
       if (user.wiseEmail) setWiseEmail(user.wiseEmail);
     }
   }, [user]);
@@ -146,6 +156,7 @@ export const Settings = () => {
       updateUser({
         wiseRecipientId: result.user.wiseRecipientId,
         wiseEmail: result.user.wiseEmail,
+        wiseRecipientType: result.user.wiseRecipientType,
       } as any);
       setWiseMessage({ type: 'success', text: `Wise account linked! ID: ${result.wiseAccount.id}` });
     } catch (err: any) {

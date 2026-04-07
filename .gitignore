@@ -2,6 +2,10 @@
 node_modules/
 frontend/node_modules/
 
+# Private key files – never commit key material
+*.pem
+wise_private.pem
+
 # Environment variables
 .env
 .env.local
