@@ -8,6 +8,7 @@ import campaignRoutes from "./routes/campaign.routes";
 import commissionRoutes from "./routes/commission.routes";
 import customerRoutes from "./routes/customer.routes";
 import transactionRoutes from "./routes/transaction.routes";
+import wiseRoutes from "./routes/wise.routes";
 import dashboardRoutes from "./routes/dashboard.routes";
 import publicRoutes from "./routes/public.routes";
 import referralRoutes from "./routes/referral.routes";
@@ -40,6 +41,7 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/commissions", commissionRoutes);
 app.use("/api/customers", customerRoutes);
 app.use("/api/transactions", transactionRoutes);
+app.use("/api/wise", wiseRoutes);
 
 // FirstPromoter-compatible API routes
 app.use("/api/v1", apiV1Routes);
