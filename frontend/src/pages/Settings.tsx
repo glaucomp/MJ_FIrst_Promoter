@@ -365,7 +365,7 @@ export const Settings = () => {
             {([
               { id: 'australian', label: 'AUD (Australia)', sub: 'BSB + Account' },
               { id: 'aba', label: 'USD (US Bank)', sub: 'Routing + Account' },
-              { id: 'iban', label: 'EUR / GBP', sub: 'IBAN' },
+              { id: 'iban', label: 'EUR', sub: 'IBAN' },
               { id: 'email', label: 'Wise Email', sub: 'Wise-to-Wise' },
             ] as { id: BankType; label: string; sub: string }[]).map((t) => (
               <button
@@ -490,6 +490,7 @@ export const Settings = () => {
         {/* ── Wise email fields ── */}
         {bankType === 'email' && (
           <div className="flex flex-col gap-[12px]">
+            <Field label="Account Holder Name" value={holderName} onChange={setHolderName} placeholder="Jane Doe" />
             <Field
               label="Wise Account Email"
               value={wiseEmail}

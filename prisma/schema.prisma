@@ -68,7 +68,7 @@ model User {
   // Wise payout
   wiseEmail             String?            // Contact / display email (optional)
   wiseRecipientId       String?            // Wise recipient account ID (number stored as string)
-  wiseRecipientType     String?            // e.g. "aba", "iban", "email"
+  wiseRecipientType     String?            // e.g. "aba", "iban", "email", "australian"
 
   // Relationships
   createdCampaigns      Campaign[]         @relation("CampaignCreator")

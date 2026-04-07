@@ -237,8 +237,11 @@ export const initiateWisePayout = async (req: AuthRequest, res: Response) => {
     const updated = await prisma.commission.update({
       where: { id: commissionId },
       data: {
-        status: "paid",
-        paidAt: new Date(),
+        // Set to "pending" for intermediate Wise states; the payout status
+        // endpoint (GET /api/wise/payout/:commissionId) can promote to "paid"
+        // once Wise confirms outgoing_payment_sent.
+        status: transfer.status === "outgoing_payment_sent" ? "paid" : "pending",
+        paidAt: transfer.status === "outgoing_payment_sent" ? new Date() : null,
         wiseTransferId: String(transfer.id),
         wiseStatus: transfer.status,
       },
@@ -298,6 +301,14 @@ export const initiateBulkWisePayout = async (req: AuthRequest, res: Response) =>
 
   const results: { commissionId: string; success: boolean; transferId?: number; error?: string }[] = [];
 
+  // Detect commissionIds that do not exist in the database
+  const foundIds = new Set(commissions.map((c) => c.id));
+  for (const id of commissionIds) {
+    if (!foundIds.has(id)) {
+      results.push({ commissionId: id, success: false, error: "Commission not found" });
+    }
+  }
+
   // Validate each commission and bucket into per-promoter groups
   type CommissionRow = (typeof commissions)[number];
   const promoterMap = new Map<string, { eligible: CommissionRow[]; skipped: CommissionRow[] }>();
@@ -352,10 +363,13 @@ export const initiateBulkWisePayout = async (req: AuthRequest, res: Response) =>
         },
       );
 
-      // Mark all eligible commissions as paid, linked to the single transfer
+      // Mark commissions as "pending" for in-flight Wise states; they will be
+      // promoted to "paid" when the payout status endpoint confirms outgoing_payment_sent.
+      const commissionStatus = transfer.status === "outgoing_payment_sent" ? "paid" : "pending";
+      const paidAt = transfer.status === "outgoing_payment_sent" ? new Date() : null;
       await prisma.commission.updateMany({
         where: { id: { in: eligible.map((c) => c.id) } },
-        data: { status: "paid", paidAt: new Date(), wiseTransferId: String(transfer.id), wiseStatus: transfer.status },
+        data: { status: commissionStatus, paidAt, wiseTransferId: String(transfer.id), wiseStatus: transfer.status },
       });
 
       for (const c of eligible) {
@@ -395,9 +409,14 @@ export const getPayoutStatus = async (req: AuthRequest, res: Response) => {
     const transfer = await wiseService.getTransfer(Number(commission.wiseTransferId));
 
     if (transfer.status !== commission.wiseStatus) {
+      // Promote commission to "paid" when Wise confirms money has been sent.
+      const nowPaid = transfer.status === "outgoing_payment_sent" && commission.status !== "paid";
       await prisma.commission.update({
         where: { id: commissionId },
-        data: { wiseStatus: transfer.status },
+        data: {
+          wiseStatus: transfer.status,
+          ...(nowPaid ? { status: "paid", paidAt: new Date() } : {}),
+        },
       });
     }
 

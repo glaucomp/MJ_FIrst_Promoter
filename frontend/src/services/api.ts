@@ -497,7 +497,7 @@ export const wiseApi = {
     wiseRecipientId: string | null;
     wiseEmail?: string | null;
     wiseRecipientType?: string | null;
-  }): Promise<{ user: { id: string; email: string; wiseRecipientId: string | null; wiseEmail: string | null } }> {
+  }): Promise<{ user: { id: string; email: string; wiseRecipientId: string | null; wiseEmail: string | null; wiseRecipientType: string | null } }> {
     const response = await fetch(`${API_URL}/wise/recipient`, {
       method: 'PUT',
       headers: getAuthHeaders(),
@@ -512,7 +512,7 @@ export const wiseApi = {
    */
   async createOwnRecipient(recipient: object): Promise<{
     wiseAccount: { id: number; type: string; accountHolderName: string };
-    user: { id: string; email: string; wiseRecipientId: string | null; wiseEmail: string | null };
+    user: { id: string; email: string; wiseRecipientId: string | null; wiseEmail: string | null; wiseRecipientType: string | null };
     message: string;
   }> {
     const response = await fetch(`${API_URL}/wise/me/recipient`, {

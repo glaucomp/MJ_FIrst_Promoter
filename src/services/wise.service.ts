@@ -94,9 +94,12 @@ async function wiseRequest<T>(
   }
 
   if (!res.ok) {
+    // Log full Wise response server-side only — do not include in thrown message
+    // to avoid leaking sensitive recipient/bank metadata to API clients.
     const detail =
       typeof data === "object" ? JSON.stringify(data) : String(data);
-    throw new Error(`Wise ${method} ${path} → ${res.status}: ${detail}`);
+    console.error("Wise API error", { method, path, status: res.status, detail });
+    throw new Error(`Wise API error: ${res.status} on ${method} ${path}`);
   }
 
   return data as T;
@@ -211,6 +214,7 @@ export interface IbanRecipientInput {
   accountHolderName: string;
   currency: string;
   iban: string;
+  bicSwift?: string; // Optional BIC/SWIFT code
   address?: {
     firstLine: string;
     city: string;
@@ -280,7 +284,7 @@ export async function createQuote(
 
 /**
  * Create a recipient account via POST /v1/accounts.
- * Supports "aba" (USD ACH), "iban" (EUR/GBP etc.), and "email" (Wise-to-Wise) types.
+ * Supports "aba" (USD ACH), "iban" (EUR/GBP etc.), "australian" (AUD/BSB), and "email" (Wise-to-Wise) types.
  */
 export async function createRecipientAccount(
   profileId: number,
@@ -318,6 +322,7 @@ export async function createRecipientAccount(
       details: {
         legalType: "PRIVATE",
         IBAN: input.iban,
+        ...(input.bicSwift ? { BIC: input.bicSwift } : {}),
         ...(input.address
           ? {
               address: {
@@ -455,14 +460,16 @@ export async function fundTransfer(
 
     if (!secondRes.ok) {
       const detail = typeof data === "object" ? JSON.stringify(data) : String(data);
-      throw new Error(`Wise ${path} SCA → ${secondRes.status}: ${detail}`);
+      console.error("Wise SCA funding error", { path, status: secondRes.status, detail });
+      throw new Error(`Wise API error: ${secondRes.status} on SCA POST ${path}`);
     }
 
     return data as WiseFundResult;
   }
 
   const errText = await firstRes.text();
-  throw new Error(`Wise POST ${path} → ${firstRes.status}: ${errText}`);
+  console.error("Wise funding error", { path, status: firstRes.status, detail: errText });
+  throw new Error(`Wise API error: ${firstRes.status} on POST ${path}`);
 }
 
 // ─── Step 7: Status polling ───────────────────────────────────────────────────
@@ -543,9 +550,17 @@ export async function payExistingRecipient(
 
   // 6. Fund from balance
   const fundResult = await fundTransfer(profileId, transfer.id);
-  if (fundResult.status !== "COMPLETED" && fundResult.errorCode) {
+  if (fundResult.errorCode) {
     throw new Error(
       `Wise funding failed: ${fundResult.errorCode} – ${fundResult.errorMessage ?? ""}`,
+    );
+  }
+  if (fundResult.status !== "COMPLETED") {
+    // Funding is in an intermediate state (e.g. pending/requires_action).
+    // Log it and continue — callers should inspect the returned transfer status
+    // and record the commission as "pending" rather than "paid".
+    console.warn(
+      `Wise funding not yet COMPLETED (status: ${fundResult.status}) for transfer ${transfer.id}`,
     );
   }
 
@@ -590,9 +605,14 @@ export async function payNewRecipient(
 
   // 6. Fund from balance
   const fundResult = await fundTransfer(profileId, transfer.id);
-  if (fundResult.status !== "COMPLETED" && fundResult.errorCode) {
+  if (fundResult.errorCode) {
     throw new Error(
       `Wise funding failed: ${fundResult.errorCode} – ${fundResult.errorMessage ?? ""}`,
+    );
+  }
+  if (fundResult.status !== "COMPLETED") {
+    console.warn(
+      `Wise funding not yet COMPLETED (status: ${fundResult.status}) for transfer ${transfer.id}`,
     );
   }
 
