@@ -109,7 +109,7 @@ export default {
         // 'tm-text-color11': '#3F3F3F',
         // 'tm-text-color12': '#2B2B2B',
 
-        // MOVED COLORS TO INDEX.CC THEME //
+        // MOVED COLORS TO index.css THEME //
       },
       fontFamily: {
         'primary': ['DM Sans', 'sans-serif'],
