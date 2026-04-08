@@ -201,7 +201,7 @@ export const Campaigns = () => {
                 </div>
 
                 {/* Stats row */}
-                <div className="grid grid-cols-3 gap-2 lg:flex lg:items-center lg:flex-wrap lg:gap-4">
+                <div className="grid grid-cols-3 gap-2 lg:grid lg:grid-cols-6 lg:gap-4">
                   <div className="flex flex-col gap-[2px]">
                     <p className="text-[#666] text-[11px] uppercase tracking-[0.5px]">Commission</p>
                     <p className="text-white text-[15px] font-bold">{c.commissionRate}%</p>

@@ -527,7 +527,7 @@ export const Payouts = () => {
 
       {/* ── Fortnight cycle card ── */}
       <div className=" p-5
-       lg:p-10 flex flex-col gap-[16px] bg-gradient-to-l from-tm-neutral-color06 to-tm-neutral-color05 rounded-lg shadow-[0px_8px_8px_-2px_rgba(0,0,0,0.05)] shadow-[0px_2px_2px_0px_rgba(0,0,0,0.10)] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.10)] outline outline-1 outline-offset-[-1px] outline-border-subtle/5 items-start gap-2">
+       lg:p-10 flex flex-col bg-linear-to-l from-tm-neutral-color06 to-tm-neutral-color05 rounded-lg shadow-[0px_8px_8px_-2px_rgba(0,0,0,0.05)] shadow-[0px_2px_2px_0px_rgba(0,0,0,0.10)] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.10)] outline-1 outline-offset-1 outline-border-subtle/5 items-start gap-2">
         <div className="flex items-start flex-col lg:flex-row lg:justify-between w-full gap-4">
           <div className="flex items-start gap-3 flex-col lg:flex-row">
             <div
@@ -607,17 +607,17 @@ export const Payouts = () => {
             {
               label: "On Hold (7d)",
               value: `$${money(totalOnHold)}`,
-              color: "#ffb900",
+              color: "var(--color-tm-warning-color03)",
             },
             {
               label: "Ready to Pay",
               value: plural(readyCount, "promoter"),
-              color: "#00b9ff",
+              color: "#9fe870",
             },
             {
               label: "Ready Amount",
               value: `$${money(readyTotal)}`,
-              color: "#00d948",
+              color: "var(--color-tm-success-color05)",
             },
           ].map(({ label, value, color }) => (
             <div
