@@ -376,7 +376,7 @@ export const Settings = () => {
                 onClick={() => { setBankType(t.id); setWiseMessage(null); }}
                 className="flex flex-col gap-[2px] px-3 py-2 lg:py-4 rounded-[8px] text-left transition-all border"
                 style={{
-                  background: bankType === t.id ? 'rgb(159, 232, 112, 0.1)' : '#1a1a1a',
+                  background: bankType === t.id ? 'rgba(159, 232, 112, 0.1)' : '#1a1a1a',
                   borderColor: bankType === t.id ? 'rgb(159, 232, 112)' : 'rgba(255,255,255,0.08)',
                   boxShadow: bankType === t.id ? '0 0 0 1px rgba(0,185,255,0.2)' : 'none',
                 }}
