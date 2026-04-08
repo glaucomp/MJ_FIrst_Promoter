@@ -384,7 +384,7 @@ export const Settings = () => {
                 <span className="text-[12px] font-bold" style={{ color: bankType === t.id ? 'rgb(159, 232, 112)' : 'white' }}>
                   {t.label}
                 </span>
-                <span className="text-[10px]" style={{ color: bankType === t.id ? 'rgb(159, 232, 112)' : 'rgb(255, 255, 255, 0.3)' }}>{t.sub}</span>
+                <span className="text-[10px]" style={{ color: bankType === t.id ? 'rgb(159, 232, 112)' : 'rgba(255, 255, 255, 0.3)' }}>{t.sub}</span>
               </button>
             ))}
           </div>
