@@ -134,11 +134,11 @@ export const Campaigns = () => {
   };
 
   return (
-    <div className="flex flex-col gap-[24px]">
+    <div className="flex flex-col gap-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between flex-col lg:flex-row gap-3">
         <h1 className="text-[28px] leading-[36px] font-semibold text-white">Campaigns</h1>
-        <div className="flex items-center gap-[12px]">
+        <div className="flex items-center gap-4">
           <p className="text-[16px] text-[#9e9e9e]">{campaigns.length} total</p>
           <button
             onClick={openCreate}
@@ -166,7 +166,7 @@ export const Campaigns = () => {
             >
               <div className="flex flex-col gap-[12px]">
                 {/* Top row */}
-                <div className="flex items-start justify-between gap-[12px]">
+                <div className="flex items-start justify-between gap-[12px] flex-col lg:flex-row">
                   <div className="flex flex-col gap-[4px]">
                     <p className="text-white text-[18px] font-semibold">{c.name}</p>
                     {c.description && (
@@ -175,7 +175,7 @@ export const Campaigns = () => {
                     <p className="text-[#666] text-[12px] break-all mt-[2px]">{c.websiteUrl}</p>
                   </div>
 
-                  <div className="flex flex-col items-end gap-[8px] shrink-0">
+                  <div className="flex flex-row items-center gap-[8px]">
                     {/* Active toggle */}
                     <button
                       onClick={() => handleToggleActive(c)}
@@ -190,7 +190,7 @@ export const Campaigns = () => {
                     </button>
 
                     {/* Visibility badge */}
-                    <span className={`px-[10px] py-[2px] rounded-[100px] text-[11px] font-bold border ${
+                    <span className={`px-[12px] py-[6px] rounded-[100px] text-[12px] font-bold border ${
                       c.visibleToPromoters
                         ? 'bg-[#001a66] border-[#0047cc] text-[#4d9fff]'
                         : 'bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]'
@@ -201,7 +201,7 @@ export const Campaigns = () => {
                 </div>
 
                 {/* Stats row */}
-                <div className="flex items-center gap-[16px] flex-wrap">
+                <div className="grid grid-cols-3 gap-2 lg:grid lg:grid-cols-6 lg:gap-4">
                   <div className="flex flex-col gap-[2px]">
                     <p className="text-[#666] text-[11px] uppercase tracking-[0.5px]">Commission</p>
                     <p className="text-white text-[15px] font-bold">{c.commissionRate}%</p>
@@ -265,7 +265,7 @@ export const Campaigns = () => {
                   ) : (
                     <button
                       onClick={() => setConfirmDeleteId(c.id)}
-                      className="text-[#9e9e9e] text-[12px] font-bold hover:text-[#ff2a2a] transition-colors"
+                      className="text-tm-danger-color02  opacity-80 text-[12px] font-bold transition-colors mt-[4px] hover:text-tm-danger-color05"
                     >
                       Delete
                     </button>
@@ -342,7 +342,7 @@ export const Campaigns = () => {
               </Field>
 
               {/* Rates row */}
-              <div className="flex gap-[12px]">
+              <div className="flex gap-[12px] flex-col lg:flex-row">
                 <Field label="Commission %" className="flex-1">
                   <input
                     type="number"
@@ -378,7 +378,7 @@ export const Campaigns = () => {
               </div>
 
               {/* Cookie + Invites row */}
-              <div className="flex gap-[12px]">
+              <div className="flex gap-[12px] flex-col lg:flex-row">
                 <Field label="Cookie Life (days)" className="flex-1">
                   <input
                     type="number"
@@ -404,7 +404,7 @@ export const Campaigns = () => {
               </div>
 
               {/* Toggles row */}
-              <div className="flex gap-[12px]">
+              <div className="flex gap-[12px] flex-col lg:flex-row">
                 <Toggle
                   label="Visible to Promoters"
                   value={form.visibleToPromoters ?? true}
@@ -476,7 +476,7 @@ const Toggle = ({
         : 'bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.2)]'
     }`}
   >
-    <span className={`text-[13px] font-bold ${value ? 'text-white' : 'text-[#9e9e9e]'}`}>
+    <span className={`text-[13px] font-bold ${value ? 'text-tm-primary-color05' : 'text-[#9e9e9e]'}`}>
       {label}
     </span>
     <div className={`w-[16px] h-[16px] rounded-full border-2 ${

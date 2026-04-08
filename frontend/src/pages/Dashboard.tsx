@@ -25,7 +25,7 @@ export const Dashboard = () => {
   }
 
   return (
-    <div className="flex flex-col gap-[24px]">
+    <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-[20px]">
         <div className="flex flex-col gap-[12px]">
           <div className="flex items-center gap-[4px]">
@@ -50,13 +50,13 @@ export const Dashboard = () => {
               label="Followers"
               value={stats.followers || 0}
               change={stats.followersChange}
-              className="h-[129px]"
+              className=""
             />
             <StatCard
               label="Income"
               value={`$${stats.income.toFixed(2)}`}
               change={stats.incomeChange}
-              className="h-[129px]"
+              className=""
             />
           </>
         ) : (
@@ -65,13 +65,13 @@ export const Dashboard = () => {
               label="Models"
               value={stats.models !== undefined && stats.models < 10 ? `0${stats.models}` : stats.models ?? 0}
               change={stats.modelsChange}
-              className="h-[129px]"
+              className=""
             />
             <StatCard
               label="Income"
               value={`$${stats.income.toFixed(2)}`}
               change={stats.incomeChange}
-              className="h-[129px]"
+              className=""
             />
           </>
         )}
@@ -95,7 +95,7 @@ export const Dashboard = () => {
 
       <div className="flex flex-col gap-[16px]">
         <p className="text-[16px] leading-[1.4] text-[#9e9e9e] font-medium tracking-[0.2px]">Quick Tasks</p>
-        <div className="grid grid-cols-1 gap-[12px]">
+        <div className="grid grid-cols-1 gap-[12px] lg:grid-cols-2">
           {(user?.role === 'team_manager' || user?.role === 'account_manager') && (
             <>
               <QuickTaskCard

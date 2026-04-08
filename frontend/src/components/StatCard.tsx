@@ -15,15 +15,15 @@ export const StatCard = ({ label, value, change, className = '' }: StatCardProps
     >
       <p className="text-[#9e9e9e] text-[16px] leading-[1.4] font-bold uppercase tracking-[0.2px] w-full">{label}</p>
       <div className="flex flex-col gap-[16px] items-start w-full flex-1 min-h-0">
-        <p className="text-[#f5f5f5] text-[28px] leading-[1.4] font-bold">{value}</p>
+        <p className="text-color-tm-text-color02 text-l leading-[1.4] font-bold lg:text-2xl">{value}</p>
         {change !== undefined && (
           <div
-            className={`flex items-center gap-[8px] p-[8px] rounded-[100px] border text-[14px] leading-[1.4] font-bold ${
+            className={`flex items-center gap-[8px] px-2 py-1 rounded-xl border text-[14px] leading-[1.4] font-bold ${
               isPositive
                 ? 'bg-[#006622] border-[#00d948] text-[#28ff70]'
                 : isNegative
-                ? 'bg-[#660000] border-[#cc0000] text-[#ff2a2a]'
-                : 'bg-[#292929] border-[rgba(255,255,255,0.03)] text-[#9e9e9e]'
+                ? 'bg-tm-danger-color12 border-[#cc0000] text-[#ff2a2a]'
+                : 'bg-tm-neutral-color04 border-[rgba(255,255,255,0.03)] text-[#9e9e9e]'
             }`}
           >
             <span className="text-[12px]">
