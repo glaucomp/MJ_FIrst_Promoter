@@ -89,7 +89,7 @@ export const Models = () => {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col gap-[24px]">
+      <div className="flex flex-col gap-6">
         <h1 className="text-[28px] leading-[36px] font-semibold text-white">Models</h1>
         <p className="text-[16px] text-[#9e9e9e]">Loading...</p>
       </div>
@@ -99,10 +99,10 @@ export const Models = () => {
   // ── ADMIN ─────────────────────────────────────────────────────────────────
   if (user?.baseRole === 'admin') {
     return (
-      <div className="flex flex-col gap-[24px]">
-        <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-6">
+        <div className="flex items-start justify-between flex-col lg:flex-row gap-3">
           <h1 className="text-[28px] leading-[36px] font-semibold text-white">All Users</h1>
-          <div className="flex items-center gap-[12px]">
+          <div className="flex items-center gap-4">
             <p className="text-[16px] text-[#9e9e9e]">{allUsers.length} total</p>
             <button
               onClick={() => setIsCreateUserModalOpen(true)}
@@ -127,13 +127,13 @@ export const Models = () => {
               key={apiUser.id}
               className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[16px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)]"
             >
-              <div className="flex items-start justify-between gap-[12px]">
-                <div className="flex flex-col gap-[8px]">
+              <div className="flex items-start justify-between gap-[12px] flex-col lg:flex-row">
+                <div className="flex flex-col gap-[8px] w-full">
                   <p className="text-white text-[18px] font-semibold">
                     {apiUser.firstName} {apiUser.lastName}
                   </p>
                   <p className="text-[#9e9e9e] text-[14px]">{apiUser.email}</p>
-                  <div className="flex items-center gap-[8px]">
+                  <div className="flex items-center gap-[8px] w-full">
                     <span
                       className={`px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border ${
                         apiUser.isActive
@@ -149,9 +149,9 @@ export const Models = () => {
                   </div>
                 </div>
 
-                <div className="flex flex-col items-end gap-[8px]">
+                <div className="flex flex-col items-start lg:items-end gap-[8px] w-full">
                   {apiUser.stats && (
-                    <div className="text-right flex flex-col gap-[4px]">
+                    <div className="text-left flex flex-col gap-[4px] w-full lg:text-right">
                       <p className="text-[#9e9e9e] text-[12px] uppercase">Earnings</p>
                       <p className="text-white text-[20px] font-bold">
                         ${apiUser.stats.totalEarnings.toFixed(2)}
@@ -182,7 +182,7 @@ export const Models = () => {
                   ) : (
                     <button
                       onClick={() => setConfirmDeleteId(apiUser.id)}
-                      className="text-[#9e9e9e] text-[12px] font-bold hover:text-[#ff2a2a] transition-colors mt-[4px]"
+                      className="text-tm-danger-color02  opacity-80 text-[12px] font-bold transition-colors mt-[4px] hover:text-tm-danger-color05"
                     >
                       Delete
                     </button>
@@ -213,7 +213,7 @@ export const Models = () => {
   // ── ACCOUNT MANAGER ───────────────────────────────────────────────────────
   if (user?.baseRole === 'account_manager') {
     return (
-      <div className="flex flex-col gap-[24px]">
+      <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <h1 className="text-[28px] leading-[36px] font-semibold text-white">My Promoters</h1>
           <button
@@ -249,7 +249,7 @@ export const Models = () => {
   // ── TEAM MANAGER → acting as PROMOTER ─────────────────────────────────────
   if (user?.baseRole === 'team_manager' && user?.role === 'promoter') {
     return (
-      <div className="flex flex-col gap-[24px]">
+      <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <h1 className="text-[28px] leading-[36px] font-semibold text-white">Referral Link</h1>
         </div>
@@ -278,7 +278,7 @@ export const Models = () => {
   // ── TEAM MANAGER → acting as TEAM MANAGER ────────────────────────────────
   if (user?.baseRole === 'team_manager' && user?.role === 'team_manager') {
     return (
-      <div className="flex flex-col gap-[24px]">
+      <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <h1 className="text-[28px] leading-[36px] font-semibold text-white">My Team</h1>
           <button
@@ -314,7 +314,7 @@ export const Models = () => {
   // ── PURE PROMOTER ─────────────────────────────────────────────────────────
   if (user?.baseRole === 'promoter') {
     return (
-      <div className="flex flex-col gap-[24px]">
+      <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <h1 className="text-[28px] leading-[36px] font-semibold text-white">My Tracking Links</h1>
           <button
@@ -343,7 +343,7 @@ export const Models = () => {
                       Code: <span className="font-mono text-white">{link.shortCode}</span>
                     </p>
                   </div>
-                  <div className="text-right flex flex-col gap-[4px]">
+                  <div className="text-right flex flex-col gap-[4px] w-full">
                     <p className="text-[#9e9e9e] text-[12px] uppercase">Clicks</p>
                     <p className="text-white text-[20px] font-bold">{link.clicks}</p>
                   </div>
@@ -388,7 +388,7 @@ export const Models = () => {
   }
 
   return (
-    <div className="flex flex-col gap-[24px]">
+    <div className="flex flex-col gap-6">
       <h1 className="text-[28px] leading-[36px] font-semibold text-white">Models</h1>
       <p className="text-[#9e9e9e] text-[16px]">Access denied</p>
     </div>
@@ -415,7 +415,7 @@ const ReferralList = ({ referrals }: { referrals: Referral[] }) => {
           className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[16px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)]"
         >
           <div className="flex items-center justify-between">
-            <div className="flex flex-col gap-[8px]">
+            <div className="flex flex-col gap-[8px] w-full">
               {referral.referredUser ? (
                 <>
                   <p className="text-white text-[18px] font-semibold">
@@ -448,7 +448,7 @@ const ReferralList = ({ referrals }: { referrals: Referral[] }) => {
                 <span className="text-[#9e9e9e] text-[12px]">{referral.campaign.name}</span>
               </div>
             </div>
-            <div className="text-right flex flex-col gap-[4px]">
+            <div className="text-right flex flex-col gap-[4px] w-full">
               <p className="text-[#9e9e9e] text-[12px] uppercase">Level</p>
               <p className="text-white text-[20px] font-bold">{referral.level}</p>
             </div>

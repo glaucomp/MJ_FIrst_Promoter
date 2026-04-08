@@ -23,9 +23,9 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
   return (
     <div className="min-h-screen flex justify-center items-start" style={{ backgroundColor: 'var(--color-bg)' }}>
-      <div className="relative w-full max-w-[402px] h-screen overflow-hidden">
+      <div className="relative w-full  h-screen overflow-hidden">
         <Sidebar />
-        <div className="absolute top-0 left-[80px] right-0 h-screen overflow-y-auto overflow-x-hidden pt-[64px] px-[16px]" style={{ scrollbarWidth: 'none' }}>
+        <div className="absolute top-0 left-16 right-0 h-screen overflow-y-auto overflow-x-hidden pt-[64px] px-[16px]" style={{ scrollbarWidth: 'none' }}>
           <div style={{ width: '100%', paddingBottom: '40px' }}>{children}</div>
         </div>
       </div>

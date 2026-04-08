@@ -20,14 +20,14 @@ const Field = ({
 }) => (
   <div className="flex flex-col gap-[6px]">
     <label className="text-[#9e9e9e] text-[11px] font-bold uppercase tracking-[0.5px]">
-      {label}{required && <span className="text-[#ff2a71] ml-[2px]">*</span>}
+      {label}{required && <span className="text-[#9fe870] ml-[2px]">*</span>}
     </label>
     <input
       type={type}
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[14px] py-[10px] text-[14px] text-white placeholder-[#444] focus:outline-none focus:border-[#00b9ff] transition-colors"
+      className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[14px] py-[10px] text-[14px] text-white placeholder-[#444] focus:outline-none focus:border-[#9fe870] transition-colors"
     />
     {hint && <p className="text-[10px] text-[#555] leading-[1.4]">{hint}</p>}
   </div>
@@ -171,7 +171,7 @@ export const Settings = () => {
   };
 
   return (
-    <div className="flex flex-col gap-[24px]">
+    <div className="flex flex-col gap-6">
       <h1 className="text-[28px] leading-[36px] font-semibold text-white">Settings</h1>
 
       {/* View Selection - Only for Team Managers */}
@@ -317,12 +317,14 @@ export const Settings = () => {
       <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-[20px]">
 
         {/* Header */}
-        <div className="flex items-center gap-[12px]">
-          <div
-            className="w-[36px] h-[36px] rounded-full flex items-center justify-center shrink-0 text-white text-[16px] font-black"
-            style={{ background: 'linear-gradient(135deg, #00b9ff 0%, #0066ff 100%)' }}
-          >
-            W
+        <div className="flex items-start gap-[12px] flex-col lg:flex-row">
+       <div
+              className="w-[32px] h-[32px] rounded-full flex items-center justify-center text-[#173300] font-black text-[14px]"
+              style={{ background: "linear-gradient(135deg,#9fe870,#9fe870)" }}
+            >
+              <svg className="w-4" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 20 20">
+  <path fill="currentColor" d="M5.5,6.2L0,12.6h9.9l1.1-3h-4.2l2.6-3h0c0,0-1.7-3-1.7-3h7.6l-5.9,16.1h4L20.4.3H2.2l3.4,5.9Z"/>
+</svg>
           </div>
           <div className="flex flex-col gap-[2px]">
             <h2 className="text-[20px] leading-[1.4] font-bold text-white">Wise Payout</h2>
@@ -361,7 +363,7 @@ export const Settings = () => {
           <span className="text-[#9e9e9e] text-[11px] font-bold uppercase tracking-[0.5px]">
             Bank Account Type
           </span>
-          <div className="grid grid-cols-2 gap-[8px]">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-[8px]">
             {([
               { id: 'australian', label: 'AUD (Australia)', sub: 'BSB + Account' },
               { id: 'aba', label: 'USD (US Bank)', sub: 'Routing + Account' },
@@ -372,17 +374,17 @@ export const Settings = () => {
                 key={t.id}
                 type="button"
                 onClick={() => { setBankType(t.id); setWiseMessage(null); }}
-                className="flex flex-col gap-[2px] p-[12px] rounded-[8px] text-left transition-all border"
+                className="flex flex-col gap-[2px] px-3 py-2 lg:py-4 rounded-[8px] text-left transition-all border"
                 style={{
-                  background: bankType === t.id ? 'rgba(0,185,255,0.1)' : '#1a1a1a',
-                  borderColor: bankType === t.id ? '#00b9ff' : 'rgba(255,255,255,0.08)',
+                  background: bankType === t.id ? 'rgba(159, 232, 112, 0.1)' : '#1a1a1a',
+                  borderColor: bankType === t.id ? 'rgb(159, 232, 112)' : 'rgba(255,255,255,0.08)',
                   boxShadow: bankType === t.id ? '0 0 0 1px rgba(0,185,255,0.2)' : 'none',
                 }}
               >
-                <span className="text-[12px] font-bold" style={{ color: bankType === t.id ? '#00b9ff' : 'white' }}>
+                <span className="text-[12px] font-bold" style={{ color: bankType === t.id ? 'rgb(159, 232, 112)' : 'white' }}>
                   {t.label}
                 </span>
-                <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.3)' }}>{t.sub}</span>
+                <span className="text-[10px]" style={{ color: bankType === t.id ? 'rgb(159, 232, 112)' : 'rgba(255, 255, 255, 0.3)' }}>{t.sub}</span>
               </button>
             ))}
           </div>
@@ -392,7 +394,7 @@ export const Settings = () => {
         {bankType === 'australian' && (
           <div className="flex flex-col gap-[12px]">
             <Field label="Account Holder Name" value={holderName} onChange={setHolderName} placeholder="Jane Doe" />
-            <div className="grid grid-cols-2 gap-[10px]">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-[10px]">
               <Field
                 label="BSB Number"
                 value={bsb}
@@ -409,7 +411,7 @@ export const Settings = () => {
         {bankType === 'aba' && (
           <div className="flex flex-col gap-[12px]">
             <Field label="Account Holder Name" value={holderName} onChange={setHolderName} placeholder="Jane Doe" />
-            <div className="grid grid-cols-2 gap-[10px]">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-[10px]">
               <Field
                 label="Routing Number (ABA)"
                 value={routingNumber}
@@ -421,7 +423,7 @@ export const Settings = () => {
             </div>
             <div className="flex flex-col gap-[6px]">
               <span className="text-[#9e9e9e] text-[11px] font-bold uppercase tracking-[0.5px]">
-                Account Type<span className="text-[#ff2a71] ml-[2px]">*</span>
+                Account Type<span className="text-[#9fe870] ml-[2px]">*</span>
               </span>
               <div className="flex gap-[8px]">
                 {(['checking', 'savings'] as const).map((t) => (
@@ -431,9 +433,9 @@ export const Settings = () => {
                     onClick={() => setAccountType(t)}
                     className="flex-1 py-[9px] rounded-[8px] text-[13px] font-semibold capitalize transition-all border"
                     style={{
-                      background: accountType === t ? 'rgba(0,185,255,0.1)' : '#1a1a1a',
-                      borderColor: accountType === t ? '#00b9ff' : 'rgba(255,255,255,0.08)',
-                      color: accountType === t ? '#00b9ff' : 'rgba(255,255,255,0.5)',
+                      background: accountType === t ? 'rgb(159, 232, 112, 0.1)' : '#1a1a1a',
+                      borderColor: accountType === t ? 'rgb(159, 232, 112)' : 'rgba(255,255,255,0.08)',
+                      color: accountType === t ? 'rgb(159, 232, 112)' : 'white',
                     }}
                   >
                     {t}
@@ -449,13 +451,13 @@ export const Settings = () => {
                   htmlFor="stateSelect"
                   className="text-[#9e9e9e] text-[11px] font-bold uppercase tracking-[0.5px]"
                 >
-                  State<span className="text-[#ff2a71] ml-[2px]">*</span>
+                  State<span className="text-[#9fe870] ml-[2px]">*</span>
                 </label>
                 <select
                   id="stateSelect"
                   value={stateCode}
                   onChange={(e) => setStateCode(e.target.value)}
-                  className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[12px] py-[10px] text-[14px] text-white focus:outline-none focus:border-[#00b9ff] transition-colors"
+                  className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[12px] py-[10px] text-[14px] text-white focus:outline-none focus:border-[#9fe870] transition-colors"
                 >
                   {US_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
@@ -506,10 +508,10 @@ export const Settings = () => {
         <button
           onClick={handleCreateRecipient}
           disabled={wiseSaving}
-          className="w-full py-[13px] rounded-[8px] text-[15px] font-semibold text-white transition-all disabled:opacity-50"
+          className="w-full py-4 rounded-lg text-base font-bold text-[#163400] transition-all disabled:opacity-50"
           style={{
-            background: wiseSaving ? 'rgba(0,185,255,0.25)' : 'linear-gradient(135deg, #00b9ff 0%, #0066ff 100%)',
-            boxShadow: wiseSaving ? 'none' : '0 4px 16px rgba(0,185,255,0.3)',
+            background: wiseSaving ? 'rgba(0,185,255,0.25)' : 'linear-gradient(0deg, rgb(44, 81, 31), rgb(159, 232, 112))',
+            
           }}
         >
           {wiseSaving ? 'Linking account…' : getBtnLabel((user as any)?.wiseRecipientId)}
@@ -520,9 +522,9 @@ export const Settings = () => {
           <div
             className="flex items-center gap-[8px] px-[14px] py-[10px] rounded-[8px] text-[13px] font-medium"
             style={{
-              background: wiseMessage.type === 'success' ? 'rgba(0,217,72,0.08)' : 'rgba(255,42,113,0.08)',
-              border: `1px solid ${wiseMessage.type === 'success' ? 'rgba(0,217,72,0.25)' : 'rgba(255,42,113,0.25)'}`,
-              color: wiseMessage.type === 'success' ? '#00d948' : '#ff2a71',
+              background: wiseMessage.type === 'success' ? 'var(--color-tm-success-color12)' : 'var(--color-tm-danger-color12)',
+              border: `1px solid ${wiseMessage.type === 'success' ? 'var(--color-tm-success-color05)' : 'var(--color-tm-danger-color05)'}`,
+              color: wiseMessage.type === 'success' ? 'var(--color-tm-success-color05)' : 'var(--color-tm-danger-color05)',
             }}
           >
             {wiseMessage.type === 'success' ? '✓' : '✕'} {wiseMessage.text}

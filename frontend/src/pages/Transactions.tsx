@@ -243,7 +243,7 @@ export const Transactions = () => {
   };
 
   return (
-    <div className="flex flex-col gap-[24px]">
+    <div className="flex flex-col gap-6">
       {/* Header */}
       <div>
         <h1 className="text-[28px] leading-[36px] font-semibold text-white font-['DM_Sans',sans-serif]">
