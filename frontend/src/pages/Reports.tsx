@@ -2080,7 +2080,7 @@ export const Reports = () => {
         />
 
         {/* Chart */}
-        <Chart data={chartData} className="h-[180px] w-full bg-gradient-to-l from-tm-neutral-color06 to-tm-neutral-color05 rounded-lg shadow-[0px_8px_8px_-2px_rgba(0,0,0,0.05)] shadow-[0px_2px_2px_0px_rgba(0,0,0,0.10)] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.10)] outline outline-1 outline-offset-[-1px] outline-border-subtle/5" />
+        <Chart data={chartData} className="h-[180px] w-full bg-linear-to-l from-tm-neutral-color06 to-tm-neutral-color05 rounded-lg shadow-[0px_8px_8px_-2px_rgba(0,0,0,0.05),0px_2px_2px_0px_rgba(0,0,0,0.10),0px_-1px_0px_0px_rgba(255,255,255,0.10)] outline outline-1 outline-offset-[-1px] outline-border-subtle/5" />
 
         {/* Transactions total — admin only */}
         {isAdmin && (
