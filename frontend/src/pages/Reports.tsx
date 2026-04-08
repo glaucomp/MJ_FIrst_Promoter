@@ -170,7 +170,7 @@ interface BadgeProps {
 }
 const ChangeBadge = ({ value, positive }: BadgeProps) => (
   <span
-    className="inline-flex items-center gap-[3px] text-[12px] font-bold px-[10px] py-[4px] rounded-full"
+    className="inline-flex items-center gap-[8px] px-2 py-1 rounded-xl border text-[14px] leading-[1.4] font-bold"
     style={{
       background: positive ? "var(--color-success)" : "var(--color-danger)",
       color: "var(--color-text-primary)",
@@ -1691,7 +1691,7 @@ export const Reports = () => {
                 paddingLeft: "var(--space-16)",
                 paddingRight: "var(--space-16)",
                 gap: "var(--space-8)",
-                background: "var(--color-surface-raised)",
+                background: "#292929",
                 borderRadius: "var(--radius-m)",
                 color: "var(--color-text-dim)",
                 boxShadow: "var(--shadow-rim-light)",
@@ -1758,7 +1758,7 @@ export const Reports = () => {
             style={{
               width: "var(--button-m)",
               height: "var(--button-m)",
-              background: "var(--color-surface-raised)",
+             
               borderRadius: "var(--radius-s)",
               border: "1px solid var(--border-subtle)",
             }}
@@ -2080,12 +2080,12 @@ export const Reports = () => {
         />
 
         {/* Chart */}
-        <Chart data={chartData} className="h-[180px] w-full" />
+        <Chart data={chartData} className="h-[180px] w-full bg-gradient-to-l from-tm-neutral-color06 to-tm-neutral-color05 rounded-lg shadow-[0px_8px_8px_-2px_rgba(0,0,0,0.05)] shadow-[0px_2px_2px_0px_rgba(0,0,0,0.10)] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.10)] outline outline-1 outline-offset-[-1px] outline-border-subtle/5" />
 
         {/* Transactions total — admin only */}
         {isAdmin && (
           <Card radius="var(--radius-m)">
-            <div className="flex flex-col gap-[var(--space-8)]" style={{ padding: 'var(--space-20)' }}>
+            <div className="flex flex-col gap-0" style={{ padding: 'var(--space-20)' }}>
               <span className="stat-label">Transactions</span>
               <span className="stat-value">${money(currTotal)}</span>
               {totalChange !== null && (
@@ -2101,15 +2101,15 @@ export const Reports = () => {
         )}
 
         {/* Paid / Pending */}
-        <div className="grid grid-cols-2 gap-[var(--space-8)]">
+        <div className="grid grid-cols-2 gap-4">
           <Card radius="var(--radius-m)">
-            <div className="flex flex-col gap-[var(--space-8)]" style={{ padding: 'var(--space-20)' }}>
+            <div className="flex flex-col gap-0" style={{ padding: 'var(--space-20)' }}>
               <span className="stat-label">Paid</span>
-              <span className="stat-value">${money(currPaid)}</span>
+              <span className="stat-value text-base">${money(currPaid)}</span>
             </div>
           </Card>
           <Card radius="var(--radius-m)">
-            <div className="flex flex-col gap-[var(--space-8)]" style={{ padding: 'var(--space-20)' }}>
+            <div className="flex flex-col gap-0" style={{ padding: 'var(--space-20)' }}>
               <span className="stat-label">Pending</span>
               <span className="stat-value">${money(currPending)}</span>
             </div>
@@ -2118,7 +2118,7 @@ export const Reports = () => {
 
         {/* Refunded */}
         <Card radius="var(--radius-m)">
-          <div className="flex flex-col gap-[var(--space-8)]" style={{ padding: 'var(--space-20)' }}>
+          <div className="flex flex-col gap-0" style={{ padding: 'var(--space-20)' }}>
             <span className="stat-label">Refunded</span>
             <div className="flex items-center justify-between">
               <span className="stat-value">${money(currRefunded)}</span>
@@ -2131,15 +2131,15 @@ export const Reports = () => {
 
         {/* Promoters / Users — manager only */}
         {isManager && (
-          <div className="grid grid-cols-2 gap-[var(--space-8)]">
+          <div className="grid grid-cols-2 gap-4">
             <Card radius="var(--radius-m)">
-              <div className="flex flex-col gap-[var(--space-8)]" style={{ padding: 'var(--space-20)' }}>
+              <div className="flex flex-col gap-4" style={{ padding: 'var(--space-20)' }}>
                 <span className="stat-label">Promoters</span>
                 <span className="stat-value">{promoterCount}</span>
               </div>
             </Card>
             <Card radius="var(--radius-m)">
-              <div className="flex flex-col gap-[var(--space-8)]" style={{ padding: 'var(--space-20)' }}>
+              <div className="flex flex-col gap-4" style={{ padding: 'var(--space-20)' }}>
                 <span className="stat-label">Users</span>
                 <span className="stat-value">{managedCustomerCount}</span>
               </div>

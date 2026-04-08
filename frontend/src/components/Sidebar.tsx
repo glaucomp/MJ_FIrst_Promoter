@@ -14,8 +14,8 @@ const navItems: NavItem[] = [
   { id: 'dashboard', icon: '📊', label: 'Dashboard', path: '/dashboard' },
   { id: 'models', icon: '👥', label: 'Models', path: '/models' },
   { id: 'campaigns', icon: '🎯', label: 'Campaigns', path: '/campaigns', adminOnly: true },
-  { id: 'payouts', icon: '💸', label: 'Payouts', path: '/payouts', adminOnly: true },
   { id: 'reports', icon: '📈', label: 'Reports', path: '/reports' },
+  { id: 'payouts', icon: '💸', label: 'Payouts', path: '/payouts', adminOnly: true },
   { id: 'settings', icon: '⚙️', label: 'Settings', path: '/settings' },
 ];
 

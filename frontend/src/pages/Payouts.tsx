@@ -35,10 +35,17 @@ const fmt = (d: Date) =>
   d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
 const fmtFull = (d: Date) =>
-  d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  d.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
 
 const money = (n: number) =>
-  n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  n.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -98,15 +105,23 @@ const StatusDot = ({ ok }: { ok: boolean }) => (
 const WiseBadge = ({ recipientId }: { recipientId: string | null }) =>
   recipientId ? (
     <span
-      className="inline-flex items-center gap-[5px] text-[11px] font-semibold px-[8px] py-[2px] rounded-full"
-      style={{ background: "rgba(0,185,255,0.12)", color: "#00b9ff", border: "1px solid rgba(0,185,255,0.25)" }}
+      className="inline-flex items-center gap-[5px] text-sm font-semibold px-[8px] py-[2px] rounded-full"
+      style={{
+        background: "rgba(0,185,255,0.12)",
+        color: "#00b9ff",
+        border: "1px solid rgba(0,185,255,0.25)",
+      }}
     >
       <StatusDot ok /> Wise ID {recipientId}
     </span>
   ) : (
     <span
-      className="inline-flex items-center gap-[5px] text-[11px] font-semibold px-[8px] py-[2px] rounded-full"
-      style={{ background: "rgba(255,68,68,0.10)", color: "#ff6b6b", border: "1px solid rgba(255,68,68,0.25)" }}
+      className="inline-flex items-center gap-[5px] text-sm font-semibold px-[8px] py-[2px] rounded-full"
+      style={{
+        background: "rgba(255,68,68,0.10)",
+        color: "#ff6b6b",
+        border: "1px solid rgba(255,68,68,0.25)",
+      }}
     >
       <StatusDot ok={false} /> No Wise set up
     </span>
@@ -125,9 +140,14 @@ const PromoterRow = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const unpaidCommissions = group.commissions.filter((c) => c.status !== "paid");
-  const payableCommissions = unpaidCommissions.filter((c) => !isOnHold(c.createdAt));
-  const canPay = group.wiseRecipientId !== null && payableCommissions.length > 0;
+  const unpaidCommissions = group.commissions.filter(
+    (c) => c.status !== "paid",
+  );
+  const payableCommissions = unpaidCommissions.filter(
+    (c) => !isOnHold(c.createdAt),
+  );
+  const canPay =
+    group.wiseRecipientId !== null && payableCommissions.length > 0;
 
   const handlePayAll = async () => {
     if (!canPay) return;
@@ -141,7 +161,9 @@ const PromoterRow = ({
         const firstErr = result.results.find((r) => !r.success)?.error;
         setError(`${result.failed} payment(s) failed: ${firstErr}`);
       }
-      const paid = result.results.filter((r) => r.success).map((r) => r.commissionId);
+      const paid = result.results
+        .filter((r) => r.success)
+        .map((r) => r.commissionId);
       if (paid.length > 0) onPaid(paid);
     } catch (err: any) {
       setError(err.message || "Payout failed");
@@ -153,7 +175,9 @@ const PromoterRow = ({
   return (
     <div
       className="rounded-[10px] overflow-hidden"
-      style={{ border: "1px solid var(--border-subtle, rgba(255,255,255,0.06))" }}
+      style={{
+        border: "1px solid var(--border-subtle, rgba(255,255,255,0.06))",
+      }}
     >
       {/* Row header */}
       <div className="flex items-center gap-[12px] px-[16px] py-[14px] bg-[#1e1e1e]">
@@ -168,10 +192,15 @@ const PromoterRow = ({
         {/* Name + badges */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-[8px] flex-wrap">
-            <span className="text-[14px] font-semibold text-white truncate">{group.name}</span>
+            <span className="text-[14px] font-semibold text-white truncate">
+              {group.name}
+            </span>
             <WiseBadge recipientId={group.wiseRecipientId} />
           </div>
-          <div className="text-[11px] mt-px" style={{ color: "rgba(255,255,255,0.35)" }}>
+          <div
+            className="text-sm mt-px"
+            style={{ color: "rgba(255,255,255,0.35)" }}
+          >
             {group.email}
           </div>
         </div>
@@ -179,13 +208,18 @@ const PromoterRow = ({
         {/* Amount + pay button */}
         <div className="flex items-center gap-[10px] shrink-0">
           <div className="text-right">
-            <div className="text-[15px] font-bold text-white">${money(group.totalOwed)}</div>
+            <div className="text-[15px] font-bold text-white">
+              ${money(group.totalOwed)}
+            </div>
             {group.totalOnHold > 0 && (
               <div className="text-[10px]" style={{ color: "#ffb900" }}>
                 +${money(group.totalOnHold)} on hold
               </div>
             )}
-            <div className="text-[10px]" style={{ color: "rgba(255,255,255,0.3)" }}>
+            <div
+              className="text-[10px]"
+              style={{ color: "rgba(255,255,255,0.3)" }}
+            >
               {plural(unpaidCommissions.length, "commission")}
             </div>
           </div>
@@ -194,14 +228,22 @@ const PromoterRow = ({
             <button
               onClick={handlePayAll}
               disabled={!canPay || loading}
-              title={group.wiseRecipientId ? undefined : "No Wise recipient configured"}
+              title={
+                group.wiseRecipientId
+                  ? undefined
+                  : "No Wise recipient configured"
+              }
               className="text-[12px] font-bold px-[14px] py-[8px] rounded-[8px] transition-all disabled:opacity-40 whitespace-nowrap"
               style={{
-                background: canPay && !loading
-                  ? "linear-gradient(135deg,#00b9ff,#0066ff)"
-                  : "rgba(255,255,255,0.06)",
+                background:
+                  canPay && !loading
+                    ? "linear-gradient(135deg,#00b9ff,#0066ff)"
+                    : "rgba(255,255,255,0.06)",
                 color: canPay ? "white" : "rgba(255,255,255,0.3)",
-                boxShadow: canPay && !loading ? "0 2px 12px rgba(0,185,255,0.3)" : "none",
+                boxShadow:
+                  canPay && !loading
+                    ? "0 2px 12px rgba(0,185,255,0.3)"
+                    : "none",
                 cursor: canPay ? "pointer" : "not-allowed",
               }}
             >
@@ -211,8 +253,12 @@ const PromoterRow = ({
 
           {unpaidCommissions.length === 0 && (
             <span
-              className="text-[11px] font-semibold px-[10px] py-[5px] rounded-full"
-              style={{ background: "rgba(0,217,72,0.12)", color: "#00d948", border: "1px solid rgba(0,217,72,0.25)" }}
+              className="text-sm font-semibold px-[10px] py-[5px] rounded-full"
+              style={{
+                background: "rgba(0,217,72,0.12)",
+                color: "#00d948",
+                border: "1px solid rgba(0,217,72,0.25)",
+              }}
             >
               Paid ✓
             </span>
@@ -222,7 +268,10 @@ const PromoterRow = ({
           <button
             onClick={() => setExpanded((p) => !p)}
             className="w-[28px] h-[28px] flex items-center justify-center rounded-[6px] transition-colors"
-            style={{ border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.3)" }}
+            style={{
+              border: "1px solid rgba(255,255,255,0.08)",
+              color: "rgba(255,255,255,0.3)",
+            }}
           >
             <svg
               width="12"
@@ -231,7 +280,13 @@ const PromoterRow = ({
               fill="none"
               className={`transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
             >
-              <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              <path
+                d="M2 4l4 4 4-4"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
           </button>
         </div>
@@ -241,7 +296,11 @@ const PromoterRow = ({
       {error && (
         <div
           className="px-[16px] py-[8px] text-[12px]"
-          style={{ background: "rgba(255,68,68,0.08)", color: "#ff6b6b", borderTop: "1px solid rgba(255,68,68,0.15)" }}
+          style={{
+            background: "rgba(255,68,68,0.08)",
+            color: "#ff6b6b",
+            borderTop: "1px solid rgba(255,68,68,0.15)",
+          }}
         >
           {error}
         </div>
@@ -251,7 +310,10 @@ const PromoterRow = ({
       {expanded && (
         <div
           className="flex flex-col"
-          style={{ borderTop: "1px solid rgba(255,255,255,0.05)", background: "#181818" }}
+          style={{
+            borderTop: "1px solid rgba(255,255,255,0.05)",
+            background: "#181818",
+          }}
         >
           {group.commissions.map((c, i) => {
             const isPaid = c.status === "paid";
@@ -270,14 +332,19 @@ const PromoterRow = ({
                   <div className="text-[12px] text-white">
                     {c.campaign?.name ?? "—"}
                   </div>
-                  <div className="text-[10px]" style={{ color: "rgba(255,255,255,0.3)" }}>
+                  <div
+                    className="text-[10px]"
+                    style={{ color: "rgba(255,255,255,0.3)" }}
+                  >
                     {new Date(c.createdAt).toLocaleDateString("en-US", {
-                      month: "short", day: "numeric", year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
                     })}
                   </div>
                 </div>
                 <span
-                  className="text-[11px] shrink-0"
+                  className="text-sm shrink-0"
                   style={{ color: "rgba(255,255,255,0.3)" }}
                 >
                   {c.percentage}%
@@ -348,7 +415,9 @@ export const Payouts = () => {
       if (!map.has(uid)) {
         map.set(uid, {
           userId: uid,
-          name: [c.user.firstName, c.user.lastName].filter(Boolean).join(" ") || c.user.email,
+          name:
+            [c.user.firstName, c.user.lastName].filter(Boolean).join(" ") ||
+            c.user.email,
           email: c.user.email,
           wiseRecipientId: c.user.wiseRecipientId ?? null,
           commissions: [],
@@ -376,7 +445,10 @@ export const Payouts = () => {
     [groups],
   );
   const historyGroups = useMemo(
-    () => groups.filter((g) => g.commissions.some((c) => c.status === "paid" && c.wiseTransferId)),
+    () =>
+      groups.filter((g) =>
+        g.commissions.some((c) => c.status === "paid" && c.wiseTransferId),
+      ),
     [groups],
   );
 
@@ -410,7 +482,9 @@ export const Payouts = () => {
     const ids = pendingGroups
       .filter((g) => g.wiseRecipientId)
       .flatMap((g) =>
-        g.commissions.filter((c) => c.status !== "paid" && !isOnHold(c.createdAt)).map((c) => c.id),
+        g.commissions
+          .filter((c) => c.status !== "paid" && !isOnHold(c.createdAt))
+          .map((c) => c.id),
       );
     if (ids.length === 0) return;
     setBulkLoading(true);
@@ -421,7 +495,9 @@ export const Payouts = () => {
         const firstErr = result.results.find((r) => !r.success)?.error;
         setBulkError(`${result.failed} payment(s) failed: ${firstErr}`);
       }
-      const paid = result.results.filter((r) => r.success).map((r) => r.commissionId);
+      const paid = result.results
+        .filter((r) => r.success)
+        .map((r) => r.commissionId);
       if (paid.length > 0) handlePaid(paid);
     } catch (err: any) {
       setBulkError(err.message || "Bulk payout failed");
@@ -434,61 +510,85 @@ export const Payouts = () => {
     <div className="flex flex-col gap-6">
       {/* ── Page title ── */}
       <div className="flex items-center justify-between">
-        <h1 className="text-[28px] leading-[36px] font-semibold text-white">Payouts</h1>
+        <h1 className="text-[28px] leading-[36px] font-semibold text-white">
+          Payouts
+        </h1>
         <span
           className="text-[12px] font-medium px-[10px] py-[4px] rounded-full"
-          style={{ background: "rgba(0,185,255,0.1)", color: "#00b9ff", border: "1px solid rgba(0,185,255,0.2)" }}
+          style={{
+            background: "rgba(0,185,255,0.1)",
+            color: "#00b9ff",
+            border: "1px solid rgba(0,185,255,0.2)",
+          }}
         >
           Fortnight cycle
         </span>
       </div>
 
       {/* ── Fortnight cycle card ── */}
-      <div
-        className="rounded-[12px] p-[20px] flex flex-col gap-[16px]"
-        style={{
-          background: "linear-gradient(135deg, rgba(0,185,255,0.08) 0%, rgba(0,102,255,0.05) 100%)",
-          border: "1px solid rgba(0,185,255,0.15)",
-        }}
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-[10px]">
+      <div className=" p-5
+       lg:p-10 flex flex-col gap-[16px] bg-gradient-to-l from-tm-neutral-color06 to-tm-neutral-color05 rounded-lg shadow-[0px_8px_8px_-2px_rgba(0,0,0,0.05)] shadow-[0px_2px_2px_0px_rgba(0,0,0,0.10)] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.10)] outline outline-1 outline-offset-[-1px] outline-border-subtle/5 items-start gap-2">
+        <div className="flex items-start flex-col lg:flex-row lg:justify-between w-full gap-4">
+          <div className="flex items-start gap-3 flex-col lg:flex-row">
             <div
-              className="w-[32px] h-[32px] rounded-full flex items-center justify-center text-white font-black text-[14px]"
-              style={{ background: "linear-gradient(135deg,#00b9ff,#0066ff)" }}
+              className="w-[32px] h-[32px] rounded-full flex items-center justify-center text-[#173300] font-black text-[14px]"
+              style={{ background: "linear-gradient(135deg,#9fe870,#9fe870)" }}
             >
-              W
+             <svg className="w-4" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 20 20">
+  <path fill="currentColor" d="M5.5,6.2L0,12.6h9.9l1.1-3h-4.2l2.6-3h0c0,0-1.7-3-1.7-3h7.6l-5.9,16.1h4L20.4.3H2.2l3.4,5.9Z"/>
+</svg>
             </div>
             <div>
-              <div className="text-[13px] font-semibold text-white">Current Payment Cycle</div>
-              <div className="text-[11px]" style={{ color: "rgba(255,255,255,0.35)" }}>
+              <div className="text-lg font-semibold text-white">
+                Current Payment Cycle
+              </div>
+              <div
+                className="text-sm"
+                style={{ color: "rgba(255,255,255,0.35)" }}
+              >
                 {fmt(cycle.cycleStart)} → {fmt(cycle.cycleEnd)}
               </div>
             </div>
           </div>
-          <div className="text-right">
-            <div className="text-[11px] uppercase tracking-[0.06em]" style={{ color: "rgba(255,255,255,0.35)" }}>
+          <div className="lg:text-right">
+            <div
+              className="text-sm uppercase tracking-[0.06em]"
+              style={{ color: "rgba(255,255,255,0.35)" }}
+            >
               Next payout
             </div>
-            <div className="text-[14px] font-bold text-white">{fmtFull(cycle.nextPayout)}</div>
+            <div className="text-[14px] font-bold text-white">
+              {fmtFull(cycle.nextPayout)}
+            </div>
           </div>
         </div>
 
         {/* Progress bar */}
-        <div>
-          <div className="flex items-center justify-between mb-[6px]">
-            <span className="text-[11px]" style={{ color: "rgba(255,255,255,0.4)" }}>
-              {cycle.daysLeft === 0 ? "Payout day!" : `${plural(cycle.daysLeft, "day")} until next payout`}
+        <div className="w-full">
+          <div className="flex items-start justify-between mb-[6px] gap-4 flex-col lg:flex-row">
+            <span
+              className="text-sm"
+              style={{ color: "rgba(255,255,255,0.4)" }}
+            >
+              {cycle.daysLeft === 0
+                ? "Payout day!"
+                : `${plural(cycle.daysLeft, "day")} until next payout`}
             </span>
-            <span className="text-[11px] font-semibold" style={{ color: "#00b9ff" }}>
+            <span
+              className="text-sm font-semibold"
+              style={{ color: "#9fe870" }}
+            >
               {fmt(cycle.cycleStart)} – {fmtFull(cycle.nextPayout)}
             </span>
           </div>
-          <div className="h-[4px] rounded-full overflow-hidden" style={{ background: "rgba(0,185,255,0.15)" }}>
+          <div
+            className="h-[4px] rounded-full overflow-hidden"
+            style={{ background: "rgba(0,185,255,0.15)" }}
+          >
             <div
               className="h-full rounded-full"
               style={{
-                background: "linear-gradient(90deg,#00b9ff,#0066ff)",
+                background: "linear-gradient(90deg,#2C511F,#9fe870)",
                 width: `${Math.min(100, Math.max(5, ((14 - cycle.daysLeft) / 14) * 100))}%`,
                 transition: "width 0.5s ease",
               }}
@@ -497,19 +597,38 @@ export const Payouts = () => {
         </div>
 
         {/* Stats row */}
-        <div className="grid grid-cols-4 gap-[8px]">
+        <div className="grid lg:grid-cols-4 gap-[8px] w-full">
           {[
-            { label: "Total Pending", value: `$${money(totalPending)}`, color: "rgba(255,255,255,0.9)" },
-            { label: "On Hold (7d)", value: `$${money(totalOnHold)}`, color: "#ffb900" },
-            { label: "Ready to Pay", value: plural(readyCount, "promoter"), color: "#00b9ff" },
-            { label: "Ready Amount", value: `$${money(readyTotal)}`, color: "#00d948" },
+            {
+              label: "Total Pending",
+              value: `$${money(totalPending)}`,
+              color: "rgba(255,255,255,0.9)",
+            },
+            {
+              label: "On Hold (7d)",
+              value: `$${money(totalOnHold)}`,
+              color: "#ffb900",
+            },
+            {
+              label: "Ready to Pay",
+              value: plural(readyCount, "promoter"),
+              color: "#00b9ff",
+            },
+            {
+              label: "Ready Amount",
+              value: `$${money(readyTotal)}`,
+              color: "#00d948",
+            },
           ].map(({ label, value, color }) => (
             <div
               key={label}
-              className="rounded-[8px] px-[12px] py-[10px] flex flex-col gap-[2px]"
+              className="rounded px-3 py-4 flex flex-col gap-[2px] "
               style={{ background: "rgba(0,0,0,0.2)" }}
             >
-              <span className="text-[10px] uppercase tracking-[0.06em]" style={{ color: "rgba(255,255,255,0.3)" }}>
+              <span
+                className="text-[10px] uppercase tracking-[0.06em]"
+                style={{ color: "rgba(255,255,255,0.3)" }}
+              >
                 {label}
               </span>
               <span className="text-[15px] font-bold" style={{ color }}>
@@ -530,7 +649,9 @@ export const Payouts = () => {
                 background: bulkLoading
                   ? "rgba(0,185,255,0.25)"
                   : "linear-gradient(135deg,#00b9ff,#0066ff)",
-                boxShadow: bulkLoading ? "none" : "0 4px 20px rgba(0,185,255,0.35)",
+                boxShadow: bulkLoading
+                  ? "none"
+                  : "0 4px 20px rgba(0,185,255,0.35)",
               }}
             >
               {bulkLoading
@@ -540,7 +661,11 @@ export const Payouts = () => {
             {bulkError && (
               <div
                 className="text-[12px] px-[12px] py-[8px] rounded-[8px]"
-                style={{ background: "rgba(255,68,68,0.1)", color: "#ff6b6b", border: "1px solid rgba(255,68,68,0.2)" }}
+                style={{
+                  background: "rgba(255,68,68,0.1)",
+                  color: "#ff6b6b",
+                  border: "1px solid rgba(255,68,68,0.2)",
+                }}
               >
                 {bulkError}
               </div>
@@ -550,7 +675,10 @@ export const Payouts = () => {
       </div>
 
       {/* ── Tabs ── */}
-      <div className="flex gap-[4px] p-[4px] rounded-[10px]" style={{ background: "#1a1a1a" }}>
+      <div
+        className="flex gap-[4px] p-[4px] rounded-[10px]"
+        style={{ background: "#1a1a1a" }}
+      >
         {(["pending", "history"] as const).map((t) => (
           <button
             key={t}
@@ -562,7 +690,9 @@ export const Payouts = () => {
               boxShadow: tab === t ? "0 1px 4px rgba(0,0,0,0.3)" : "none",
             }}
           >
-            {t === "pending" ? `Pending (${pendingGroups.length})` : `History (${historyGroups.length})`}
+            {t === "pending"
+              ? `Pending (${pendingGroups.length})`
+              : `History (${historyGroups.length})`}
           </button>
         ))}
       </div>
@@ -570,17 +700,26 @@ export const Payouts = () => {
       {/* ── Content ── */}
       {loading && (
         <div className="flex items-center justify-center py-[60px]">
-          <span className="text-[14px]" style={{ color: "rgba(255,255,255,0.3)" }}>
+          <span
+            className="text-[14px]"
+            style={{ color: "rgba(255,255,255,0.3)" }}
+          >
             Loading commissions…
           </span>
         </div>
       )}
-      {!loading && tab === "pending" && (
-        pendingGroups.length === 0 ? (
+      {!loading &&
+        tab === "pending" &&
+        (pendingGroups.length === 0 ? (
           <div className="flex flex-col items-center py-[60px] gap-[10px]">
             <span className="text-[36px]">✓</span>
-            <span className="text-[15px] font-semibold text-white">All caught up!</span>
-            <span className="text-[13px]" style={{ color: "rgba(255,255,255,0.35)" }}>
+            <span className="text-[15px] font-semibold text-white">
+              All caught up!
+            </span>
+            <span
+              className="text-[13px]"
+              style={{ color: "rgba(255,255,255,0.35)" }}
+            >
               No pending commissions this cycle.
             </span>
           </div>
@@ -590,13 +729,16 @@ export const Payouts = () => {
               <PromoterRow key={g.userId} group={g} onPaid={handlePaid} />
             ))}
           </div>
-        )
-      )}
-      {!loading && tab === "history" && (
-        historyGroups.length === 0 ? (
+        ))}
+      {!loading &&
+        tab === "history" &&
+        (historyGroups.length === 0 ? (
           <div className="flex flex-col items-center py-[60px] gap-[10px]">
             <span className="text-[36px]">📋</span>
-            <span className="text-[13px]" style={{ color: "rgba(255,255,255,0.35)" }}>
+            <span
+              className="text-[13px]"
+              style={{ color: "rgba(255,255,255,0.35)" }}
+            >
               No Wise payouts recorded yet.
             </span>
           </div>
@@ -606,8 +748,7 @@ export const Payouts = () => {
               <PromoterRow key={g.userId} group={g} onPaid={handlePaid} />
             ))}
           </div>
-        )
-      )}
+        ))}
     </div>
   );
 };

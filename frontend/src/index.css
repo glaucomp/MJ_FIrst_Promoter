@@ -244,7 +244,7 @@ body {
 .stat-value {
   display: block;                            /* Width: Fill */
   width: 100%;
-  font-size: var(--font-size-heading-m);     /* 32px — font-size-desktop-heading-m */
+  font-size: var(--font-size-body-l);     /* 32px — font-size-desktop-heading-m */
   line-height: var(--line-height-heading-m); /* 40px */
   font-weight: var(--font-weight-bold);      /* 700 */
   color: var(--color-text-primary);          /* #FFFFFF */
@@ -271,4 +271,17 @@ body {
 .tx-detail-enter {
   animation: tx-slide-down 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   overflow: hidden;
+}
+
+@media (width >= 64rem) {
+
+  .stat-value {
+  display: block;                            /* Width: Fill */
+  width: 100%;
+  font-size: var( --font-size-heading-m);     /* 32px — font-size-desktop-heading-m */
+  line-height: var(--line-height-heading-m); /* 40px */
+  font-weight: var(--font-weight-bold);      /* 700 */
+  color: var(--color-text-primary);          /* #FFFFFF */
+}
+  
 }
