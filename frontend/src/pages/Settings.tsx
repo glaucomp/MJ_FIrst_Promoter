@@ -171,7 +171,7 @@ export const Settings = () => {
   };
 
   return (
-    <div className="flex flex-col gap-[24px]">
+    <div className="flex flex-col gap-6">
       <h1 className="text-[28px] leading-[36px] font-semibold text-white">Settings</h1>
 
       {/* View Selection - Only for Team Managers */}

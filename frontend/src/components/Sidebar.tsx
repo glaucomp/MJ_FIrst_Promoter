@@ -47,7 +47,7 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
     <>
       <div
         className={`fixed top-0 left-0 h-screen bg-[#212121] border-r border-[rgba(255,255,255,0.03)] transition-all duration-300 z-50 ${
-          isOpen ? 'w-[239px]' : 'w-[80px]'
+          isOpen ? 'w-60' : 'w-16'
         }`}
         style={{
           boxShadow: '0px -1px 0px 0px rgba(255,255,255,0.1), 0px 4px 8px 0px rgba(0,0,0,0.4), 0px 8px 16px -4px rgba(0,0,0,0.3), 0px 24px 32px -8px rgba(0,0,0,0.2)'
@@ -58,7 +58,7 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
         }`}>
           <button
             onClick={toggleSidebar}
-            className="flex flex-col items-center gap-[5px] w-[40px]"
+            className="flex flex-col justify-start gap-[5px] "
           >
             <img
               src="/logo.png"
@@ -125,7 +125,7 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
 
           <button
             onClick={logout}
-            className="flex items-center justify-center px-[12px] py-[4px] rounded-[4px] hover:bg-[#292929]/50 h-[40px] w-full"
+            className="flex items-center justify-start px-[12px] rounded-[4px] hover:bg-[#292929]/50 h-[40px] w-full"
           >
             <span className="text-[18px] leading-none">🚪</span>
           </button>

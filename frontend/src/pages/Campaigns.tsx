@@ -134,7 +134,7 @@ export const Campaigns = () => {
   };
 
   return (
-    <div className="flex flex-col gap-[24px]">
+    <div className="flex flex-col gap-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-[28px] leading-[36px] font-semibold text-white">Campaigns</h1>

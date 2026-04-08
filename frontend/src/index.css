@@ -1,21 +1,133 @@
 @import "tailwindcss";
+@theme {
+
+  /* start of theme */ 
+
+
+  --color-border-subtle: hsla(0, 0%, 100%, 0.03);
+  --color-border-elevated: hsla(0, 0%, 100%, 0.05);
+
+  /* Primary */
+  --color-tm-primary-color01: #FF8FB4;
+  --color-tm-primary-color02: #FF5C92;
+  --color-tm-primary-color03: #FF4281;
+  --color-tm-primary-color04: #FF3377;
+  --color-tm-primary-color05: #FF2A71;
+  --color-tm-primary-color06: #FF1F69;
+  --color-tm-primary-color07: #FF0F5F;
+  --color-tm-primary-color08: #FE0055;
+  --color-tm-primary-color09: #E0004B;
+  --color-tm-primary-color10: #CC0044;
+  --color-tm-primary-color11: #990033;
+  --color-tm-primary-color12: #660022;
+
+  /* Secondary */
+  --color-tm-secondary-color01: #D7A6FF;
+  --color-tm-secondary-color02: #C47BFF;
+  --color-tm-secondary-color03: #B85CFF;
+  --color-tm-secondary-color04: #A83DF5;
+  --color-tm-secondary-color05: #9A2AFF;
+  --color-tm-secondary-color06: #8A1FE6;
+  --color-tm-secondary-color07: #7A16CC;
+  --color-tm-secondary-color08: #6612AD;
+  --color-tm-secondary-color09: #52108F;
+  --color-tm-secondary-color10: #3F0C6E;
+  --color-tm-secondary-color11: #2C084D;
+  --color-tm-secondary-color12: #19042E;
+
+  /* Neutral */
+  --color-tm-neutral-color01: #3A3E48;
+  --color-tm-neutral-color02: #333333;
+  --color-tm-neutral-color03: #2E2E2E;
+  --color-tm-neutral-color04: #292929;
+  --color-tm-neutral-color05: #23252A;
+  --color-tm-neutral-color06: #212121;
+  --color-tm-neutral-color07: #1C1C1C;
+  --color-tm-neutral-color08: #141414;
+  --color-tm-neutral-color09: #101010;
+  --color-tm-neutral-color10: #0C0C0C;
+  --color-tm-neutral-color11: #080808;
+  --color-tm-neutral-color12: #000000;
+
+  /* Danger */
+  --color-tm-danger-color01: #E77474;
+  --color-tm-danger-color02: #E35F5F;
+  --color-tm-danger-color03: #E05252;
+  --color-tm-danger-color04: #BF2222;
+  --color-tm-danger-color05: #FF2A2A;
+  --color-tm-danger-color06: #FF0D0D;
+  --color-tm-danger-color07: #FE0000;
+  --color-tm-danger-color08: #D90000;
+  --color-tm-danger-color09: #CC0000;
+  --color-tm-danger-color10: #C20000;
+  --color-tm-danger-color11: #990000;
+  --color-tm-danger-color12: #660000;
+
+  /* Success */
+  --color-tm-success-color01: #74E79A;
+  --color-tm-success-color02: #2AFF71;
+  --color-tm-success-color03: #27FF6F;
+  --color-tm-success-color04: #5FE38B;
+  --color-tm-success-color05: #28FF70;
+  --color-tm-success-color06: #22BF56;
+  --color-tm-success-color07: #0DFF5E;
+  --color-tm-success-color08: #00FE55;
+  --color-tm-success-color09: #00D948;
+  --color-tm-success-color10: #00C241;
+  --color-tm-success-color11: #009933;
+  --color-tm-success-color12: #006622;
+
+  /* Warning */
+  --color-tm-warning-color01: #E7CA74;
+  --color-tm-warning-color02: #E3C25F;
+  --color-tm-warning-color03: #E0BD52;
+  --color-tm-warning-color04: #BF9722;
+  --color-tm-warning-color05: #FFA62A;
+  --color-tm-warning-color06: #FF9A0D;
+  --color-tm-warning-color07: #FE9400;
+  --color-tm-warning-color08: #D97F00;
+  --color-tm-warning-color09: #CC7700;
+  --color-tm-warning-color10: #C27100;
+  --color-tm-warning-color11: #995900;
+  --color-tm-warning-color12: #663C00;
+
+  /* Text */
+  --color-tm-text-color01: #FFFFFF;
+  --color-tm-text-color02: #F5F5F5;
+  --color-tm-text-color03: #E6E6E6;
+  --color-tm-text-color04: #D6D6D6;
+  --color-tm-text-color05: #C7C7C7;
+  --color-tm-text-color06: #C2C2C2;
+  --color-tm-text-color07: #B2B2B2;
+  --color-tm-text-color08: #9E9E9E;
+  --color-tm-text-color09: #7A7A7A;
+  --color-tm-text-color10: #5E5E5E;
+  --color-tm-text-color11: #3F3F3F;
+  --color-tm-text-color12: #2B2B2B;
+
+
+  /**************** END of theme *************/ 
+
+}
+
+
+* {
+  box-sizing: border-box;
+}
+
 
 :root {
-  /* ── Brand / Accent (tm-primary) ── */
-  --color-accent:        #FF2A71;
-  --color-accent-bright: #FF0F5F;
-  --color-accent-dark:   #E0004B;
-  --color-accent-bg:     rgba(255, 15, 95, 0.15);
-  --color-accent-border: rgba(255, 15, 95, 0.5);
+
+
 
   /* ── Semantic status ── */
-  --color-success:    #10B981;
-  --color-success-bg: rgba(16, 185, 129, 0.15);
-  --color-danger:     #EF4444;
-  --color-danger-bg:  rgba(239, 68, 68, 0.15);
-  --color-warning:    #FBBF24;
-  --color-warning-bg: rgba(251, 191, 36, 0.15);
-  --color-positive:   #00E676;
+  --color-success:    oklab(69.58800000000001% -0.14217 0.04481);
+  --color-success-bg: oklch(69.588% 0.14907 162.508 / 0.15);
+  --color-danger:     oklch(63.681% 0.20784 25.315);
+  --color-danger-bg:  oklch(63.681% 0.20784 25.315 / 0.15);
+  --color-warning:    oklch(83.685% 0.16435 84.431);
+  --color-warning-bg: oklch(83.685% 0.16435 84.431 / 0.15);
+  --color-positive:   oklch(80.988% 0.21413 151.79);
 
   /* ── Tier colors ── */
   --color-t1:        #60A5FA;
@@ -38,19 +150,19 @@
   --color-text-faded:     #666666;
 
   /* ── Surfaces (tm-neutral) ── */
-  --color-bg:             #1C1C1C;  /* tm-neutral-color07 — page background */
-  --color-surface:        #212121;  /* tm-neutral-color06 — card gradient start */
-  --color-surface-end:    #23252A;  /* tm-neutral-color05 — card gradient end */
-  --color-surface-raised: #292929;  /* tm-neutral-color04 */
-  --color-surface-overlay: #3A3E48; /* chart bar / inactive element fill */
-  --color-surface-hover:   rgba(255, 255, 255, 0.02);
-  --color-surface-item:    rgba(255, 255, 255, 0.05);
-  --color-surface-inset:   rgba(255, 255, 255, 0.03);
+  --color-bg:             oklch(22.645% 0.00003 271.152);  /* tm-neutral-color07 — page background */
+  --color-surface:        oklch(24.776% 0.00003 271.152);  /* tm-neutral-color06 — card gradient start */
+  --color-surface-end:    oklch(26.45% 0.00979 268.322);  /* tm-neutral-color05 — card gradient end */
+  --color-surface-raised: oklch(28.094% 0.00003 271.152);  /* tm-neutral-color04 */
+  --color-surface-overlay: oklch(36.401% 0.01811 268.201); /* chart bar / inactive element fill */
+  --color-surface-hover:   oklch(100% 0.00011 271.152 / 0.02);
+  --color-surface-item:    oklch(100% 0.00011 271.152 / 0.05);
+  --color-surface-inset:   oklch(100% 0.00011 271.152 / 0.03);
 
   /* ── Borders (token-matched) ── */
-  --border-subtle:   rgba(255, 255, 255, 0.03);  /* border-subtle token  ~3%  */
-  --border-elevated: rgba(255, 255, 255, 0.05);  /* border-elevated token ~5% */
-  --border-faint:    rgba(255, 255, 255, 0.10);
+  --border-subtle:   oklch(100% 0.00011 271.152 / 0.03);  /* border-subtle token  ~3%  */
+  --border-elevated: oklch(100% 0.00011 271.152 / 0.05);  /* border-elevated token ~5% */
+  --border-faint:    oklch(100% 0.00011 271.152 / 0.1);
   --border-medium:   rgba(255, 255, 255, 0.08);
   --border-strong:   rgba(255, 255, 255, 0.1);
   --border-hairline: rgba(255, 255, 255, 0.12);
@@ -80,12 +192,12 @@
   --shadow-rim-light: 0 -1px 0 0 rgba(255, 255, 255, 0.1);
 
   /* ── Border radius (from tokens) ── */
-  --radius-s:    4px;
-  --radius-m:    8px;
-  --radius-card: 12px;
-  --radius-l:    16px;
-  --radius-xl:   20px;
-  --radius-round: 100px;
+  --radius-s:    0.25rem;
+  --radius-m:    0.5rem;
+  --radius-card: 0.75rem;
+  --radius-l:    1rem;
+  --radius-xl:   1.25rem;
+  --radius-round: 6.25rem;
 
   /* ── Layout (from tokens) ── */
   --mobile-top-spacer:    64px;
@@ -95,25 +207,21 @@
 
   /* ── Typography (from tokens) ── */
   --font-family-primary:      'DM Sans', sans-serif;
-  --font-size-label:          12px;   /* font-size-body-label */
-  --font-size-body-s:         14px;   /* font-size-body-s */
-  --font-size-body-m:         16px;   /* font-size-body-m */
-  --font-size-body-l:         20px;   /* font-size-body-l */
-  --font-size-heading-m:      32px;   /* font-size-desktop-heading-m */
-  --line-height-heading-m:    40px;
-  --font-size-heading-l:      40px;   /* font-size-desktop-heading-l */
-  --line-height-heading-l:    48px;
+  --font-size-label:          0.75rem;   /* font-size-body-label */
+  --font-size-body-s:         0.875rem;   /* font-size-body-s */
+  --font-size-body-m:         1rem;   /* font-size-body-m */
+  --font-size-body-l:         1.25rem;   /* font-size-body-l */
+  --font-size-heading-m:      2rem;   /* font-size-desktop-heading-m */
+  --line-height-heading-m:    2.5rem;
+  --font-size-heading-l:      2.5rem;   /* font-size-desktop-heading-l */
+  --line-height-heading-l:    3rem;
   --font-weight-regular:      400;
   --font-weight-medium:       500;
   --font-weight-semibold:     600;
   --font-weight-bold:         700;
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+
 
 body {
   font-family: var(--font-family-primary);
