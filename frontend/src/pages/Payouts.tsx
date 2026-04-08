@@ -527,7 +527,7 @@ export const Payouts = () => {
 
       {/* ── Fortnight cycle card ── */}
       <div className=" p-5
-       lg:p-10 flex flex-col bg-linear-to-l from-tm-neutral-color06 to-tm-neutral-color05 rounded-lg shadow-[0px_8px_8px_-2px_rgba(0,0,0,0.05)] shadow-[0px_2px_2px_0px_rgba(0,0,0,0.10)] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.10)] outline-1 outline-offset-1 outline-border-subtle/5 items-start gap-2">
+       lg:p-10 flex flex-col bg-linear-to-l from-tm-neutral-color06 to-tm-neutral-color05 rounded-lg shadow-[0px_8px_8px_-2px_rgba(0,0,0,0.05),0px_2px_2px_0px_rgba(0,0,0,0.10),0px_-1px_0px_0px_rgba(255,255,255,0.10)] outline-1 outline-offset-1 outline-border-subtle/5 items-start gap-2">
         <div className="flex items-start flex-col lg:flex-row lg:justify-between w-full gap-4">
           <div className="flex items-start gap-3 flex-col lg:flex-row">
             <div
