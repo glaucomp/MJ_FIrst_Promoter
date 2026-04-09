@@ -120,6 +120,7 @@ export const getAllTransactions = async (req: AuthRequest, res: Response) => {
                   firstName: true,
                   lastName: true,
                   email: true,
+                  userType: true,
                 },
               },
             },
