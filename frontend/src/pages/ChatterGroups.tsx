@@ -425,20 +425,14 @@ export const ChatterGroups = () => {
     setIsLoading(true);
     setError('');
     try {
-      const [groupsRes, chattersRes, usersRes] = await Promise.all([
+      const [groupsRes, chattersRes, promotersRes] = await Promise.all([
         chatterGroupsApi.list(),
         chattersApi.list(),
-        modelsApi.getAllUsers(),
+        modelsApi.getPromoters(),
       ]);
       setGroups(groupsRes.groups);
       setChatters(chattersRes.chatters);
-      // Include promoters and team managers — both can generate sales and be linked to a chatter group
-      setPromoters(
-        usersRes.filter(u => {
-          const t = u.userType?.toLowerCase();
-          return t === 'promoter' || t === 'team_manager';
-        })
-      );
+      setPromoters(promotersRes);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load data');
     } finally {

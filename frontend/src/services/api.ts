@@ -181,6 +181,14 @@ export const modelsApi = {
     return data.users;
   },
 
+  async getPromoters(): Promise<ApiUser[]> {
+    const response = await fetch(`${API_URL}/users/promoters`, {
+      headers: getAuthHeaders(),
+    });
+    const data = await handleResponse(response, 'Failed to fetch promoters');
+    return data.users;
+  },
+
   async getCampaigns(): Promise<Campaign[]> {
     const response = await fetch(`${API_URL}/campaigns`, {
       headers: getAuthHeaders(),
