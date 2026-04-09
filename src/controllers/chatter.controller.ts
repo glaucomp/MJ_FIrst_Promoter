@@ -24,7 +24,10 @@ export const createChatter = async (req: AuthRequest, res: Response) => {
 
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      return res.status(400).json({
+        error: 'Validation failed',
+        errors: errors.array(),
+      });
     }
 
     const { email, password, firstName, lastName } = req.body;
