@@ -91,6 +91,9 @@ export const getChatterGroup = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ error: 'Not authenticated' });
     }
 
+    if (!isAccountManagerOrAdmin(req)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
     const { id } = req.params;
 
     const group = await prisma.chatterGroup.findUnique({
