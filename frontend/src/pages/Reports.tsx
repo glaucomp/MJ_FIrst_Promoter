@@ -1968,7 +1968,7 @@ export const Reports = () => {
                         let btnBg = "transparent";
                         if (isEndpoint)
                           btnBg =
-                            "linear-gradient(135deg, var(--color-tm-primary-color06), var(--color-tm-primary-color11)";
+                            "linear-gradient(135deg, var(--color-tm-primary-color06), var(--color-tm-primary-color11))";
                         else if (isToday) btnBg = "rgba(255,15,95,0.12)";
                         let btnColor = "rgba(255,255,255,0.8)";
                         if (isEndpoint) btnColor = "var(--color-text-primary)";
