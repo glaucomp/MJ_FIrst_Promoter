@@ -7,6 +7,8 @@ import { Reports } from './pages/Reports';
 import { Settings } from './pages/Settings';
 import { Campaigns } from './pages/Campaigns';
 import { Payouts } from './pages/Payouts';
+import { Chatters } from './pages/Chatters';
+import { ChatterGroups } from './pages/ChatterGroups';
 import { Login } from './pages/Login';
 import type { ReactNode } from 'react';
 import type { UserRole } from './types';
@@ -84,6 +86,26 @@ function AppRoutes() {
           <ProtectedRoute>
             <DashboardLayout>
               <Models />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/chatters"
+        element={
+          <ProtectedRoute allowedRoles={['account_manager']}>
+            <DashboardLayout>
+              <Chatters />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/chatter-groups"
+        element={
+          <ProtectedRoute allowedRoles={['account_manager']}>
+            <DashboardLayout>
+              <ChatterGroups />
             </DashboardLayout>
           </ProtectedRoute>
         }

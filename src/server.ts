@@ -5,6 +5,8 @@ import apiV1Routes from "./routes/api.v1.routes";
 import apiV2Routes from "./routes/api.v2.routes";
 import authRoutes from "./routes/auth.routes";
 import campaignRoutes from "./routes/campaign.routes";
+import chatterRoutes from "./routes/chatter.routes";
+import chatterGroupRoutes from "./routes/chatter-group.routes";
 import commissionRoutes from "./routes/commission.routes";
 import customerRoutes from "./routes/customer.routes";
 import transactionRoutes from "./routes/transaction.routes";
@@ -35,6 +37,8 @@ app.use("/api/public", publicRoutes);
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/campaigns", campaignRoutes);
+app.use("/api/chatters", chatterRoutes);
+app.use("/api/chatter-groups", chatterGroupRoutes);
 app.use("/api/referrals", referralRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/dashboard", dashboardRoutes);

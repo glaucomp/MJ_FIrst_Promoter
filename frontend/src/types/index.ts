@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'team_manager' | 'account_manager' | 'promoter';
+export type UserRole = 'admin' | 'team_manager' | 'account_manager' | 'promoter' | 'chatter';
 
 export interface User {
   id: string;
@@ -10,6 +10,34 @@ export interface User {
   wiseEmail?: string | null;
   wiseRecipientId?: string | null;
   wiseRecipientType?: string | null;
+}
+
+export interface Chatter {
+  id: string;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  isActive: boolean;
+  createdAt: string;
+  groups: Pick<ChatterGroup, 'id' | 'name'>[];
+}
+
+export interface ChatterGroupMember {
+  id: string;
+  assignedAt: string;
+  chatterId: string;
+  chatter: Pick<Chatter, 'id' | 'email' | 'firstName' | 'lastName'>;
+}
+
+export interface ChatterGroup {
+  id: string;
+  name: string;
+  commissionPercentage: number;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: { id: string; email: string; firstName: string | null; lastName: string | null };
+  members: ChatterGroupMember[];
+  promoter: { id: string; email: string; firstName: string | null; lastName: string | null } | null;
 }
 
 export interface DashboardStats {
