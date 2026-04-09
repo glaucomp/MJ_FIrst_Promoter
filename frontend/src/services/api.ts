@@ -624,7 +624,7 @@ export const chatterGroupsApi = {
     return handleResponse(response, 'Failed to get chatter group');
   },
 
-  async create(data: { name: string; commissionPercentage: number }): Promise<{ group: import('../types').ChatterGroup }> {
+  async create(data: { name: string; commissionPercentage: number; tag?: string | null }): Promise<{ group: import('../types').ChatterGroup }> {
     const response = await fetch(`${API_URL}/chatter-groups`, {
       method: 'POST',
       headers: getAuthHeaders(),
@@ -633,7 +633,7 @@ export const chatterGroupsApi = {
     return handleResponse(response, 'Failed to create chatter group');
   },
 
-  async update(id: string, data: { name?: string; commissionPercentage?: number }): Promise<{ group: import('../types').ChatterGroup }> {
+  async update(id: string, data: { name?: string; commissionPercentage?: number; tag?: string | null }): Promise<{ group: import('../types').ChatterGroup }> {
     const response = await fetch(`${API_URL}/chatter-groups/${id}`, {
       method: 'PUT',
       headers: getAuthHeaders(),

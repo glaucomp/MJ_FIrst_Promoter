@@ -195,55 +195,7 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
     const revenue = amount / 100;
     const campaign = referral.campaign;
 
-    // Create Customer record
-    const customer = await prisma.customer.create({
-      data: {
-        email: email || `uid-${uid}@temp.com`,
-        name: email ? email.split('@')[0] : `User ${uid}`,
-        revenue,
-        subscriptionType: plan || 'one-time',
-        status: 'active',
-        campaignId: campaign.id,
-        referralId: referral.id,
-        metadata: event_id
-      }
-    });
-
-    // Create Transaction record (source of truth for the sale)
-    const transaction = await prisma.transaction.create({
-      data: {
-        eventId: event_id,
-        type: 'sale',
-        saleAmount: revenue,
-        status: 'completed',
-        plan: plan || null,
-        customerId: customer.id,
-        campaignId: campaign.id,
-        referralId: referral.id,
-      }
-    });
-
-    // Create Level 1 Commission
-    const level1Amount = (revenue * campaign.commissionRate) / 100;
-
-    const commission1 = await prisma.commission.create({
-      data: {
-        amount: level1Amount,
-        percentage: campaign.commissionRate,
-        saleAmount: revenue,
-        status: 'unpaid',
-        description: `Direct customer sale ($${revenue.toFixed(2)})`,
-        userId: referral.referrerId,
-        campaignId: campaign.id,
-        referralId: referral.id,
-        customerId: customer.id,
-        transactionId: transaction.id,
-      }
-    });
-
-    console.log(`✅ Commission created: $${level1Amount.toFixed(2)} for ${referral.referrer.email}`);
-
-    // Chatter group commission — paid on top of the promoter's commission
+    // Read chatter group data before the write transaction (read-only, no connection held)
     const promoterWithGroup = await prisma.user.findUnique({
       where: { id: referral.referrerId },
       select: {
@@ -252,91 +204,151 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
           select: {
             id: true,
             commissionPercentage: true,
-            members: {
-              select: { chatterId: true },
-            },
+            members: { select: { chatterId: true } },
           },
         },
       },
     });
 
-    const chatterCommissions: { id: string; chatterId: string; amount: number }[] = [];
-
-    if (
+    // Pre-compute all amounts before entering the transaction
+    const level1Amount = (revenue * campaign.commissionRate) / 100;
+    const group =
       promoterWithGroup?.chatterGroup &&
       promoterWithGroup.chatterGroup.members.length > 0
-    ) {
-      const group = promoterWithGroup.chatterGroup;
-      const groupAmount = (revenue * group.commissionPercentage) / 100;
-      const perChatter = groupAmount / group.members.length;
+        ? promoterWithGroup.chatterGroup
+        : null;
+    const perChatter = group
+      ? (revenue * group.commissionPercentage) / 100 / group.members.length
+      : 0;
+    const level2Amount =
+      referral.parentReferral && (campaign.secondaryRate ?? 0) > 0
+        ? (revenue * campaign.secondaryRate!) / 100
+        : 0;
+    const level3Amount =
+      referral.parentReferral?.parentReferral && (campaign.recurringRate ?? 0) > 0
+        ? (revenue * campaign.recurringRate!) / 100
+        : 0;
 
-      for (const member of group.members) {
-        const cc = await prisma.commission.create({
+    // Single atomic transaction — all writes succeed or all roll back
+    const { customer, transaction, commission1, chatterCommissions, commission2, commission3 } =
+      await prisma.$transaction(async (tx) => {
+        const customer = await tx.customer.create({
           data: {
-            amount: perChatter,
-            percentage: group.commissionPercentage / group.members.length,
+            email: email || `uid-${uid}@temp.com`,
+            name: email ? email.split('@')[0] : `User ${uid}`,
+            revenue,
+            subscriptionType: plan || 'one-time',
+            status: 'active',
+            campaignId: campaign.id,
+            referralId: referral.id,
+            metadata: event_id,
+          },
+        });
+
+        const transaction = await tx.transaction.create({
+          data: {
+            eventId: event_id,
+            type: 'sale',
+            saleAmount: revenue,
+            status: 'completed',
+            plan: plan || null,
+            customerId: customer.id,
+            campaignId: campaign.id,
+            referralId: referral.id,
+          },
+        });
+
+        const commission1 = await tx.commission.create({
+          data: {
+            amount: level1Amount,
+            percentage: campaign.commissionRate,
             saleAmount: revenue,
             status: 'unpaid',
-            type: 'chatter',
-            description: `Chatter commission from ${referral.referrer.firstName || referral.referrer.email}'s sale ($${revenue.toFixed(2)})`,
-            userId: member.chatterId,
+            description: `Direct customer sale ($${revenue.toFixed(2)})`,
+            userId: referral.referrerId,
             campaignId: campaign.id,
             referralId: referral.id,
             customerId: customer.id,
             transactionId: transaction.id,
           },
         });
-        chatterCommissions.push({ id: cc.id, chatterId: member.chatterId, amount: perChatter });
-      }
 
-      console.log(`✅ Chatter commissions: $${perChatter.toFixed(2)} × ${group.members.length} chatters from group ${group.id}`);
-    }
-
-    let commission2 = null;
-    let commission3 = null;
-
-    // Create T2 Commission (upline — person who invited the direct earner)
-    if (referral.parentReferral && campaign.secondaryRate && campaign.secondaryRate > 0) {
-      const level2Amount = (revenue * campaign.secondaryRate) / 100;
-
-      commission2 = await prisma.commission.create({
-        data: {
-          amount: level2Amount,
-          percentage: campaign.secondaryRate,
-          saleAmount: revenue,
-          status: 'unpaid',
-          description: `T2 upline from ${referral.referrer.firstName}'s sale ($${revenue.toFixed(2)})`,
-          userId: referral.parentReferral.referrerId,
-          campaignId: campaign.id,
-          referralId: referral.parentReferral.id,
-          customerId: customer.id,
-          transactionId: transaction.id,
+        // Chatter commissions — parallel creates inside the same transaction
+        const chatterCommissions: { id: string; chatterId: string; amount: number }[] = [];
+        if (group) {
+          const created = await Promise.all(
+            group.members.map((member) =>
+              tx.commission.create({
+                data: {
+                  amount: perChatter,
+                  percentage: group.commissionPercentage / group.members.length,
+                  saleAmount: revenue,
+                  status: 'unpaid',
+                  type: 'chatter',
+                  description: `Chatter commission from ${referral.referrer.firstName || referral.referrer.email}'s sale ($${revenue.toFixed(2)})`,
+                  userId: member.chatterId,
+                  campaignId: campaign.id,
+                  referralId: referral.id,
+                  customerId: customer.id,
+                  transactionId: transaction.id,
+                },
+              })
+            )
+          );
+          created.forEach((cc, i) =>
+            chatterCommissions.push({ id: cc.id, chatterId: group.members[i].chatterId, amount: perChatter })
+          );
         }
+
+        let commission2 = null;
+        let commission3 = null;
+
+        if (level2Amount > 0 && referral.parentReferral) {
+          commission2 = await tx.commission.create({
+            data: {
+              amount: level2Amount,
+              percentage: campaign.secondaryRate!,
+              saleAmount: revenue,
+              status: 'unpaid',
+              description: `T2 upline from ${referral.referrer.firstName}'s sale ($${revenue.toFixed(2)})`,
+              userId: referral.parentReferral.referrerId,
+              campaignId: campaign.id,
+              referralId: referral.parentReferral.id,
+              customerId: customer.id,
+              transactionId: transaction.id,
+            },
+          });
+
+          if (level3Amount > 0 && referral.parentReferral.parentReferral) {
+            commission3 = await tx.commission.create({
+              data: {
+                amount: level3Amount,
+                percentage: campaign.recurringRate!,
+                saleAmount: revenue,
+                status: 'unpaid',
+                description: `T3 account manager from ${referral.referrer.firstName}'s sale ($${revenue.toFixed(2)})`,
+                userId: referral.parentReferral.parentReferral.referrerId,
+                campaignId: campaign.id,
+                referralId: referral.parentReferral.parentReferral.id,
+                customerId: customer.id,
+                transactionId: transaction.id,
+              },
+            });
+          }
+        }
+
+        return { customer, transaction, commission1, chatterCommissions, commission2, commission3 };
       });
 
-      console.log(`✅ T2 Commission: $${level2Amount.toFixed(2)} for ${referral.parentReferral.referrer.email}`);
-
-      // Create T3 Commission (Account Manager — 2 levels up, uses recurringRate)
-      if (referral.parentReferral.parentReferral && campaign.recurringRate && campaign.recurringRate > 0) {
-        const level3Amount = (revenue * campaign.recurringRate) / 100;
-
-        commission3 = await prisma.commission.create({
-          data: {
-            amount: level3Amount,
-            percentage: campaign.recurringRate,
-            saleAmount: revenue,
-            status: 'unpaid',
-            description: `T3 account manager from ${referral.referrer.firstName}'s sale ($${revenue.toFixed(2)})`,
-            userId: referral.parentReferral.parentReferral.referrerId,
-            campaignId: campaign.id,
-            referralId: referral.parentReferral.parentReferral.id,
-            customerId: customer.id,
-            transactionId: transaction.id,
-          }
-        });
-
-        console.log(`✅ T3 Commission: $${level3Amount.toFixed(2)} for ${referral.parentReferral.parentReferral.referrer.email}`);
-      }
+    console.log(`✅ Commission created: $${level1Amount.toFixed(2)} for ${referral.referrer.email}`);
+    if (group) {
+      console.log(`✅ Chatter commissions: $${perChatter.toFixed(2)} × ${group.members.length} chatters from group ${group.id}`);
+    }
+    if (commission2) {
+      console.log(`✅ T2 Commission: $${level2Amount.toFixed(2)} for ${referral.parentReferral?.referrer.email}`);
+    }
+    if (commission3) {
+      console.log(`✅ T3 Commission: $${level3Amount.toFixed(2)} for ${referral.parentReferral?.parentReferral?.referrer.email}`);
     }
 
     res.status(200).json({
@@ -466,139 +478,146 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
     }
 
     const refundRevenue = amount / 100; // amount is in cents, convert to dollars
-    const campaign = customer.referral.campaign;
+    const referral = customer.referral; // narrowed: null already excluded above
+    const campaign = referral.campaign;
 
-    // Find original transaction to link refund
-    const originalTransaction = await prisma.transaction.findFirst({
-      where: { customerId: customer.id, type: 'sale' }
-    });
-
-    // Create refund Transaction record
-    const refundTransaction = await prisma.transaction.create({
-      data: {
-        eventId: `refund-${event_id}`,
-        type: 'refund',
-        saleAmount: refundRevenue,
-        status: 'refunded',
-        customerId: customer.id,
-        campaignId: campaign.id,
-        referralId: customer.referral.id,
-        originalTransactionId: originalTransaction?.id ?? null,
-      }
-    });
-
-    // Create negative commission for Level 1
-    const level1RefundAmount = -(refundRevenue * campaign.commissionRate) / 100;
-
-    await prisma.commission.create({
-      data: {
-        amount: level1RefundAmount,
-        percentage: campaign.commissionRate,
-        saleAmount: refundRevenue,
-        status: 'paid',
-        description: `Refund ($${refundRevenue.toFixed(2)})`,
-        userId: customer.referral.referrerId,
-        campaignId: campaign.id,
-        referralId: customer.referral.id,
-        customerId: customer.id,
-        transactionId: refundTransaction.id,
-      }
-    });
-
-    // Negative chatter commissions for the refund
-    const promoterWithGroupRefund = await prisma.user.findUnique({
-      where: { id: customer.referral.referrerId },
-      select: {
-        chatterGroup: {
-          select: {
-            id: true,
-            commissionPercentage: true,
-            members: { select: { chatterId: true } },
+    // Read-only lookups before the write transaction
+    const [originalTransaction, promoterWithGroupRefund] = await Promise.all([
+      prisma.transaction.findFirst({ where: { customerId: customer.id, type: 'sale' } }),
+      prisma.user.findUnique({
+        where: { id: referral.referrerId },
+        select: {
+          chatterGroup: {
+            select: {
+              id: true,
+              commissionPercentage: true,
+              members: { select: { chatterId: true } },
+            },
           },
         },
-      },
-    });
+      }),
+    ]);
 
-    if (
+    // Pre-compute all refund amounts before entering the transaction
+    const level1RefundAmount = -(refundRevenue * campaign.commissionRate) / 100;
+    const refundGroup =
       promoterWithGroupRefund?.chatterGroup &&
       promoterWithGroupRefund.chatterGroup.members.length > 0
-    ) {
-      const group = promoterWithGroupRefund.chatterGroup;
-      const groupRefundAmount = -(refundRevenue * group.commissionPercentage) / 100;
-      const perChatterRefund = groupRefundAmount / group.members.length;
+        ? promoterWithGroupRefund.chatterGroup
+        : null;
+    const perChatterRefund = refundGroup
+      ? -(refundRevenue * refundGroup.commissionPercentage) / 100 / refundGroup.members.length
+      : 0;
+    const level2RefundAmount =
+      referral.parentReferral && (campaign.secondaryRate ?? 0) > 0
+        ? -(refundRevenue * campaign.secondaryRate!) / 100
+        : 0;
+    const level3RefundAmount =
+      referral.parentReferral?.parentReferral && (campaign.recurringRate ?? 0) > 0
+        ? -(refundRevenue * campaign.recurringRate!) / 100
+        : 0;
 
-      for (const member of group.members) {
-        await prisma.commission.create({
+    // Single atomic transaction — all writes succeed or all roll back
+    const refundTransaction = await prisma.$transaction(async (tx) => {
+      const refundTransaction = await tx.transaction.create({
+        data: {
+          eventId: `refund-${event_id}`,
+          type: 'refund',
+          saleAmount: refundRevenue,
+          status: 'refunded',
+          customerId: customer.id,
+          campaignId: campaign.id,
+          referralId: referral.id,
+          originalTransactionId: originalTransaction?.id ?? null,
+        },
+      });
+
+      await tx.commission.create({
+        data: {
+          amount: level1RefundAmount,
+          percentage: campaign.commissionRate,
+          saleAmount: refundRevenue,
+          status: 'paid',
+          description: `Refund ($${refundRevenue.toFixed(2)})`,
+          userId: referral.referrerId,
+          campaignId: campaign.id,
+          referralId: referral.id,
+          customerId: customer.id,
+          transactionId: refundTransaction.id,
+        },
+      });
+
+      // Negative chatter commissions — parallel creates inside the same transaction
+      if (refundGroup) {
+        await Promise.all(
+          refundGroup.members.map((member) =>
+            tx.commission.create({
+              data: {
+                amount: perChatterRefund,
+                percentage: refundGroup.commissionPercentage / refundGroup.members.length,
+                saleAmount: refundRevenue,
+                status: 'paid',
+                type: 'chatter',
+                description: `Chatter refund ($${refundRevenue.toFixed(2)})`,
+                userId: member.chatterId,
+                campaignId: campaign.id,
+                referralId: referral.id,
+                customerId: customer.id,
+                transactionId: refundTransaction.id,
+              },
+            })
+          )
+        );
+      }
+
+      if (level2RefundAmount !== 0 && referral.parentReferral) {
+        await tx.commission.create({
           data: {
-            amount: perChatterRefund,
-            percentage: group.commissionPercentage / group.members.length,
+            amount: level2RefundAmount,
+            percentage: campaign.secondaryRate!,
             saleAmount: refundRevenue,
             status: 'paid',
-            type: 'chatter',
-            description: `Chatter refund ($${refundRevenue.toFixed(2)})`,
-            userId: member.chatterId,
+            description: `T2 refund ($${refundRevenue.toFixed(2)})`,
+            userId: referral.parentReferral.referrerId,
             campaignId: campaign.id,
-            referralId: customer.referral.id,
+            referralId: referral.parentReferral.id,
             customerId: customer.id,
             transactionId: refundTransaction.id,
           },
         });
-      }
-    }
 
-    // Create negative commission for T2 (if exists)
-    if (customer.referral.parentReferral && campaign.secondaryRate && campaign.secondaryRate > 0) {
-      const level2RefundAmount = -(refundRevenue * campaign.secondaryRate) / 100;
-
-      await prisma.commission.create({
-        data: {
-          amount: level2RefundAmount,
-          percentage: campaign.secondaryRate,
-          saleAmount: refundRevenue,
-          status: 'paid',
-          description: `T2 refund ($${refundRevenue.toFixed(2)})`,
-          userId: customer.referral.parentReferral.referrerId,
-          campaignId: campaign.id,
-          referralId: customer.referral.parentReferral.id,
-          customerId: customer.id,
-          transactionId: refundTransaction.id,
+        if (level3RefundAmount !== 0 && referral.parentReferral.parentReferral) {
+          await tx.commission.create({
+            data: {
+              amount: level3RefundAmount,
+              percentage: campaign.recurringRate!,
+              saleAmount: refundRevenue,
+              status: 'paid',
+              description: `T3 account manager refund ($${refundRevenue.toFixed(2)})`,
+              userId: referral.parentReferral.parentReferral.referrerId,
+              campaignId: campaign.id,
+              referralId: referral.parentReferral.parentReferral.id,
+              customerId: customer.id,
+              transactionId: refundTransaction.id,
+            },
+          });
         }
+      }
+
+      await tx.customer.update({
+        where: { id: customer.id },
+        data: { status: 'cancelled' },
       });
 
-      // Create negative commission for T3 (Account Manager, if exists)
-      if (customer.referral.parentReferral.parentReferral && campaign.recurringRate && campaign.recurringRate > 0) {
-        const level3RefundAmount = -(refundRevenue * campaign.recurringRate) / 100;
-
-        await prisma.commission.create({
-          data: {
-            amount: level3RefundAmount,
-            percentage: campaign.recurringRate,
-            saleAmount: refundRevenue,
-            status: 'paid',
-            description: `T3 account manager refund ($${refundRevenue.toFixed(2)})`,
-            userId: customer.referral.parentReferral.parentReferral.referrerId,
-            campaignId: campaign.id,
-            referralId: customer.referral.parentReferral.parentReferral.id,
-            customerId: customer.id,
-            transactionId: refundTransaction.id,
-          }
+      if (originalTransaction) {
+        await tx.transaction.update({
+          where: { id: originalTransaction.id },
+          data: { status: 'refunded' },
         });
       }
-    }
 
-    // Update customer status
-    await prisma.customer.update({
-      where: { id: customer.id },
-      data: { status: 'cancelled' }
+      return refundTransaction;
     });
-
-    // Mark original transaction as refunded
-    if (originalTransaction) {
-      await prisma.transaction.update({
-        where: { id: originalTransaction.id },
-        data: { status: 'refunded' }
-      });
-    }
 
     res.json({
       success: true,
