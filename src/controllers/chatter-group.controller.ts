@@ -60,8 +60,8 @@ export const createChatterGroup = async (req: AuthRequest, res: Response) => {
 // GET /api/chatter-groups — list all chatter groups
 export const listChatterGroups = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ error: 'Not authenticated' });
+    if (!isAccountManagerOrAdmin(req)) {
+      return res.status(403).json({ error: 'Only admins or account managers can list chatter groups' });
     }
 
     const groups = await prisma.chatterGroup.findMany({
