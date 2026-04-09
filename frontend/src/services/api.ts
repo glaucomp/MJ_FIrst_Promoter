@@ -181,6 +181,14 @@ export const modelsApi = {
     return data.users;
   },
 
+  async getPromoters(): Promise<ApiUser[]> {
+    const response = await fetch(`${API_URL}/users/promoters`, {
+      headers: getAuthHeaders(),
+    });
+    const data = await handleResponse(response, 'Failed to fetch promoters');
+    return data.users;
+  },
+
   async getCampaigns(): Promise<Campaign[]> {
     const response = await fetch(`${API_URL}/campaigns`, {
       headers: getAuthHeaders(),
@@ -573,6 +581,107 @@ export const wiseApi = {
       headers: getAuthHeaders(),
     });
     return handleResponse(response, 'Failed to get payout status');
+  },
+};
+
+export const chattersApi = {
+  async list(): Promise<{ chatters: import('../types').Chatter[] }> {
+    const response = await fetch(`${API_URL}/chatters`, { headers: getAuthHeaders() });
+    return handleResponse(response, 'Failed to list chatters');
+  },
+
+  async get(id: string): Promise<{ chatter: import('../types').Chatter }> {
+    const response = await fetch(`${API_URL}/chatters/${id}`, { headers: getAuthHeaders() });
+    return handleResponse(response, 'Failed to get chatter');
+  },
+
+  async create(data: { email: string; password: string; firstName?: string; lastName?: string }): Promise<{ chatter: import('../types').Chatter }> {
+    const response = await fetch(`${API_URL}/chatters`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+    return handleResponse(response, 'Failed to create chatter');
+  },
+
+  async delete(id: string): Promise<{ message: string }> {
+    const response = await fetch(`${API_URL}/chatters/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response, 'Failed to delete chatter');
+  },
+};
+
+export const chatterGroupsApi = {
+  async list(): Promise<{ groups: import('../types').ChatterGroup[] }> {
+    const response = await fetch(`${API_URL}/chatter-groups`, { headers: getAuthHeaders() });
+    return handleResponse(response, 'Failed to list chatter groups');
+  },
+
+  async get(id: string): Promise<{ group: import('../types').ChatterGroup }> {
+    const response = await fetch(`${API_URL}/chatter-groups/${id}`, { headers: getAuthHeaders() });
+    return handleResponse(response, 'Failed to get chatter group');
+  },
+
+  async create(data: { name: string; commissionPercentage: number }): Promise<{ group: import('../types').ChatterGroup }> {
+    const response = await fetch(`${API_URL}/chatter-groups`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+    return handleResponse(response, 'Failed to create chatter group');
+  },
+
+  async update(id: string, data: { name?: string; commissionPercentage?: number }): Promise<{ group: import('../types').ChatterGroup }> {
+    const response = await fetch(`${API_URL}/chatter-groups/${id}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+    return handleResponse(response, 'Failed to update chatter group');
+  },
+
+  async delete(id: string): Promise<{ message: string }> {
+    const response = await fetch(`${API_URL}/chatter-groups/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response, 'Failed to delete chatter group');
+  },
+
+  async addMember(groupId: string, chatterId: string): Promise<{ member: import('../types').ChatterGroupMember }> {
+    const response = await fetch(`${API_URL}/chatter-groups/${groupId}/members`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ chatterId }),
+    });
+    return handleResponse(response, 'Failed to add member to chatter group');
+  },
+
+  async removeMember(groupId: string, chatterId: string): Promise<{ message: string }> {
+    const response = await fetch(`${API_URL}/chatter-groups/${groupId}/members/${chatterId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response, 'Failed to remove member from chatter group');
+  },
+
+  async linkPromoter(groupId: string, promoterId: string): Promise<{ promoter: { id: string; email: string } }> {
+    const response = await fetch(`${API_URL}/chatter-groups/${groupId}/promoter`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ promoterId }),
+    });
+    return handleResponse(response, 'Failed to link promoter to chatter group');
+  },
+
+  async unlinkPromoter(groupId: string, promoterId: string): Promise<{ message: string }> {
+    const response = await fetch(`${API_URL}/chatter-groups/${groupId}/promoter/${promoterId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response, 'Failed to unlink promoter from chatter group');
   },
 };
 

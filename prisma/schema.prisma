@@ -20,6 +20,7 @@ enum UserType {
   ACCOUNT_MANAGER
   TEAM_MANAGER
   PROMOTER
+  CHATTER
 }
 
 enum ReferralStatus {
@@ -70,6 +71,10 @@ model User {
   wiseRecipientId       String?            // Wise recipient account ID (number stored as string)
   wiseRecipientType     String?            // e.g. "aba", "iban", "email", "australian"
 
+  // Chatter group link for promoters (one promoter → one group)
+  chatterGroupId        String?            @unique
+  chatterGroup          ChatterGroup?      @relation("PromoterChatterGroup", fields: [chatterGroupId], references: [id], onDelete: SetNull)
+
   // Relationships
   createdCampaigns      Campaign[]         @relation("CampaignCreator")
   referralsMade         Referral[]         @relation("ReferrerReferrals")
@@ -78,11 +83,14 @@ model User {
   trackingLinks         TrackingLink[]
   clickTracking         ClickTracking[]
   apiKeys               ApiKey[]
+  chatterGroupMemberships ChatterGroupMember[]
+  createdChatterGroups  ChatterGroup[]     @relation("ChatterGroupCreator")
 
   @@index([email])
   @@index([username])
   @@index([role])
   @@index([inviteCode])
+  @@index([chatterGroupId])
   @@map("users")
 }
 
@@ -271,6 +279,9 @@ model Commission {
   wiseTransferId  String?    // Wise transfer ID when paid via Wise
   wiseStatus      String?    // Wise transfer status (e.g. processing, outgoing_payment_sent, funds_converted)
 
+  // Distinguishes promoter commissions from chatter commissions
+  type            String   @default("promoter") // "promoter" | "chatter"
+
   // Relationships
   userId          String
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -288,5 +299,44 @@ model Commission {
   @@index([status])
   @@index([customerId])
   @@index([transactionId])
+  @@index([type])
   @@map("commissions")
+}
+
+// ChatterGroup — a named group of chatters with a commission percentage
+model ChatterGroup {
+  id                   String   @id @default(cuid())
+  name                 String
+  commissionPercentage Float    // Percentage of sale amount paid to chatters in this group
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  // Account manager who created this group
+  createdById          String
+  createdBy            User     @relation("ChatterGroupCreator", fields: [createdById], references: [id])
+
+  // Chatters that are members of this group (many-to-many)
+  members              ChatterGroupMember[]
+
+  // Promoter linked to this group (one-to-one via User.chatterGroupId)
+  promoter             User?    @relation("PromoterChatterGroup")
+
+  @@index([createdById])
+  @@map("chatter_groups")
+}
+
+// Junction table: many-to-many between chatters and chatter groups
+model ChatterGroupMember {
+  id         String       @id @default(cuid())
+  assignedAt DateTime     @default(now())
+
+  chatterId  String
+  chatter    User         @relation(fields: [chatterId], references: [id], onDelete: Cascade)
+  groupId    String
+  group      ChatterGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([chatterId, groupId])
+  @@index([chatterId])
+  @@index([groupId])
+  @@map("chatter_group_members")
 }

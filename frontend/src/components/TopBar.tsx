@@ -1,17 +1,22 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
+import type { UserRole } from '../types';
+
 interface NavItem {
   id: string;
   icon: string;
   label: string;
   path: string;
   adminOnly?: boolean;
+  allowedRoles?: UserRole[];
 }
 
 const navItems: NavItem[] = [
   { id: 'dashboard', icon: '📊', label: 'Dashboard', path: '/dashboard' },
   { id: 'models', icon: '👥', label: 'Models', path: '/models' },
+  { id: 'chatters', icon: '💬', label: 'Chatters', path: '/chatters', allowedRoles: ['account_manager'] },
+  { id: 'chatter-groups', icon: '🗂️', label: 'Chatter Groups', path: '/chatter-groups', allowedRoles: ['account_manager'] },
   { id: 'campaigns', icon: '🎯', label: 'Campaigns', path: '/campaigns', adminOnly: true },
   { id: 'reports', icon: '📈', label: 'Reports', path: '/reports' },
   { id: 'payouts', icon: '💸', label: 'Payouts', path: '/payouts', adminOnly: true },
@@ -42,7 +47,11 @@ export const TopBar = () => {
 
         {/* Navigation - Centered */}
         <nav className="flex items-center gap-[8px] absolute left-1/2 -translate-x-1/2">
-          {navItems.filter(item => !item.adminOnly || user?.baseRole === 'admin').map((item) => {
+          {navItems.filter(item => {
+            if (item.adminOnly) return user?.baseRole === 'admin';
+            if (item.allowedRoles) return item.allowedRoles.includes(user?.baseRole as UserRole);
+            return true;
+          }).map((item) => {
             const isActive = location.pathname === item.path;
             return (
               <button
