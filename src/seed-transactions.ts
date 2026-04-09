@@ -192,27 +192,31 @@ async function main() {
       },
     });
 
-    // Nando earns chatter commission
-    if (kellyGroup && nandoUser && kellyGroup.members.length > 0) {
+    // Chatter group members earn chatter commission
+    if (kellyGroup && kellyGroup.members.length > 0) {
       const memberCount = kellyGroup.members.length;
       const perChatter = (sale.amount * kellyGroup.commissionPercentage) / 100 / memberCount;
-      await prisma.commission.create({
-        data: {
-          amount: perChatter,
-          percentage: kellyGroup.commissionPercentage / memberCount,
-          saleAmount: sale.amount,
-          status: sale.status,
-          type: 'chatter',
-          description: `Chatter commission from Kelly's sale ($${sale.amount})`,
-          userId: nandoUser.id,
-          campaignId: sof2kelly.campaignId,
-          referralId: sof2kelly.id,
-          customerId: customer.id,
-          transactionId: transaction.id,
-          createdAt,
-        },
-      });
-      console.log(`✅ Kelly sale $${sale.amount} → Kelly $${(sale.amount * 30) / 100}, Sofia $${(sale.amount * 5) / 100}, Nando $${perChatter.toFixed(2)} (chatter)`);
+
+      for (const member of kellyGroup.members) {
+        await prisma.commission.create({
+          data: {
+            amount: perChatter,
+            percentage: kellyGroup.commissionPercentage / memberCount,
+            saleAmount: sale.amount,
+            status: sale.status,
+            type: 'chatter',
+            description: `Chatter commission from Kelly's sale ($${sale.amount})`,
+            userId: member.chatterId,
+            campaignId: sof2kelly.campaignId,
+            referralId: sof2kelly.id,
+            customerId: customer.id,
+            transactionId: transaction.id,
+            createdAt,
+          },
+        });
+      }
+
+      console.log(`✅ Kelly sale $${sale.amount} → Kelly $${(sale.amount * 30) / 100}, Sofia $${(sale.amount * 5) / 100}, ${memberCount} chatter${memberCount === 1 ? '' : 's'} $${perChatter.toFixed(2)} each`);
     } else {
       console.log(`✅ Kelly sale $${sale.amount} → Kelly $${(sale.amount * 30) / 100}, Sofia $${(sale.amount * 5) / 100}`);
     }
