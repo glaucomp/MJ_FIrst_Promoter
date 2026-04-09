@@ -107,9 +107,9 @@ const WiseBadge = ({ recipientId }: { recipientId: string | null }) =>
     <span
       className="inline-flex items-center gap-[5px] text-sm font-semibold px-[8px] py-[2px] rounded-full"
       style={{
-        background: "rgba(0,185,255,0.12)",
-        color: "#00b9ff",
-        border: "1px solid rgba(0,185,255,0.25)",
+        background: "oklch(0.857 0.17 134.6 / 0.2)",
+        color: "oklch(0.857 0.17 134.6 )",
+        border: "1px solid oklch(0.857 0.17 134.6 / 0.2)",
       }}
     >
       <StatusDot ok /> Wise ID {recipientId}
@@ -180,8 +180,8 @@ const PromoterRow = ({
       }}
     >
       {/* Row header */}
-      <div className="flex items-center gap-[12px] px-[16px] py-[14px] bg-[#1e1e1e]">
-        {/* Avatar */}
+      <div className="flex lg:items-center flex-col lg:flex-row gap-[12px] px-[16px] py-[14px] bg-[#1e1e1e] lg:grid lg:grid-cols-2">
+      <div className="flex lg:items-center flex-row gap-4">  {/* Avatar */}
         <div
           className="w-[36px] h-[36px] rounded-full flex items-center justify-center text-[13px] font-bold text-white shrink-0"
           style={{ background: "linear-gradient(135deg,#ff0f5f,#cc0047)" }}
@@ -203,11 +203,11 @@ const PromoterRow = ({
           >
             {group.email}
           </div>
-        </div>
+        </div></div>
 
         {/* Amount + pay button */}
-        <div className="flex items-center gap-[10px] shrink-0">
-          <div className="text-right">
+        <div className="grid grid-col-2 lg:flex items-center gap-[10px] shrink-0 lg:justify-end ">
+          <div className="lg:text-right  flex flex-row-reverse justify-between items-center lg:items-end lg:gap-0 w-full lg:flex-col">
             <div className="text-[15px] font-bold text-white">
               ${money(group.totalOwed)}
             </div>
@@ -223,51 +223,11 @@ const PromoterRow = ({
               {plural(unpaidCommissions.length, "commission")}
             </div>
           </div>
-
-          {unpaidCommissions.length > 0 && (
-            <button
-              onClick={handlePayAll}
-              disabled={!canPay || loading}
-              title={
-                group.wiseRecipientId
-                  ? undefined
-                  : "No Wise recipient configured"
-              }
-              className="text-[12px] font-bold px-[14px] py-[8px] rounded-[8px] transition-all disabled:opacity-40 whitespace-nowrap"
-              style={{
-                background:
-                  canPay && !loading
-                    ? "linear-gradient(135deg,#00b9ff,#0066ff)"
-                    : "rgba(255,255,255,0.06)",
-                color: canPay ? "white" : "rgba(255,255,255,0.3)",
-                boxShadow:
-                  canPay && !loading
-                    ? "0 2px 12px rgba(0,185,255,0.3)"
-                    : "none",
-                cursor: canPay ? "pointer" : "not-allowed",
-              }}
-            >
-              {loading ? "Sending…" : "Pay via Wise"}
-            </button>
-          )}
-
-          {unpaidCommissions.length === 0 && (
-            <span
-              className="text-sm font-semibold px-[10px] py-[5px] rounded-full"
-              style={{
-                background: "rgba(0,217,72,0.12)",
-                color: "#00d948",
-                border: "1px solid rgba(0,217,72,0.25)",
-              }}
-            >
-              Paid ✓
-            </span>
-          )}
-
-          {/* Expand toggle */}
+<div className="flex flex-col-reverse gap-2 lg:flex-row lg:gap-4">
+       {/* Expand toggle */}
           <button
             onClick={() => setExpanded((p) => !p)}
-            className="w-[28px] h-[28px] flex items-center justify-center rounded-[6px] transition-colors"
+            className="h-8 flex items-center justify-center rounded-[6px] transition-colors w-full lg:w-12 lg:h-auto"
             style={{
               border: "1px solid rgba(255,255,255,0.08)",
               color: "rgba(255,255,255,0.3)",
@@ -289,6 +249,48 @@ const PromoterRow = ({
               />
             </svg>
           </button>
+
+
+
+
+          {unpaidCommissions.length > 0 && (
+            <button
+              onClick={handlePayAll}
+              disabled={!canPay || loading}
+              title={
+                group.wiseRecipientId
+                  ? undefined
+                  : "No Wise recipient configured"
+              }
+              className="text-[12px] font-bold px-[14px] py-[8px] rounded-[8px] transition-all  whitespace-nowrap"
+              style={{
+                background:
+                  canPay && !loading
+                    ? "linear-gradient(0deg, rgb(44, 81, 31), rgb(159, 232, 112))"
+                    : "none",
+                color: canPay && !loading ? "#163400" : "#8D8D8D",
+                         cursor: canPay && !loading ? "pointer" : "not-allowed",
+              }}
+            >
+              {loading ? "Sending…" : "Pay via Wise"}
+            </button>
+          )}
+</div>
+
+          {unpaidCommissions.length === 0 && (
+            <span
+              className="text-sm font-semibold px-[10px] py-[5px] rounded-full"
+              style={{
+                background: "rgba(0,217,72,0.12)",
+                color: "#00d948",
+                border: "1px solid rgba(0,217,72,0.25)",
+              }}
+            >
+              Paid ✓
+            </span>
+          )}
+
+     
         </div>
       </div>
 
@@ -312,7 +314,7 @@ const PromoterRow = ({
           className="flex flex-col"
           style={{
             borderTop: "1px solid rgba(255,255,255,0.05)",
-            background: "#181818",
+            background: "var(--color-tm-neutral-color05)",
           }}
         >
           {group.commissions.map((c, i) => {
@@ -320,7 +322,7 @@ const PromoterRow = ({
             return (
               <div
                 key={c.id}
-                className="flex items-center gap-[12px] px-[16px] py-[10px]"
+                className="flex flex-wrap items-center gap-[12px] px-[16px] py-[10px] "
                 style={{
                   borderBottom:
                     i < group.commissions.length - 1
@@ -328,8 +330,8 @@ const PromoterRow = ({
                       : "none",
                 }}
               >
-                <div className="flex-1 min-w-0">
-                  <div className="text-[12px] text-white">
+                <div className="lg:flex-1 lg:min-w-0 w-full">
+                  <div className="text-base lg:text-sm text-white">
                     {c.campaign?.name ?? "—"}
                   </div>
                   <div
@@ -343,20 +345,23 @@ const PromoterRow = ({
                     })}
                   </div>
                 </div>
-                <span
+             <div className="flex flex-row justify-between w-full lg:w-fit lg:gap-3">
+   <div
                   className="text-sm shrink-0"
                   style={{ color: "rgba(255,255,255,0.3)" }}
                 >
                   {c.percentage}%
-                </span>
-                <span
+                </div>
+                <div
                   className="text-[13px] font-bold shrink-0"
                   style={{ color: c.amount >= 0 ? "#00d948" : "#ff4444" }}
                 >
                   ${money(Math.abs(c.amount))}
-                </span>
+                </div>
+
+             </div>
                 <span
-                  className="text-[10px] font-semibold px-[7px] py-[2px] rounded-full capitalize shrink-0"
+                  className="text-[10px] font-semibold px-[7px] py-[2px] rounded-full capitalize shrink-0 w-full text-center lg:w-fit"
                   style={getStatusStyle(c.status)}
                 >
                   {c.status}
@@ -527,7 +532,7 @@ export const Payouts = () => {
 
       {/* ── Fortnight cycle card ── */}
       <div className=" p-5
-       lg:p-10 flex flex-col bg-linear-to-l from-tm-neutral-color06 to-tm-neutral-color05 rounded-lg shadow-[0px_8px_8px_-2px_rgba(0,0,0,0.05),0px_2px_2px_0px_rgba(0,0,0,0.10),0px_-1px_0px_0px_rgba(255,255,255,0.10)] outline-1 outline-offset-1 outline-border-subtle/5 items-start gap-2">
+       lg:p-10 flex flex-col bg-linear-to-b from-tm-neutral-color06 to-tm-neutral-color05 rounded-xl shadow-[0px_8px_8px_-2px_rgba(0,0,0,0.05),0px_2px_2px_0px_rgba(0,0,0,0.10),0px_-1px_0px_0px_rgba(255,255,255,0.10)] outline-1 outline-offset-1 outline-border-subtle/5 items-start gap-2">
         <div className="flex items-start flex-col lg:flex-row lg:justify-between w-full gap-4">
           <div className="flex items-start gap-3 flex-col lg:flex-row">
             <div
@@ -640,22 +645,23 @@ export const Payouts = () => {
 
         {/* Pay all ready button */}
         {readyCount > 0 && (
-          <div className="flex flex-col gap-[8px]">
+          <div className="flex flex-col gap-[8px] w-full items-end">
             <button
               onClick={handlePayAllReady}
               disabled={bulkLoading}
-              className="w-full py-[13px] rounded-[10px] text-[14px] font-bold text-white transition-all disabled:opacity-50"
+              className={( !bulkLoading ? "animate-bounce-custom " : "" ) + "w-full py-[13px] px-6 rounded-[10px] text-sm tracking-tight font-bold transition-all disabled:opacity-50 max-w-fit"}
               style={{
                 background: bulkLoading
-                  ? "rgba(0,185,255,0.25)"
-                  : "linear-gradient(135deg,#00b9ff,#0066ff)",
-                boxShadow: bulkLoading
                   ? "none"
-                  : "0 4px 20px rgba(0,185,255,0.35)",
+                  : "linear-gradient(0deg, rgb(44, 81, 31), rgb(159, 232, 112))",
+                    color: bulkLoading
+                  ? "var(--color-tm-text-color02)"
+                  : "#163400",
+            
               }}
             >
               {bulkLoading
-                ? "Processing payments…"
+                ? "◐ Processing payments…"
                 : `Pay All Ready — $${money(readyTotal)} to ${plural(readyCount, "promoter")}`}
             </button>
             {bulkError && (
