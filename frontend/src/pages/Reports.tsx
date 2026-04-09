@@ -170,10 +170,10 @@ interface BadgeProps {
 }
 const ChangeBadge = ({ value, positive }: BadgeProps) => (
   <span
-    className="inline-flex items-center gap-[8px] px-2 py-1 rounded-xl border text-[14px] leading-[1.4] font-bold"
+    className="inline-flex items-center gap-2 px-2 py-1 rounded-xl border text-[14px] leading-[1.4] font-bold"
     style={{
-      background: positive ? "var(--color-success)" : "var(--color-danger)",
-      color: "var(--color-text-primary)",
+      background: positive ? "#006622" : "var(--color-tm-danger-color12)",
+      color: positive ? "#28ff70" : "#ff2a2a",
     }}
   >
     {positive ? "↑" : "↓"} {Math.abs(value)}%
@@ -1968,12 +1968,12 @@ export const Reports = () => {
                         let btnBg = "transparent";
                         if (isEndpoint)
                           btnBg =
-                            "linear-gradient(135deg, var(--color-accent-bright), var(--color-accent-dark))";
+                            "linear-gradient(135deg, var(--color-tm-primary-color06), var(--color-tm-primary-color11)";
                         else if (isToday) btnBg = "rgba(255,15,95,0.12)";
                         let btnColor = "rgba(255,255,255,0.8)";
                         if (isEndpoint) btnColor = "var(--color-text-primary)";
                         else if (isToday)
-                          btnColor = "var(--color-accent-bright)";
+                          btnColor = "white";
                         return (
                           <div
                             key={`cell-${calViewYear}-${calViewMonth}-${i}`}
@@ -2003,12 +2003,9 @@ export const Reports = () => {
                                 background: btnBg,
                                 color: btnColor,
                                 fontWeight: isEndpoint || isToday ? 700 : 400,
-                                boxShadow: isEndpoint
-                                  ? "0 4px 14px rgba(255,15,95,0.5)"
-                                  : "none",
-                                outline:
+                                border:
                                   isToday && !isEndpoint
-                                    ? "1px solid rgba(255,15,95,0.4)"
+                                    ? "1px dashed var(--color-tm-primary-color05)"
                                     : "none",
                               }}
                               onClick={() => handleCalDayClick(day)}
@@ -2051,15 +2048,12 @@ export const Reports = () => {
                         className="text-[13px] font-semibold px-[20px] py-[8px] rounded-[8px] transition-all"
                         style={{
                           background: calRangeStart
-                            ? "linear-gradient(135deg, var(--color-accent-bright), var(--color-accent-dark))"
+                            ? "linear-gradient(135deg, var(--color-tm-primary-color05), var(--color-tm-primary-color12))"
                             : "var(--border-faint)",
                           color: calRangeStart
                             ? "var(--color-text-primary)"
                             : "rgba(255,255,255,0.3)",
-                          boxShadow: calRangeStart
-                            ? "0 4px 16px rgba(255,15,95,0.4)"
-                            : "none",
-                          cursor: calRangeStart ? "pointer" : "default",
+                        cursor: calRangeStart ? "pointer" : "default",
                         }}
                       >
                         Apply
