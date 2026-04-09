@@ -15,7 +15,7 @@ export const StatCard = ({ label, value, change, className = '' }: StatCardProps
     >
       <p className="text-[#9e9e9e] text-[16px] leading-[1.4] font-bold uppercase tracking-[0.2px] w-full">{label}</p>
       <div className="flex flex-col gap-[16px] items-start w-full flex-1 min-h-0">
-        <p className="text-color-tm-text-color02 text-l leading-[1.4] font-bold lg:text-2xl">{value}</p>
+        <p className="text-tm-text-color02 text-lg leading-[1.4] font-bold lg:text-2xl">{value}</p>
         {change !== undefined && (
           <div
             className={`flex items-center gap-[8px] px-2 py-1 rounded-xl border text-[14px] leading-[1.4] font-bold ${
