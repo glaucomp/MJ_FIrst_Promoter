@@ -593,8 +593,19 @@ const AdminTxRow = ({
                     </div>
                     {/* Name */}
                     <div className="flex-1 min-w-0">
-                      <div className="text-[12px] font-medium text-white truncate">
-                        {c.user.firstName} {c.user.lastName}
+                      <div className="flex items-center gap-[5px]">
+                        <div className="text-[12px] font-medium text-white truncate min-w-0 flex-1">
+                          {c.user.firstName} {c.user.lastName}
+                        </div>
+                        <span
+                          className="text-[9px] font-semibold px-[5px] py-px rounded-full shrink-0 capitalize"
+                          style={{
+                            background: "var(--border-elevated)",
+                            color: "var(--color-text-subtle)",
+                          }}
+                        >
+                          {c.user.userType?.replaceAll("_", " ").toLowerCase() ?? "promoter"}
+                        </span>
                       </div>
                       <div
                         className="text-[10px] truncate"

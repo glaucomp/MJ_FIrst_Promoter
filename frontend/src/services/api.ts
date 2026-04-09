@@ -360,6 +360,7 @@ export interface TransactionFull {
       firstName: string | null;
       lastName: string | null;
       email: string;
+      userType: string;
     };
   }[];
 }
