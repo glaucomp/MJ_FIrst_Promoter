@@ -90,7 +90,6 @@ model User {
   @@index([username])
   @@index([role])
   @@index([inviteCode])
-  @@index([chatterGroupId])
   @@map("users")
 }
 
