@@ -32,6 +32,7 @@ export interface ChatterGroupMember {
 export interface ChatterGroup {
   id: string;
   name: string;
+  tag: string | null;
   commissionPercentage: number;
   createdAt: string;
   updatedAt: string;

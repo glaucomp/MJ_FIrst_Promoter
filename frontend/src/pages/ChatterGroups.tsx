@@ -14,6 +14,7 @@ interface GroupFormModalProps {
 
 const GroupFormModal = ({ isOpen, onClose, onSaved, editing }: GroupFormModalProps) => {
   const [name, setName] = useState('');
+  const [tag, setTag] = useState('');
   const [pct, setPct] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -21,6 +22,7 @@ const GroupFormModal = ({ isOpen, onClose, onSaved, editing }: GroupFormModalPro
   useEffect(() => {
     if (isOpen) {
       setName(editing?.name ?? '');
+      setTag(editing?.tag ?? '');
       setPct(editing ? String(editing.commissionPercentage) : '');
       setError('');
     }
@@ -38,11 +40,12 @@ const GroupFormModal = ({ isOpen, onClose, onSaved, editing }: GroupFormModalPro
     setError('');
     try {
       let group: ChatterGroup;
+      const tagValue = tag.trim() || null;
       if (editing) {
-        const res = await chatterGroupsApi.update(editing.id, { name: name.trim(), commissionPercentage: pctNum });
+        const res = await chatterGroupsApi.update(editing.id, { name: name.trim(), commissionPercentage: pctNum, tag: tagValue });
         group = res.group;
       } else {
-        const res = await chatterGroupsApi.create({ name: name.trim(), commissionPercentage: pctNum });
+        const res = await chatterGroupsApi.create({ name: name.trim(), commissionPercentage: pctNum, tag: tagValue });
         group = res.group;
       }
       onSaved(group);
@@ -73,6 +76,18 @@ const GroupFormModal = ({ isOpen, onClose, onSaved, editing }: GroupFormModalPro
             placeholder="e.g. Night Shift Team"
             className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[14px] py-[11px] text-[15px] text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
           />
+        </div>
+
+        <div className="flex flex-col gap-[8px]">
+          <label className="text-[#9e9e9e] text-[12px] font-bold uppercase tracking-[0.2px]">Tag <span className="normal-case font-normal">(optional)</span></label>
+          <input
+            type="text"
+            value={tag}
+            onChange={e => setTag(e.target.value)}
+            placeholder="e.g. night-shift, vip"
+            className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[14px] py-[11px] text-[15px] text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
+          />
+          <p className="text-[#9e9e9e] text-[12px]">A short label to identify or filter this group.</p>
         </div>
 
         <div className="flex flex-col gap-[8px]">
@@ -124,9 +139,16 @@ const ManageMembersModal = ({ isOpen, onClose, group, allChatters, onGroupUpdate
   const [isAdding, setIsAdding] = useState<string | null>(null);
   const [isRemoving, setIsRemoving] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
 
   const memberIds = new Set(group.members.map(m => m.chatterId));
   const nonMembers = allChatters.filter(c => !memberIds.has(c.id));
+
+  const matchesSearch = (name: string, email: string) => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return name.toLowerCase().includes(q) || email.toLowerCase().includes(q);
+  };
 
   const handleAdd = async (chatterId: string) => {
     setIsAdding(chatterId);
@@ -171,6 +193,15 @@ const ManageMembersModal = ({ isOpen, onClose, group, allChatters, onGroupUpdate
           <button onClick={onClose} className="text-[#9e9e9e] hover:text-white text-[24px] leading-none">×</button>
         </div>
 
+        {/* Search */}
+        <input
+          type="text"
+          placeholder="Search by name or email…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="w-full bg-[#1a1a1a] border border-[rgba(255,255,255,0.08)] rounded-[8px] px-[14px] py-[10px] text-white text-[14px] placeholder-[#9e9e9e] outline-none focus:border-[rgba(255,255,255,0.2)] transition-colors"
+        />
+
         {error && (
           <div className="bg-[#660000] border border-[#cc0000] rounded-[8px] px-[16px] py-[12px]">
             <p className="text-[#ff2a2a] text-[14px] font-medium">{error}</p>
@@ -186,7 +217,7 @@ const ManageMembersModal = ({ isOpen, onClose, group, allChatters, onGroupUpdate
             <p className="text-[#9e9e9e] text-[14px]">No chatters in this group yet.</p>
           ) : (
             <div className="flex flex-col gap-[8px]">
-              {group.members.map(m => (
+              {group.members.filter(m => matchesSearch(chatterName(m.chatter), m.chatter.email)).map(m => (
                 <div key={m.id} className="flex items-center justify-between bg-[#1a1a1a] border border-[rgba(255,255,255,0.08)] rounded-[8px] px-[14px] py-[10px]">
                   <div>
                     <p className="text-white text-[14px] font-medium">{chatterName(m.chatter)}</p>
@@ -206,13 +237,13 @@ const ManageMembersModal = ({ isOpen, onClose, group, allChatters, onGroupUpdate
         </div>
 
         {/* Available chatters to add */}
-        {nonMembers.length > 0 && (
+        {nonMembers.filter(c => matchesSearch(chatterName(c), c.email)).length > 0 && (
           <div>
             <p className="text-[#9e9e9e] text-[12px] font-bold uppercase tracking-[0.2px] mb-[10px]">
               Add Chatter
             </p>
             <div className="flex flex-col gap-[8px]">
-              {nonMembers.map(c => (
+              {nonMembers.filter(c => matchesSearch(chatterName(c), c.email)).map(c => (
                 <div key={c.id} className="flex items-center justify-between bg-[#1a1a1a] border border-[rgba(255,255,255,0.05)] rounded-[8px] px-[14px] py-[10px]">
                   <div>
                     <p className="text-white text-[14px] font-medium">{chatterName(c)}</p>
@@ -526,7 +557,14 @@ export const ChatterGroups = () => {
               {/* Group header row */}
               <div className="flex items-start justify-between gap-[16px]">
                 <div className="flex flex-col gap-[4px]">
-                  <h3 className="text-white text-[18px] font-bold">{group.name}</h3>
+                  <div className="flex items-center gap-[8px]">
+                    <h3 className="text-white text-[18px] font-bold">{group.name}</h3>
+                    {group.tag && (
+                      <span className="px-[8px] py-[2px] rounded-[100px] text-[11px] font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e]">
+                        {group.tag}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-[#9e9e9e] text-[13px]">
                     Commission: <span className="text-white font-semibold">{group.commissionPercentage}%</span>
                     {group.members.length > 0 && (

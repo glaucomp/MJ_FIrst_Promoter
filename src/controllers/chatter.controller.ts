@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { PrismaClient, UserRole, UserType } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { nanoid } from 'nanoid';
+import { validationResult } from 'express-validator';
 import { AuthRequest } from '../middleware/auth.middleware';
 
 const prisma = new PrismaClient();
@@ -21,11 +22,12 @@ export const createChatter = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ error: 'Only admins or account managers can create chatters' });
     }
 
-    const { email, password, firstName, lastName } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ error: 'email and password are required' });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
     }
+
+    const { email, password, firstName, lastName } = req.body;
 
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
