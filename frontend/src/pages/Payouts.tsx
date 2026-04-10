@@ -515,7 +515,7 @@ export const Payouts = () => {
     <div className="flex flex-col gap-6">
       {/* ── Page title ── */}
       <div className="flex items-center justify-between">
-        <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">
+        <h1 className="text-[28px] leading-[36px] font-semibold text-white ">
           Payouts
         </h1>
         <span
