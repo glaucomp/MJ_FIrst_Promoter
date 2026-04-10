@@ -128,7 +128,7 @@ export const Commissions = () => {
     <div className="flex flex-col gap-6">
       {/* Header */}
       <div>
-        <h1 className="text-[28px] leading-[36px] font-semibold text-white font-['DM_Sans',sans-serif]">
+        <h1 className="text-[28px] leading-[36px] font-semibold text-white font-['DM_Sans',sans-serif] lg:w-full">
           Commissions
         </h1>
         <p className="text-[14px] text-[#9e9e9e] mt-[4px]">

@@ -5,7 +5,7 @@ import { InviteModal } from '../components/InviteModal';
 import { CreateUserModal } from '../components/CreateUserModal';
 
 const SessionExpiredBanner = ({ onLogout }: { onLogout: () => void }) => (
-  <div className="bg-[#660000] border border-[#cc0000] rounded-[8px] p-[16px] flex flex-col gap-[12px]">
+  <div className="bg-tm-danger-color12 border border-[#cc0000] rounded-[8px] p-[16px] flex flex-col gap-[12px]">
     <p className="text-[#ff2a2a] text-[14px] font-bold">Session expired</p>
     <p className="text-[#ff8080] text-[13px]">
       Your login session is no longer valid. This usually happens after the server restarts.
@@ -90,7 +90,7 @@ export const Models = () => {
   if (isLoading) {
     return (
       <div className="flex flex-col gap-6">
-        <h1 className="text-[28px] leading-[36px] font-semibold text-white">Models</h1>
+        <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">Models</h1>
         <p className="text-[16px] text-[#9e9e9e]">Loading...</p>
       </div>
     );
@@ -101,8 +101,8 @@ export const Models = () => {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex items-start justify-between flex-col lg:flex-row gap-3">
-          <h1 className="text-[28px] leading-[36px] font-semibold text-white">All Users</h1>
-          <div className="flex items-center gap-4">
+          <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">All Users</h1>
+          <div className="flex items-center  justify-between lg:justify-end lg:gap-4 w-full">
             <p className="text-[16px] text-[#9e9e9e]">{allUsers.length} total</p>
             <button
               onClick={() => setIsCreateUserModalOpen(true)}
@@ -137,8 +137,8 @@ export const Models = () => {
                     <span
                       className={`px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border ${
                         apiUser.isActive
-                          ? 'bg-[#006622] border-[#00d948] text-[#28ff70]'
-                          : 'bg-[#660000] border-[#cc0000] text-[#ff2a2a]'
+                          ? 'bg-tm-success-color12 border-[#00d948] text-[#28ff70]'
+                          : 'bg-tm-danger-color12 border-[#cc0000] text-[#ff2a2a]'
                       }`}
                     >
                       {apiUser.isActive ? 'Active' : 'Inactive'}
@@ -168,7 +168,7 @@ export const Models = () => {
                       <button
                         onClick={() => handleDeleteUser(apiUser.id)}
                         disabled={deletingUserId === apiUser.id}
-                        className="px-[10px] py-[4px] rounded-[6px] text-[12px] font-bold bg-[#660000] border border-[#cc0000] text-[#ff2a2a] hover:bg-[#880000] disabled:opacity-50 transition-colors"
+                        className="px-[10px] py-[4px] rounded-[6px] text-[12px] font-bold bg-tm-danger-color12 border border-[#cc0000] text-[#ff2a2a] hover:bg-[#880000] disabled:opacity-50 transition-colors"
                       >
                         {deletingUserId === apiUser.id ? '...' : 'Yes'}
                       </button>
@@ -215,7 +215,7 @@ export const Models = () => {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-[28px] leading-[36px] font-semibold text-white">My Promoters</h1>
+          <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">My Promoters</h1>
           <button
             onClick={() => handleOpenInviteModal('referral')}
             className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
@@ -251,7 +251,7 @@ export const Models = () => {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-[28px] leading-[36px] font-semibold text-white">Referral Link</h1>
+          <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">Referral Link</h1>
         </div>
 
         <p className="text-[14px] text-[#9e9e9e]">
@@ -280,7 +280,7 @@ export const Models = () => {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-[28px] leading-[36px] font-semibold text-white">My Team</h1>
+          <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">My Team</h1>
           <button
             onClick={() => handleOpenInviteModal('referral')}
             className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
@@ -316,7 +316,7 @@ export const Models = () => {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-[28px] leading-[36px] font-semibold text-white">My Tracking Links</h1>
+          <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">My Tracking Links</h1>
           <button
             onClick={() => handleOpenInviteModal('tracking')}
             className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
@@ -389,7 +389,7 @@ export const Models = () => {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-[28px] leading-[36px] font-semibold text-white">Models</h1>
+      <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">Models</h1>
       <p className="text-[#9e9e9e] text-[16px]">Access denied</p>
     </div>
   );
@@ -435,12 +435,12 @@ const ReferralList = ({ referrals }: { referrals: Referral[] }) => {
                 <span
                   className={`px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border ${
                     referral.status === 'ACTIVE'
-                      ? 'bg-[#006622] border-[#00d948] text-[#28ff70]'
+                      ? 'bg-tm-success-color12 border-[#00d948] text-[#28ff70]'
                       : referral.status === 'PENDING'
                       ? 'bg-[#664400] border-[#cc8800] text-[#ffaa00]'
                       : referral.status === 'INACTIVE'
                       ? 'bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]'
-                      : 'bg-[#660000] border-[#cc0000] text-[#ff2a2a]'
+                      : 'bg-tm-danger-color12 border-[#cc0000] text-[#ff2a2a]'
                   }`}
                 >
                   {referral.status}

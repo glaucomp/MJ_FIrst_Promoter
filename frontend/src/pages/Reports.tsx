@@ -119,13 +119,13 @@ const Card = ({
   noBorder?: boolean;
 }) => (
   <div
-    className={`overflow-hidden ${className}`}
+    className={`overflow-hidden  w-full bg-linear-to-l from-tm-neutral-color06 to-tm-neutral-color05 rounded-lg shadow-[0px_8px_8px_-2px_rgba(0,0,0,0.05),0px_2px_2px_0px_rgba(0,0,0,0.10),0px_-1px_0px_0px_rgba(255,255,255,0.10)] ${className}`}
     style={{
       borderRadius: radius,
       background: noBorder
         ? "transparent"
-        : "linear-gradient(180deg,var(--color-surface) 0%,var(--color-surface-end) 100%)",
-      border: noBorder ? "none" : "1px solid var(--border-subtle)",
+        : undefined,
+      border: noBorder ? "none" : undefined,
     }}
   >
     {children}
@@ -248,14 +248,14 @@ const TxRow = ({
       >
         {/* Avatar circle */}
         <div
-          className="w-[32px] h-[32px] rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 mt-[1px]"
+          className="w-[32px] h-[32px] rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 mt-px"
           style={{ background: avatarBg, color: "var(--color-text-primary)" }}
         >
           {initials || "?"}
         </div>
 
         {/* Content */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 lg:items-center">
           {/* Row 1: Sale + tier | amount */}
           <div className="flex items-center justify-between mb-[4px]">
             <div className="flex items-center gap-[6px]">
@@ -263,7 +263,7 @@ const TxRow = ({
                 {isRefund ? "Refund" : "Sale"}
               </span>
               <span
-                className="text-[10px] font-bold px-[6px] py-px rounded-[4px]"
+                className="text-sm font-bold px-[6px] py-px rounded-[4px]"
                 style={{ background: tierBg, color: tierText, border: `1px solid ${tierText}44` }}
               >
                 {tierLabel}
@@ -282,7 +282,7 @@ const TxRow = ({
 
           {/* Row 2: description | status */}
           <div className="flex items-center justify-between mb-[4px]">
-            <span className="text-[12px] truncate max-w-[60%]" style={{ color: "var(--color-text-dim)" }}>
+            <span className="text-sm truncate max-w-[60%]" style={{ color: "var(--color-text-dim)" }}>
               {(() => {
                 const desc = tx.description || `${tx.user.firstName} ${tx.user.lastName}`;
                 const match = /^(.*?from\s+)(\S+)([\s\S]*)$/.exec(desc);
@@ -316,7 +316,7 @@ const TxRow = ({
 
       {/* ── Expanded detail ── */}
       {expanded && (
-        <div className="tx-detail-enter px-[16px] pb-[20px] text-[12px]">
+        <div className="tx-detail-enter px-[16px] pb-[20px] text-sm">
           <div className="rounded-[10px] overflow-hidden" style={{ background: "var(--color-surface-inset)" }}>
             {saleAmt > 0 && (
               <div className="flex justify-between px-[14px] py-[10px]" style={{ borderBottom: "1px solid var(--border-elevated)" }}>
@@ -349,7 +349,7 @@ const TxRow = ({
               <div className="flex justify-between items-center px-[14px] py-[10px]">
                 <span style={{ color: "var(--color-text-faded)" }}>Campaign</span>
                 <span
-                  className="text-[10px] font-semibold px-[8px] py-[2px] rounded-full text-white"
+                  className="text-sm font-semibold px-[8px] py-[2px] rounded-full text-white"
                   style={{ background: "var(--color-accent-bg)", border: "1px solid rgba(255,15,95,0.3)" }}
                 >
                   {tx.campaign.name}
@@ -399,16 +399,18 @@ const AdminTxRow = ({
     >
       <button
         type="button"
-        className="w-full flex items-center gap-[12px] px-[16px] py-[16px] text-left bg-transparent border-none hover:bg-[rgba(255,255,255,0.02)] transition-colors"
+        className="w-full flex flex-col lg:flex-row lg:items-center lg:justify-between gap-[12px] px-[16px] py-[16px] text-left bg-transparent border-none hover:bg-[rgba(255,255,255,0.02)] transition-colors"
         onClick={() => setExpanded((p) => !p)}
       >
-        {/* Type badge */}
+      <div className="flex flex-row gap-3">  {/* Type badge */}
         <div
-          className="w-[28px] h-[28px] rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0"
+          className="w-[28px] h-[28px] rounded-full flex items-center justify-center text-sm font-bold shrink-0"
           style={{
             background: isDeposit
-              ? "var(--color-success)"
-              : "var(--color-danger)",
+              ? "#006622"
+              : "var(--color-tm-danger-color12)",
+              color: isDeposit ? "#28ff70" : "#ff2a2a",
+              border: isDeposit ? "1px solid #28ff70" : "1px solid #ff2a2a",
           }}
         >
           {isDeposit ? "↑" : "↩"}
@@ -421,7 +423,7 @@ const AdminTxRow = ({
               {isDeposit ? "Deposit" : "Refund"}
             </span>
             <span
-              className="text-[12px] truncate"
+              className="text-sm truncate"
               style={{ color: "var(--color-text-muted)" }}
             >
               {customerLabel}
@@ -434,10 +436,10 @@ const AdminTxRow = ({
             {d}/{m}/{y} {hh}:{min}:{sec}
             {ampm}
           </div>
-        </div>
+        </div></div>
 
         {/* Amount + chevron */}
-        <div className="flex items-center gap-[8px] shrink-0">
+        <div className="flex items-center gap-[8px] shrink-0 justify-between">
           <span
             className="text-[14px] font-bold"
             style={{
@@ -470,11 +472,13 @@ const AdminTxRow = ({
       {/* ── Expanded detail ── */}
       {expanded && (
         <div className="tx-detail-enter px-[16px] pb-[28px]">
-          <div className="rounded-[10px] overflow-hidden" style={{ background: "var(--color-surface-inset)" }}>
+          <div className="rounded-[10px] overflow-hidden" style={{ background: "var( --color-tm-neutral-color06)" }}>
+          
+          
           {/* Customer */}
           {tx.customer && (
             <div
-              className="flex items-center justify-between px-[14px] py-[10px]"
+              className="flex flex-col lg:flex-row lg:items-center justify-between px-[14px] py-[10px]"
               style={{ borderBottom: "1px solid var(--border-elevated)" }}
             >
               <span
@@ -483,13 +487,13 @@ const AdminTxRow = ({
               >
                 Customer
               </span>
-              <div className="text-right">
-                <div className="text-[12px] font-medium text-white">
+              <div className="lg:text-right">
+                <div className="text-sm font-medium text-white">
                   {tx.customer.name || tx.customer.email}
                 </div>
                 {tx.customer.name && tx.customer.email && (
                   <div
-                    className="text-[10px]"
+                    className="text-sm"
                     style={{ color: "var(--color-text-faded)" }}
                   >
                     {tx.customer.email}
@@ -502,7 +506,7 @@ const AdminTxRow = ({
           {/* Campaign */}
           {tx.campaign && (
             <div
-              className="flex items-center justify-between px-[14px] py-[10px]"
+              className="flex flex-col lg:flex-row lg:items-center justify-between px-[14px] py-[10px]"
               style={{ borderBottom: "1px solid var(--border-elevated)" }}
             >
               <span
@@ -512,10 +516,11 @@ const AdminTxRow = ({
                 Campaign
               </span>
               <span
-                className="text-[10px] font-semibold px-[8px] py-[3px] rounded-full text-white"
+                className="text-[11px] px-3 py-1 rounded-full text-center"
                 style={{
-                  background: "var(--color-accent-bg)",
-                  border: "1px solid rgba(255,15,95,0.3)",
+                  color: "var(--color-tm-primary-color02)",
+                  background: "var(--color-tm-primary-color12)",
+                  border: "1px solid rgba(255,15,95,0.5)",
                 }}
               >
                 {tx.campaign.name}
@@ -525,7 +530,7 @@ const AdminTxRow = ({
 
           {/* Sale amount */}
           <div
-            className="flex items-center justify-between px-[14px] py-[10px]"
+            className="flex flex-col lg:flex-row lg:items-center justify-between px-[14px] py-[10px]"
             style={{
               borderBottom:
                 tx.commissions.length > 0
@@ -577,7 +582,7 @@ const AdminTxRow = ({
                 return (
                   <div
                     key={c.id}
-                    className="flex items-center gap-[10px] py-[8px] px-[10px] rounded-[8px]"
+                    className="flex flex-col lg:flex-row lg:items-center gap-[10px] py-[8px] px-[10px] rounded-[8px]"
                     style={{
                       background: "var(--color-surface-inset)",
                       border: "1px solid var(--border-elevated)",
@@ -585,7 +590,7 @@ const AdminTxRow = ({
                   >
                     {/* Avatar */}
                     <div
-                      className="w-[26px] h-[26px] rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0"
+                      className="w-[26px] h-[26px] rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
                       style={{ background: tierAvatar }}
                     >
                       {c.user.firstName?.[0] ?? "?"}
@@ -593,28 +598,32 @@ const AdminTxRow = ({
                     </div>
                     {/* Name */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-[5px]">
-                        <div className="text-[12px] font-medium text-white truncate min-w-0 flex-1">
+                      <div className="flex flex-col lg:flex-row lg:items-center gap-[5px] justify-between">
+                   <div className="flex flex-col">
+
+                         <div className="text-sm font-medium text-white truncate min-w-0 flex-1">
                           {c.user.firstName} {c.user.lastName}
                         </div>
-                        <span
-                          className="text-[9px] font-semibold px-[5px] py-px rounded-full shrink-0 capitalize"
-                          style={{
-                            background: "var(--border-elevated)",
-                            color: "var(--color-text-subtle)",
-                          }}
-                        >
-                          {c.user.userType?.replaceAll("_", " ").toLowerCase() ?? "promoter"}
-                        </span>
-                      </div>
-                      <div
-                        className="text-[10px] truncate"
+                          <div
+                        className="text-sm truncate"
                         style={{ color: "var(--color-text-faded)" }}
                       >
                         {c.user.email}
                       </div>
+                   </div>
+                        <div
+                          className="text-xs text-center font-semibold px-[5px] py-px rounded-full shrink-0 capitalize"
+                          style={{
+                            background: "var(--border-elevated)",
+                            color: "var(--color-tm-text-color08)",
+                          }}
+                        >
+                          {c.user.userType?.replaceAll("_", " ").toLowerCase() ?? "promoter"}
+                        </div>
+                      </div>
+                    
                     </div>
-                    {/* Rate */}
+                   <div className="flex flex-row justify-between gap-3 items-center"> {/* Rate */}
                     <span
                       className="text-[11px] shrink-0"
                       style={{ color: "var(--color-text-subtle)" }}
@@ -631,10 +640,10 @@ const AdminTxRow = ({
                       }}
                     >
                       {commPositive ? "+" : "−"}${money(Math.abs(c.amount))}
-                    </span>
+                    </span></div>
                     {/* Status badge */}
                     <span
-                      className="text-[10px] font-semibold px-[7px] py-[2px] rounded-full capitalize shrink-0"
+                      className="text-sm font-semibold px-[7px] py-[2px] rounded-full capitalize shrink-0 text-center"
                       style={{
                         background: cStatus.bg,
                         color: cStatus.text,
@@ -710,7 +719,7 @@ const AdminTxListCard = ({
   }, [totalPages, page]);
 
   return (
-    <Card noBorder>
+    <Card>
       {/* Header */}
       <button
         type="button"
@@ -743,7 +752,8 @@ const AdminTxListCard = ({
       {isOpen && (
         <>
 
-          {/* Active period label */}
+          <div className="flex flex-col-reverse lg:grid lg:grid-cols-[1fr_3fr]">
+            {/* Active period label */}
           <div className="flex items-center gap-[6px] px-[16px] py-[10px]">
             <svg
               width="12"
@@ -770,7 +780,7 @@ const AdminTxListCard = ({
               />
             </svg>
             <span
-              className="text-[12px]"
+              className="text-sm"
               style={{ color: "var(--color-text-muted)" }}
             >
               {calRangeStart && calRangeEnd
@@ -782,7 +792,7 @@ const AdminTxListCard = ({
           </div>
 
           {/* Search */}
-          <div style={{ padding: 'var(--space-12) 0' }}>
+          <div className="p-1 w-full">
             <div className="relative">
               <svg
                 width="14"
@@ -824,7 +834,7 @@ const AdminTxListCard = ({
               />
             </div>
           </div>
-
+</div>
           {/* Rows */}
           {loading && (
             <div className="flex items-center justify-center py-[40px]">
@@ -873,7 +883,7 @@ const AdminTxListCard = ({
                   return (
                     <span
                       key={`el-${i}`}
-                      className="text-[12px] px-[2px]"
+                      className="text-sm px-[2px]"
                       style={{ color: "var(--color-text-subtle)" }}
                     >
                       …
@@ -1085,7 +1095,7 @@ const TxListCard = ({
               />
             </svg>
             <span
-              className="text-[12px]"
+              className="text-sm"
               style={{ color: "var(--color-text-muted)" }}
             >
               {calRangeStart && calRangeEnd
@@ -1209,7 +1219,7 @@ const TxListCard = ({
                   return (
                     <span
                       key={`el-${i}`}
-                      className="text-[12px] px-[2px]"
+                      className="text-sm px-[2px]"
                       style={{ color: "var(--color-text-subtle)" }}
                     >
                       …
@@ -1840,7 +1850,7 @@ export const Reports = () => {
                       }}
                     >
                       <div
-                        className="text-[12px]"
+                        className="text-sm"
                         style={{
                           color: "var(--color-text-muted)",
                           marginBottom: "2px",
@@ -2078,29 +2088,29 @@ export const Reports = () => {
       </div>
 
       {/* ── Ledger ── */}
-      <div className="flex flex-col gap-[var(--space-12)]">
+      <div className="flex flex-col gap-3">
         <SectionTitle
           icon={<img src={ledgerIcon} width="16" height="16" alt="" />}
           label="Ledger"
         />
 
         {/* Chart */}
-        <Chart data={chartData} className="h-[180px] w-full bg-linear-to-l from-tm-neutral-color06 to-tm-neutral-color05 rounded-lg shadow-[0px_8px_8px_-2px_rgba(0,0,0,0.05),0px_2px_2px_0px_rgba(0,0,0,0.10),0px_-1px_0px_0px_rgba(255,255,255,0.10)] outline outline-1 outline-offset-[-1px] outline-border-subtle/5" />
+        <Chart data={chartData} className="h-[180px] w-full bg-linear-to-l from-tm-neutral-color06 to-tm-neutral-color05 rounded-lg shadow-[0px_8px_8px_-2px_rgba(0,0,0,0.05),0px_2px_2px_0px_rgba(0,0,0,0.10),0px_-1px_0px_0px_rgba(255,255,255,0.10)] outline outline-1 outline-offset-1 outline-border-subtle/5" />
 
         {/* Transactions total — admin only */}
         {isAdmin && (
           <Card radius="var(--radius-m)">
             <div className="flex flex-col gap-0" style={{ padding: 'var(--space-20)' }}>
               <span className="stat-label">Transactions</span>
-              <span className="stat-value">${money(currTotal)}</span>
-              {totalChange !== null && (
-                <div>
+           <div className="grid grid-cols-2 items-center justify-items-end">   <div className="stat-value">${money(currTotal)}</div>    {totalChange !== null && (
+                <div className="">
                   <ChangeBadge
                     value={totalChange}
                     positive={totalChange >= 0}
                   />
                 </div>
-              )}
+              )}</div>
+          
             </div>
           </Card>
         )}
@@ -2185,7 +2195,7 @@ export const Reports = () => {
       {/* ── Top Users ── (promoter only) */}
       {isPromoter && (
         <>
-          <div className="flex flex-col gap-[var(--space-8)]">
+          <div className="flex flex-col gap-2">
             <SectionTitle icon={<img src={topUsersIcon} width="12" height="12" alt="" />} label="Top Users" />
 
             {topCustomers.length === 0 ? (
@@ -2255,8 +2265,8 @@ export const Reports = () => {
                 <span className="stat-label">Users</span>
                 {newCustomerCount > 0 && (
                   <span
-                    className="inline-flex items-center gap-[3px] text-[12px] font-bold px-[10px] py-[4px] rounded-full text-white"
-                    style={{ background: "var(--color-success)" }}
+                    className="inline-flex items-center gap-2 px-2 py-1 rounded-xl border text-[14px] leading-[1.4] font-bold"
+                    style={{ background: "var(--color-success)", color:"#28ff70" }}
                   >
                     ↑ {newCustomerCount}
                   </span>
@@ -2266,7 +2276,7 @@ export const Reports = () => {
                 {allCustomers.length.toLocaleString()}
               </div>
             </div>
-
+<div className="grid grid-cols-2 gap-12 ">
             <div className="flex items-center justify-between" style={{ padding: 'var(--space-8) var(--space-20)' }}>
               <span style={{ fontSize: 'var(--font-size-body-s)', color: 'var(--color-text-muted)' }}>Idle</span>
               <span style={{ fontSize: 'var(--font-size-body-s)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--color-text-primary)' }}>
@@ -2279,7 +2289,7 @@ export const Reports = () => {
               <span style={{ fontSize: 'var(--font-size-body-s)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--color-text-primary)' }}>
                 {unpaidCustomerCount.toLocaleString()}
               </span>
-            </div>
+            </div></div>
 
             <button
               onClick={() => navigate("/models")}
@@ -2301,7 +2311,7 @@ export const Reports = () => {
 
       {/* ── Top Performers ── (manager only) */}
       {isManager && (
-        <div className="flex flex-col gap-[var(--space-8)]">
+        <div className="flex flex-col gap-2">
           <SectionTitle icon={<img src={topUsersIcon} width="12" height="12" alt="" />} label="Top Performers" />
 
           {topPerformers.length === 0 ? (
@@ -2379,7 +2389,7 @@ export const Reports = () => {
       {isAdmin && (
         <div className="flex flex-col gap-[6px]">
           <SectionTitle icon={<img src={networkIcon} width="16" height="16" alt="" />} label="Network" />
-          {[
+   <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">       {[
             { label: "Account Managers", count: wf.accountManagers },
             { label: "Promoters", count: wf.promoters },
             { label: "Referral Managers", count: wf.referralManagers },
@@ -2390,7 +2400,7 @@ export const Reports = () => {
                 className="w-full flex items-center justify-between hover:bg-[rgba(255,255,255,0.03)] transition-colors"
                 style={{ padding: 'var(--space-20)' }}
               >
-                <div className="text-left flex flex-col gap-[var(--space-4)]">
+                <div className="text-left flex flex-col gap-3">
                   <div style={{ fontSize: 'var(--font-size-body-s)', fontWeight: 'var(--font-weight-medium)', lineHeight: '140%', letterSpacing: '0.2px', color: 'var(--color-text-muted)' }}>
                     {label}
                   </div>
@@ -2405,7 +2415,7 @@ export const Reports = () => {
                 </div>
               </button>
             </Card>
-          ))}
+          ))}</div>
         </div>
       )}
 
@@ -2418,20 +2428,22 @@ export const Reports = () => {
             <div style={{ padding: 'var(--space-20) var(--space-20) var(--space-16)' }}>
               <div className="flex items-center justify-between">
                 <span className="stat-label">Users</span>
-                {newUsersCount > 0 && (
+               
+              </div>
+              <div className="grid grid-cols-2 gap-4 justify-items-end items-center text-[26px] font-bold mt-[4px] leading-none">
+               <div className="w-full"> {nonAdmin.length.toLocaleString()}</div>
+               <div className=""> {newUsersCount > 0 && (
                   <span
-                    className="inline-flex items-center gap-[3px] text-[12px] font-bold px-[10px] py-[4px] rounded-full text-white"
-                    style={{ background: "var(--color-success)" }}
+                    className="inline-flex items-center gap-[3px] text-sm font-bold px-[10px] py-[4px] rounded-full"
+                     style={{ background: "#006622", color:"#28ff70", border:"1px solid #28ff70" }}
                   >
                     ↑ {newUsersCount}
                   </span>
-                )}
-              </div>
-              <div className="text-[26px] font-bold text-white mt-[4px] leading-none">
-                {nonAdmin.length.toLocaleString()}
+                )}</div>
+               
               </div>
             </div>
-
+<div className="grid grid-cols-2 gap-12 ">
             <div className="flex items-center justify-between" style={{ padding: 'var(--space-8) var(--space-20)' }}>
               <span style={{ fontSize: 'var(--font-size-body-s)', color: 'var(--color-text-muted)' }}>Idle</span>
               <span style={{ fontSize: 'var(--font-size-body-s)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--color-text-primary)' }}>
@@ -2444,7 +2456,7 @@ export const Reports = () => {
               <span style={{ fontSize: 'var(--font-size-body-s)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--color-text-primary)' }}>
                 {unpaidCount.toLocaleString()}
               </span>
-            </div>
+            </div></div>
 
             <button
               onClick={() => navigate("/models")}
