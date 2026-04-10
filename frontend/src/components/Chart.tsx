@@ -29,7 +29,7 @@ export const Chart = ({ data, className = '' }: ChartProps) => {
               height: `${heights[i]}%`,
               background: highlights[i] ? undefined : 'var(--color-surface-overlay, #3a3e48)',
               boxShadow: highlights[i]
-                ? '0px -1px 0px 0px rgba(255,255,255,0.2), 0px 4px 16px rgba(255,15,95,0.35)'
+                ? '0px -1px 0px 0px rgba(255,255,255,0.2), 0px 4px 16px rgba(255,15,95,0.35), inset -3px 4px 1px -3px rgba(255,255,255,0.35), inset -3px 4px 3px -3px rgba(255,255,255,0.2)'
                 : undefined,
             }}
           />
