@@ -255,7 +255,7 @@ const TxRow = ({
         </div>
 
         {/* Content */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 lg:items-center">
           {/* Row 1: Sale + tier | amount */}
           <div className="flex items-center justify-between mb-[4px]">
             <div className="flex items-center gap-[6px]">
@@ -399,10 +399,10 @@ const AdminTxRow = ({
     >
       <button
         type="button"
-        className="w-full flex items-center gap-[12px] px-[16px] py-[16px] text-left bg-transparent border-none hover:bg-[rgba(255,255,255,0.02)] transition-colors"
+        className="w-full flex flex-col lg:flex-row lg:items-center lg:justify-between gap-[12px] px-[16px] py-[16px] text-left bg-transparent border-none hover:bg-[rgba(255,255,255,0.02)] transition-colors"
         onClick={() => setExpanded((p) => !p)}
       >
-        {/* Type badge */}
+      <div className="flex flex-row gap-3">  {/* Type badge */}
         <div
           className="w-[28px] h-[28px] rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0"
           style={{
@@ -434,10 +434,10 @@ const AdminTxRow = ({
             {d}/{m}/{y} {hh}:{min}:{sec}
             {ampm}
           </div>
-        </div>
+        </div></div>
 
         {/* Amount + chevron */}
-        <div className="flex items-center gap-[8px] shrink-0">
+        <div className="flex items-center gap-[8px] shrink-0 justify-between">
           <span
             className="text-[14px] font-bold"
             style={{
@@ -470,11 +470,13 @@ const AdminTxRow = ({
       {/* ── Expanded detail ── */}
       {expanded && (
         <div className="tx-detail-enter px-[16px] pb-[28px]">
-          <div className="rounded-[10px] overflow-hidden" style={{ background: "var(--color-surface-inset)" }}>
+          <div className="rounded-[10px] overflow-hidden" style={{ background: "var( --color-tm-neutral-color06)" }}>
+          
+          
           {/* Customer */}
           {tx.customer && (
             <div
-              className="flex items-center justify-between px-[14px] py-[10px]"
+              className="flex flex-col lg:flex-row lg:items-center justify-between px-[14px] py-[10px]"
               style={{ borderBottom: "1px solid var(--border-elevated)" }}
             >
               <span
@@ -483,7 +485,7 @@ const AdminTxRow = ({
               >
                 Customer
               </span>
-              <div className="text-right">
+              <div className="lg:text-right">
                 <div className="text-[12px] font-medium text-white">
                   {tx.customer.name || tx.customer.email}
                 </div>
@@ -502,7 +504,7 @@ const AdminTxRow = ({
           {/* Campaign */}
           {tx.campaign && (
             <div
-              className="flex items-center justify-between px-[14px] py-[10px]"
+              className="flex flex-col lg:flex-row lg:items-center justify-between px-[14px] py-[10px]"
               style={{ borderBottom: "1px solid var(--border-elevated)" }}
             >
               <span
@@ -512,10 +514,11 @@ const AdminTxRow = ({
                 Campaign
               </span>
               <span
-                className="text-[10px] font-semibold px-[8px] py-[3px] rounded-full text-white"
+                className="text-[11px] px-3 py-1 rounded-full text-center"
                 style={{
-                  background: "var(--color-accent-bg)",
-                  border: "1px solid rgba(255,15,95,0.3)",
+                  color: "var(--color-tm-primary-color02)",
+                  background: "var(--color-tm-primary-color12)",
+                  border: "1px solid rgba(255,15,95,0.5)",
                 }}
               >
                 {tx.campaign.name}
@@ -525,7 +528,7 @@ const AdminTxRow = ({
 
           {/* Sale amount */}
           <div
-            className="flex items-center justify-between px-[14px] py-[10px]"
+            className="flex flex-col lg:flex-row lg:items-center justify-between px-[14px] py-[10px]"
             style={{
               borderBottom:
                 tx.commissions.length > 0
@@ -577,7 +580,7 @@ const AdminTxRow = ({
                 return (
                   <div
                     key={c.id}
-                    className="flex items-center gap-[10px] py-[8px] px-[10px] rounded-[8px]"
+                    className="flex flex-col lg:flex-row lg:items-center gap-[10px] py-[8px] px-[10px] rounded-[8px]"
                     style={{
                       background: "var(--color-surface-inset)",
                       border: "1px solid var(--border-elevated)",
@@ -593,28 +596,32 @@ const AdminTxRow = ({
                     </div>
                     {/* Name */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-[5px]">
-                        <div className="text-[12px] font-medium text-white truncate min-w-0 flex-1">
+                      <div className="flex items-center gap-[5px] justify-between">
+                   <div className="flex flex-col">
+
+                         <div className="text-[12px] font-medium text-white truncate min-w-0 flex-1">
                           {c.user.firstName} {c.user.lastName}
                         </div>
-                        <span
-                          className="text-[9px] font-semibold px-[5px] py-px rounded-full shrink-0 capitalize"
-                          style={{
-                            background: "var(--border-elevated)",
-                            color: "var(--color-text-subtle)",
-                          }}
-                        >
-                          {c.user.userType?.replaceAll("_", " ").toLowerCase() ?? "promoter"}
-                        </span>
-                      </div>
-                      <div
+                          <div
                         className="text-[10px] truncate"
                         style={{ color: "var(--color-text-faded)" }}
                       >
                         {c.user.email}
                       </div>
+                   </div>
+                        <div
+                          className="text-[9px] font-semibold px-[5px] py-px rounded-full shrink-0 capitalize"
+                          style={{
+                            background: "var(--border-elevated)",
+                            color: "var(--color-tm-text-color08)",
+                          }}
+                        >
+                          {c.user.userType?.replaceAll("_", " ").toLowerCase() ?? "promoter"}
+                        </div>
+                      </div>
+                    
                     </div>
-                    {/* Rate */}
+                   <div className="flex flex-row justify-between gap-3 items-center"> {/* Rate */}
                     <span
                       className="text-[11px] shrink-0"
                       style={{ color: "var(--color-text-subtle)" }}
@@ -631,10 +638,10 @@ const AdminTxRow = ({
                       }}
                     >
                       {commPositive ? "+" : "−"}${money(Math.abs(c.amount))}
-                    </span>
+                    </span></div>
                     {/* Status badge */}
                     <span
-                      className="text-[10px] font-semibold px-[7px] py-[2px] rounded-full capitalize shrink-0"
+                      className="text-[10px] font-semibold px-[7px] py-[2px] rounded-full capitalize shrink-0 text-center"
                       style={{
                         background: cStatus.bg,
                         color: cStatus.text,
