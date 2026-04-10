@@ -168,7 +168,7 @@ export const Models = () => {
                       <button
                         onClick={() => handleDeleteUser(apiUser.id)}
                         disabled={deletingUserId === apiUser.id}
-                        className="px-[10px] py-[4px] rounded-[6px] text-[12px] font-bold bg-tm-danger-color12] border border-[#cc0000] text-[#ff2a2a] hover:bg-[#880000] disabled:opacity-50 transition-colors"
+                        className="px-[10px] py-[4px] rounded-[6px] text-[12px] font-bold bg-tm-danger-color12 border border-[#cc0000] text-[#ff2a2a] hover:bg-[#880000] disabled:opacity-50 transition-colors"
                       >
                         {deletingUserId === apiUser.id ? '...' : 'Yes'}
                       </button>
