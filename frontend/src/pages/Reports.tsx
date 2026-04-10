@@ -124,8 +124,8 @@ const Card = ({
       borderRadius: radius,
       background: noBorder
         ? "transparent"
-        : "",
-      border: noBorder ? "none" : "",
+        : undefined,
+      border: noBorder ? "none" : undefined,
     }}
   >
     {children}
