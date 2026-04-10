@@ -18,7 +18,10 @@ export const Login = () => {
 
     try {
       await login(email, password);
-      navigate('/dashboard');
+      // user state is updated by login() — read from localStorage for immediate redirect
+      const stored = localStorage.getItem('auth_user');
+      const role = stored ? JSON.parse(stored).baseRole : null;
+      navigate(role === 'chatter' ? '/chatter-portal' : '/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
     } finally {

@@ -612,6 +612,39 @@ export const chattersApi = {
     });
     return handleResponse(response, 'Failed to delete chatter');
   },
+
+  async getMyGroups(): Promise<{ groups: ChatterMyGroup[] }> {
+    const response = await fetch(`${API_URL}/chatters/me/groups`, { headers: getAuthHeaders() });
+    return handleResponse(response, 'Failed to fetch my groups');
+  },
+};
+
+export interface ChatterMyGroup {
+  id: string;
+  name: string;
+  commissionPercentage: number;
+  promoter: {
+    id: string;
+    username: string | null;
+    email: string;
+    firstName: string | null;
+    lastName: string | null;
+  } | null;
+}
+
+export const elevenLabsApi = {
+  async textToSpeech(text: string, voiceId?: string): Promise<Blob> {
+    const response = await fetch(`${API_URL}/elevenlabs/tts`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ text, voiceId }),
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: 'Failed to generate audio' }));
+      throw new Error(err.error || 'Failed to generate audio');
+    }
+    return response.blob();
+  },
 };
 
 export const chatterGroupsApi = {

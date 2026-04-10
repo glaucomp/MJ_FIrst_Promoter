@@ -15,6 +15,7 @@ import dashboardRoutes from "./routes/dashboard.routes";
 import publicRoutes from "./routes/public.routes";
 import referralRoutes from "./routes/referral.routes";
 import userRoutes from "./routes/user.routes";
+import elevenLabsRoutes from "./routes/elevenlabs.routes";
 
 dotenv.config();
 
@@ -46,6 +47,7 @@ app.use("/api/commissions", commissionRoutes);
 app.use("/api/customers", customerRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/wise", wiseRoutes);
+app.use("/api/elevenlabs", elevenLabsRoutes);
 
 // FirstPromoter-compatible API routes
 app.use("/api/v1", apiV1Routes);

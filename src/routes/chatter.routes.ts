@@ -16,6 +16,7 @@ router.post(
   ],
   chatterController.createChatter,
 );
+router.get('/me/groups', authenticate, chatterController.getMyGroups);
 router.get('/', authenticate, chatterController.listChatters);
 router.get('/:id', authenticate, chatterController.getChatter);
 router.delete('/:id', authenticate, chatterController.deleteChatter);

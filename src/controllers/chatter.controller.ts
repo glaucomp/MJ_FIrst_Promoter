@@ -70,6 +70,43 @@ export const createChatter = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// GET /api/chatters/me/groups — list groups the logged-in chatter belongs to
+export const getMyGroups = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const memberships = await prisma.chatterGroupMember.findMany({
+      where: { chatterId: req.user.id },
+      select: {
+        group: {
+          select: {
+            id: true,
+            name: true,
+            commissionPercentage: true,
+            promoter: {
+              select: {
+                id: true,
+                username: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const groups = memberships.map((m) => m.group);
+    res.json({ groups });
+  } catch (error) {
+    console.error('Get my groups error:', error);
+    res.status(500).json({ error: 'Failed to fetch groups' });
+  }
+};
+
 // GET /api/chatters — list all chatters
 export const listChatters = async (req: AuthRequest, res: Response) => {
   try {
