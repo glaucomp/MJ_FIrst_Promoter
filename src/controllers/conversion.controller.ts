@@ -243,6 +243,55 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
 
     console.log(`✅ Commission created: $${level1Amount.toFixed(2)} for ${referral.referrer.email}`);
 
+    // Chatter group commission — paid on top of the promoter's commission
+    const promoterWithGroup = await prisma.user.findUnique({
+      where: { id: referral.referrerId },
+      select: {
+        chatterGroupId: true,
+        chatterGroup: {
+          select: {
+            id: true,
+            commissionPercentage: true,
+            members: {
+              select: { chatterId: true },
+            },
+          },
+        },
+      },
+    });
+
+    const chatterCommissions: { id: string; chatterId: string; amount: number }[] = [];
+
+    if (
+      promoterWithGroup?.chatterGroup &&
+      promoterWithGroup.chatterGroup.members.length > 0
+    ) {
+      const group = promoterWithGroup.chatterGroup;
+      const groupAmount = (revenue * group.commissionPercentage) / 100;
+      const perChatter = groupAmount / group.members.length;
+
+      for (const member of group.members) {
+        const cc = await prisma.commission.create({
+          data: {
+            amount: perChatter,
+            percentage: group.commissionPercentage / group.members.length,
+            saleAmount: revenue,
+            status: 'unpaid',
+            type: 'chatter',
+            description: `Chatter commission from ${referral.referrer.firstName || referral.referrer.email}'s sale ($${revenue.toFixed(2)})`,
+            userId: member.chatterId,
+            campaignId: campaign.id,
+            referralId: referral.id,
+            customerId: customer.id,
+            transactionId: transaction.id,
+          },
+        });
+        chatterCommissions.push({ id: cc.id, chatterId: member.chatterId, amount: perChatter });
+      }
+
+      console.log(`✅ Chatter commissions: $${perChatter.toFixed(2)} × ${group.members.length} chatters from group ${group.id}`);
+    }
+
     let commission2 = null;
     let commission3 = null;
 
@@ -315,7 +364,10 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
             amount: (revenue * (campaign.recurringRate || 0)) / 100,
             promoter: referral.parentReferral?.parentReferral?.referrer.email
           }
-        })
+        }),
+        ...(chatterCommissions.length > 0 && {
+          chatters: chatterCommissions,
+        }),
       }
     });
   } catch (error) {
@@ -452,6 +504,47 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
         transactionId: refundTransaction.id,
       }
     });
+
+    // Negative chatter commissions for the refund
+    const promoterWithGroupRefund = await prisma.user.findUnique({
+      where: { id: customer.referral.referrerId },
+      select: {
+        chatterGroup: {
+          select: {
+            id: true,
+            commissionPercentage: true,
+            members: { select: { chatterId: true } },
+          },
+        },
+      },
+    });
+
+    if (
+      promoterWithGroupRefund?.chatterGroup &&
+      promoterWithGroupRefund.chatterGroup.members.length > 0
+    ) {
+      const group = promoterWithGroupRefund.chatterGroup;
+      const groupRefundAmount = -(refundRevenue * group.commissionPercentage) / 100;
+      const perChatterRefund = groupRefundAmount / group.members.length;
+
+      for (const member of group.members) {
+        await prisma.commission.create({
+          data: {
+            amount: perChatterRefund,
+            percentage: group.commissionPercentage / group.members.length,
+            saleAmount: refundRevenue,
+            status: 'paid',
+            type: 'chatter',
+            description: `Chatter refund ($${refundRevenue.toFixed(2)})`,
+            userId: member.chatterId,
+            campaignId: campaign.id,
+            referralId: customer.referral.id,
+            customerId: customer.id,
+            transactionId: refundTransaction.id,
+          },
+        });
+      }
+    }
 
     // Create negative commission for T2 (if exists)
     if (customer.referral.parentReferral && campaign.secondaryRate && campaign.secondaryRate > 0) {

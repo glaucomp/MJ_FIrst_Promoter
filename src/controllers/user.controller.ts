@@ -330,3 +330,42 @@ export const getAccountManagers = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ error: 'Failed to fetch account managers' });
   }
 };
+
+// GET /api/users/promoters — list promoters and team managers (accessible to account managers)
+export const getPromoters = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const isAdminOrAM =
+      req.user.role === UserRole.ADMIN ||
+      req.user.userType === UserType.ACCOUNT_MANAGER;
+
+    if (!isAdminOrAM) {
+      return res.status(403).json({ error: 'Insufficient permissions' });
+    }
+
+    const users = await prisma.user.findMany({
+      where: {
+        userType: { in: [UserType.PROMOTER, UserType.TEAM_MANAGER] },
+        isActive: true,
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        userType: true,
+        isActive: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json({ users });
+  } catch (error) {
+    console.error('Get promoters error:', error);
+    res.status(500).json({ error: 'Failed to fetch promoters' });
+  }
+};

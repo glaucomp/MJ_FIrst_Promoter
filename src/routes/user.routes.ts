@@ -45,6 +45,9 @@ router.get(
   userController.getAllUsers
 );
 
+// Get promoters + team managers (account managers can access this)
+router.get('/promoters', authenticate, userController.getPromoters);
+
 // Get user by ID
 router.get('/:id', authenticate, userController.getUserById);
 
