@@ -138,7 +138,7 @@ export const Campaigns = () => {
       {/* Header */}
       <div className="flex items-start justify-between flex-col lg:flex-row gap-3">
         <h1 className="text-[28px] leading-[36px] font-semibold text-white">Campaigns</h1>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center  justify-between lg:justify-end lg:gap-4 w-full">
           <p className="text-[16px] text-[#9e9e9e]">{campaigns.length} total</p>
           <button
             onClick={openCreate}
