@@ -206,8 +206,8 @@ const PromoterRow = ({
         </div></div>
 
         {/* Amount + pay button */}
-        <div className="grid grid-cols-2 lg:flex items-center gap-[10px] shrink-0 lg:justify-end ">
-          <div className="lg:text-right  flex flex-row-reverse justify-between items-center lg:items-end lg:gap-0 w-full lg:flex-col">
+        <div className="grid lg:grid-cols-2 lg:flex items-center gap-[10px] shrink-0 lg:justify-end ">
+          <div className="lg:text-right flex  flex-row-reverse justify-between items-center lg:items-end lg:gap-0 w-full lg:flex-col">
             <div className="text-[15px] font-bold text-white">
               ${money(group.totalOwed)}
             </div>
