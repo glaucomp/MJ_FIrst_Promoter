@@ -1,8 +1,115 @@
 import { Request, Response } from "express";
+import OpenAI from "openai";
 
+// POST /api/elevenlabs/transcribe
+// Body: { audioBase64: string, mimeType: string }
+export const transcribe = async (req: Request, res: Response) => {
+  try {
+    const { audioBase64, mimeType } = req.body as {
+      audioBase64?: string;
+      mimeType?: string;
+    };
+
+    if (!audioBase64 || typeof audioBase64 !== "string") {
+      return res.status(400).json({ error: "audioBase64 is required" });
+    }
+
+    const apiKey = process.env.ELEVENLABS_API_KEY;
+    if (!apiKey) {
+      return res
+        .status(503)
+        .json({ error: "ElevenLabs API key is not configured" });
+    }
+
+    const buffer = Buffer.from(audioBase64, "base64");
+    const blob = new Blob([buffer], { type: mimeType || "audio/webm" });
+
+    const formData = new FormData();
+    formData.append("file", blob, "recording.webm");
+    formData.append("model_id", "scribe_v2");
+
+    const elevenRes = await fetch(
+      "https://api.elevenlabs.io/v1/speech-to-text",
+      {
+        method: "POST",
+        headers: { "xi-api-key": apiKey },
+        body: formData,
+      },
+    );
+
+    if (!elevenRes.ok) {
+      const errText = await elevenRes.text();
+      console.error("ElevenLabs STT error:", elevenRes.status, errText);
+      return res
+        .status(502)
+        .json({ error: "Transcription failed", detail: errText });
+    }
+
+    const result = (await elevenRes.json()) as { text?: string };
+    res.json({ text: result.text ?? "" });
+  } catch (error) {
+    console.error("Transcribe error:", error);
+    res.status(500).json({ error: "Failed to transcribe audio" });
+  }
+};
+
+// Enhance message with OpenAI using the selected mood + ElevenLabs v3 audio tags
+async function applyMoodWithOpenAI(
+  text: string,
+  mood: string,
+  moodDescription?: string,
+): Promise<string> {
+  const openaiKey = process.env.OPENAI_API_KEY;
+  if (!openaiKey) return text; // graceful fallback: no enhancement if key missing
+
+  const client = new OpenAI({ apiKey: openaiKey });
+
+  const moodDetail = moodDescription
+    ? `${mood} — ${moodDescription}`
+    : mood;
+
+  const completion = await client.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [
+      {
+        role: "system",
+        content: `You are a professional voice script writer specializing in ElevenLabs v3 text-to-speech production.
+
+Your task is to rewrite a given message so that it authentically conveys a specified emotional mood when spoken aloud. You achieve this by:
+
+1. Studying the mood description carefully and letting it completely shape the vocal character — rhythm, word choice, sentence length, pauses, and energy level must all reflect it.
+2. Making each mood sound distinctly different from any other. The listener should immediately recognise which mood is being expressed from the delivery alone.
+3. Inserting ElevenLabs v3 inline audio expression tags where they enhance authenticity. Use lowercase square-bracket format sparingly — only at moments of genuine emotional peak. Available tags:
+   - Vocal reactions: [laughs], [sighs], [gasps], [clears throat], [gulps]
+   - Delivery styles: [whispers], [breathlessly], [tenderly], [playfully], [deadpan]
+4. Never forcing tags — one or two well-placed tags beat six awkward ones.
+
+Rules:
+- Preserve the original language and core meaning (do not translate or change the topic).
+- Do not add commentary, explanations, or surrounding quotes.
+- Return only the final rewritten message with any tags embedded inline.`,
+      },
+      {
+        role: "user",
+        content: `Mood: ${moodDetail}\n\nOriginal message: ${text}`,
+      },
+    ],
+    max_tokens: 600,
+    temperature: 0.9,
+  });
+
+  return completion.choices[0]?.message?.content?.trim() ?? text;
+}
+
+// POST /api/elevenlabs/tts
 export const textToSpeech = async (req: Request, res: Response) => {
   try {
-    const { text, voiceId } = req.body as { text?: string; voiceId?: string };
+    const { text, voiceId, mood, moodDescription } = req.body as {
+      text?: string;
+      voiceId?: string;
+      mood?: string;
+      moodDescription?: string;
+    };
 
     if (!text || typeof text !== "string" || text.trim().length === 0) {
       return res.status(400).json({ error: "text is required" });
@@ -14,6 +121,11 @@ export const textToSpeech = async (req: Request, res: Response) => {
         .status(503)
         .json({ error: "ElevenLabs API key is not configured" });
     }
+
+    // If a mood was selected, let OpenAI enhance the text with tags
+    const finalText = mood?.trim()
+      ? await applyMoodWithOpenAI(text.trim(), mood.trim(), moodDescription)
+      : text.trim();
 
     const voice =
       voiceId || process.env.ELEVENLABS_VOICE_ID || "21m00Tcm4TlvDq8ikWAM";
@@ -28,7 +140,7 @@ export const textToSpeech = async (req: Request, res: Response) => {
           Accept: "audio/mpeg",
         },
         body: JSON.stringify({
-          text: text.trim(),
+          text: finalText,
           model_id: "eleven_v3",
           voice_settings: { stability: 0.5, similarity_boost: 0.75 },
         }),

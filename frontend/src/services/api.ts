@@ -633,17 +633,36 @@ export interface ChatterMyGroup {
 }
 
 export const elevenLabsApi = {
-  async textToSpeech(text: string, voiceId?: string): Promise<Blob> {
+  async textToSpeech(text: string, voiceId?: string, mood?: string, moodDescription?: string): Promise<Blob> {
     const response = await fetch(`${API_URL}/elevenlabs/tts`, {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify({ text, voiceId }),
+      body: JSON.stringify({ text, voiceId, mood, moodDescription }),
     });
     if (!response.ok) {
       const err = await response.json().catch(() => ({ error: 'Failed to generate audio' }));
       throw new Error(err.error || 'Failed to generate audio');
     }
     return response.blob();
+  },
+
+  async transcribe(audioBlob: Blob): Promise<{ text: string }> {
+    const arrayBuffer = await audioBlob.arrayBuffer();
+    const uint8 = new Uint8Array(arrayBuffer);
+    let binary = '';
+    uint8.forEach(b => { binary += String.fromCharCode(b); });
+    const audioBase64 = btoa(binary);
+
+    const response = await fetch(`${API_URL}/elevenlabs/transcribe`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ audioBase64, mimeType: audioBlob.type || 'audio/webm' }),
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: 'Failed to transcribe audio' }));
+      throw new Error(err.error || 'Failed to transcribe audio');
+    }
+    return response.json();
   },
 };
 
