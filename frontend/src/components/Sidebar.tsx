@@ -71,7 +71,7 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
               className="w-[40px] h-auto object-contain"
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = 'none';
-              }}  src={tmLogo1x} // Fallback for browsers that don't support srcSet
+              }}  src={tmLogo1x}
         srcSet={`${tmLogo1x} 1x, ${tmLogo2x} 2x`}  />
             <div className="bg-[#101010] h-[24px] w-[40px] rounded-[4px] flex items-center justify-center">
               <span className={`text-[12px] transition-transform ${isOpen ? '-rotate-90' : 'rotate-90'}`}>
