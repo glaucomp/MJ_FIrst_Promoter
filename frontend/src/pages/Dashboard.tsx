@@ -29,7 +29,7 @@ export const Dashboard = () => {
       <div className="flex flex-col gap-[20px]">
         <div className="flex flex-col gap-[12px]">
           <div className="flex items-center gap-[4px]">
-            <h1 className="text-[28px] leading-[36px] font-semibold text-white font-primary">
+            <h1 className="text-[28px] leading-[36px] font-semibold text-white font-primary lg:w-full">
               TeaseMe
             </h1>
             <div className="border border-[#ff0f5f] rounded-[100px] px-[16px] py-[4px] h-[44px] flex items-center justify-center">

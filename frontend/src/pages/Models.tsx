@@ -90,7 +90,7 @@ export const Models = () => {
   if (isLoading) {
     return (
       <div className="flex flex-col gap-6">
-        <h1 className="text-[28px] leading-[36px] font-semibold text-white">Models</h1>
+        <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">Models</h1>
         <p className="text-[16px] text-[#9e9e9e]">Loading...</p>
       </div>
     );
@@ -101,7 +101,7 @@ export const Models = () => {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex items-start justify-between flex-col lg:flex-row gap-3">
-          <h1 className="text-[28px] leading-[36px] font-semibold text-white">All Users</h1>
+          <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">All Users</h1>
           <div className="flex items-center  justify-between lg:justify-end lg:gap-4 w-full">
             <p className="text-[16px] text-[#9e9e9e]">{allUsers.length} total</p>
             <button
@@ -215,7 +215,7 @@ export const Models = () => {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-[28px] leading-[36px] font-semibold text-white">My Promoters</h1>
+          <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">My Promoters</h1>
           <button
             onClick={() => handleOpenInviteModal('referral')}
             className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
@@ -251,7 +251,7 @@ export const Models = () => {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-[28px] leading-[36px] font-semibold text-white">Referral Link</h1>
+          <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">Referral Link</h1>
         </div>
 
         <p className="text-[14px] text-[#9e9e9e]">
@@ -280,7 +280,7 @@ export const Models = () => {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-[28px] leading-[36px] font-semibold text-white">My Team</h1>
+          <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">My Team</h1>
           <button
             onClick={() => handleOpenInviteModal('referral')}
             className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
@@ -316,7 +316,7 @@ export const Models = () => {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-[28px] leading-[36px] font-semibold text-white">My Tracking Links</h1>
+          <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">My Tracking Links</h1>
           <button
             onClick={() => handleOpenInviteModal('tracking')}
             className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
@@ -389,7 +389,7 @@ export const Models = () => {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-[28px] leading-[36px] font-semibold text-white">Models</h1>
+      <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">Models</h1>
       <p className="text-[#9e9e9e] text-[16px]">Access denied</p>
     </div>
   );
