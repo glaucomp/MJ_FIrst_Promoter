@@ -2088,7 +2088,7 @@ export const Reports = () => {
       </div>
 
       {/* ── Ledger ── */}
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-3">
         <SectionTitle
           icon={<img src={ledgerIcon} width="16" height="16" alt="" />}
           label="Ledger"
@@ -2400,7 +2400,7 @@ export const Reports = () => {
                 className="w-full flex items-center justify-between hover:bg-[rgba(255,255,255,0.03)] transition-colors"
                 style={{ padding: 'var(--space-20)' }}
               >
-                <div className="text-left flex flex-col gap-1">
+                <div className="text-left flex flex-col gap-3">
                   <div style={{ fontSize: 'var(--font-size-body-s)', fontWeight: 'var(--font-weight-medium)', lineHeight: '140%', letterSpacing: '0.2px', color: 'var(--color-text-muted)' }}>
                     {label}
                   </div>
