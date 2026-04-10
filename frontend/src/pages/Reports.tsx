@@ -119,7 +119,7 @@ const Card = ({
   noBorder?: boolean;
 }) => (
   <div
-    className={`bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[var(--radius-card)] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1)] overflow-hidden  w-full bg-linear-to-l from-tm-neutral-color06 to-tm-neutral-color05 rounded-lg shadow-[0px_8px_8px_-2px_rgba(0,0,0,0.05),0px_2px_2px_0px_rgba(0,0,0,0.10),0px_-1px_0px_0px_rgba(255,255,255,0.10)] ${className}`}
+    className={`overflow-hidden  w-full bg-linear-to-l from-tm-neutral-color06 to-tm-neutral-color05 rounded-lg shadow-[0px_8px_8px_-2px_rgba(0,0,0,0.05),0px_2px_2px_0px_rgba(0,0,0,0.10),0px_-1px_0px_0px_rgba(255,255,255,0.10)] ${className}`}
     style={{
       borderRadius: radius,
       background: noBorder
@@ -248,7 +248,7 @@ const TxRow = ({
       >
         {/* Avatar circle */}
         <div
-          className="w-[32px] h-[32px] rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 mt-[1px]"
+          className="w-[32px] h-[32px] rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 mt-px"
           style={{ background: avatarBg, color: "var(--color-text-primary)" }}
         >
           {initials || "?"}
@@ -2088,14 +2088,14 @@ export const Reports = () => {
       </div>
 
       {/* ── Ledger ── */}
-      <div className="flex flex-col gap-[var(--space-12)]">
+      <div className="flex flex-col gap-1">
         <SectionTitle
           icon={<img src={ledgerIcon} width="16" height="16" alt="" />}
           label="Ledger"
         />
 
         {/* Chart */}
-        <Chart data={chartData} className="h-[180px] w-full bg-linear-to-l from-tm-neutral-color06 to-tm-neutral-color05 rounded-lg shadow-[0px_8px_8px_-2px_rgba(0,0,0,0.05),0px_2px_2px_0px_rgba(0,0,0,0.10),0px_-1px_0px_0px_rgba(255,255,255,0.10)] outline outline-1 outline-offset-[-1px] outline-border-subtle/5" />
+        <Chart data={chartData} className="h-[180px] w-full bg-linear-to-l from-tm-neutral-color06 to-tm-neutral-color05 rounded-lg shadow-[0px_8px_8px_-2px_rgba(0,0,0,0.05),0px_2px_2px_0px_rgba(0,0,0,0.10),0px_-1px_0px_0px_rgba(255,255,255,0.10)]  outline-1 outline-offset-1 outline-border-subtle/5" />
 
         {/* Transactions total — admin only */}
         {isAdmin && (
@@ -2195,7 +2195,7 @@ export const Reports = () => {
       {/* ── Top Users ── (promoter only) */}
       {isPromoter && (
         <>
-          <div className="flex flex-col gap-[var(--space-8)]">
+          <div className="flex flex-col gap-2">
             <SectionTitle icon={<img src={topUsersIcon} width="12" height="12" alt="" />} label="Top Users" />
 
             {topCustomers.length === 0 ? (
@@ -2311,7 +2311,7 @@ export const Reports = () => {
 
       {/* ── Top Performers ── (manager only) */}
       {isManager && (
-        <div className="flex flex-col gap-[var(--space-8)]">
+        <div className="flex flex-col gap-2">
           <SectionTitle icon={<img src={topUsersIcon} width="12" height="12" alt="" />} label="Top Performers" />
 
           {topPerformers.length === 0 ? (
@@ -2400,7 +2400,7 @@ export const Reports = () => {
                 className="w-full flex items-center justify-between hover:bg-[rgba(255,255,255,0.03)] transition-colors"
                 style={{ padding: 'var(--space-20)' }}
               >
-                <div className="text-left flex flex-col gap-[var(--space-4)]">
+                <div className="text-left flex flex-col gap-1">
                   <div style={{ fontSize: 'var(--font-size-body-s)', fontWeight: 'var(--font-weight-medium)', lineHeight: '140%', letterSpacing: '0.2px', color: 'var(--color-text-muted)' }}>
                     {label}
                   </div>

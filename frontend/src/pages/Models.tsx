@@ -5,7 +5,7 @@ import { InviteModal } from '../components/InviteModal';
 import { CreateUserModal } from '../components/CreateUserModal';
 
 const SessionExpiredBanner = ({ onLogout }: { onLogout: () => void }) => (
-  <div className="bg-[#660000] border border-[#cc0000] rounded-[8px] p-[16px] flex flex-col gap-[12px]">
+  <div className="bg-tm-danger-color12 border border-[#cc0000] rounded-[8px] p-[16px] flex flex-col gap-[12px]">
     <p className="text-[#ff2a2a] text-[14px] font-bold">Session expired</p>
     <p className="text-[#ff8080] text-[13px]">
       Your login session is no longer valid. This usually happens after the server restarts.
@@ -137,8 +137,8 @@ export const Models = () => {
                     <span
                       className={`px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border ${
                         apiUser.isActive
-                          ? 'bg-[#006622] border-[#00d948] text-[#28ff70]'
-                          : 'bg-[#660000] border-[#cc0000] text-[#ff2a2a]'
+                          ? 'bg-tm-success-color12 border-[#00d948] text-[#28ff70]'
+                          : 'bg-tm-danger-color12 border-[#cc0000] text-[#ff2a2a]'
                       }`}
                     >
                       {apiUser.isActive ? 'Active' : 'Inactive'}
@@ -168,7 +168,7 @@ export const Models = () => {
                       <button
                         onClick={() => handleDeleteUser(apiUser.id)}
                         disabled={deletingUserId === apiUser.id}
-                        className="px-[10px] py-[4px] rounded-[6px] text-[12px] font-bold bg-[#660000] border border-[#cc0000] text-[#ff2a2a] hover:bg-[#880000] disabled:opacity-50 transition-colors"
+                        className="px-[10px] py-[4px] rounded-[6px] text-[12px] font-bold bg-tm-danger-color12] border border-[#cc0000] text-[#ff2a2a] hover:bg-[#880000] disabled:opacity-50 transition-colors"
                       >
                         {deletingUserId === apiUser.id ? '...' : 'Yes'}
                       </button>
@@ -435,12 +435,12 @@ const ReferralList = ({ referrals }: { referrals: Referral[] }) => {
                 <span
                   className={`px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border ${
                     referral.status === 'ACTIVE'
-                      ? 'bg-[#006622] border-[#00d948] text-[#28ff70]'
+                      ? 'bg-tm-success-color12 border-[#00d948] text-[#28ff70]'
                       : referral.status === 'PENDING'
                       ? 'bg-[#664400] border-[#cc8800] text-[#ffaa00]'
                       : referral.status === 'INACTIVE'
                       ? 'bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]'
-                      : 'bg-[#660000] border-[#cc0000] text-[#ff2a2a]'
+                      : 'bg-tm-danger-color12 border-[#cc0000] text-[#ff2a2a]'
                   }`}
                 >
                   {referral.status}

@@ -92,7 +92,7 @@ export const Login = () => {
 
               {/* Error Message */}
               {error && (
-                <div className="bg-[#660000] border border-[#cc0000] rounded-[8px] px-[16px] py-[12px]">
+                <div className="bg-tm-danger-color12 border border-[#cc0000] rounded-[8px] px-[16px] py-[12px]">
                   <p className="text-[#ff2a2a] text-[14px] leading-[1.4] font-medium">
                     {error}
                   </p>

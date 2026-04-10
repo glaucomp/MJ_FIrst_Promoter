@@ -280,7 +280,7 @@ export const Settings = () => {
               <span className="text-[16px] text-white font-medium">
                 {user?.role.replace('_', ' ').toUpperCase() || ''}
               </span>
-              <span className="px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border bg-[#006622] border-[#00d948] text-[#28ff70]">
+              <span className="px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border bg-tm-success-color12 border-[#00d948] text-[#28ff70]">
                 Active
               </span>
             </div>

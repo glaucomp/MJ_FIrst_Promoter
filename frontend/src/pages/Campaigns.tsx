@@ -182,7 +182,7 @@ export const Campaigns = () => {
                       disabled={togglingId === c.id}
                       className={`px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border transition-colors ${
                         c.isActive
-                          ? 'bg-[#006622] border-[#00d948] text-[#28ff70] hover:bg-[#005518]'
+                          ? 'bg-tm-success-color12 border-[#00d948] text-[#28ff70] hover:bg-[#005518]'
                           : 'bg-[#333] border-[#555] text-[#9e9e9e] hover:bg-[#3a3a3a]'
                       } disabled:opacity-50`}
                     >
@@ -251,7 +251,7 @@ export const Campaigns = () => {
                       <button
                         onClick={() => handleDelete(c.id)}
                         disabled={deletingId === c.id}
-                        className="px-[10px] py-[4px] rounded-[6px] text-[12px] font-bold bg-[#660000] border border-[#cc0000] text-[#ff2a2a] hover:bg-[#880000] disabled:opacity-50 transition-colors"
+                        className="px-[10px] py-[4px] rounded-[6px] text-[12px] font-bold bg-tm-danger-color12 border border-[#cc0000] text-[#ff2a2a] hover:bg-[#880000] disabled:opacity-50 transition-colors"
                       >
                         {deletingId === c.id ? '...' : 'Yes'}
                       </button>
@@ -418,7 +418,7 @@ export const Campaigns = () => {
               </div>
 
               {formError && (
-                <div className="bg-[#660000] border border-[#cc0000] rounded-[8px] px-[14px] py-[10px]">
+                <div className="bg-tm-danger-color12 border border-[#cc0000] rounded-[8px] px-[14px] py-[10px]">
                   <p className="text-[#ff2a2a] text-[13px] font-medium">{formError}</p>
                 </div>
               )}

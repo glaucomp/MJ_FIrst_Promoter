@@ -20,7 +20,7 @@ export const StatCard = ({ label, value, change, className = '' }: StatCardProps
           <div
             className={`flex items-center gap-[8px] px-2 py-1 rounded-xl border text-[14px] leading-[1.4] font-bold ${
               isPositive
-                ? 'bg-[#006622] border-[#00d948] text-[#28ff70]'
+                ? 'bg-tm-success-color12 border-[#00d948] text-[#28ff70]'
                 : isNegative
                 ? 'bg-tm-danger-color12 border-[#cc0000] text-[#ff2a2a]'
                 : 'bg-tm-neutral-color04 border-[rgba(255,255,255,0.03)] text-[#9e9e9e]'
