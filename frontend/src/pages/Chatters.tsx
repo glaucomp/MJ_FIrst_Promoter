@@ -325,7 +325,6 @@ export const Chatters = () => {
         onClose={() => setIsCreateModalOpen(false)}
         onCreated={chatter => {
           setChatters(prev => [{ ...chatter, groups: chatter.groups ?? [] }, ...prev]);
-          setIsCreateModalOpen(false);
         }}
       />
     </div>

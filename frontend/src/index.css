@@ -42,11 +42,11 @@
   --color-tm-secondary-color12: oklch(0.18 0.08 var(--color-tm-secondary-hue));
 
   /* Neutral */
-  --color-tm-neutral-color01: oklch(0.364 0.018 268.2);
+  --color-tm-neutral-color01: oklch(0.364 0 268.2);
   --color-tm-neutral-color02: oklch(0.321 0 89.9);
   --color-tm-neutral-color03: oklch(0.301 0 89.9);
   --color-tm-neutral-color04: oklch(0.281 0 89.9);
-  --color-tm-neutral-color05: oklch(0.264 0.01 268.3);
+  --color-tm-neutral-color05: oklch(0.264 0 268.3);
   --color-tm-neutral-color06: oklch(0.248 0 89.9);
   --color-tm-neutral-color07: oklch(0.226 0 89.9);
   --color-tm-neutral-color08: oklch(0.191 0 89.9);
@@ -272,6 +272,20 @@ body {
     transform: translateY(0);
     max-height: 600px;
   }
+}
+
+
+@keyframes scaleBounce {
+ 0%,100% { transform: scale(1);}
+ 
+  50% {
+    transform: scale(1.015);
+  }
+}
+
+/* Define a class that uses the animation */
+.animate-bounce-custom {
+  animation: scaleBounce 1s ease-in-out infinite;
 }
 
 .tx-detail-enter {
