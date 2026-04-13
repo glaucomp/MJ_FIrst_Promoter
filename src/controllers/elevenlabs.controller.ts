@@ -119,6 +119,7 @@ export const textToSpeech = async (req: Request, res: Response) => {
     if (mood !== undefined && typeof mood !== "string") {
       return res.status(400).json({ error: "mood must be a string" });
     }
+
     if (voiceId !== undefined && typeof voiceId !== "string") {
       return res.status(400).json({ error: "voiceId must be a string" });
     }
@@ -128,6 +129,10 @@ export const textToSpeech = async (req: Request, res: Response) => {
     const VOICE_ID_RE = /^[A-Za-z0-9]{1,64}$/;
     if (voiceId && !VOICE_ID_RE.test(voiceId)) {
       return res.status(400).json({ error: "Invalid voiceId format" });
+    }
+
+    if (moodDescription !== undefined && typeof moodDescription !== "string") {
+      return res.status(400).json({ error: "moodDescription must be a string" });
     }
 
     const trimmedText = text.trim();
@@ -140,11 +145,7 @@ export const textToSpeech = async (req: Request, res: Response) => {
         .json({ error: `text must not exceed ${TEXT_MAX_LENGTH} characters` });
     }
 
-    if (
-      moodDescription &&
-      typeof moodDescription === "string" &&
-      moodDescription.length > MOOD_DESC_MAX_LENGTH
-    ) {
+    if (moodDescription && moodDescription.length > MOOD_DESC_MAX_LENGTH) {
       return res.status(400).json({
         error: `moodDescription must not exceed ${MOOD_DESC_MAX_LENGTH} characters`,
       });

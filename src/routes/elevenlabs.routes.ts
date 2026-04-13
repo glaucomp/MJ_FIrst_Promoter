@@ -1,5 +1,5 @@
-import { NextFunction, Response, Router } from 'express';
-import multer from 'multer';
+import { NextFunction, Request, Response, Router } from 'express';
+import multer, { MulterError } from 'multer';
 import { UserType } from '@prisma/client';
 import { authenticate, AuthRequest } from '../middleware/auth.middleware';
 import { textToSpeech, transcribe } from '../controllers/elevenlabs.controller';
@@ -75,26 +75,21 @@ const upload = multer({
   },
 });
 
+// Wraps upload.single so multer errors become proper 4xx responses instead of
+// falling through to the global 500 error handler.
+const audioUpload = (req: Request, res: Response, next: NextFunction): void => {
+  upload.single('audio')(req, res, (err) => {
+    if (!err) return next();
+    if (err instanceof MulterError && err.code === 'LIMIT_FILE_SIZE') {
+      res.status(413).json({ error: 'Audio file exceeds the 10 MB limit' });
+      return;
+    }
+    // fileFilter rejections arrive here as plain Errors
+    res.status(415).json({ error: err.message });
+  });
+};
+
 router.post('/tts', authenticate, authorizeElevenLabsAccess, elevenLabsRateLimit, textToSpeech);
-router.post(
-  '/transcribe',
-  authenticate,
-  authorizeElevenLabsAccess,
-  elevenLabsRateLimit,
-  // Wrap multer so we can map its errors to proper 4xx responses instead of 500
-  (req: AuthRequest, res: Response, next: NextFunction) => {
-    upload.single('audio')(req, res, (err: unknown) => {
-      if (!err) return next();
-      if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
-        return res.status(413).json({ error: 'File too large (max 10 MB)' });
-      }
-      // fileFilter rejection or other upload validation error → 415
-      return res
-        .status(415)
-        .json({ error: err instanceof Error ? err.message : 'Unsupported audio type' });
-    });
-  },
-  transcribe,
-);
+router.post('/transcribe', authenticate, authorizeElevenLabsAccess, elevenLabsRateLimit, audioUpload, transcribe);
 
 export default router;
