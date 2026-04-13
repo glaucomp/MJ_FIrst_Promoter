@@ -1,4 +1,5 @@
 import { NextFunction, Response, Router } from 'express';
+import multer from 'multer';
 import { UserType } from '@prisma/client';
 import { authenticate, AuthRequest } from '../middleware/auth.middleware';
 import { textToSpeech, transcribe } from '../controllers/elevenlabs.controller';
@@ -39,7 +40,13 @@ const elevenLabsRateLimit = (req: AuthRequest, res: Response, next: NextFunction
   next();
 };
 
+// Accept audio file uploads up to 50 MB in memory (no temp files on disk)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 },
+});
+
 router.post('/tts', authenticate, authorizeElevenLabsAccess, elevenLabsRateLimit, textToSpeech);
-router.post('/transcribe', authenticate, authorizeElevenLabsAccess, elevenLabsRateLimit, transcribe);
+router.post('/transcribe', authenticate, authorizeElevenLabsAccess, elevenLabsRateLimit, upload.single('audio'), transcribe);
 
 export default router;

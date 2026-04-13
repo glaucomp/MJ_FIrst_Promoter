@@ -77,6 +77,9 @@ export const getMyGroups = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
+    if (req.user.userType !== UserType.CHATTER) {
+      return res.status(403).json({ error: 'Only chatters can access their groups' });
+    }
     const memberships = await prisma.chatterGroupMember.findMany({
       where: { chatterId: req.user.id },
       select: {

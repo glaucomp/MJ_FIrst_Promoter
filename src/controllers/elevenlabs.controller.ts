@@ -1,17 +1,17 @@
 import { Request, Response } from "express";
 import OpenAI from "openai";
 
+type MulterRequest = Request & { file?: Express.Multer.File };
+
 // POST /api/elevenlabs/transcribe
-// Body: { audioBase64: string, mimeType: string }
+// Accepts multipart/form-data with an "audio" file field (handled by multer).
 export const transcribe = async (req: Request, res: Response) => {
   try {
-    const { audioBase64, mimeType } = req.body as {
-      audioBase64?: string;
-      mimeType?: string;
-    };
-
-    if (!audioBase64 || typeof audioBase64 !== "string") {
-      return res.status(400).json({ error: "audioBase64 is required" });
+    const file = (req as MulterRequest).file;
+    if (!file) {
+      return res
+        .status(400)
+        .json({ error: "An audio file is required (field name: audio)" });
     }
 
     const apiKey = process.env.ELEVENLABS_API_KEY;
@@ -21,11 +21,12 @@ export const transcribe = async (req: Request, res: Response) => {
         .json({ error: "ElevenLabs API key is not configured" });
     }
 
-    const buffer = Buffer.from(audioBase64, "base64");
-    const blob = new Blob([buffer], { type: mimeType || "audio/webm" });
+    const blob = new Blob([file.buffer], {
+      type: file.mimetype || "audio/webm",
+    });
 
     const formData = new FormData();
-    formData.append("file", blob, "recording.webm");
+    formData.append("file", blob, file.originalname || "recording.webm");
     formData.append("model_id", "scribe_v2");
 
     const elevenRes = await fetch(
