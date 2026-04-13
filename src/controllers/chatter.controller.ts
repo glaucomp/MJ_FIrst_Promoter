@@ -92,7 +92,6 @@ export const getMyGroups = async (req: AuthRequest, res: Response) => {
               select: {
                 id: true,
                 username: true,
-                email: true,
                 firstName: true,
                 lastName: true,
               },

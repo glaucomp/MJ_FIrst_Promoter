@@ -626,7 +626,6 @@ export interface ChatterMyGroup {
   promoter: {
     id: string;
     username: string | null;
-    email: string;
     firstName: string | null;
     lastName: string | null;
   } | null;

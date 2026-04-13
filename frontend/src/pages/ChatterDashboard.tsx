@@ -7,7 +7,7 @@ const SITE_URL = import.meta.env.VITE_SITE_URL as string | undefined;
 const promoterDisplayName = (p: ChatterMyGroup['promoter']): string => {
   if (!p) return '';
   const parts = [p.firstName, p.lastName].filter(Boolean).join(' ');
-  return parts || p.email;
+  return parts || (p.username ? `@${p.username}` : 'Unknown promoter');
 };
 
 const buildAffiliateLink = (username: string, customerInput: string): string => {
