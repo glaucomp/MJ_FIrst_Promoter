@@ -25,6 +25,13 @@ const LinkGenerator = ({ username }: LinkGeneratorProps) => {
   const [customerInput, setCustomerInput] = useState('');
   const [generatedLink, setGeneratedLink] = useState('');
   const [copied, setCopied] = useState(false);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    };
+  }, []);
 
   const handleGenerate = () => {
     if (!customerInput.trim()) return;
@@ -36,7 +43,8 @@ const LinkGenerator = ({ username }: LinkGeneratorProps) => {
     try {
       await navigator.clipboard.writeText(generatedLink);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+      copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
     } catch {
       // fallback silently
     }
