@@ -80,12 +80,35 @@ const upload = multer({
 const audioUpload = (req: Request, res: Response, next: NextFunction): void => {
   upload.single('audio')(req, res, (err) => {
     if (!err) return next();
-    if (err instanceof MulterError && err.code === 'LIMIT_FILE_SIZE') {
-      res.status(413).json({ error: 'Audio file exceeds the 10 MB limit' });
+
+    if (err instanceof MulterError) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        res.status(413).json({ error: 'Audio file exceeds the 10 MB limit' });
+        return;
+      }
+
+      switch (err.code) {
+        case 'LIMIT_PART_COUNT':
+        case 'LIMIT_FILE_COUNT':
+        case 'LIMIT_FIELD_KEY':
+        case 'LIMIT_FIELD_VALUE':
+        case 'LIMIT_FIELD_COUNT':
+        case 'LIMIT_UNEXPECTED_FILE':
+          res.status(400).json({ error: err.message });
+          return;
+        default:
+          res.status(400).json({ error: err.message });
+          return;
+      }
+    }
+
+    // fileFilter rejections arrive here as plain Errors
+    if (err instanceof Error) {
+      res.status(415).json({ error: err.message });
       return;
     }
-    // fileFilter rejections arrive here as plain Errors
-    res.status(415).json({ error: err.message });
+
+    res.status(400).json({ error: 'Invalid upload request' });
   });
 };
 
