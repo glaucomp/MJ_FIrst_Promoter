@@ -12,7 +12,15 @@ const promoterDisplayName = (p: ChatterMyGroup['promoter']): string => {
 
 const buildAffiliateLink = (username: string, customerInput: string): string => {
   const base = (SITE_URL || globalThis.location.origin).replace(/\/$/, '');
-  return `${base}/${encodeURIComponent(username)}/${encodeURIComponent(customerInput.trim())}`;
+  const url = new URL(base);
+  url.searchParams.set('fpr', username);
+
+  const customerTag = customerInput.trim();
+  if (customerTag) {
+    url.searchParams.set('customer', customerTag);
+  }
+
+  return url.toString();
 };
 
 // ── Link Generator ────────────────────────────────────────────────────────────
