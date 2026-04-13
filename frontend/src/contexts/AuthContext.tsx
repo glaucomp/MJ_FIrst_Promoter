@@ -6,7 +6,7 @@ import { authApi } from '../services/api';
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
   logout: () => void;
   switchRole: (role: UserRole) => void;
   updateUser: (patch: Partial<User>) => void;
@@ -62,7 +62,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     init();
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<User> => {
     const response = await authApi.login(email, password);
     const mappedUser = mapApiUserToUser(response.user);
 
@@ -71,6 +71,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     localStorage.setItem('auth_token', response.token);
     localStorage.setItem('auth_user', JSON.stringify(mappedUser));
+
+    return mappedUser;
   };
 
   const logout = () => {

@@ -9,6 +9,7 @@ import { Campaigns } from './pages/Campaigns';
 import { Payouts } from './pages/Payouts';
 import { Chatters } from './pages/Chatters';
 import { ChatterGroups } from './pages/ChatterGroups';
+import { ChatterDashboard } from './pages/ChatterDashboard';
 import { Login } from './pages/Login';
 import type { ReactNode } from 'react';
 import type { UserRole } from './types';
@@ -34,7 +35,7 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   }
 
   if (allowedRoles && !allowedRoles.includes(user.baseRole)) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={user.baseRole === 'chatter' ? '/chatter-portal' : '/dashboard'} replace />;
   }
 
   return <>{children}</>;
@@ -52,10 +53,15 @@ const PublicRoute = ({ children }: { children: ReactNode }) => {
   }
 
   if (user) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={user.baseRole === 'chatter' ? '/chatter-portal' : '/dashboard'} replace />;
   }
 
   return <>{children}</>;
+};
+
+const ChatterRedirect = () => {
+  const { user } = useAuth();
+  return <Navigate to={user?.baseRole === 'chatter' ? '/chatter-portal' : '/dashboard'} replace />;
 };
 
 function AppRoutes() {
@@ -66,7 +72,7 @@ function AppRoutes() {
         path="/"
         element={
           <ProtectedRoute>
-            <Navigate to="/dashboard" replace />
+            <ChatterRedirect />
           </ProtectedRoute>
         }
       />
@@ -76,6 +82,16 @@ function AppRoutes() {
           <ProtectedRoute>
             <DashboardLayout>
               <Dashboard />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/chatter-portal"
+        element={
+          <ProtectedRoute allowedRoles={['chatter']}>
+            <DashboardLayout>
+              <ChatterDashboard />
             </DashboardLayout>
           </ProtectedRoute>
         }

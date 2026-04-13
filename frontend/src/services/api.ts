@@ -612,6 +612,57 @@ export const chattersApi = {
     });
     return handleResponse(response, 'Failed to delete chatter');
   },
+
+  async getMyGroups(): Promise<{ groups: ChatterMyGroup[] }> {
+    const response = await fetch(`${API_URL}/chatters/me/groups`, { headers: getAuthHeaders() });
+    return handleResponse(response, 'Failed to fetch my groups');
+  },
+};
+
+export interface ChatterMyGroup {
+  id: string;
+  name: string;
+  commissionPercentage: number;
+  promoter: {
+    id: string;
+    username: string | null;
+    firstName: string | null;
+    lastName: string | null;
+  } | null;
+}
+
+export const elevenLabsApi = {
+  async textToSpeech(text: string, voiceId?: string, mood?: string, moodDescription?: string): Promise<Blob> {
+    const response = await fetch(`${API_URL}/elevenlabs/tts`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ text, voiceId, mood, moodDescription }),
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: 'Failed to generate audio' }));
+      throw new Error(err.error || 'Failed to generate audio');
+    }
+    return response.blob();
+  },
+
+  async transcribe(audioBlob: Blob): Promise<{ text: string }> {
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'recording.webm');
+
+    // Omit 'Content-Type' so the browser sets the multipart boundary automatically
+    const { 'Content-Type': _ct, ...authHeaders } = getAuthHeaders() as Record<string, string>;
+
+    const response = await fetch(`${API_URL}/elevenlabs/transcribe`, {
+      method: 'POST',
+      headers: authHeaders,
+      body: formData,
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: 'Failed to transcribe audio' }));
+      throw new Error(err.error || 'Failed to transcribe audio');
+    }
+    return response.json();
+  },
 };
 
 export const chatterGroupsApi = {
