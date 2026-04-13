@@ -647,16 +647,16 @@ export const elevenLabsApi = {
   },
 
   async transcribe(audioBlob: Blob): Promise<{ text: string }> {
-    const arrayBuffer = await audioBlob.arrayBuffer();
-    const uint8 = new Uint8Array(arrayBuffer);
-    let binary = '';
-    uint8.forEach(b => { binary += String.fromCharCode(b); });
-    const audioBase64 = btoa(binary);
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'recording.webm');
+
+    // Omit 'Content-Type' so the browser sets the multipart boundary automatically
+    const { 'Content-Type': _ct, ...authHeaders } = getAuthHeaders() as Record<string, string>;
 
     const response = await fetch(`${API_URL}/elevenlabs/transcribe`, {
       method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ audioBase64, mimeType: audioBlob.type || 'audio/webm' }),
+      headers: authHeaders,
+      body: formData,
     });
     if (!response.ok) {
       const err = await response.json().catch(() => ({ error: 'Failed to transcribe audio' }));
