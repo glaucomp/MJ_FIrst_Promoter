@@ -65,15 +65,36 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter(_req, file, cb) {
-    if (ALLOWED_AUDIO_TYPES.has(file.mimetype)) {
+    // Browsers/MediaRecorder often send "audio/webm;codecs=opus" — strip params first
+    const baseType = file.mimetype.split(';')[0].trim();
+    if (ALLOWED_AUDIO_TYPES.has(baseType)) {
       cb(null, true);
     } else {
-      cb(new Error(`Unsupported audio type: ${file.mimetype}`));
+      cb(new Error(`Unsupported audio type: ${baseType}`));
     }
   },
 });
 
 router.post('/tts', authenticate, authorizeElevenLabsAccess, elevenLabsRateLimit, textToSpeech);
-router.post('/transcribe', authenticate, authorizeElevenLabsAccess, elevenLabsRateLimit, upload.single('audio'), transcribe);
+router.post(
+  '/transcribe',
+  authenticate,
+  authorizeElevenLabsAccess,
+  elevenLabsRateLimit,
+  // Wrap multer so we can map its errors to proper 4xx responses instead of 500
+  (req: AuthRequest, res: Response, next: NextFunction) => {
+    upload.single('audio')(req, res, (err: unknown) => {
+      if (!err) return next();
+      if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(413).json({ error: 'File too large (max 10 MB)' });
+      }
+      // fileFilter rejection or other upload validation error → 415
+      return res
+        .status(415)
+        .json({ error: err instanceof Error ? err.message : 'Unsupported media type' });
+    });
+  },
+  transcribe,
+);
 
 export default router;

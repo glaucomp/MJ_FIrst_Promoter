@@ -115,6 +115,21 @@ export const textToSpeech = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "text is required" });
     }
 
+    // Validate optional string fields to prevent runtime errors on non-string input
+    if (mood !== undefined && typeof mood !== "string") {
+      return res.status(400).json({ error: "mood must be a string" });
+    }
+    if (voiceId !== undefined && typeof voiceId !== "string") {
+      return res.status(400).json({ error: "voiceId must be a string" });
+    }
+
+    // ElevenLabs voice IDs are short alphanumeric strings; reject anything that
+    // could alter the URL path (prevents path traversal / injection).
+    const VOICE_ID_RE = /^[A-Za-z0-9]{1,64}$/;
+    if (voiceId && !VOICE_ID_RE.test(voiceId)) {
+      return res.status(400).json({ error: "Invalid voiceId format" });
+    }
+
     const trimmedText = text.trim();
     const TEXT_MAX_LENGTH = 5_000;
     const MOOD_DESC_MAX_LENGTH = 500;
@@ -142,16 +157,18 @@ export const textToSpeech = async (req: Request, res: Response) => {
         .json({ error: "ElevenLabs API key is not configured" });
     }
 
-    // If a mood was selected, let OpenAI enhance the text with tags
-    const finalText = mood?.trim()
-      ? await applyMoodWithOpenAI(trimmedText, mood.trim(), moodDescription)
+    // If a mood was selected, let OpenAI enhance the text with tags.
+    // mood has already been validated as string|undefined above.
+    const trimmedMood = typeof mood === "string" ? mood.trim() : "";
+    const finalText = trimmedMood
+      ? await applyMoodWithOpenAI(trimmedText, trimmedMood, moodDescription)
       : trimmedText;
 
     const voice =
       voiceId || process.env.ELEVENLABS_VOICE_ID || "21m00Tcm4TlvDq8ikWAM";
 
     const elevenRes = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${voice}`,
+      `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voice)}`,
       {
         method: "POST",
         headers: {

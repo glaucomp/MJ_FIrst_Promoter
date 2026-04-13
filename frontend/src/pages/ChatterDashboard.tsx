@@ -214,7 +214,10 @@ const VoiceMessage = () => {
     if (!mr) return;
 
     mr.onstop = async () => {
-      const mimeType = mr.mimeType || 'audio/webm';
+      // MediaRecorder.mimeType often includes codec params (e.g. "audio/webm;codecs=opus").
+      // Strip params so the blob type matches the backend's MIME allowlist exactly.
+      const rawMimeType = mr.mimeType || 'audio/webm';
+      const mimeType = rawMimeType.split(';')[0].trim() || 'audio/webm';
       const blob = new Blob(chunksRef.current, { type: mimeType });
       mr.stream.getTracks().forEach(t => t.stop());
       setIsRecording(false);
