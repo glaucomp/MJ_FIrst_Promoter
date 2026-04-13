@@ -67,13 +67,14 @@ async function applyMoodWithOpenAI(
     ? `${mood} — ${moodDescription}`
     : mood;
 
-  const completion = await client.chat.completions
-    .create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content: `You are a professional voice script writer specializing in ElevenLabs v3 text-to-speech production.
+  try {
+    const completion = await client.chat.completions
+      .create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `You are a professional voice script writer specializing in ElevenLabs v3 text-to-speech production.
 
 Your task is to rewrite a given message so that it authentically conveys a specified emotional mood when spoken aloud. You achieve this by:
 
@@ -88,17 +89,23 @@ Rules:
 - Preserve the original language and core meaning (do not translate or change the topic).
 - Do not add commentary, explanations, or surrounding quotes.
 - Return only the final rewritten message with any tags embedded inline.`,
-      },
-      {
-        role: "user",
-        content: `Mood: ${moodDetail}\n\nOriginal message: ${text}`,
-      },
-    ],
-    max_tokens: 600,
-    temperature: 0.9,
-  });
+          },
+          {
+            role: "user",
+            content: `Mood: ${moodDetail}\n\nOriginal message: ${text}`,
+          },
+        ],
+        max_tokens: 600,
+        temperature: 0.9,
+      });
 
-  return completion.choices[0]?.message?.content?.trim() ?? text;
+    return completion.choices[0]?.message?.content?.trim() ?? text;
+  } catch (err) {
+    // If the OpenAI call fails for any reason (network, quota, 5xx ...), fall back
+    // to the original text so ElevenLabs TTS can still proceed.
+    console.error("OpenAI mood enhancement failed, using original text:", err);
+    return text;
+  }
 }
 
 // POST /api/elevenlabs/tts
