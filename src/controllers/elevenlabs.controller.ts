@@ -41,9 +41,7 @@ export const transcribe = async (req: Request, res: Response) => {
     if (!elevenRes.ok) {
       const errText = await elevenRes.text();
       console.error("ElevenLabs STT error:", elevenRes.status, errText);
-      return res
-        .status(502)
-        .json({ error: "Transcription failed", detail: errText });
+      return res.status(502).json({ error: "Transcription failed" });
     }
 
     const result = (await elevenRes.json()) as { text?: string };
@@ -116,6 +114,26 @@ export const textToSpeech = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "text is required" });
     }
 
+    const trimmedText = text.trim();
+    const TEXT_MAX_LENGTH = 5_000;
+    const MOOD_DESC_MAX_LENGTH = 500;
+
+    if (trimmedText.length > TEXT_MAX_LENGTH) {
+      return res
+        .status(400)
+        .json({ error: `text must not exceed ${TEXT_MAX_LENGTH} characters` });
+    }
+
+    if (
+      moodDescription &&
+      typeof moodDescription === "string" &&
+      moodDescription.length > MOOD_DESC_MAX_LENGTH
+    ) {
+      return res.status(400).json({
+        error: `moodDescription must not exceed ${MOOD_DESC_MAX_LENGTH} characters`,
+      });
+    }
+
     const apiKey = process.env.ELEVENLABS_API_KEY;
     if (!apiKey) {
       return res
@@ -125,8 +143,8 @@ export const textToSpeech = async (req: Request, res: Response) => {
 
     // If a mood was selected, let OpenAI enhance the text with tags
     const finalText = mood?.trim()
-      ? await applyMoodWithOpenAI(text.trim(), mood.trim(), moodDescription)
-      : text.trim();
+      ? await applyMoodWithOpenAI(trimmedText, mood.trim(), moodDescription)
+      : trimmedText;
 
     const voice =
       voiceId || process.env.ELEVENLABS_VOICE_ID || "21m00Tcm4TlvDq8ikWAM";
@@ -150,10 +168,8 @@ export const textToSpeech = async (req: Request, res: Response) => {
 
     if (!elevenRes.ok) {
       const errText = await elevenRes.text();
-      console.error("ElevenLabs error:", elevenRes.status, errText);
-      return res
-        .status(502)
-        .json({ error: "ElevenLabs request failed", detail: errText });
+      console.error("ElevenLabs TTS error:", elevenRes.status, errText);
+      return res.status(502).json({ error: "ElevenLabs request failed" });
     }
 
     const audioBuffer = await elevenRes.arrayBuffer();

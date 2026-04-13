@@ -12,6 +12,17 @@ const ELEVENLABS_RATE_LIMIT_WINDOW_MS = 60 * 1_000;
 const ELEVENLABS_RATE_LIMIT_MAX_REQUESTS = 10;
 const elevenLabsRequestLog = new Map<string, number[]>();
 
+// Periodically evict entries whose entire window has expired so the map
+// does not grow without bound over long-running server lifetimes.
+setInterval(() => {
+  const cutoff = Date.now() - ELEVENLABS_RATE_LIMIT_WINDOW_MS;
+  for (const [key, timestamps] of elevenLabsRequestLog) {
+    if (timestamps.every((ts) => ts < cutoff)) {
+      elevenLabsRequestLog.delete(key);
+    }
+  }
+}, ELEVENLABS_RATE_LIMIT_WINDOW_MS).unref();
+
 const authorizeElevenLabsAccess = (req: AuthRequest, res: Response, next: NextFunction): void => {
   const userType = req.user?.userType;
   if (!userType || !ELEVENLABS_ALLOWED_USER_TYPES.has(userType)) {
@@ -40,10 +51,26 @@ const elevenLabsRateLimit = (req: AuthRequest, res: Response, next: NextFunction
   next();
 };
 
-// Accept audio file uploads up to 50 MB in memory (no temp files on disk)
+// Accept audio file uploads up to 10 MB in memory; reject non-audio MIME types
+const ALLOWED_AUDIO_TYPES = new Set([
+  'audio/webm',
+  'audio/ogg',
+  'audio/mp4',
+  'audio/mpeg',
+  'audio/wav',
+  'audio/x-m4a',
+]);
+
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 50 * 1024 * 1024 },
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter(_req, file, cb) {
+    if (ALLOWED_AUDIO_TYPES.has(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error(`Unsupported audio type: ${file.mimetype}`));
+    }
+  },
 });
 
 router.post('/tts', authenticate, authorizeElevenLabsAccess, elevenLabsRateLimit, textToSpeech);

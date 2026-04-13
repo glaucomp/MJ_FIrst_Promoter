@@ -174,6 +174,15 @@ const VoiceMessage = () => {
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Revoke any lingering object URL on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (prevAudioUrlRef.current) {
+        URL.revokeObjectURL(prevAudioUrlRef.current);
+      }
+    };
+  }, []);
+
   // Recording timer
   useEffect(() => {
     if (!isRecording) {
