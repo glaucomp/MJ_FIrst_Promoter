@@ -91,7 +91,7 @@ router.post(
       // fileFilter rejection or other upload validation error → 415
       return res
         .status(415)
-        .json({ error: err instanceof Error ? err.message : 'Unsupported media type' });
+        .json({ error: err instanceof Error ? err.message : 'Unsupported audio type' });
     });
   },
   transcribe,

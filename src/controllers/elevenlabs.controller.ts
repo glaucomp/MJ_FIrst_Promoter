@@ -158,8 +158,7 @@ export const textToSpeech = async (req: Request, res: Response) => {
     }
 
     // If a mood was selected, let OpenAI enhance the text with tags.
-    // mood has already been validated as string|undefined above.
-    const trimmedMood = typeof mood === "string" ? mood.trim() : "";
+    const trimmedMood = mood?.trim() ?? "";
     const finalText = trimmedMood
       ? await applyMoodWithOpenAI(trimmedText, trimmedMood, moodDescription)
       : trimmedText;
