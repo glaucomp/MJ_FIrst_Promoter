@@ -190,11 +190,24 @@ const VoiceMessage = () => {
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Revoke any lingering object URL on unmount to prevent memory leaks
+  // Revoke any lingering object URL and release microphone resources on unmount
   useEffect(() => {
     return () => {
       if (prevAudioUrlRef.current) {
         URL.revokeObjectURL(prevAudioUrlRef.current);
+      }
+
+      const recorder = mediaRecorderRef.current;
+      if (recorder) {
+        if (recorder.state !== 'inactive') {
+          try {
+            recorder.stop();
+          } catch {
+            // Ignore recorder stop errors during teardown
+          }
+        }
+        recorder.stream.getTracks().forEach(track => track.stop());
+        mediaRecorderRef.current = null;
       }
     };
   }, []);
