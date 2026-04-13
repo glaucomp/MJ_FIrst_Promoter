@@ -67,12 +67,13 @@ async function applyMoodWithOpenAI(
     ? `${mood} — ${moodDescription}`
     : mood;
 
-  const completion = await client.chat.completions.create({
-    model: "gpt-4o-mini",
-    messages: [
-      {
-        role: "system",
-        content: `You are a professional voice script writer specializing in ElevenLabs v3 text-to-speech production.
+  const completion = await client.chat.completions
+    .create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: `You are a professional voice script writer specializing in ElevenLabs v3 text-to-speech production.
 
 Your task is to rewrite a given message so that it authentically conveys a specified emotional mood when spoken aloud. You achieve this by:
 
