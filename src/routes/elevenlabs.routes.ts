@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response, Router } from 'express';
 import multer, { MulterError } from 'multer';
+import rateLimit from 'express-rate-limit';
 import { UserType } from '@prisma/client';
 import { authenticate, AuthRequest } from '../middleware/auth.middleware';
 import { textToSpeech, transcribe } from '../controllers/elevenlabs.controller';
@@ -7,21 +8,6 @@ import { textToSpeech, transcribe } from '../controllers/elevenlabs.controller';
 const router = Router();
 
 const ELEVENLABS_ALLOWED_USER_TYPES = new Set<UserType>([UserType.CHATTER]);
-
-const ELEVENLABS_RATE_LIMIT_WINDOW_MS = 60 * 1_000;
-const ELEVENLABS_RATE_LIMIT_MAX_REQUESTS = 10;
-const elevenLabsRequestLog = new Map<string, number[]>();
-
-// Periodically evict entries whose entire window has expired so the map
-// does not grow without bound over long-running server lifetimes.
-setInterval(() => {
-  const cutoff = Date.now() - ELEVENLABS_RATE_LIMIT_WINDOW_MS;
-  for (const [key, timestamps] of elevenLabsRequestLog) {
-    if (timestamps.every((ts) => ts < cutoff)) {
-      elevenLabsRequestLog.delete(key);
-    }
-  }
-}, ELEVENLABS_RATE_LIMIT_WINDOW_MS).unref();
 
 const authorizeElevenLabsAccess = (req: AuthRequest, res: Response, next: NextFunction): void => {
   const userType = req.user?.userType;
@@ -32,24 +18,20 @@ const authorizeElevenLabsAccess = (req: AuthRequest, res: Response, next: NextFu
   next();
 };
 
-const elevenLabsRateLimit = (req: AuthRequest, res: Response, next: NextFunction): void => {
-  const identifier = req.user?.id ? `user:${req.user.id}` : `ip:${req.ip}`;
-  const now = Date.now();
-  const windowStart = now - ELEVENLABS_RATE_LIMIT_WINDOW_MS;
-
-  const recentRequests = (elevenLabsRequestLog.get(identifier) ?? []).filter(
-    (ts) => ts > windowStart,
-  );
-
-  if (recentRequests.length >= ELEVENLABS_RATE_LIMIT_MAX_REQUESTS) {
-    res.status(429).json({ error: 'Too many requests' });
-    return;
-  }
-
-  recentRequests.push(now);
-  elevenLabsRequestLog.set(identifier, recentRequests);
-  next();
-};
+// Key by authenticated user ID so limits are per-user, not per-IP.
+// To enforce limits across multiple processes/containers, swap the default
+// MemoryStore for a shared store such as rate-limit-redis.
+const elevenLabsRateLimit = rateLimit({
+  windowMs: 60 * 1_000,
+  limit: 10,
+  keyGenerator: (req) => {
+    const authReq = req as AuthRequest;
+    return authReq.user?.id ? `user:${authReq.user.id}` : `ip:${req.ip ?? 'unknown'}`;
+  },
+  handler: (_req, res) => res.status(429).json({ error: 'Too many requests' }),
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+});
 
 // Accept audio file uploads up to 10 MB in memory; reject non-audio MIME types
 const ALLOWED_AUDIO_TYPES = new Set([
