@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response, Router } from 'express';
 import multer, { MulterError } from 'multer';
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { UserType } from '@prisma/client';
 import { authenticate, AuthRequest } from '../middleware/auth.middleware';
 import { textToSpeech, transcribe } from '../controllers/elevenlabs.controller';
@@ -26,7 +26,7 @@ const elevenLabsRateLimit = rateLimit({
   limit: 10,
   keyGenerator: (req) => {
     const authReq = req as AuthRequest;
-    return authReq.user?.id ? `user:${authReq.user.id}` : `ip:${req.ip ?? 'unknown'}`;
+    return authReq.user?.id ? `user:${authReq.user.id}` : ipKeyGenerator(req);
   },
   handler: (_req, res) => res.status(429).json({ error: 'Too many requests' }),
   standardHeaders: 'draft-7',
