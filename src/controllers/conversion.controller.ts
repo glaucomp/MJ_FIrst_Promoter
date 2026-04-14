@@ -273,31 +273,32 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
           },
         });
 
-        // Chatter commissions — parallel creates inside the same transaction
+        // Chatter commissions — create sequentially inside the interactive transaction
         const chatterCommissions: { id: string; chatterId: string; amount: number }[] = [];
         if (group) {
-          const created = await Promise.all(
-            group.members.map((member) =>
-              tx.commission.create({
-                data: {
-                  amount: perChatter,
-                  percentage: group.commissionPercentage / group.members.length,
-                  saleAmount: revenue,
-                  status: 'unpaid',
-                  type: 'chatter',
-                  description: `Chatter commission from ${referral.referrer.firstName || referral.referrer.email}'s sale ($${revenue.toFixed(2)})`,
-                  userId: member.chatterId,
-                  campaignId: campaign.id,
-                  referralId: referral.id,
-                  customerId: customer.id,
-                  transactionId: transaction.id,
-                },
-              })
-            )
-          );
-          created.forEach((cc, i) =>
-            chatterCommissions.push({ id: cc.id, chatterId: group.members[i].chatterId, amount: perChatter })
-          );
+          for (const member of group.members) {
+            const cc = await tx.commission.create({
+              data: {
+                amount: perChatter,
+                percentage: group.commissionPercentage / group.members.length,
+                saleAmount: revenue,
+                status: 'unpaid',
+                type: 'chatter',
+                description: `Chatter commission from ${referral.referrer.firstName || referral.referrer.email}'s sale ($${revenue.toFixed(2)})`,
+                userId: member.chatterId,
+                campaignId: campaign.id,
+                referralId: referral.id,
+                customerId: customer.id,
+                transactionId: transaction.id,
+              },
+            });
+
+            chatterCommissions.push({
+              id: cc.id,
+              chatterId: member.chatterId,
+              amount: perChatter,
+            });
+          }
         }
 
         let commission2 = null;
