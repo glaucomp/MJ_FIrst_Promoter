@@ -36,7 +36,7 @@ export const createChatterGroup = async (req: AuthRequest, res: Response) => {
     const group = await prisma.chatterGroup.create({
       data: {
         name,
-        tag: tag ? String(tag).trim() : null,
+        tag: tag == null ? null : String(tag).trim() || null,
         commissionPercentage: pct,
         createdById: req.user!.id,
       },
