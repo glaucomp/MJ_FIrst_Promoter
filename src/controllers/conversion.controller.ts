@@ -548,27 +548,25 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
         },
       });
 
-      // Negative chatter commissions — parallel creates inside the same transaction
+      // Negative chatter commissions — execute sequentially inside the same transaction
       if (refundGroup) {
-        await Promise.all(
-          refundGroup.members.map((member) =>
-            tx.commission.create({
-              data: {
-                amount: perChatterRefund,
-                percentage: refundGroup.commissionPercentage / refundGroup.members.length,
-                saleAmount: refundRevenue,
-                status: 'paid',
-                type: 'chatter',
-                description: `Chatter refund ($${refundRevenue.toFixed(2)})`,
-                userId: member.chatterId,
-                campaignId: campaign.id,
-                referralId: referral.id,
-                customerId: customer.id,
-                transactionId: refundTransaction.id,
-              },
-            })
-          )
-        );
+        for (const member of refundGroup.members) {
+          await tx.commission.create({
+            data: {
+              amount: perChatterRefund,
+              percentage: refundGroup.commissionPercentage / refundGroup.members.length,
+              saleAmount: refundRevenue,
+              status: 'paid',
+              type: 'chatter',
+              description: `Chatter refund ($${refundRevenue.toFixed(2)})`,
+              userId: member.chatterId,
+              campaignId: campaign.id,
+              referralId: referral.id,
+              customerId: customer.id,
+              transactionId: refundTransaction.id,
+            },
+          });
+        }
       }
 
       if (level2RefundAmount !== 0 && referral.parentReferral) {
