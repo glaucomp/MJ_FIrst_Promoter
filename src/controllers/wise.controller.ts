@@ -230,7 +230,7 @@ export const initiateWisePayout = async (req: AuthRequest, res: Response) => {
         sourceCurrency: targetCurrency,
         targetCurrency,
         commissionId: commission.id,
-        reference: "Commission payout",
+        reference: "Commission",
       },
     );
 
@@ -359,7 +359,7 @@ export const initiateBulkWisePayout = async (req: AuthRequest, res: Response) =>
           sourceCurrency: currency,
           targetCurrency: currency,
           commissionId: eligible.map((c) => c.id).sort().join(","),
-          reference: "Commission payout",
+          reference: "Commission",
         },
       );
 

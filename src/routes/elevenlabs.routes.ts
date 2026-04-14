@@ -26,7 +26,7 @@ const elevenLabsRateLimit = rateLimit({
   limit: 10,
   keyGenerator: (req) => {
     const authReq = req as AuthRequest;
-    return authReq.user?.id ? `user:${authReq.user.id}` : ipKeyGenerator(req);
+    return authReq.user?.id ? `user:${authReq.user.id}` : ipKeyGenerator(req.ip ?? 'unknown');
   },
   handler: (_req, res) => res.status(429).json({ error: 'Too many requests' }),
   standardHeaders: 'draft-7',
