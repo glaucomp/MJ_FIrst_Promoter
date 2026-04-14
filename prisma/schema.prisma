@@ -306,6 +306,7 @@ model Commission {
 model ChatterGroup {
   id                   String   @id @default(cuid())
   name                 String
+  tag                  String?  // Optional short label (e.g. "night-shift", "vip")
   commissionPercentage Float    // Percentage of sale amount paid to chatters in this group
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt

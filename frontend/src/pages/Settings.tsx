@@ -172,11 +172,11 @@ export const Settings = () => {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-[28px] leading-[36px] font-semibold text-white">Settings</h1>
+      <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">Settings</h1>
 
       {/* View Selection - Only for Team Managers */}
       {user?.baseRole === 'team_manager' && user?.canSwitchToPromoter && (
-        <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-[20px]">
+        <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-4 shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-[20px]">
           <div className="flex flex-col gap-[8px]">
             <h2 className="text-[20px] leading-[1.4] font-bold text-white">
               View Selection
@@ -243,7 +243,7 @@ export const Settings = () => {
       )}
 
       {/* Profile Information */}
-      <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-[20px]">
+      <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-4 shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-[20px]">
         <h2 className="text-[20px] leading-[1.4] font-bold text-white">
           Profile Information
         </h2>
@@ -280,7 +280,7 @@ export const Settings = () => {
               <span className="text-[16px] text-white font-medium">
                 {user?.role.replace('_', ' ').toUpperCase() || ''}
               </span>
-              <span className="px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border bg-[#006622] border-[#00d948] text-[#28ff70]">
+              <span className="px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border bg-tm-success-color12 border-[#00d948] text-[#28ff70]">
                 Active
               </span>
             </div>
@@ -289,7 +289,7 @@ export const Settings = () => {
       </div>
 
       {/* Preferences */}
-      <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-[20px]">
+      <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-4 shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-[20px]">
         <h2 className="text-[20px] leading-[1.4] font-bold text-white">
           Preferences
         </h2>
@@ -314,7 +314,7 @@ export const Settings = () => {
       </div>
 
       {/* Payout Settings — Wise */}
-      <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-[20px]">
+      <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-4 shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-[20px]">
 
         {/* Header */}
         <div className="flex items-start gap-[12px] flex-col lg:flex-row">
@@ -444,7 +444,7 @@ export const Settings = () => {
               </div>
             </div>
             <Field label="Street Address" value={address} onChange={setAddress} placeholder="123 Main St" />
-            <div className="grid grid-cols-3 gap-[10px]">
+            <div className="grid lg:grid-cols-3 gap-2">
               <Field label="City" value={city} onChange={setCity} placeholder="New York" />
               <div className="flex flex-col gap-[6px]">
                 <label

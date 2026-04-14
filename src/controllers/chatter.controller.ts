@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { PrismaClient, UserRole, UserType } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { nanoid } from 'nanoid';
+import { validationResult } from 'express-validator';
 import { AuthRequest } from '../middleware/auth.middleware';
 
 const prisma = new PrismaClient();
@@ -21,11 +22,15 @@ export const createChatter = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ error: 'Only admins or account managers can create chatters' });
     }
 
-    const { email, password, firstName, lastName } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ error: 'email and password are required' });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        errors: errors.array(),
+      });
     }
+
+    const { email, password, firstName, lastName } = req.body;
 
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
@@ -62,6 +67,45 @@ export const createChatter = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('Create chatter error:', error);
     res.status(500).json({ error: 'Failed to create chatter' });
+  }
+};
+
+// GET /api/chatters/me/groups — list groups the logged-in chatter belongs to
+export const getMyGroups = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    if (req.user.userType !== UserType.CHATTER) {
+      return res.status(403).json({ error: 'Only chatters can access their groups' });
+    }
+    const memberships = await prisma.chatterGroupMember.findMany({
+      where: { chatterId: req.user.id },
+      select: {
+        group: {
+          select: {
+            id: true,
+            name: true,
+            commissionPercentage: true,
+            promoter: {
+              select: {
+                id: true,
+                username: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const groups = memberships.map((m) => m.group);
+    res.json({ groups });
+  } catch (error) {
+    console.error('Get my groups error:', error);
+    res.status(500).json({ error: 'Failed to fetch groups' });
   }
 };
 

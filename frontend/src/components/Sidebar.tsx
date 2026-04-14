@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import tmLogo1x from '../assets/tmlogo.png';
+import tmLogo2x from '../assets/tmlogo@2x.png';
 
 import type { UserRole } from '../types';
 
@@ -16,6 +18,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { id: 'dashboard', icon: '📊', label: 'Dashboard', path: '/dashboard' },
   { id: 'models', icon: '👥', label: 'Models', path: '/models' },
+  { id: 'chatter-portal', icon: '🎭', label: 'Persona', path: '/chatter-portal', allowedRoles: ['chatter'] },
   { id: 'chatters', icon: '💬', label: 'Chatters', path: '/chatters', allowedRoles: ['account_manager'] },
   { id: 'chatter-groups', icon: '🗂️', label: 'Chatter Groups', path: '/chatter-groups', allowedRoles: ['account_manager'] },
   { id: 'campaigns', icon: '🎯', label: 'Campaigns', path: '/campaigns', adminOnly: true },
@@ -65,14 +68,12 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
             onClick={toggleSidebar}
             className="flex flex-col justify-start gap-[5px] "
           >
-            <img
-              src="/logo.png"
-              alt="TeaseMe"
+          <img     alt="TeaseMe"
               className="w-[40px] h-auto object-contain"
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = 'none';
-              }}
-            />
+              }}  src={tmLogo1x}
+        srcSet={`${tmLogo1x} 1x, ${tmLogo2x} 2x`}  />
             <div className="bg-[#101010] h-[24px] w-[40px] rounded-[4px] flex items-center justify-center">
               <span className={`text-[12px] transition-transform ${isOpen ? '-rotate-90' : 'rotate-90'}`}>
                 ▶

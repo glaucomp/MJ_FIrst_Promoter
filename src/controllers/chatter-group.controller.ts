@@ -19,7 +19,7 @@ export const createChatterGroup = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ error: 'Only admins or account managers can create chatter groups' });
     }
 
-    const { name, commissionPercentage } = req.body;
+    const { name, commissionPercentage, tag } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: 'name is required' });
@@ -36,6 +36,7 @@ export const createChatterGroup = async (req: AuthRequest, res: Response) => {
     const group = await prisma.chatterGroup.create({
       data: {
         name,
+        tag: tag == null ? null : String(tag).trim() || null,
         commissionPercentage: pct,
         createdById: req.user!.id,
       },
@@ -87,8 +88,8 @@ export const listChatterGroups = async (req: AuthRequest, res: Response) => {
 // GET /api/chatter-groups/:id — get a single chatter group
 export const getChatterGroup = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ error: 'Not authenticated' });
+    if (!isAccountManagerOrAdmin(req)) {
+      return res.status(403).json({ error: 'Only admins or account managers can view chatter groups' });
     }
 
     if (!isAccountManagerOrAdmin(req)) {
@@ -128,16 +129,20 @@ export const updateChatterGroup = async (req: AuthRequest, res: Response) => {
     }
 
     const { id } = req.params;
-    const { name, commissionPercentage } = req.body;
+    const { name, commissionPercentage, tag } = req.body;
 
     const existing = await prisma.chatterGroup.findUnique({ where: { id } });
     if (!existing) {
       return res.status(404).json({ error: 'Chatter group not found' });
     }
 
-    const data: { name?: string; commissionPercentage?: number } = {};
+    const data: { name?: string; commissionPercentage?: number; tag?: string | null } = {};
 
     if (name !== undefined) data.name = name;
+    if (tag !== undefined) {
+      const trimmedTag = String(tag).trim();
+      data.tag = trimmedTag === '' ? null : trimmedTag;
+    }
 
     if (commissionPercentage !== undefined) {
       const pct = Number(commissionPercentage);
