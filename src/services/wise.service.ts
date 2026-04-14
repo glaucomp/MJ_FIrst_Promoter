@@ -375,13 +375,15 @@ export async function createTransfer(
   targetAccountId: number,
   quoteUuid: string,
   customerTransactionId: string,
-  reference = "Commission payout",
+  reference = "Commission",
 ): Promise<WiseTransfer> {
+  // Wise limits paymentReference to 10 chars for ABA (US ACH) transfers.
+  const safeReference = reference.slice(0, 10);
   return wiseRequest<WiseTransfer>("POST", "/v1/transfers", {
     targetAccount: targetAccountId,
     quoteUuid,
     customerTransactionId,
-    details: { reference },
+    details: { reference: safeReference },
   });
 }
 
