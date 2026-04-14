@@ -139,7 +139,10 @@ export const updateChatterGroup = async (req: AuthRequest, res: Response) => {
     const data: { name?: string; commissionPercentage?: number; tag?: string | null } = {};
 
     if (name !== undefined) data.name = name;
-    if (tag !== undefined) data.tag = tag ? String(tag).trim() : null;
+    if (tag !== undefined) {
+      const trimmedTag = String(tag).trim();
+      data.tag = trimmedTag === '' ? null : trimmedTag;
+    }
 
     if (commissionPercentage !== undefined) {
       const pct = Number(commissionPercentage);
