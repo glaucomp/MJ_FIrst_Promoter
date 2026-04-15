@@ -29,13 +29,13 @@ const USER_TYPES: { value: UserType; label: string; description: string }[] = [
 
 export const CreateUserModal = ({ isOpen, onClose, onCreated }: CreateUserModalProps) => {
   const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName]   = useState('');
-  const [email, setEmail]         = useState('');
-  const [password, setPassword]   = useState('');
-  const [userType, setUserType]   = useState<UserType>('promoter');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [userType, setUserType] = useState<UserType>('promoter');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError]         = useState('');
-  const [success, setSuccess]     = useState<ApiUser | null>(null);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState<ApiUser | null>(null);
 
   const handleSubmit = async () => {
     if (!email || !password) {
@@ -76,7 +76,7 @@ export const CreateUserModal = ({ isOpen, onClose, onCreated }: CreateUserModalP
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-scroll">
-      <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-5 shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] w-full lg:max-w-[190px] lg:p-12">
+      <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-5 shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] w-full lg:max-w-190 lg:p-12">
         <div className="flex flex-col gap-[20px]">
 
           {/* Header */}
@@ -188,11 +188,10 @@ export const CreateUserModal = ({ isOpen, onClose, onCreated }: CreateUserModalP
                     <button
                       key={t.value}
                       onClick={() => setUserType(t.value)}
-                      className={`flex items-center justify-between rounded-[8px] px-[14px] py-[12px] border text-left transition-all ${
-                        userType === t.value
+                      className={`flex items-center justify-between rounded-[8px] px-[14px] py-[12px] border text-left transition-all ${userType === t.value
                           ? 'bg-[#ff0f5f]/10 border-[#ff0f5f] '
                           : 'bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.2)]'
-                      }`}
+                        }`}
                     >
                       <div>
                         <p className={`text-base font-bold ${userType === t.value ? 'text-tm-primary-color05' : 'text-[#9e9e9e]'}`}>
@@ -200,9 +199,8 @@ export const CreateUserModal = ({ isOpen, onClose, onCreated }: CreateUserModalP
                         </p>
                         <p className={`text-[14px] ${userType === t.value ? 'text-white' : 'text-[#9e9e9e]'}`}>{t.description}</p>
                       </div>
-                      <div className={`w-[16px] h-[16px] rounded-full border-2 flex-shrink-0 ${
-                        userType === t.value ? 'border-[#ff0f5f] bg-[#ff0f5f]' : 'border-[#555]'
-                      }`} />
+                      <div className={`w-[16px] h-[16px] rounded-full border-2 flex-shrink-0 ${userType === t.value ? 'border-[#ff0f5f] bg-[#ff0f5f]' : 'border-[#555]'
+                        }`} />
                     </button>
                   ))}
                 </div>

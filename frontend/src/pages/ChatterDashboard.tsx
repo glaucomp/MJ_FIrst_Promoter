@@ -60,7 +60,7 @@ const LinkGenerator = ({ username }: LinkGeneratorProps) => {
 
   return (
     <div className="flex flex-col gap-[12px]">
-      <p className="text-[11px] font-bold uppercase tracking-[0.2px] text-[#9e9e9e]">Generate Affiliate Link</p>
+      <p className="text-[11px] font-bold uppercase tracking-[0.2px] text-[#9e9e9e]">Inivite Link</p>
       <div className="flex gap-[8px]">
         <input
           type="text"
@@ -68,7 +68,7 @@ const LinkGenerator = ({ username }: LinkGeneratorProps) => {
           onChange={e => setCustomerInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleGenerate()}
           placeholder="Customer email or nickname"
-          className="flex-1 bg-[#141414] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[14px] py-[10px] text-[14px] text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#444]"
+          className="h-14 w-full bg-tm-neutral-color04 border border-tm-neutral-color03 rounded-lg px-[14px] py-[10px] text-[14px] text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#444]"
         />
         <button
           onClick={handleGenerate}
@@ -84,9 +84,8 @@ const LinkGenerator = ({ username }: LinkGeneratorProps) => {
           <p className="flex-1 text-[#9e9e9e] text-[13px] truncate font-mono">{generatedLink}</p>
           <button
             onClick={handleCopy}
-            className={`text-[12px] font-bold shrink-0 transition-colors ${
-              copied ? 'text-[#28ff70]' : 'text-[#ff2a71] hover:text-[#ff4488]'
-            }`}
+            className={`text-[12px] font-bold shrink-0 transition-colors ${copied ? 'text-[#28ff70]' : 'text-[#ff2a71] hover:text-[#ff4488]'
+              }`}
           >
             {copied ? 'Copied!' : 'Copy'}
           </button>
@@ -314,11 +313,10 @@ const VoiceMessage = () => {
             <button
               key={m.value}
               onClick={() => setSelectedMood(prev => prev === m.value ? null : m.value)}
-              className={`flex items-center gap-[6px] px-[12px] py-[6px] rounded-[100px] text-[12px] font-bold border transition-all active:scale-95 ${
-                selectedMood === m.value
-                  ? 'bg-[#660022] border-[#ff2a71] text-[#ff2a71]'
-                  : 'bg-[#141414] border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:border-[#ff2a71] hover:text-[#ff2a71]'
-              }`}
+              className={`flex items-center gap-[6px] px-[12px] py-[6px] rounded-[100px] text-[12px] font-bold border transition-all active:scale-95 ${selectedMood === m.value
+                ? 'bg-[#660022] border-[#ff2a71] text-[#ff2a71]'
+                : 'bg-[#141414] border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:border-[#ff2a71] hover:text-[#ff2a71]'
+                }`}
             >
               <span>{m.emoji}</span>
               {m.label}
@@ -418,11 +416,10 @@ const GroupCard = ({ group, isSelected, onSelect }: GroupCardProps) => {
       {/* Clickable header row */}
       <button
         onClick={onSelect}
-        className={`w-full text-left bg-linear-to-t from-[#212121] to-[#23252a] border rounded-[8px] p-[20px] flex items-center justify-between gap-[16px] transition-all ${
-          isSelected
-            ? 'border-[#ff2a71] shadow-[0_0_0_1px_rgba(255,42,113,0.2)]'
-            : 'border-[rgba(255,255,255,0.03)] hover:border-[rgba(255,255,255,0.1)]'
-        }`}
+        className={`w-full text-left bg-linear-to-t from-[#212121] to-[#23252a] border rounded-[8px] p-[20px] flex items-center justify-between gap-[16px] transition-all ${isSelected
+          ? 'border-[#ff2a71] shadow-[0_0_0_1px_rgba(255,42,113,0.2)]'
+          : 'border-[rgba(255,255,255,0.03)] hover:border-[rgba(255,255,255,0.1)]'
+          }`}
       >
         {/* Left: group info */}
         <div className="flex flex-col gap-[4px]">
