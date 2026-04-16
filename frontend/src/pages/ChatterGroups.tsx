@@ -433,7 +433,34 @@ const LinkPromoterModal = ({ isOpen, onClose, group, allPromoters, onGroupUpdate
   );
 };
 
+// ── Chatter Avatar Card ──────────────────────────────────────────────────────
+
+interface ChatterAvatarCardProps {
+  member: ChatterGroup['members'][number];
+}
+
+const ChatterAvatarCard = ({ member }: ChatterAvatarCardProps) => {
+  const firstName = member.chatter.firstName ?? '';
+  const lastName = member.chatter.lastName ?? '';
+  const displayName = [firstName, lastName].filter(Boolean).join(' ') || member.chatter.email.split('@')[0];
+  const initials = [firstName[0], lastName[0]].filter(Boolean).join('').toUpperCase() || displayName.slice(0, 2).toUpperCase();
+
+  return (
+    <div className="flex items-center gap-[12px] bg-[#202022] border border-[rgba(255,255,255,0.06)] rounded-[14px] px-[16px] py-[14px]">
+      <div className="w-[44px] h-[44px] rounded-full bg-[#2e2e32] border-2 border-[#3a3a3e] flex items-center justify-center shrink-0">
+        <span className="text-[#aaa] text-[13px] font-semibold">{initials}</span>
+      </div>
+      <span className="text-white text-[14px] font-medium flex-1 truncate">{displayName}</span>
+    </div>
+  );
+};
+
 // ── Main Page ───────────────────────────────────────────────────────────────
+
+type GroupSortBy = 'name' | 'members' | 'commission';
+
+const isGroupSortBy = (value: string): value is GroupSortBy =>
+  value === 'name' || value === 'members' || value === 'commission';
 
 export const ChatterGroups = () => {
   const { user } = useAuth();
@@ -442,6 +469,7 @@ export const ChatterGroups = () => {
   const [promoters, setPromoters] = useState<ApiUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [sortBy, setSortBy] = useState<GroupSortBy>('name');
 
   const [isGroupFormOpen, setIsGroupFormOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<ChatterGroup | null>(null);
@@ -503,29 +531,59 @@ export const ChatterGroups = () => {
 
   const handleGroupUpdated = (group: ChatterGroup) => {
     setGroups(prev => prev.map(g => g.id === group.id ? group : g));
-    // Keep modal open with updated data
     if (managingGroup?.id === group.id) setManagingGroup(group);
     if (linkingGroup?.id === group.id) setLinkingGroup(group);
   };
 
+  const sortedGroups = [...groups].sort((a, b) => {
+    if (sortBy === 'name') return a.name.localeCompare(b.name);
+    if (sortBy === 'members') return b.members.length - a.members.length;
+    if (sortBy === 'commission') return b.commissionPercentage - a.commissionPercentage;
+    return 0;
+  });
+
   return (
-    <div className="flex flex-col gap-[24px] p-[24px] max-w-[900px] mx-auto">
+    <div className="flex flex-col gap-[24px] py-[24px]">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-[16px]">
         <div>
           <h1 className="text-[24px] font-bold text-white leading-[1.3]">Chatter Groups</h1>
           <p className="text-[#9e9e9e] text-[14px] mt-[4px]">
             {groups.length} group{groups.length !== 1 ? 's' : ''} — commissions split equally among group members
           </p>
         </div>
-        {canManage && (
-          <button
-            onClick={() => { setEditingGroup(null); setIsGroupFormOpen(true); }}
-            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
-          >
-            + New Group
-          </button>
-        )}
+        <div className="flex items-center gap-[10px] flex-shrink-0">
+          {/* Sort dropdown */}
+          <div className="flex items-center gap-[8px]">
+            <label htmlFor="chatter-groups-sort-by" className="text-[#9e9e9e] text-[13px]">
+              Sort By
+            </label>
+            <select
+              id="chatter-groups-sort-by"
+              value={sortBy}
+              onChange={e => {
+                const nextSortBy = e.target.value;
+                if (isGroupSortBy(nextSortBy)) {
+                  setSortBy(nextSortBy);
+                }
+              }}
+              className="bg-[#1c1c1e] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[12px] py-[8px] text-white text-[13px] focus:outline-none focus:border-[#ff0f5f] appearance-none cursor-pointer pr-[28px]"
+              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239e9e9e' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}
+            >
+              <option value="name">Name</option>
+              <option value="members">Members</option>
+              <option value="commission">Commission</option>
+            </select>
+          </div>
+          {canManage && (
+            <button
+              onClick={() => { setEditingGroup(null); setIsGroupFormOpen(true); }}
+              className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+            >
+              + New Group
+            </button>
+          )}
+        </div>
       </div>
 
       {error && (
@@ -538,7 +596,7 @@ export const ChatterGroups = () => {
         <div className="flex items-center justify-center py-[48px]">
           <div className="w-[32px] h-[32px] border-2 border-[#ff0f5f] border-t-transparent rounded-full animate-spin" />
         </div>
-      ) : groups.length === 0 ? (
+      ) : sortedGroups.length === 0 ? (
         <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[32px] text-center">
           <p className="text-[#9e9e9e] text-[16px]">No chatter groups yet.</p>
           {canManage && (
@@ -549,136 +607,112 @@ export const ChatterGroups = () => {
         </div>
       ) : (
         <div className="flex flex-col gap-[16px]">
-          {groups.map(group => (
+          {sortedGroups.map(group => (
             <div
               key={group.id}
-              className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[20px] flex flex-col gap-[16px]"
+              className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-[18px] flex flex-col"
             >
-              {/* Group header row */}
-              <div className="flex items-start justify-between gap-[16px]">
-                <div className="flex flex-col gap-[4px]">
-                  <div className="flex items-center gap-[8px]">
-                    <h3 className="text-white text-[18px] font-bold">{group.name}</h3>
-                    {group.tag && (
-                      <span className="px-[8px] py-[2px] rounded-[100px] text-[11px] font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e]">
-                        {group.tag}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[#9e9e9e] text-[13px]">
-                    Commission: <span className="text-white font-semibold">{group.commissionPercentage}%</span>
-                    {group.members.length > 0 && (
-                      <> · Per chatter: <span className="text-white font-semibold">
-                        {(group.commissionPercentage / group.members.length).toFixed(2)}%
-                      </span></>
-                    )}
-                  </p>
+              {/* Card header — static */}
+              <div className="p-[28px] flex items-start justify-between gap-[16px]">
+                {/* Left: name + tag */}
+                <div className="flex flex-col gap-[8px]">
+                  <h3 className="text-white text-[22px] font-bold leading-[1.2]">{group.name}</h3>
+                  {group.tag && (
+                    <span className="self-start px-[10px] py-[3px] rounded-[100px] text-[12px] font-semibold text-[#ff2a71]">
+                      {group.tag}
+                    </span>
+                  )}
                 </div>
 
-                {canManage && (
-                  <div className="flex items-center gap-[8px] flex-shrink-0">
-                    <button
-                      onClick={() => { setEditingGroup(group); setIsGroupFormOpen(true); }}
-                      className="text-[#9e9e9e] hover:text-white text-[13px] font-medium transition-colors"
-                    >
-                      Edit
-                    </button>
-                    {confirmDeleteId === group.id ? (
-                      <div className="flex items-center gap-[6px]">
-                        <span className="text-[#9e9e9e] text-[12px]">Delete group?</span>
-                        <button
-                          onClick={() => handleDelete(group.id)}
-                          disabled={deletingId === group.id}
-                          className="text-[#ff2a2a] text-[12px] font-bold hover:text-[#ff4444] disabled:opacity-50"
-                        >
-                          {deletingId === group.id ? '...' : 'Yes'}
-                        </button>
-                        <button
-                          onClick={() => setConfirmDeleteId(null)}
-                          className="text-[#9e9e9e] text-[12px] font-bold hover:text-white"
-                        >
-                          No
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => setConfirmDeleteId(group.id)}
-                        className="text-[#9e9e9e] hover:text-[#ff2a2a] text-[13px] transition-colors"
-                      >
-                        Delete
-                      </button>
-                    )}
+                {/* Right: referral bonus + admin actions */}
+                <div className="flex flex-col items-end gap-[6px] shrink-0">
+                  <div className="flex items-baseline gap-[5px]">
+                    <span className="text-[#9e9e9e] text-[13px]">Referral Bonus</span>
+                    <span className="text-white text-[14px] font-bold">{group.commissionPercentage}%</span>
                   </div>
-                )}
-              </div>
-
-              {/* Divider */}
-              <div className="border-t border-[rgba(255,255,255,0.05)]" />
-
-              {/* Chatters + Promoter row */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-[16px]">
-                {/* Chatters column */}
-                <div className="flex flex-col gap-[8px]">
-                  <div className="flex items-center justify-between">
-                    <p className="text-[#9e9e9e] text-[12px] font-bold uppercase tracking-[0.2px]">
-                      Chatters ({group.members.length})
-                    </p>
-                    {canManage && (
+                  {canManage && (
+                    <div className="flex items-center gap-[10px]">
                       <button
-                        onClick={() => setManagingGroup(group)}
-                        className="text-[#ff0f5f] text-[12px] font-bold hover:text-[#ff4080]"
+                        onClick={() => { setEditingGroup(group); setIsGroupFormOpen(true); }}
+                        className="text-[#555] hover:text-[#9e9e9e] text-[12px] transition-colors"
                       >
-                        Manage
+                        Edit
                       </button>
-                    )}
-                  </div>
-                  {group.members.length === 0 ? (
-                    <p className="text-[#9e9e9e] text-[13px]">No chatters assigned.</p>
-                  ) : (
-                    <div className="flex flex-wrap gap-[6px]">
-                      {group.members.slice(0, 5).map(m => (
-                        <span
-                          key={m.id}
-                          className="px-[8px] py-[3px] rounded-[100px] text-[11px] font-medium border border-[rgba(255,255,255,0.1)] text-[#ccc]"
+                      {confirmDeleteId === group.id ? (
+                        <div className="flex items-center gap-[6px]">
+                          <span className="text-[#555] text-[11px]">Delete?</span>
+                          <button
+                            onClick={() => void handleDelete(group.id)}
+                            disabled={deletingId === group.id}
+                            className="text-[#ff2a2a] text-[11px] font-bold hover:text-[#ff4444] disabled:opacity-50"
+                          >
+                            {deletingId === group.id ? '...' : 'Yes'}
+                          </button>
+                          <button
+                            onClick={() => setConfirmDeleteId(null)}
+                            className="text-[#555] text-[11px] font-bold hover:text-[#9e9e9e]"
+                          >
+                            No
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmDeleteId(group.id)}
+                          className="text-[#555] hover:text-[#ff2a2a] text-[12px] transition-colors"
                         >
-                          {[m.chatter.firstName, m.chatter.lastName].filter(Boolean).join(' ') || m.chatter.email}
-                        </span>
-                      ))}
-                      {group.members.length > 5 && (
-                        <span className="px-[8px] py-[3px] rounded-[100px] text-[11px] font-medium border border-[rgba(255,255,255,0.1)] text-[#9e9e9e]">
-                          +{group.members.length - 5} more
-                        </span>
+                          Delete
+                        </button>
                       )}
                     </div>
                   )}
                 </div>
+              </div>
 
-                {/* Linked Promoter column */}
-                <div className="flex flex-col gap-[8px]">
+              {/* Card body */}
+              <div className="px-[28px] pb-[24px] flex flex-col gap-[16px]">
+                {/* Team Members section */}
+                <div className="flex flex-col gap-[12px]">
                   <div className="flex items-center justify-between">
-                    <p className="text-[#9e9e9e] text-[12px] font-bold uppercase tracking-[0.2px]">
-                      Linked Promoter
-                    </p>
+                    <p className="text-[#9e9e9e] text-[14px] font-semibold">Team Members</p>
                     {canManage && (
                       <button
-                        onClick={() => setLinkingGroup(group)}
-                        className="text-[#ff0f5f] text-[12px] font-bold hover:text-[#ff4080]"
+                        onClick={() => setManagingGroup(group)}
+                        className="text-[#555] hover:text-[#9e9e9e] text-[12px] transition-colors"
                       >
-                        {group.promoter ? 'Change' : 'Link'}
+                        {group.members.length === 0 ? '+ Add members' : 'Manage'}
                       </button>
                     )}
                   </div>
-                  {group.promoter ? (
-                    <div className="flex flex-col gap-[2px]">
-                      <p className="text-white text-[14px] font-medium">
-                        {[group.promoter.firstName, group.promoter.lastName].filter(Boolean).join(' ') || group.promoter.email}
-                      </p>
-                      <p className="text-[#9e9e9e] text-[12px]">{group.promoter.email}</p>
-                    </div>
+                  {group.members.length === 0 ? (
+                    <p className="text-[#555] text-[13px]">No chatters assigned yet.</p>
                   ) : (
-                    <p className="text-[#9e9e9e] text-[13px]">No promoter linked.</p>
+                    <div className="grid grid-cols-3 gap-[10px]">
+                      {group.members.map(m => (
+                        <ChatterAvatarCard key={m.id} member={m} />
+                      ))}
+                    </div>
                   )}
                 </div>
+              </div>
+
+              {/* Linked Promoter — subtle footer row */}
+              <div className="flex items-center justify-between pt-[2px] border-t border-[rgba(255,255,255,0.04)]">
+                <div className="flex items-center gap-[6px]">
+                  <span className="text-[#444] text-[11px] font-semibold uppercase tracking-[0.3px]">Linked Promoter</span>
+                  <span className="text-[#666] text-[12px]">
+                    {group.promoter
+                      ? [group.promoter.firstName, group.promoter.lastName].filter(Boolean).join(' ') || group.promoter.email
+                      : 'None'}
+                  </span>
+                </div>
+                {canManage && (
+                  <button
+                    onClick={() => setLinkingGroup(group)}
+                    className="text-[#555] hover:text-[#ff0f5f] text-[11px] font-semibold transition-colors"
+                  >
+                    {group.promoter ? 'Change' : 'Link'}
+                  </button>
+                )}
               </div>
             </div>
           ))}
