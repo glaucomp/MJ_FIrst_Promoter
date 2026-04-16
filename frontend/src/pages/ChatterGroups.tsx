@@ -442,7 +442,7 @@ interface ChatterAvatarCardProps {
 const ChatterAvatarCard = ({ member }: ChatterAvatarCardProps) => {
   const firstName = member.chatter.firstName ?? '';
   const lastName = member.chatter.lastName ?? '';
-  const displayName = firstName || member.chatter.email.split('@')[0];
+  const displayName = [firstName, lastName].filter(Boolean).join(' ') || member.chatter.email.split('@')[0];
   const initials = [firstName[0], lastName[0]].filter(Boolean).join('').toUpperCase() || displayName.slice(0, 2).toUpperCase();
 
   return (
