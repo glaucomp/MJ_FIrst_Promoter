@@ -3,6 +3,19 @@ import type { ChatterMyGroup } from '../services/api';
 import { LinkGenerator, VoiceMessage } from '../components/GroupTools';
 import { useAuth } from '../contexts/AuthContext';
 
+const InitialsAvatar = ({ name }: { name: string }) => {
+  const initials = name
+    .split(' ')
+    .slice(0, 2)
+    .map(w => w[0]?.toUpperCase() ?? '')
+    .join('');
+  return (
+    <div className="w-[36px] h-[36px] rounded-full bg-linear-to-br from-[#ff0f5f] to-[#cc0047] flex items-center justify-center shrink-0">
+      <span className="text-white text-[13px] font-bold leading-none">{initials}</span>
+    </div>
+  );
+};
+
 export const ChatterGroupToolsPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -36,22 +49,23 @@ export const ChatterGroupToolsPage = () => {
         <div className="flex items-center gap-[12px]">
           <button
             onClick={() => navigate('/chatter-portal')}
-            className="text-[#9e9e9e] hover:text-white transition-colors"
+            className="text-[#9e9e9e] hover:text-white transition-colors shrink-0"
             aria-label="Back"
           >
             <svg className="w-[20px] h-[20px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
             </svg>
           </button>
+          <InitialsAvatar name={group.name} />
           <h1 className="text-[24px] font-bold text-white leading-[1.2]">
             {group.name} Tools
           </h1>
         </div>
         {group.promoter && (
-          <p className="text-[#9e9e9e] text-[13px] ml-[32px]">
+          <p className="text-[#9e9e9e] text-[13px] ml-[72px]">
             Promoter:{' '}
             <span className="text-white font-medium">
-              {[group.promoter.firstName, group.promoter.lastName].filter(Boolean).join(' ') || group.promoter.email}
+              {[group.promoter.firstName, group.promoter.lastName].filter(Boolean).join(' ') || '—'}
             </span>
             {group.promoter.username && (
               <span className="text-[#ff2a71] ml-[6px]">@{group.promoter.username}</span>
@@ -61,14 +75,19 @@ export const ChatterGroupToolsPage = () => {
       </div>
 
       {/* Tools */}
-      <div className="flex flex-col gap-[24px]">
-        {/* Link Generator */}
+      <div className="flex flex-col gap-[20px]">
+        {/* Invite Link */}
         <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-[18px] p-[28px]">
           {group.promoter?.username ? (
             <LinkGenerator username={group.promoter.username} />
           ) : (
             <div className="flex flex-col gap-[8px]">
-              <p className="text-[11px] font-bold uppercase tracking-[0.2px] text-[#9e9e9e]">Generate Affiliate Link</p>
+              <div className="flex items-center gap-[8px]">
+                <svg className="w-[14px] h-[14px] text-[#ff2a71]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+                <p className="text-[11px] font-bold uppercase tracking-[0.3px] text-[#9e9e9e]">Invite Link</p>
+              </div>
               <p className="text-[#555] text-[13px]">
                 Link generation unavailable — this group's promoter has no username set.
               </p>
@@ -76,9 +95,9 @@ export const ChatterGroupToolsPage = () => {
           )}
         </div>
 
-        {/* Voice Message */}
+        {/* Talk Like [Model] */}
         <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-[18px] p-[28px]">
-          <VoiceMessage />
+          <VoiceMessage modelName={group.name} />
         </div>
       </div>
     </div>
