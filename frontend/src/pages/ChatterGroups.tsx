@@ -555,8 +555,11 @@ export const ChatterGroups = () => {
         <div className="flex items-center gap-[10px] flex-shrink-0">
           {/* Sort dropdown */}
           <div className="flex items-center gap-[8px]">
-            <span className="text-[#9e9e9e] text-[13px]">Sort By</span>
+            <label htmlFor="chatter-groups-sort-by" className="text-[#9e9e9e] text-[13px]">
+              Sort By
+            </label>
             <select
+              id="chatter-groups-sort-by"
               value={sortBy}
               onChange={e => {
                 const nextSortBy = e.target.value;
