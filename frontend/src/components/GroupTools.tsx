@@ -112,6 +112,7 @@ export const LinkGenerator = ({ username }: LinkGeneratorProps) => {
         <button
           onClick={handleReset}
           title="Reset form"
+          aria-label="Reset form"
           className="w-[42px] h-[42px] flex items-center justify-center bg-[#141414] border border-[rgba(255,255,255,0.1)] rounded-[8px] text-[#555] hover:text-[#9e9e9e] hover:border-[rgba(255,255,255,0.2)] transition-all shrink-0"
         >
           <svg className="w-[15px] h-[15px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -138,6 +139,7 @@ export const LinkGenerator = ({ username }: LinkGeneratorProps) => {
             <p className="flex-1 text-[#9e9e9e] text-[13px] truncate font-mono">{generatedLink}</p>
             <button
               onClick={handleCopy}
+              aria-label={copied ? 'Copied generated link' : 'Copy generated link'}
               className={`shrink-0 transition-colors ${copied ? 'text-[#28ff70]' : 'text-[#ff2a71] hover:text-[#ff4488]'}`}
             >
               {copied ? (
@@ -407,6 +409,7 @@ export const VoiceMessage = ({ modelName }: VoiceMessageProps) => {
             <button
               onClick={stopRecording}
               title="Stop recording"
+              aria-label="Stop recording"
               className="w-[42px] h-[42px] flex items-center justify-center bg-[#660022] border border-[#ff2a71] rounded-[8px] text-white shrink-0 hover:bg-[#7a0029] transition-all"
             >
               <span className="w-[10px] h-[10px] rounded-sm bg-white animate-pulse" />
@@ -416,6 +419,7 @@ export const VoiceMessage = ({ modelName }: VoiceMessageProps) => {
               onClick={startRecording}
               disabled={isTranscribing || isGenerating}
               title={isRecording ? `Stop — ${fmtTime(recordingSeconds)}` : 'Record voice'}
+              aria-label="Record voice"
               className="w-[42px] h-[42px] flex items-center justify-center bg-[#141414] border border-[rgba(255,255,255,0.1)] rounded-[8px] text-[#555] hover:text-[#ff2a71] hover:border-[#ff2a71] shrink-0 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <svg className="w-[16px] h-[16px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -429,6 +433,7 @@ export const VoiceMessage = ({ modelName }: VoiceMessageProps) => {
             onClick={() => { setText(''); setAudioUrl(''); setIsPlaying(false); setError(''); }}
             disabled={busy}
             title="Clear text"
+            aria-label="Clear text"
             className="w-[42px] h-[42px] flex items-center justify-center bg-[#141414] border border-[rgba(255,255,255,0.1)] rounded-[8px] text-[#555] hover:text-[#9e9e9e] hover:border-[rgba(255,255,255,0.2)] shrink-0 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <svg className="w-[15px] h-[15px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
