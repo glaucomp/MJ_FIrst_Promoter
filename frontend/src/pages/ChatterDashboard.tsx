@@ -110,11 +110,11 @@ export const ChatterDashboard = () => {
               <div className="px-[28px] pb-[24px] flex flex-col gap-[16px]">
                 <div className="flex flex-col gap-[12px]">
                   <p className="text-[#9e9e9e] text-[14px] font-semibold">Team Members</p>
-                  {group.members.length === 0 ? (
+                  {(group.members ?? []).length === 0 ? (
                     <p className="text-[#555] text-[13px]">No chatters assigned yet.</p>
                   ) : (
                     <div className="grid grid-cols-3 gap-[10px]">
-                      {group.members.map(m => (
+                      {(group.members ?? []).map(m => (
                         <ChatterAvatarCard key={m.id} member={m} />
                       ))}
                     </div>
