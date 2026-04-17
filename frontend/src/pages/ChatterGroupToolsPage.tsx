@@ -2,9 +2,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import type { ChatterMyGroup } from '../services/api';
 import { LinkGenerator, VoiceMessage } from '../components/GroupTools';
 
-
-
-
 const InitialsAvatar = ({ name }: { name: string }) => {
   const initials = name
     .split(' ')
