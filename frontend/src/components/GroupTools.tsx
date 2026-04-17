@@ -165,14 +165,12 @@ export const LinkGenerator = ({ username }: LinkGeneratorProps) => {
       {/* Generated link */}
       {generatedLink && (
         <div className="flex flex-col gap-4 border border-neutral-800 p-8 rounded-xl bg-tm-neutral-color08">
-          <div className="flex -flex-row w-full">
-            {" "}
+          <div className="flex flex-row w-full">
             <p className="text-[11px] font-bold uppercase tracking-[0.3px] text-[#9e9e9e]">
               Generated Link
             </p>
           </div>
           <div className="flex flex-col lg:grid-cols-[4fr_1fr] lg:grid gap-2">
-            {" "}
             <div className="flex items-center gap-2 inputMJ p-4 w-full ">
               <svg
                 className="w-[14px] h-[14px] text-[#555] shrink-0"
