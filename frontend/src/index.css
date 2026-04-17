@@ -1,17 +1,14 @@
 @import "tailwindcss";
+
 @theme {
-
-  /* start of theme */ 
-
+  /* start of theme */
 
   --color-border-subtle: hsla(0, 0%, 100%, 0.03);
   --color-border-elevated: hsla(0, 0%, 100%, 0.05);
 
-
   /* hues */
   --color-tm-primary-hue: 15;
   --color-tm-secondary-hue: 305;
-  
 
   /* Primary */
   --color-tm-primary-color01: oklch(0.78 0.14 var(--color-tm-primary-hue));
@@ -56,46 +53,46 @@
   --color-tm-neutral-color12: oklch(0 0 0);
 
   /* Danger */
-  --color-tm-danger-color01: #E77474;
-  --color-tm-danger-color02: #E35F5F;
-  --color-tm-danger-color03: #E05252;
-  --color-tm-danger-color04: #BF2222;
-  --color-tm-danger-color05: #FF2A2A;
-  --color-tm-danger-color06: #FF0D0D;
-  --color-tm-danger-color07: #FE0000;
-  --color-tm-danger-color08: #D90000;
-  --color-tm-danger-color09: #CC0000;
-  --color-tm-danger-color10: #C20000;
+  --color-tm-danger-color01: #e77474;
+  --color-tm-danger-color02: #e35f5f;
+  --color-tm-danger-color03: #e05252;
+  --color-tm-danger-color04: #bf2222;
+  --color-tm-danger-color05: #ff2a2a;
+  --color-tm-danger-color06: #ff0d0d;
+  --color-tm-danger-color07: #fe0000;
+  --color-tm-danger-color08: #d90000;
+  --color-tm-danger-color09: #cc0000;
+  --color-tm-danger-color10: #c20000;
   --color-tm-danger-color11: #990000;
   --color-tm-danger-color12: #660000;
 
   /* Success */
-  --color-tm-success-color01: #74E79A;
-  --color-tm-success-color02: #2AFF71;
-  --color-tm-success-color03: #27FF6F;
-  --color-tm-success-color04: #5FE38B;
-  --color-tm-success-color05: #28FF70;
-  --color-tm-success-color06: #22BF56;
-  --color-tm-success-color07: #0DFF5E;
-  --color-tm-success-color08: #00FE55;
-  --color-tm-success-color09: #00D948;
-  --color-tm-success-color10: #00C241;
+  --color-tm-success-color01: #74e79a;
+  --color-tm-success-color02: #2aff71;
+  --color-tm-success-color03: #27ff6f;
+  --color-tm-success-color04: #5fe38b;
+  --color-tm-success-color05: #28ff70;
+  --color-tm-success-color06: #22bf56;
+  --color-tm-success-color07: #0dff5e;
+  --color-tm-success-color08: #00fe55;
+  --color-tm-success-color09: #00d948;
+  --color-tm-success-color10: #00c241;
   --color-tm-success-color11: #009933;
   --color-tm-success-color12: #006622;
 
   /* Warning */
-  --color-tm-warning-color01: #E7CA74;
-  --color-tm-warning-color02: #E3C25F;
-  --color-tm-warning-color03: #E0BD52;
-  --color-tm-warning-color04: #BF9722;
+  --color-tm-warning-color01: #e7ca74;
+  --color-tm-warning-color02: #e3c25f;
+  --color-tm-warning-color03: #e0bd52;
+  --color-tm-warning-color04: #bf9722;
   --color-tm-warning-color05: oklch(0.7956 0.1626 68.65);
   --color-tm-warning-color06: oklch(0.774 0.172 64.5);
-  --color-tm-warning-color07: #FE9400;
-  --color-tm-warning-color08: #D97F00;
-  --color-tm-warning-color09: #CC7700;
-  --color-tm-warning-color10: #C27100;
+  --color-tm-warning-color07: #fe9400;
+  --color-tm-warning-color08: #d97f00;
+  --color-tm-warning-color09: #cc7700;
+  --color-tm-warning-color10: #c27100;
   --color-tm-warning-color11: #995900;
-  --color-tm-warning-color12: #663C00;
+  --color-tm-warning-color12: #663c00;
 
   /* Text */
   --color-tm-text-color01: oklch(1 0 89.9);
@@ -111,83 +108,95 @@
   --color-tm-text-color11: oklch(0.368 0 89.9);
   --color-tm-text-color12: oklch(0.289 0 89.9);
 
-
-  /**************** END of theme *************/ 
-
+  /**************** END of theme *************/
 }
-
 
 * {
   box-sizing: border-box;
 }
 
-
 :root {
-
-
-
   /* ── Semantic status ── */
-  --color-success:    oklab(69.58800000000001% -0.14217 0.04481);
+  --color-success: oklab(69.58800000000001% -0.14217 0.04481);
   --color-success-bg: oklch(69.588% 0.14907 162.508 / 0.15);
-  --color-danger:     oklch(63.681% 0.20784 25.315);
-  --color-danger-bg:  oklch(63.681% 0.20784 25.315 / 0.15);
-  --color-warning:    oklch(83.685% 0.16435 84.431);
+  --color-danger: oklch(63.681% 0.20784 25.315);
+  --color-danger-bg: oklch(63.681% 0.20784 25.315 / 0.15);
+  --color-warning: oklch(83.685% 0.16435 84.431);
   --color-warning-bg: oklch(83.685% 0.16435 84.431 / 0.15);
-  --color-positive:   oklch(80.988% 0.21413 151.79);
+  --color-positive: oklch(80.988% 0.21413 151.79);
 
   /* ── Tier colors ── */
-  --color-t1:        #60A5FA;
-  --color-t1-bg:     rgba(59, 130, 246, 0.2);
-  --color-t1-avatar: #3B82F6;
-  --color-t2:        #FBBF24;
-  --color-t2-bg:     rgba(245, 158, 11, 0.2);
-  --color-t2-avatar: #F59E0B;
-  --color-t3:        #4ADE80;
-  --color-t3-bg:     rgba(34, 197, 94, 0.2);
-  --color-t3-avatar: #22C55E;
+  --color-t1: #60a5fa;
+  --color-t1-bg: rgba(59, 130, 246, 0.2);
+  --color-t1-avatar: #3b82f6;
+  --color-t2: #fbbf24;
+  --color-t2-bg: rgba(245, 158, 11, 0.2);
+  --color-t2-avatar: #f59e0b;
+  --color-t3: #4ade80;
+  --color-t3-bg: rgba(34, 197, 94, 0.2);
+  --color-t3-avatar: #22c55e;
 
   /* ── Text (tm-text) ── */
-  --color-text-primary:   #FFFFFF;
-  --color-text-secondary: #F5F5F5;
-  --color-text-label:     #C7C7C7; /* tm-text-color05 */
-  --color-text-dim:       #CCCCCC;
-  --color-text-muted:     #9E9E9E;
-  --color-text-subtle:    #555555;
-  --color-text-faded:     #666666;
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #f5f5f5;
+  --color-text-label: #c7c7c7;
+  /* tm-text-color05 */
+  --color-text-dim: #cccccc;
+  --color-text-muted: #9e9e9e;
+  --color-text-subtle: #555555;
+  --color-text-faded: #666666;
 
   /* ── Surfaces (tm-neutral) ── */
-  --color-bg:             oklch(22.645% 0.00003 271.152);  /* tm-neutral-color07 — page background */
-  --color-surface:        oklch(24.776% 0.00003 271.152);  /* tm-neutral-color06 — card gradient start */
-  --color-surface-end:    oklch(26.45% 0.00979 268.322);  /* tm-neutral-color05 — card gradient end */
-  --color-surface-raised: oklch(28.094% 0.00003 271.152);  /* tm-neutral-color04 */
-  --color-surface-overlay: oklch(36.401% 0.01811 268.201); /* chart bar / inactive element fill */
-  --color-surface-hover:   oklch(100% 0.00011 271.152 / 0.02);
-  --color-surface-item:    oklch(100% 0.00011 271.152 / 0.05);
-  --color-surface-inset:   oklch(100% 0.00011 271.152 / 0.03);
+  --color-bg: oklch(22.645% 0.00003 271.152);
+  /* tm-neutral-color07 — page background */
+  --color-surface: oklch(24.776% 0.00003 271.152);
+  /* tm-neutral-color06 — card gradient start */
+  --color-surface-end: oklch(26.45% 0.00979 268.322);
+  /* tm-neutral-color05 — card gradient end */
+  --color-surface-raised: oklch(28.094% 0.00003 271.152);
+  /* tm-neutral-color04 */
+  --color-surface-overlay: oklch(36.401% 0.01811 268.201);
+  /* chart bar / inactive element fill */
+  --color-surface-hover: oklch(100% 0.00011 271.152 / 0.02);
+  --color-surface-item: oklch(100% 0.00011 271.152 / 0.05);
+  --color-surface-inset: oklch(100% 0.00011 271.152 / 0.03);
 
   /* ── Borders (token-matched) ── */
-  --border-subtle:   oklch(100% 0.00011 271.152 / 0.03);  /* border-subtle token  ~3%  */
-  --border-elevated: oklch(100% 0.00011 271.152 / 0.05);  /* border-elevated token ~5% */
-  --border-faint:    oklch(100% 0.00011 271.152 / 0.1);
-  --border-medium:   rgba(255, 255, 255, 0.08);
-  --border-strong:   rgba(255, 255, 255, 0.1);
+  --border-subtle: oklch(100% 0.00011 271.152 / 0.03);
+  /* border-subtle token  ~3%  */
+  --border-elevated: oklch(100% 0.00011 271.152 / 0.05);
+  /* border-elevated token ~5% */
+  --border-faint: oklch(100% 0.00011 271.152 / 0.1);
+  --border-medium: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.1);
   --border-hairline: rgba(255, 255, 255, 0.12);
 
   /* ── Spacing — maps to Figma spacing/space-px-N tokens ── */
-  --space-4:  4px;   /* space-px-4  */
-  --space-6:  6px;
-  --space-8:  8px;   /* space-px-8  */
+  --space-4: 4px;
+  /* space-px-4  */
+  --space-6: 6px;
+  --space-8: 8px;
+  /* space-px-8  */
   --space-10: 10px;
-  --space-12: 12px;  /* space-px-12 */
+  --space-12: 12px;
+  /* space-px-12 */
   --space-14: 14px;
-  --space-16: 16px;  /* space-px-16 */
-  --space-18: 18px;  /* space-px-18 */
-  --space-20: 20px;  /* space-px-20 */
-  --space-24: 24px;  /* space-px-24 */
-  --space-28: 28px;  /* space-px-28 */
-  --space-32: 32px;  /* space-px-32 */
-  --space-44: 44px;  /* space-px-44 */
-  --space-52: 52px;  /* space-px-52 */
+  --space-16: 16px;
+  /* space-px-16 */
+  --space-18: 18px;
+  /* space-px-18 */
+  --space-20: 20px;
+  /* space-px-20 */
+  --space-24: 24px;
+  /* space-px-24 */
+  --space-28: 28px;
+  /* space-px-28 */
+  --space-32: 32px;
+  /* space-px-32 */
+  --space-44: 44px;
+  /* space-px-44 */
+  --space-52: 52px;
+  /* space-px-52 */
 
   /* ── Component sizes (from tokens) ── */
   --button-s: var(--space-24);
@@ -198,36 +207,63 @@
   --shadow-rim-light: 0 -1px 0 0 rgba(255, 255, 255, 0.1);
 
   /* ── Border radius (from tokens) ── */
-  --radius-s:    0.25rem;
-  --radius-m:    0.5rem;
+  --radius-s: 0.25rem;
+  --radius-m: 0.5rem;
   --radius-card: 0.75rem;
-  --radius-l:    1rem;
-  --radius-xl:   1.25rem;
+  --radius-l: 1rem;
+  --radius-xl: 1.25rem;
   --radius-round: 6.25rem;
 
   /* ── Layout (from tokens) ── */
-  --mobile-top-spacer:    64px;
-  --mobile-max-width:     362px;
-  --tablet-max-width:     754px;
-  --desktop-max-width:    960px;
+  --mobile-top-spacer: 64px;
+  --mobile-max-width: 362px;
+  --tablet-max-width: 754px;
+  --desktop-max-width: 960px;
 
   /* ── Typography (from tokens) ── */
-  --font-family-primary:      'DM Sans', sans-serif;
-  --font-size-label:          0.75rem;   /* font-size-body-label */
-  --font-size-body-s:         0.875rem;   /* font-size-body-s */
-  --font-size-body-m:         1rem;   /* font-size-body-m */
-  --font-size-body-l:         1.25rem;   /* font-size-body-l */
-  --font-size-heading-m:      2rem;   /* font-size-desktop-heading-m */
-  --line-height-heading-m:    2.5rem;
-  --font-size-heading-l:      2.5rem;   /* font-size-desktop-heading-l */
-  --line-height-heading-l:    3rem;
-  --font-weight-regular:      400;
-  --font-weight-medium:       500;
-  --font-weight-semibold:     600;
-  --font-weight-bold:         700;
+  --font-family-primary: "DM Sans", sans-serif;
+  --font-size-label: 0.75rem;
+  /* font-size-body-label */
+  --font-size-body-s: 0.875rem;
+  /* font-size-body-s */
+  --font-size-body-m: 1rem;
+  /* font-size-body-m */
+  --font-size-body-l: 1.25rem;
+  /* font-size-body-l */
+  --font-size-heading-m: 2rem;
+  /* font-size-desktop-heading-m */
+  --line-height-heading-m: 2.5rem;
+  --font-size-heading-l: 2.5rem;
+  /* font-size-desktop-heading-l */
+  --line-height-heading-l: 3rem;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /*── Shadow tokens ── */
+  --rim-light-y: -1px;
+  --shadow-none: 0;
+  --shadow-2: 2px;
+  --shadow-4: 4px;
+  --shadow-8: 8px;
+  --shadow-16: 16px;
+  --shadow-24: 24px;
+  --shadow-32: 32px;
+  --shadow-64: 64px;
+  --shadow-96: 96px;
+  --shadow-120: 120px;
+  --shadow-180: 180px;
+
+
+  /* - Button Height - */
+
+  --button-sm: 24px;
+  --button-md: 44px;
+  --button-lg: 52px;
+  --button-xl: 56px;
+
 }
-
-
 
 body {
   font-family: var(--font-family-primary);
@@ -239,21 +275,29 @@ body {
 
 /* ── Stat card typography (from Figma block01 tokens) ── */
 .stat-label {
-  font-size: var(--font-size-label);   /* 12px — text/body/font-size-label */
-  font-weight: var(--font-weight-bold); /* 700 — Bold */
+  font-size: var(--font-size-label);
+  /* 12px — text/body/font-size-label */
+  font-weight: var(--font-weight-bold);
+  /* 700 — Bold */
   line-height: 140%;
   letter-spacing: 0px;
   text-transform: uppercase;
-  color: var(--color-text-muted);      /* #9E9E9E — tm-text-color08 */
+  color: var(--color-text-muted);
+  /* #9E9E9E — tm-text-color08 */
 }
 
 .stat-value {
-  display: block;                            /* Width: Fill */
+  display: block;
+  /* Width: Fill */
   width: 100%;
-  font-size: var(--font-size-body-l);        /* 1.25rem — font-size-body-l */
-  line-height: var(--line-height-heading-m); /* 40px */
-  font-weight: var(--font-weight-bold);      /* 700 */
-  color: var(--color-text-primary);          /* #FFFFFF */
+  font-size: var(--font-size-body-l);
+  /* 1.25rem — font-size-body-l */
+  line-height: var(--line-height-heading-m);
+  /* 40px */
+  font-weight: var(--font-weight-bold);
+  /* 700 */
+  color: var(--color-text-primary);
+  /* #FFFFFF */
 }
 
 #root {
@@ -267,6 +311,7 @@ body {
     transform: translateY(-6px);
     max-height: 0;
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -274,13 +319,52 @@ body {
   }
 }
 
-
 @keyframes scaleBounce {
- 0%,100% { transform: scale(1);}
- 
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
   50% {
     transform: scale(1.015);
   }
+}
+
+/* custom classes */
+
+.buttonSubtle {
+  border-radius: var(--radius-round, 6.25rem);
+  box-shadow: var(--shadow-none, 0) var(--rim-light-y, -1px) var(--shadow-none, 0) var(--shadow-none, 0) rgba(255, 255, 255, 0.1);
+}
+
+.buttonSm {
+  min-height: var(--button-sm);
+}
+
+.buttonMd {
+  min-height: var(--button-md);
+}
+
+.buttonLg {
+  min-height: var(--button-lg);
+}
+
+.buttonXl {
+  min-height: var(--button-xl);
+}
+
+/* inputs */
+.inputMJ {
+  border-radius: 0.75rem;
+  background: var(--colors-tm-neutral-color04, #292929);
+  padding: 1rem;
+}
+
+.inputIcon {
+  border-radius: 0.75rem;
+  background: var(--colors-tm-neutral-color04, #292929);
+  padding-left: 2rem;
 }
 
 /* Define a class that uses the animation */
@@ -293,15 +377,20 @@ body {
   overflow: hidden;
 }
 
-@media (width >= 64rem) {
+/***** desktop large */
 
+@media (width >=64rem) {
   .stat-value {
-  display: block;                            /* Width: Fill */
-  width: 100%;
-  font-size: var( --font-size-heading-m);     /* 32px — font-size-desktop-heading-m */
-  line-height: var(--line-height-heading-m); /* 40px */
-  font-weight: var(--font-weight-bold);      /* 700 */
-  color: var(--color-text-primary);          /* #FFFFFF */
-}
-  
+    display: block;
+    /* Width: Fill */
+    width: 100%;
+    font-size: var(--font-size-heading-m);
+    /* 32px — font-size-desktop-heading-m */
+    line-height: var(--line-height-heading-m);
+    /* 40px */
+    font-weight: var(--font-weight-bold);
+    /* 700 */
+    color: var(--color-text-primary);
+    /* #FFFFFF */
+  }
 }
