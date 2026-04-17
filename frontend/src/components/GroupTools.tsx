@@ -531,7 +531,7 @@ export const VoiceMessage = ({ modelName }: VoiceMessageProps) => {
                   : "Type text here (shorter is better)"
               }
               disabled={isTranscribing}
-              className="flex-1 bg-transparent outline-none text-[14px] text-white focus:placeholder-[#555] placeholder:[rgba(255,255,255,0.1)] mr-4 lg:mr-19"
+              className="flex-1 bg-transparent outline-none text-[14px] text-white focus:placeholder-[#555] placeholder:text-[rgba(255,255,255,0.1)] mr-4 lg:mr-19"
             />
 
             {/* Mic Button (Absolute Positioned) */}
