@@ -1,6 +1,10 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import type { ChatterMyGroup } from '../services/api';
 import { LinkGenerator, VoiceMessage } from '../components/GroupTools';
+
+
+
+
 const InitialsAvatar = ({ name }: { name: string }) => {
   const initials = name
     .split(' ')
@@ -62,7 +66,7 @@ export const ChatterGroupToolsPage = () => {
       {/* Tools */}
       <div className="flex flex-col gap-[20px]">
         {/* Invite Link */}
-        <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-[18px] p-[28px]">
+        <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-[18px] p-4 lg:p-8">
           {group.promoter?.username ? (
             <LinkGenerator username={group.promoter.username} />
           ) : (
@@ -81,12 +85,12 @@ export const ChatterGroupToolsPage = () => {
         </div>
 
         {/* Talk Like [Model] */}
-        <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-[18px] p-[28px]">
+        <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-[18px] p-4 lg:p-8">
           <VoiceMessage modelName={modelName} />
         </div>
 
         {/* Model Info */}
-        <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-[18px] p-[24px] flex flex-col gap-[20px] lg:w-1/2">
+        <div className="hidden bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-[18px] p-[24px] flex flex-col gap-[20px] lg:w-1/2">
           {/* Section header */}
           <div className="flex items-center gap-[10px]">
             {/* Waveform icon */}
@@ -104,7 +108,7 @@ export const ChatterGroupToolsPage = () => {
           </div>
 
           {/* Profile picture + socials */}
-          <div className="flex gap-[16px]">
+          <div className="flex gap-[16px] ">
             {/* Profile picture card */}
             <div className="flex-1 bg-[#141416] border border-[rgba(255,255,255,0.06)] rounded-[14px] p-[20px] flex items-center gap-[18px]">
               <div className="w-[72px] h-[72px] rounded-full bg-linear-to-br from-[#ff0f5f] to-[#cc0047] flex items-center justify-center shrink-0 overflow-hidden">
@@ -116,7 +120,7 @@ export const ChatterGroupToolsPage = () => {
             </div>
 
             {/* Social icon grid */}
-            <div className="grid grid-cols-2 gap-[10px] shrink-0">
+            <div className="grid grid-cols-2 gap-1 shrink-0">
               {/* BlueSky */}
               <div className="w-[52px] h-[52px] flex items-center justify-center bg-[#141416] border border-[rgba(255,255,255,0.06)] rounded-[12px]">
                 <svg className="w-[24px] h-[24px] text-[#0085ff]" viewBox="0 0 24 24" fill="currentColor">

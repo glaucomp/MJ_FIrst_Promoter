@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { elevenLabsApi } from "../services/api";
+import PhoneTip from '../assets/imagePhoneTip.svg';
+import DesktopTip from '../assets/imageDesktopTip.svg';
 
 const SITE_URL = import.meta.env.VITE_SITE_URL as string | undefined;
 
@@ -492,7 +494,7 @@ export const VoiceMessage = ({ modelName }: VoiceMessageProps) => {
   const displayName = modelName ?? "The Model";
 
   return (
-    <div className="flex flex-col-reverse lg:flex-col gap-[20px]">
+    <div className="flex flex-col gap-[20px]">
       {/* Section header */}
       <div className="flex items-center gap-[8px]">
         <svg
@@ -519,9 +521,9 @@ export const VoiceMessage = ({ modelName }: VoiceMessageProps) => {
 
         <div className="w-full grid lg:grid-cols-[2fr_56px_1fr]  gap-2 items-center">
           {/* === ROW 1: Input with Mic inside === */}
-          <div className="relative flex flex-row w-full bg-[#141414] rounded-[8px] p-[14px] border border-[rgba(255,255,255,0.1)] shadow-sm h-full">
+          <div className="relative flex flex-row items-center w-full bg-[#141414] rounded-[8px] p-[14px] border border-[rgba(255,255,255,0.1)] shadow-sm h-full">
             {/* The Input Field (flex-1 ensures it takes remaining space) */}
-            <input
+            <textarea
               type="text"
               value={text}
               onChange={(e) => setText(e.target.value)}
@@ -532,7 +534,7 @@ export const VoiceMessage = ({ modelName }: VoiceMessageProps) => {
                   : "Type text here (shorter is better)"
               }
               disabled={isTranscribing}
-              className="flex-1 bg-transparent outline-none text-[14px] text-white focus:placeholder-[#555] placeholder:[rgba(255,255,255,0.1)] pr-4 lg:pr-19"
+              className="flex-1 bg-transparent outline-none text-[14px] text-white focus:placeholder-[#555] placeholder:[rgba(255,255,255,0.1)] mr-4 lg:mr-19"
             />
 
             {/* Mic Button (Absolute Positioned) */}
@@ -542,7 +544,7 @@ export const VoiceMessage = ({ modelName }: VoiceMessageProps) => {
                   onClick={stopRecording}
                   title="Stop recording"
                   aria-label="Stop recording"
-                  className="lg:absolute right-2 w-14 h-14 -top-4 lg:top-[15%] buttonSubtle buttonXl rounded-full flex items-center justify-center bg-[#660022] border border-[#ff2a71] rounded-[8px] text-white shrink-0 hover:bg-[#7a0029] transition-all"
+                  className="lg:absolute right-2 w-14 h-14  lg:-top-7  buttonSubtle buttonXl rounded-full flex items-center justify-center bg-[#660022] border border-[#ff2a71] rounded-[8px] text-white shrink-0 hover:bg-[#7a0029] transition-all"
                 >
                   <span className="w-4 h-4 rounded-full bg-tm-primary-color01 animate-pulse" />
                 </button>
@@ -556,7 +558,7 @@ export const VoiceMessage = ({ modelName }: VoiceMessageProps) => {
                       : "Record voice"
                   }
                   aria-label="Record voice"
-                  className="lg:absolute right-2 lg:top-[15%] w-14 h-14 buttonSubtle buttonXl rounded-full flex items-center justify-center bg-[#141414] border border-[rgba(255,255,255,0.1)] rounded-[8px] text-[#555] hover:text-[#9e9e9e] hover:border-[rgba(255,255,255,0.2)] transition-all shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="lg:absolute right-2 lg:-top-7 w-14 h-14 buttonSubtle buttonXl rounded-full flex items-center justify-center bg-[#141414] border border-[rgba(255,255,255,0.1)] rounded-[8px] text-[#555] hover:text-[#9e9e9e] hover:border-[rgba(255,255,255,0.2)] transition-all shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <svg
                     className="w-[16px] h-[16px]"
@@ -732,53 +734,24 @@ export const VoiceMessage = ({ modelName }: VoiceMessageProps) => {
       {error && <p className="text-[#ff2a2a] text-[13px]">{error}</p>}
 
       {/* Tip cards */}
-      <div className="grid grid-cols-2 gap-[12px] mt-[4px]">
+      <div className="grid lg:grid-cols-2 gap-[12px] mt-[4px]">
         <div className="bg-[#141416] border border-[rgba(255,255,255,0.06)] rounded-[12px] p-[16px] flex flex-col gap-[10px]">
-          <div className="flex items-center gap-[8px]">
-            <svg
-              className="w-[18px] h-[18px] text-[#ff2a71] shrink-0"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={1.8}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
-              />
-            </svg>
-            <p className="text-[11px] font-bold text-[#9e9e9e] uppercase tracking-[0.2px]">
-              Phone Tip
-            </p>
+          <div className="flex items-center  justify-center">
+            <img src={PhoneTip} alt="" srcset="" />
+
           </div>
           <p className="text-[#555] text-sm leading-[1.6]">
-            Align the bottom edges of both phones while recording. Tap Play on
+            <span className="text-white">Phone Tip: </span>Align the bottom edges of both phones while recording. Tap Play on
             the tool phone, then wait for the countdown before tapping Record on
             the messaging phone.
           </p>
         </div>
-        <div className="bg-[#141416] border border-[rgba(255,255,255,0.06)] rounded-[12px] p-[16px] flex flex-col gap-[10px]">
-          <div className="flex items-center gap-[8px]">
-            <svg
-              className="w-[18px] h-[18px] text-[#ff2a71] shrink-0"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={1.8}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-              />
-            </svg>
-            <p className="text-[11px] font-bold text-[#9e9e9e] uppercase tracking-[0.2px]">
-              Desktop Tip
-            </p>
+        <div className="bg-[#141416] border border-[rgba(255,255,255,0.06)] rounded-[12px] p-[16px] hidden lg:flex flex-col gap-[10px]">
+          <div className="flex items-center gap-4 justify-center">
+            <img src={DesktopTip} alt="" srcset="" />
           </div>
           <p className="text-[#555] text-sm leading-[1.6]">
-            Place phone in front of the desktop speaker while recording. Tap
+            <span className="text-white">Desktop Tip: </span>Place phone in front of the desktop speaker while recording. Tap
             Play on the desktop, wait for the countdown before tapping Record on
             the phone.
           </p>
