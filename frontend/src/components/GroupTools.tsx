@@ -608,7 +608,7 @@ export const VoiceMessage = ({ modelName }: VoiceMessageProps) => {
 
           {/* === ROW 3: Generate Voice & Play Sound (Stacked Div) === */}
           <div className="flex flex-col gap-[10px] shrink-0">
-            <div className="flex min-md:"> {isRecording && (
+            <div className="flex"> {isRecording && (
               <p className="text-[#ff2a71] text-sm font-medium animate-pulse">
                 ● Recording — {fmtTime(recordingSeconds)} — tap mic to stop
               </p>
