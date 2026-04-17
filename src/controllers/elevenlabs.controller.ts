@@ -1,5 +1,4 @@
 import { Request, Response } from "express";
-import OpenAI from "openai";
 
 type MulterRequest = Request & { file?: Express.Multer.File };
 
@@ -51,62 +50,6 @@ export const transcribe = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to transcribe audio" });
   }
 };
-
-// Enhance message with OpenAI using the selected mood + ElevenLabs v3 audio tags
-async function applyMoodWithOpenAI(
-  text: string,
-  mood: string,
-  moodDescription?: string,
-): Promise<string> {
-  const openaiKey = process.env.OPENAI_API_KEY;
-  if (!openaiKey) return text; // graceful fallback: no enhancement if key missing
-
-  const client = new OpenAI({ apiKey: openaiKey });
-
-  const moodDetail = moodDescription
-    ? `${mood} — ${moodDescription}`
-    : mood;
-
-  try {
-    const completion = await client.chat.completions
-      .create({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: `You are a professional voice script writer specializing in ElevenLabs v3 text-to-speech production.
-
-Your task is to rewrite a given message so that it authentically conveys a specified emotional mood when spoken aloud. You achieve this by:
-
-1. Studying the mood description carefully and letting it completely shape the vocal character — rhythm, word choice, sentence length, pauses, and energy level must all reflect it.
-2. Making each mood sound distinctly different from any other. The listener should immediately recognise which mood is being expressed from the delivery alone.
-3. Inserting ElevenLabs v3 inline audio expression tags where they enhance authenticity. Use lowercase square-bracket format sparingly — only at moments of genuine emotional peak. Available tags:
-   - Vocal reactions: [laughs], [sighs], [gasps], [clears throat], [gulps]
-   - Delivery styles: [whispers], [breathlessly], [tenderly], [playfully], [deadpan]
-4. Never forcing tags — one or two well-placed tags beat six awkward ones.
-
-Rules:
-- Preserve the original language and core meaning (do not translate or change the topic).
-- Do not add commentary, explanations, or surrounding quotes.
-- Return only the final rewritten message with any tags embedded inline.`,
-          },
-          {
-            role: "user",
-            content: `Mood: ${moodDetail}\n\nOriginal message: ${text}`,
-          },
-        ],
-        max_tokens: 600,
-        temperature: 0.9,
-      });
-
-    return completion.choices[0]?.message?.content?.trim() ?? text;
-  } catch (err) {
-    // If the OpenAI call fails for any reason (network, quota, 5xx ...), fall back
-    // to the original text so ElevenLabs TTS can still proceed.
-    console.error("OpenAI mood enhancement failed, using original text:", err);
-    return text;
-  }
-}
 
 // POST /api/elevenlabs/tts
 export const textToSpeech = async (req: Request, res: Response) => {
@@ -165,11 +108,7 @@ export const textToSpeech = async (req: Request, res: Response) => {
         .json({ error: "ElevenLabs API key is not configured" });
     }
 
-    // If a mood was selected, let OpenAI enhance the text with tags.
-    const trimmedMood = mood?.trim() ?? "";
-    const finalText = trimmedMood
-      ? await applyMoodWithOpenAI(trimmedText, trimmedMood, moodDescription)
-      : trimmedText;
+    const finalText = trimmedText;
 
     const voice =
       voiceId || process.env.ELEVENLABS_VOICE_ID || "21m00Tcm4TlvDq8ikWAM";
