@@ -15,7 +15,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--color-bg)' }}>
         <TopBar />
         <main className="flex-1 pb-[100px] flex justify-center px-[20px]" style={{ paddingTop: '100px' }}>
-          <div className="w-full max-w-[754px]">{children}</div>
+          <div className="w-full max-w-[960px]">{children}</div>
         </main>
       </div>
     );

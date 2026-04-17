@@ -10,6 +10,7 @@ import { Payouts } from './pages/Payouts';
 import { Chatters } from './pages/Chatters';
 import { ChatterGroups } from './pages/ChatterGroups';
 import { ChatterDashboard } from './pages/ChatterDashboard';
+import { ChatterGroupToolsPage } from './pages/ChatterGroupToolsPage';
 import { Login } from './pages/Login';
 import type { ReactNode } from 'react';
 import type { UserRole } from './types';
@@ -92,6 +93,16 @@ function AppRoutes() {
           <ProtectedRoute allowedRoles={['chatter']}>
             <DashboardLayout>
               <ChatterDashboard />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/chatter-portal/group/:groupId"
+        element={
+          <ProtectedRoute allowedRoles={['chatter']}>
+            <DashboardLayout>
+              <ChatterGroupToolsPage />
             </DashboardLayout>
           </ProtectedRoute>
         }

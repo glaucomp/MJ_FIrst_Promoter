@@ -87,6 +87,7 @@ export const getMyGroups = async (req: AuthRequest, res: Response) => {
           select: {
             id: true,
             name: true,
+            tag: true,
             commissionPercentage: true,
             promoter: {
               select: {
@@ -94,6 +95,19 @@ export const getMyGroups = async (req: AuthRequest, res: Response) => {
                 username: true,
                 firstName: true,
                 lastName: true,
+              },
+            },
+            members: {
+              select: {
+                id: true,
+                chatterId: true,
+                chatter: {
+                  select: {
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                  },
+                },
               },
             },
           },
