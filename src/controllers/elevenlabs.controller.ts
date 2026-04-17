@@ -1,6 +1,32 @@
 import { Request, Response } from "express";
+import OpenAI from "openai";
 
 type MulterRequest = Request & { file?: Express.Multer.File };
+
+async function translateText(text: string, targetLanguage: string): Promise<string> {
+  const openaiKey = process.env.OPENAI_API_KEY;
+  if (!openaiKey) return text;
+
+  const client = new OpenAI({ apiKey: openaiKey });
+  try {
+    const completion = await client.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: `You are a professional translator. Translate the given text to ${targetLanguage}. Return only the translated text — no explanations, no quotes, no extra content.`,
+        },
+        { role: "user", content: text },
+      ],
+      max_tokens: 600,
+      temperature: 0.3,
+    });
+    return completion.choices[0]?.message?.content?.trim() ?? text;
+  } catch (err) {
+    console.error("Translation failed, using original text:", err);
+    return text;
+  }
+}
 
 // POST /api/elevenlabs/transcribe
 // Accepts multipart/form-data with an "audio" file field (handled by multer).
@@ -54,11 +80,12 @@ export const transcribe = async (req: Request, res: Response) => {
 // POST /api/elevenlabs/tts
 export const textToSpeech = async (req: Request, res: Response) => {
   try {
-    const { text, voiceId, mood, moodDescription } = req.body as {
+    const { text, voiceId, mood, moodDescription, language } = req.body as {
       text?: string;
       voiceId?: string;
       mood?: string;
       moodDescription?: string;
+      language?: string;
     };
 
     if (!text || typeof text !== "string" || text.trim().length === 0) {
@@ -85,6 +112,10 @@ export const textToSpeech = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "moodDescription must be a string" });
     }
 
+    if (language !== undefined && typeof language !== "string") {
+      return res.status(400).json({ error: "language must be a string" });
+    }
+
     const trimmedText = text.trim();
     const TEXT_MAX_LENGTH = 5_000;
     const MOOD_DESC_MAX_LENGTH = 500;
@@ -108,7 +139,18 @@ export const textToSpeech = async (req: Request, res: Response) => {
         .json({ error: "ElevenLabs API key is not configured" });
     }
 
-    const finalText = trimmedText;
+    const LANGUAGE_NAMES: Record<string, string> = {
+      en: "English", es: "Spanish", pt: "Portuguese", fr: "French",
+      it: "Italian", de: "German", pl: "Polish", ru: "Russian",
+      ar: "Arabic", hi: "Hindi", ja: "Japanese", ko: "Korean",
+      zh: "Chinese", tr: "Turkish", nl: "Dutch",
+    };
+
+    const trimmedLanguage = language?.trim() ?? "en";
+    const languageName = LANGUAGE_NAMES[trimmedLanguage] ?? trimmedLanguage;
+    const finalText = trimmedLanguage && trimmedLanguage !== "en"
+      ? await translateText(trimmedText, languageName)
+      : trimmedText;
 
     const voice =
       voiceId || process.env.ELEVENLABS_VOICE_ID || "21m00Tcm4TlvDq8ikWAM";

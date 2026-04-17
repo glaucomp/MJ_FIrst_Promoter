@@ -642,11 +642,11 @@ export interface ChatterMyGroup {
 }
 
 export const elevenLabsApi = {
-  async textToSpeech(text: string, voiceId?: string, mood?: string, moodDescription?: string): Promise<Blob> {
+  async textToSpeech(text: string, voiceId?: string, mood?: string, moodDescription?: string, language?: string): Promise<Blob> {
     const response = await fetch(`${API_URL}/elevenlabs/tts`, {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify({ text, voiceId, mood, moodDescription }),
+      body: JSON.stringify({ text, voiceId, mood, moodDescription, language }),
     });
     if (!response.ok) {
       const err = await response.json().catch(() => ({ error: 'Failed to generate audio' }));
