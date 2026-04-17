@@ -379,7 +379,7 @@ body {
 
 /***** desktop large */
 
-@media (width >=64rem) {
+@media (width >= 64rem) {
   .stat-value {
     display: block;
     /* Width: Fill */
