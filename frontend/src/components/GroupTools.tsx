@@ -802,7 +802,7 @@ export const VoiceMessage = ({ modelName }: VoiceMessageProps) => {
       <div className="grid lg:grid-cols-2 gap-[12px] mt-[4px]">
         <div className="bg-[#141416] border border-[rgba(255,255,255,0.06)] rounded-[12px] p-[16px] flex flex-col gap-[10px]">
           <div className="flex items-center  justify-center">
-            <img src={PhoneTip} alt="" srcset="" />
+            <img src={PhoneTip} alt="" />
 
           </div>
           <p className="text-[#555] text-sm leading-[1.6]">
@@ -813,7 +813,7 @@ export const VoiceMessage = ({ modelName }: VoiceMessageProps) => {
         </div>
         <div className="bg-[#141416] border border-[rgba(255,255,255,0.06)] rounded-[12px] p-[16px] hidden lg:flex flex-col gap-[10px]">
           <div className="flex items-center gap-4 justify-center">
-            <img src={DesktopTip} alt="" srcset="" />
+            <img src={DesktopTip} alt="" />
           </div>
           <p className="text-[#555] text-sm leading-[1.6]">
             <span className="text-white">Desktop Tip: </span>Place phone in front of the desktop speaker while recording. Tap
