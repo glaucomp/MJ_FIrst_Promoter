@@ -674,7 +674,7 @@ export const VoiceMessage = ({ modelName }: VoiceMessageProps) => {
                 <a
                   href={audioUrl}
                   download="voice-message.mp3"
-                  className="flex-inline flex-1 text-center items-center gap-[8px] rounded-[8px] px-[18px] py-[10px] text-[13px] font-bold active:scale-[0.98] transition-all bg-[#1e1e20] border border-[rgba(255,255,255,0.12)] text-white hover:bg-[#252528]"
+                  className="inline-flex flex-1 text-center items-center gap-[8px] rounded-[8px] px-[18px] py-[10px] text-[13px] font-bold active:scale-[0.98] transition-all bg-[#1e1e20] border border-[rgba(255,255,255,0.12)] text-white hover:bg-[#252528]"
                 >
                   Download
                 </a>
