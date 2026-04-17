@@ -86,7 +86,7 @@ export const ChatterGroupToolsPage = () => {
         </div>
 
         {/* Model Info */}
-        <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-[18px] p-[24px] flex flex-col gap-[20px]">
+        <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-[18px] p-[24px] flex flex-col gap-[20px] lg:w-1/2">
           {/* Section header */}
           <div className="flex items-center gap-[10px]">
             {/* Waveform icon */}

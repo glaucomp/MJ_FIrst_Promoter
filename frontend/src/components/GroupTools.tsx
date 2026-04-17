@@ -492,7 +492,7 @@ export const VoiceMessage = ({ modelName }: VoiceMessageProps) => {
   const displayName = modelName ?? "The Model";
 
   return (
-    <div className="flex flex-col gap-[20px]">
+    <div className="flex flex-col-reverse lg:flex-col gap-[20px]">
       {/* Section header */}
       <div className="flex items-center gap-[8px]">
         <svg
@@ -517,94 +517,108 @@ export const VoiceMessage = ({ modelName }: VoiceMessageProps) => {
       <div className="flex flex-col gap-[10px]">
         <p className="text-[12px] text-[#555] font-medium">Text to Speech</p>
 
-        {/* Input row: text + mic + reset + generate */}
-        <div className="flex gap-[8px]">
-          <input
-            type="text"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && !busy && handleGenerate()}
-            placeholder={
-              isTranscribing
-                ? "Transcribing…"
-                : "Type text here (shorter is better)"
-            }
-            disabled={isTranscribing}
-            className="flex-1 bg-[#141414] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[14px] py-[11px] text-[14px] text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#444] disabled:opacity-50"
-          />
-
-          {/* Mic button */}
-          {isRecording ? (
-            <button
-              onClick={stopRecording}
-              title="Stop recording"
-              aria-label="Stop recording"
-              className="absolute w-[56px] buttonSubtle buttonXl rounded-full flex items-center justify-center bg-[#660022] border border-[#ff2a71] rounded-[8px] text-white shrink-0 hover:bg-[#7a0029] transition-all"
-            >
-              <span className="w-4 h-4 rounded-full bg-white animate-pulse" />
-            </button>
-          ) : (
-            <button
-              onClick={startRecording}
-              disabled={isTranscribing || isGenerating}
-              title={
-                isRecording
-                  ? `Stop — ${fmtTime(recordingSeconds)}`
-                  : "Record voice"
+        <div className="w-full grid lg:grid-cols-[2fr_56px_1fr]  gap-2 items-center">
+          {/* === ROW 1: Input with Mic inside === */}
+          <div className="relative flex flex-row w-full bg-[#141414] rounded-[8px] p-[14px] border border-[rgba(255,255,255,0.1)] shadow-sm h-full">
+            {/* The Input Field (flex-1 ensures it takes remaining space) */}
+            <input
+              type="text"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && !busy && handleGenerate()}
+              placeholder={
+                isTranscribing
+                  ? "Transcribing…"
+                  : "Type text here (shorter is better)"
               }
-              aria-label="Record voice"
-              className=" absolute left-0 w-[56px] buttonSubtle buttonXl rounded-full flex items-center justify-center bg-[#141414] border border-[rgba(255,255,255,0.1)] rounded-[8px] text-[#555] hover:text-[#9e9e9e] hover:border-[rgba(255,255,255,0.2)] transition-all shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+              disabled={isTranscribing}
+              className="flex-1 bg-transparent outline-none text-[14px] text-white focus:placeholder-[#555] placeholder:[rgba(255,255,255,0.1)] pr-4 lg:pr-19"
+            />
+
+            {/* Mic Button (Absolute Positioned) */}
+            <div className="relative shrink-0">
+              {isRecording ? (
+                <button
+                  onClick={stopRecording}
+                  title="Stop recording"
+                  aria-label="Stop recording"
+                  className="lg:absolute right-2 w-14 h-14 -top-4 lg:top-[15%] buttonSubtle buttonXl rounded-full flex items-center justify-center bg-[#660022] border border-[#ff2a71] rounded-[8px] text-white shrink-0 hover:bg-[#7a0029] transition-all"
+                >
+                  <span className="w-4 h-4 rounded-full bg-tm-primary-color01 animate-pulse" />
+                </button>
+              ) : (
+                <button
+                  onClick={startRecording}
+                  disabled={isTranscribing || isGenerating}
+                  title={
+                    isRecording
+                      ? `Stop — ${fmtTime(recordingSeconds)}`
+                      : "Record voice"
+                  }
+                  aria-label="Record voice"
+                  className="lg:absolute right-2 lg:top-[15%] w-14 h-14 buttonSubtle buttonXl rounded-full flex items-center justify-center bg-[#141414] border border-[rgba(255,255,255,0.1)] rounded-[8px] text-[#555] hover:text-[#9e9e9e] hover:border-[rgba(255,255,255,0.2)] transition-all shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <svg
+                    className="w-[16px] h-[16px]"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+                    />
+                  </svg>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* === ROW 2: Reset Text Button (Own Div) === */}
+          <div className="flex flex-col shrink-0">
+            <button
+              onClick={() => {
+                setText("");
+                setAudioUrl("");
+                setIsPlaying(false);
+                setError("");
+              }}
+              disabled={busy}
+              title="Clear text"
+              aria-label="Clear text"
+              className="w-full buttonSubtle buttonXl rounded-[8px] flex items-center justify-center bg-[#141414] border border-[rgba(255,255,255,0.1)] rounded-[8px] text-[#555] hover:text-[#9e9e9e] hover:border-[rgba(255,255,255,0.2)] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <svg
-                className="w-[16px] h-[16px]"
+                className="w-[15px] h-[15px]"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
-                strokeWidth={2}
+                strokeWidth={2.5}
               >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                 />
               </svg>
             </button>
-          )}
 
-          {/* Reset text button */}
-          <button
-            onClick={() => {
-              setText("");
-              setAudioUrl("");
-              setIsPlaying(false);
-              setError("");
-            }}
-            disabled={busy}
-            title="Clear text"
-            aria-label="Clear text"
-            className="w-[56px] buttonSubtle buttonXl rounded-full flex items-center justify-center bg-[#141414] border border-[rgba(255,255,255,0.1)] rounded-[8px] text-[#555] hover:text-[#9e9e9e] hover:border-[rgba(255,255,255,0.2)] transition-all shrink-0 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <svg
-              className="w-[15px] h-[15px]"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2.5}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-              />
-            </svg>
-          </button>
+          </div>
 
-          {/* Generate voice button */}
-          <div className="flex flex-col">
+          {/* === ROW 3: Generate Voice & Play Sound (Stacked Div) === */}
+          <div className="flex flex-col gap-[10px] shrink-0">
+            <div className="flex min-md:"> {isRecording && (
+              <p className="text-[#ff2a71] text-sm font-medium animate-pulse">
+                ● Recording — {fmtTime(recordingSeconds)} — tap mic to stop
+              </p>
+            )}</div>
+            {/* Generate Button */}
             <button
               onClick={handleGenerate}
               disabled={busy || !text.trim()}
-              className="flex items-center gap-[7px] bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[18px] py-[11px] text-white text-[13px] font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0 whitespace-nowrap"
+              className="flex items-center justify-center gap-[7px] bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[18px] py-[11px] text-white text-[13px] font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {isGenerating ? (
                 <span className="w-[13px] h-[13px] border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -629,66 +643,67 @@ export const VoiceMessage = ({ modelName }: VoiceMessageProps) => {
                   : "Generating…"
                 : "Generate Voice"}
             </button>
+
+            {/* Play Sound Button */}
+            <div className="flex items-center gap-[8px]">
+              <button
+                onClick={handlePlaySound}
+                disabled={!audioUrl || countdown !== null}
+                className={`flex items-center justify-center gap-[8px] rounded-[8px] px-[18px] py-[10px] text-[13px] font-bold active:scale-[0.98] transition-all ${audioUrl
+                  ? "bg-[#1e1e20] border border-[rgba(255,255,255,0.12)] text-white hover:bg-[#252528]"
+                  : "bg-[#141414] border border-[rgba(255,255,255,0.06)] text-[#444] cursor-not-allowed"
+                  }`}
+              >
+                <svg
+                  className={`w-[14px] h-[14px] ${audioUrl ? "text-[#ff2a71]" : "text-[#444]"}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2.5}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M12 18.75v-13.5"
+                  />
+                </svg>
+                Play Sound
+              </button>
+
+
+              {audioUrl && countdown === null && !isPlaying && (
+                <a
+                  href={audioUrl}
+                  download="voice-message.mp3"
+                  className="flex-inline flex-1 text-center items-center gap-[8px] rounded-[8px] px-[18px] py-[10px] text-[13px] font-bold active:scale-[0.98] transition-all bg-[#1e1e20] border border-[rgba(255,255,255,0.12)] text-white hover:bg-[#252528]"
+                >
+                  Download
+                </a>
+              )}
+            </div>
+            {/* Countdown & Playing Status Text (Same row as button) */}
+            <div className="flex flex-col gap-[4px] min-w-[60px]">
+              {countdown !== null && (
+                <p className="text-[#ff2a71] text-[20px] font-bold animate-pulse w-[32px] text-center">
+                  {countdown}
+                </p>
+              )}
+              {isPlaying && countdown === null && (
+                <p className="text-[#28ff70] text-[13px] font-bold animate-pulse">
+                  ♪ Playing…
+                </p>
+              )}
+              {/* Move Download Link to separate row for clarity if needed, or keep inline */}
+            </div>
           </div>
-        </div>
 
-        {isRecording && (
-          <p className="text-[#ff2a71] text-[12px] font-medium animate-pulse">
-            ● Recording — {fmtTime(recordingSeconds)} — tap mic to stop
-          </p>
-        )}
-
-        {/* Play Sound row — appears right below generate once audio is ready */}
-        {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-        <audio
-          ref={audioRef}
-          src={audioUrl || undefined}
-          onEnded={() => setIsPlaying(false)}
-          className="hidden"
-        />
-        <div className="flex items-center gap-[12px]">
-          <button
-            onClick={handlePlaySound}
-            disabled={!audioUrl || countdown !== null}
-            className={`flex items-center gap-[8px] rounded-[8px] px-[18px] py-[10px] text-[13px] font-bold active:scale-[0.98] transition-all ${audioUrl
-              ? "bg-[#1e1e20] border border-[rgba(255,255,255,0.12)] text-white hover:bg-[#252528]"
-              : "bg-[#141414] border border-[rgba(255,255,255,0.06)] text-[#444] cursor-not-allowed"
-              }`}
-          >
-            <svg
-              className={`w-[14px] h-[14px] ${audioUrl ? "text-[#ff2a71]" : "text-[#444]"}`}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2.5}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M12 18.75v-13.5"
-              />
-            </svg>
-            Play Sound
-          </button>
-          {countdown !== null && (
-            <p className="text-[#ff2a71] text-[20px] font-bold animate-pulse w-[32px] text-center">
-              {countdown}
-            </p>
-          )}
-          {isPlaying && countdown === null && (
-            <p className="text-[#28ff70] text-[13px] font-bold animate-pulse">
-              ♪ Playing…
-            </p>
-          )}
-          {audioUrl && countdown === null && !isPlaying && (
-            <a
-              href={audioUrl}
-              download="voice-message.mp3"
-              className="ml-auto text-[#555] hover:text-[#9e9e9e] text-[12px] transition-colors"
-            >
-              Download
-            </a>
-          )}
+          {/* Hidden Audio Element */}
+          <audio
+            ref={audioRef}
+            src={audioUrl || undefined}
+            onEnded={() => setIsPlaying(false)}
+            className="hidden"
+          />
         </div>
       </div>
 
@@ -737,7 +752,7 @@ export const VoiceMessage = ({ modelName }: VoiceMessageProps) => {
               Phone Tip
             </p>
           </div>
-          <p className="text-[#555] text-[11px] leading-[1.6]">
+          <p className="text-[#555] text-sm leading-[1.6]">
             Align the bottom edges of both phones while recording. Tap Play on
             the tool phone, then wait for the countdown before tapping Record on
             the messaging phone.
@@ -762,7 +777,7 @@ export const VoiceMessage = ({ modelName }: VoiceMessageProps) => {
               Desktop Tip
             </p>
           </div>
-          <p className="text-[#555] text-[11px] leading-[1.6]">
+          <p className="text-[#555] text-sm leading-[1.6]">
             Place phone in front of the desktop speaker while recording. Tap
             Play on the desktop, wait for the countdown before tapping Record on
             the phone.
