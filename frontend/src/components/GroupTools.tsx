@@ -522,7 +522,6 @@ export const VoiceMessage = ({ modelName }: VoiceMessageProps) => {
           <div className="relative flex flex-row items-center w-full bg-[#141414] rounded-[8px] p-[14px] border border-[rgba(255,255,255,0.1)] shadow-sm h-full">
             {/* The Input Field (flex-1 ensures it takes remaining space) */}
             <textarea
-              type="text"
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && !busy && handleGenerate()}
