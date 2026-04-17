@@ -622,6 +622,7 @@ export const chattersApi = {
 export interface ChatterMyGroup {
   id: string;
   name: string;
+  tag: string | null;
   commissionPercentage: number;
   promoter: {
     id: string;
@@ -629,6 +630,15 @@ export interface ChatterMyGroup {
     firstName: string | null;
     lastName: string | null;
   } | null;
+  members: {
+    id: string;
+    chatterId: string;
+    chatter: {
+      firstName: string | null;
+      lastName: string | null;
+      email: string;
+    };
+  }[];
 }
 
 export const elevenLabsApi = {
