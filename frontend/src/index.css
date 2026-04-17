@@ -357,13 +357,13 @@ body {
 /* inputs */
 .inputMJ {
   border-radius: 0.75rem;
-  background: var(--colors-tm-neutral-color04, #292929);
+  background: var(--color-tm-neutral-color04, #292929);
   padding: 1rem;
 }
 
 .inputIcon {
   border-radius: 0.75rem;
-  background: var(--colors-tm-neutral-color04, #292929);
+  background: var(--color-tm-neutral-color04, #292929);
   padding-left: 2rem;
 }
 
