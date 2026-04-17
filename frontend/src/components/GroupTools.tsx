@@ -710,7 +710,7 @@ export const VoiceMessage = ({ modelName }: VoiceMessageProps) => {
       {/* Mood selector */}
       <div className="flex flex-col gap-[10px]">
         <p className="text-[12px] text-[#555] font-medium">Select Mood</p>
-        <div className="flex grid  grid-cols-2 lg:grid-cols-6 gap-2">
+        <div className="grid grid-cols-2 lg:grid-cols-6 gap-2">
           {MOODS.map((m) => (
             <button
               key={m.value}
