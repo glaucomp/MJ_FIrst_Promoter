@@ -554,12 +554,13 @@ export const VoiceMessage = ({ modelName }: VoiceMessageProps) => {
 
       {/* Text to Speech label */}
       <div className="flex flex-col gap-[10px]">
-        <p
-          className="text-[12px] text-[#555] font-medium select-none cursor-default"
+        <button
+          type="button"
+          className="text-[12px] text-[#555] font-medium select-none cursor-pointer bg-transparent border-0 p-0 text-left"
           onClick={handleLabelClick}
         >
           Text to Speech
-        </p>
+        </button>
 
         <div className="w-full grid lg:grid-cols-[2fr_56px_1fr]  gap-2 items-center">
           {/* === ROW 1: Input with Mic inside === */}
