@@ -237,6 +237,26 @@ export const LinkGenerator = ({ username }: LinkGeneratorProps) => {
   );
 };
 
+// ── Language options ───────────────────────────────────────────────────────────
+
+const LANGUAGES: { code: string; flag: string; label: string }[] = [
+  { code: "en", flag: "🇺🇸", label: "English" },
+  { code: "es", flag: "🇪🇸", label: "Spanish" },
+  { code: "pt", flag: "🇧🇷", label: "Portuguese" },
+  { code: "fr", flag: "🇫🇷", label: "French" },
+  { code: "it", flag: "🇮🇹", label: "Italian" },
+  { code: "de", flag: "🇩🇪", label: "German" },
+  { code: "pl", flag: "🇵🇱", label: "Polish" },
+  { code: "ru", flag: "🇷🇺", label: "Russian" },
+  { code: "ar", flag: "🇸🇦", label: "Arabic" },
+  { code: "hi", flag: "🇮🇳", label: "Hindi" },
+  { code: "ja", flag: "🇯🇵", label: "Japanese" },
+  { code: "ko", flag: "🇰🇷", label: "Korean" },
+  { code: "zh", flag: "🇨🇳", label: "Chinese" },
+  { code: "tr", flag: "🇹🇷", label: "Turkish" },
+  { code: "nl", flag: "🇳🇱", label: "Dutch" },
+];
+
 // ── Mood options ───────────────────────────────────────────────────────────────
 
 const MOODS: {
@@ -340,6 +360,23 @@ interface VoiceMessageProps {
 export const VoiceMessage = ({ modelName }: VoiceMessageProps) => {
   const [text, setText] = useState("");
   const [selectedMood, setSelectedMood] = useState("seductive");
+  const [selectedLanguage, setSelectedLanguage] = useState("en");
+  const [showLanguagePanel, setShowLanguagePanel] = useState(false);
+  const labelClickCountRef = useRef(0);
+  const labelClickResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleLabelClick = () => {
+    if (labelClickResetRef.current) clearTimeout(labelClickResetRef.current);
+    labelClickCountRef.current += 1;
+    if (labelClickCountRef.current >= 10) {
+      labelClickCountRef.current = 0;
+      setShowLanguagePanel((v) => !v);
+      return;
+    }
+    labelClickResetRef.current = setTimeout(() => {
+      labelClickCountRef.current = 0;
+    }, 3000);
+  };
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
@@ -358,6 +395,7 @@ export const VoiceMessage = ({ modelName }: VoiceMessageProps) => {
 
   useEffect(() => {
     return () => {
+      if (labelClickResetRef.current) clearTimeout(labelClickResetRef.current);
       if (prevAudioUrlRef.current) URL.revokeObjectURL(prevAudioUrlRef.current);
       const recorder = mediaRecorderRef.current;
       if (recorder) {
@@ -454,6 +492,7 @@ export const VoiceMessage = ({ modelName }: VoiceMessageProps) => {
         undefined,
         moodObj?.value,
         moodObj?.description,
+        selectedLanguage,
       );
       const url = URL.createObjectURL(blob);
       prevAudioUrlRef.current = url;
@@ -515,7 +554,13 @@ export const VoiceMessage = ({ modelName }: VoiceMessageProps) => {
 
       {/* Text to Speech label */}
       <div className="flex flex-col gap-[10px]">
-        <p className="text-[12px] text-[#555] font-medium">Text to Speech</p>
+        <button
+          type="button"
+          className="text-[12px] text-[#555] font-medium select-none cursor-pointer bg-transparent border-0 p-0 text-left"
+          onClick={handleLabelClick}
+        >
+          Text to Speech
+        </button>
 
         <div className="w-full grid lg:grid-cols-[2fr_56px_1fr]  gap-2 items-center">
           {/* === ROW 1: Input with Mic inside === */}
@@ -727,6 +772,29 @@ export const VoiceMessage = ({ modelName }: VoiceMessageProps) => {
           ))}
         </div>
       </div>
+
+      {/* Language selector — hidden until "Text to Speech" label is clicked 10 times */}
+      {showLanguagePanel && (
+        <div className="flex flex-col gap-[10px]">
+          <p className="text-[12px] text-[#555] font-medium">Select Language</p>
+          <div className="grid grid-cols-3 lg:grid-cols-5 gap-2">
+            {LANGUAGES.map((lang) => (
+              <button
+                key={lang.code}
+                onClick={() => setSelectedLanguage(lang.code)}
+                className={`buttonSubtle buttonMd flex items-center justify-center gap-2 rounded-full text-sm transition-all active:scale-95 ${
+                  selectedLanguage === lang.code
+                    ? "bg-tm-primary-color11 border border-tm-primary-color09 text-white"
+                    : "bg-tm-neutral-color05 hover:bg-tm-neutral-color03 border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:border-[#ff2a71]"
+                }`}
+              >
+                <span>{lang.flag}</span>
+                {lang.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {error && <p className="text-[#ff2a2a] text-[13px]">{error}</p>}
 
