@@ -16,8 +16,8 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { id: 'dashboard', icon: '📊', label: 'Dashboard', path: '/dashboard' },
-  { id: 'models', icon: '👥', label: 'Models', path: '/models' },
+  { id: 'dashboard', icon: '📊', label: 'Dashboard', path: '/dashboard', allowedRoles: ['admin', 'team_manager', 'account_manager', 'promoter'] },
+  { id: 'models', icon: '👥', label: 'Models', path: '/models', allowedRoles: ['admin', 'team_manager', 'account_manager', 'promoter'] },
   { id: 'chatter-portal', icon: '🎭', label: 'Persona', path: '/chatter-portal', allowedRoles: ['chatter'] },
   { id: 'chatters', icon: '💬', label: 'Chatters', path: '/chatters', allowedRoles: ['account_manager'] },
   { id: 'chatter-groups', icon: '🗂️', label: 'Chatter Groups', path: '/chatter-groups', allowedRoles: ['account_manager'] },
