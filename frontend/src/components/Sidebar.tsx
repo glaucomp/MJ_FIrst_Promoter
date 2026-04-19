@@ -3,12 +3,26 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import tmLogo1x from '../assets/tmlogo.png';
 import tmLogo2x from '../assets/tmlogo@2x.png';
-
+import type { ComponentType, SVGProps } from 'react';
 import type { UserRole } from '../types';
+import {
+  IconHome,
+  IconModels,
+  IconPersona,
+  IconChatters,
+  IconChatterGroups,
+  IconCampaign,
+  IconReport,
+  IconPayout,
+  IconSettings,
+  IconLogout,
+} from './NavIcons';
+
+type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 
 interface NavItem {
   id: string;
-  icon: string;
+  Icon: IconComponent;
   label: string;
   path: string;
   adminOnly?: boolean;
@@ -16,15 +30,15 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { id: 'dashboard', icon: '📊', label: 'Dashboard', path: '/dashboard', allowedRoles: ['admin', 'team_manager', 'account_manager', 'promoter'] },
-  { id: 'models', icon: '👥', label: 'Models', path: '/models', allowedRoles: ['admin', 'team_manager', 'account_manager', 'promoter'] },
-  { id: 'chatter-portal', icon: '🎭', label: 'Persona', path: '/chatter-portal', allowedRoles: ['chatter'] },
-  { id: 'chatters', icon: '💬', label: 'Chatters', path: '/chatters', allowedRoles: ['account_manager'] },
-  { id: 'chatter-groups', icon: '🗂️', label: 'Chatter Groups', path: '/chatter-groups', allowedRoles: ['account_manager'] },
-  { id: 'campaigns', icon: '🎯', label: 'Campaigns', path: '/campaigns', adminOnly: true },
-  { id: 'reports', icon: '📈', label: 'Reports', path: '/reports' },
-  { id: 'payouts', icon: '💸', label: 'Payouts', path: '/payouts', adminOnly: true },
-  { id: 'settings', icon: '⚙️', label: 'Settings', path: '/settings' },
+  { id: 'dashboard', Icon: IconHome, label: 'Dashboard', path: '/dashboard', allowedRoles: ['admin', 'team_manager', 'account_manager', 'promoter'] },
+  { id: 'models', Icon: IconModels, label: 'Models', path: '/models', allowedRoles: ['admin', 'team_manager', 'account_manager', 'promoter'] },
+  { id: 'chatter-portal', Icon: IconPersona, label: 'Persona', path: '/chatter-portal', allowedRoles: ['chatter'] },
+  { id: 'chatters', Icon: IconChatters, label: 'Chatters', path: '/chatters', allowedRoles: ['account_manager'] },
+  { id: 'chatter-groups', Icon: IconChatterGroups, label: 'Chatter Groups', path: '/chatter-groups', allowedRoles: ['account_manager'] },
+  { id: 'campaigns', Icon: IconCampaign, label: 'Campaigns', path: '/campaigns', adminOnly: true },
+  { id: 'reports', Icon: IconReport, label: 'Reports', path: '/reports' },
+  { id: 'payouts', Icon: IconPayout, label: 'Payouts', path: '/payouts', adminOnly: true },
+  { id: 'settings', Icon: IconSettings, label: 'Settings', path: '/settings' },
 ];
 
 interface SidebarProps {
@@ -66,14 +80,17 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
         }`}>
           <button
             onClick={toggleSidebar}
-            className="flex flex-col justify-start gap-[5px] "
+            className="flex flex-col justify-start gap-[5px]"
           >
-          <img     alt="TeaseMe"
+            <img
+              alt="TeaseMe"
               className="w-[40px] h-auto object-contain"
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = 'none';
-              }}  src={tmLogo1x}
-        srcSet={`${tmLogo1x} 1x, ${tmLogo2x} 2x`}  />
+              }}
+              src={tmLogo1x}
+              srcSet={`${tmLogo1x} 1x, ${tmLogo2x} 2x`}
+            />
             <div className="bg-[#101010] h-[24px] w-[40px] rounded-[4px] flex items-center justify-center">
               <span className={`text-[12px] transition-transform ${isOpen ? '-rotate-90' : 'rotate-90'}`}>
                 ▶
@@ -88,7 +105,10 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
               return true;
             }).map((item) => {
               const isActive = location.pathname === item.path;
-              
+              const iconColor = isActive
+                ? 'var(--color-tm-primary-color05)'
+                : 'white';
+
               if (isOpen) {
                 return (
                   <button
@@ -102,18 +122,19 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
                         : 'hover:bg-[#292929]/50'
                     }`}
                   >
-                    <span className="text-[16px] leading-none shrink-0" aria-hidden="true">{item.icon}</span>
+                    <div style={{ color: iconColor }} className="shrink-0 flex items-center justify-center">
+                      <item.Icon width={18} height={18} />
+                    </div>
                     <span
-                      className={`text-[16px] font-medium leading-[1.4] tracking-[0.2px] flex-1 text-left ${
-                        isActive ? 'text-[#ff2a71]' : 'text-white'
-                      }`}
+                      className="text-[16px] font-medium leading-[1.4] tracking-[0.2px] flex-1 text-left"
+                      style={{ color: iconColor }}
                     >
                       {item.label}
                     </span>
                   </button>
                 );
               }
-              
+
               return (
                 <button
                   key={item.id}
@@ -127,7 +148,9 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
                       : 'hover:bg-[#292929]/50'
                   }`}
                 >
-                  <span className="text-[16px] leading-none" aria-hidden="true">{item.icon}</span>
+                  <div style={{ color: iconColor }} className="flex items-center justify-center">
+                    <item.Icon width={18} height={18} />
+                  </div>
                 </button>
               );
             })}
@@ -136,8 +159,11 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
           <button
             onClick={logout}
             className="flex items-center justify-start px-[12px] rounded-[4px] hover:bg-[#292929]/50 h-[40px] w-full"
+            aria-label="Log out"
           >
-            <span className="text-[18px] leading-none">🚪</span>
+            <div style={{ color: 'white' }} className="flex items-center justify-center">
+              <IconLogout width={20} height={19} />
+            </div>
           </button>
         </div>
       </div>
