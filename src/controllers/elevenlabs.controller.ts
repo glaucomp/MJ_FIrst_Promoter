@@ -101,10 +101,20 @@ export const textToSpeech = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "voiceId must be a string" });
     }
 
+    // Require a voiceId — we no longer silently fall back to a global default,
+    // which could let a chatter record audio in the WRONG model's voice.
+    if (!voiceId?.trim()) {
+      return res.status(400).json({
+        error:
+          "No voice is configured for this model. Please sync the model from TeaseMe or ask an admin to set a voiceId.",
+        code: "MISSING_VOICE_ID",
+      });
+    }
+
     // ElevenLabs voice IDs are short alphanumeric strings; reject anything that
     // could alter the URL path (prevents path traversal / injection).
     const VOICE_ID_RE = /^[A-Za-z0-9]{1,64}$/;
-    if (voiceId && !VOICE_ID_RE.test(voiceId)) {
+    if (!VOICE_ID_RE.test(voiceId)) {
       return res.status(400).json({ error: "Invalid voiceId format" });
     }
 
@@ -152,11 +162,8 @@ export const textToSpeech = async (req: Request, res: Response) => {
       ? await translateText(trimmedText, languageName)
       : trimmedText;
 
-    const voice =
-      voiceId || process.env.ELEVENLABS_VOICE_ID || "21m00Tcm4TlvDq8ikWAM";
-
     const elevenRes = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voice)}`,
+      `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}`,
       {
         method: "POST",
         headers: {

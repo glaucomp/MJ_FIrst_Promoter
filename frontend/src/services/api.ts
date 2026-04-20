@@ -310,6 +310,26 @@ export const modelsApi = {
     const data = await handleResponse(response, 'Failed to create tracking link');
     return data.trackingLink;
   },
+
+  /** Admin: force-refresh a user's TeaseMe data (voice, socials, media). */
+  async syncTeaseMe(userId: string): Promise<{
+    user: {
+      id: string;
+      username: string | null;
+      voiceId: string | null;
+      teasemeSyncedAt: string | null;
+      photoUrl: string | null;
+      videoUrl: string | null;
+      socialLinks: { platform: string; url: string }[];
+    };
+    message: string;
+  }> {
+    const response = await fetch(`${API_URL}/users/${userId}/sync-teaseme`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response, 'Failed to sync user from TeaseMe');
+  },
 };
 
 export interface Transaction {
@@ -629,6 +649,13 @@ export interface ChatterMyGroup {
     username: string | null;
     firstName: string | null;
     lastName: string | null;
+    voiceId: string | null;
+    /** Presigned GET URL (1h expiry). */
+    photoUrl: string | null;
+    /** Presigned GET URL (1h expiry). */
+    videoUrl: string | null;
+    teasemeSyncedAt: string | null;
+    socialLinks: { platform: string; url: string }[];
   } | null;
   members: {
     id: string;

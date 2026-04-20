@@ -355,9 +355,10 @@ const MOODS: {
 
 interface VoiceMessageProps {
   modelName?: string;
+  voiceId?: string;
 }
 
-export const VoiceMessage = ({ modelName }: VoiceMessageProps) => {
+export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
   const [text, setText] = useState("");
   const [selectedMood, setSelectedMood] = useState("seductive");
   const [selectedLanguage, setSelectedLanguage] = useState("en");
@@ -477,6 +478,12 @@ export const VoiceMessage = ({ modelName }: VoiceMessageProps) => {
 
   const handleGenerate = async () => {
     if (!text.trim()) return;
+    if (!voiceId?.trim()) {
+      setError(
+        "No voice is configured for this model yet. Please ask an admin to sync the model from TeaseMe.",
+      );
+      return;
+    }
     setIsGenerating(true);
     setError("");
     setAudioUrl("");
@@ -489,7 +496,7 @@ export const VoiceMessage = ({ modelName }: VoiceMessageProps) => {
       const moodObj = MOODS.find((m) => m.value === selectedMood);
       const blob = await elevenLabsApi.textToSpeech(
         text,
-        undefined,
+        voiceId,
         moodObj?.value,
         moodObj?.description,
         selectedLanguage,
@@ -529,6 +536,7 @@ export const VoiceMessage = ({ modelName }: VoiceMessageProps) => {
 
   const busy = isGenerating || isRecording || isTranscribing;
   const displayName = modelName ?? "The Model";
+  const hasVoice = !!voiceId && voiceId.trim().length > 0;
 
   return (
     <div className="flex flex-col gap-[20px]">
@@ -551,6 +559,32 @@ export const VoiceMessage = ({ modelName }: VoiceMessageProps) => {
           Talk Like {displayName}
         </p>
       </div>
+
+      {/* Missing voice warning */}
+      {!hasVoice && (
+        <div className="flex items-start gap-[10px] bg-[#2a1a0f] border border-[rgba(255,170,50,0.25)] rounded-[10px] px-[14px] py-[12px]">
+          <svg
+            className="w-[16px] h-[16px] text-[#ffaa33] shrink-0 mt-[2px]"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2.2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+            />
+          </svg>
+          <p className="text-[#ffcf80] text-[13px] leading-normal">
+            <span className="font-semibold text-white">
+              No voice configured for {displayName}.
+            </span>{" "}
+            Ask an admin to sync this model from TeaseMe — until then, Generate
+            Voice is disabled.
+          </p>
+        </div>
+      )}
 
       {/* Text to Speech label */}
       <div className="flex flex-col gap-[10px]">
@@ -661,7 +695,12 @@ export const VoiceMessage = ({ modelName }: VoiceMessageProps) => {
             {/* Generate Button */}
             <button
               onClick={handleGenerate}
-              disabled={busy || !text.trim()}
+              disabled={busy || !text.trim() || !hasVoice}
+              title={
+                hasVoice
+                  ? undefined
+                  : "No voice configured for this model — ask an admin to sync from TeaseMe"
+              }
               className="flex items-center justify-center gap-[7px] bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[18px] py-[11px] text-white text-[13px] font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {isGenerating ? (

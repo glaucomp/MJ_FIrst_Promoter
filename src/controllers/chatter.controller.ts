@@ -4,6 +4,8 @@ import bcrypt from 'bcryptjs';
 import { nanoid } from 'nanoid';
 import { validationResult } from 'express-validator';
 import { AuthRequest } from '../middleware/auth.middleware';
+import { syncUserFromTeaseMe } from '../services/teaseme.service';
+import { getPresignedUrl } from '../services/s3.service';
 
 const prisma = new PrismaClient();
 
@@ -80,43 +82,97 @@ export const getMyGroups = async (req: AuthRequest, res: Response) => {
     if (req.user.userType !== UserType.CHATTER) {
       return res.status(403).json({ error: 'Only chatters can access their groups' });
     }
-    const memberships = await prisma.chatterGroupMember.findMany({
-      where: { chatterId: req.user.id },
-      select: {
-        group: {
-          select: {
-            id: true,
-            name: true,
-            tag: true,
-            commissionPercentage: true,
-            promoter: {
-              select: {
-                id: true,
-                username: true,
-                firstName: true,
-                lastName: true,
-              },
-            },
-            members: {
-              select: {
-                id: true,
-                chatterId: true,
-                chatter: {
-                  select: {
-                    firstName: true,
-                    lastName: true,
-                    email: true,
-                  },
-                },
-              },
+    const promoterSelect = {
+      id: true,
+      username: true,
+      firstName: true,
+      lastName: true,
+      voiceId: true,
+      profilePhotoKey: true,
+      profileVideoKey: true,
+      teasemeSyncedAt: true,
+      socialLinks: { select: { platform: true, url: true } },
+    } as const;
+
+    const groupSelect = {
+      id: true,
+      name: true,
+      tag: true,
+      commissionPercentage: true,
+      promoter: { select: promoterSelect },
+      members: {
+        select: {
+          id: true,
+          chatterId: true,
+          chatter: {
+            select: {
+              firstName: true,
+              lastName: true,
+              email: true,
             },
           },
         },
       },
+    } as const;
+
+    const memberships = await prisma.chatterGroupMember.findMany({
+      where: { chatterId: req.user.id },
+      select: { group: { select: groupSelect } },
     });
 
-    const groups = memberships.map((m) => m.group);
-    res.json({ groups });
+    let groups = memberships.map((m) => m.group);
+
+    // Lazy auto-sync: promoters that have never been synced get pulled from TeaseMe.
+    // Failures are logged and swallowed so the response is never blocked.
+    const toSync = groups
+      .map((g) => g.promoter)
+      .filter(
+        (p): p is NonNullable<typeof p> =>
+          !!p && !!p.username && p.teasemeSyncedAt === null
+      );
+
+    if (toSync.length > 0) {
+      await Promise.allSettled(
+        toSync.map((p) =>
+          syncUserFromTeaseMe(p.id).catch((err) => {
+            console.error(
+              `[chatter.getMyGroups] TeaseMe sync failed for ${p.username}:`,
+              err instanceof Error ? err.message : err
+            );
+            throw err;
+          })
+        )
+      );
+
+      // Re-fetch so the response reflects freshly-synced data.
+      const refreshed = await prisma.chatterGroupMember.findMany({
+        where: { chatterId: req.user.id },
+        select: { group: { select: groupSelect } },
+      });
+      groups = refreshed.map((m) => m.group);
+    }
+
+    // Mint fresh presigned URLs on every request (never store them in DB).
+    const hydrated = await Promise.all(
+      groups.map(async (g) => {
+        if (!g.promoter) return g;
+        const { profilePhotoKey, profileVideoKey, ...rest } = g.promoter;
+        const [photoUrl, videoUrl] = await Promise.all([
+          getPresignedUrl(profilePhotoKey),
+          getPresignedUrl(profileVideoKey),
+        ]);
+        return {
+          ...g,
+          promoter: {
+            ...rest,
+            photoUrl,
+            videoUrl,
+          },
+        };
+      })
+    );
+
+    res.json({ groups: hydrated });
   } catch (error) {
     console.error('Get my groups error:', error);
     res.status(500).json({ error: 'Failed to fetch groups' });
