@@ -3,21 +3,79 @@ import { elevenLabsApi } from "../services/api";
 import PhoneTip from '../assets/imagePhoneTip.svg';
 import DesktopTip from '../assets/imageDesktopTip.svg';
 
-const SITE_URL = import.meta.env.VITE_SITE_URL as string | undefined;
+const PREREGISTER_URL = import.meta.env.VITE_PREREGISTER_VIP_TEASEME_USER as string | undefined;
+const MJFP_TOKEN = import.meta.env.VITE_MJFP_TOKEN as string | undefined;
 
-const buildAffiliateLink = (
-  username: string,
-  name: string,
-  nickname: string,
-  email: string,
-): string => {
-  const base = (SITE_URL || globalThis.location.origin).replace(/\/$/, "");
-  const url = new URL(base);
-  url.searchParams.set("fpr", username);
-  const customerTag = nickname.trim() || name.trim();
-  if (customerTag) url.searchParams.set("customer", customerTag);
-  if (email.trim()) url.searchParams.set("email", email.trim());
-  return url.toString();
+interface PreregisterSuccess {
+  status: "ok";
+  verification_url: string;
+  expires_at?: string;
+  user_id?: string;
+}
+
+const callPreregister = async (payload: {
+  email: string;
+  influencer_id: string;
+  telegram_id: number;
+  full_name: string;
+}): Promise<PreregisterSuccess> => {
+  if (!PREREGISTER_URL) {
+    throw new Error("Preregister endpoint is not configured.");
+  }
+  if (!MJFP_TOKEN) {
+    throw new Error("Preregister token is not configured.");
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(PREREGISTER_URL, {
+      method: "POST",
+      headers: {
+        "X-Internal-Token": MJFP_TOKEN,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    throw new Error("Could not reach the preregistration service. Check your connection and try again.");
+  }
+
+  let body: unknown = null;
+  try {
+    body = await response.json();
+  } catch {
+    body = null;
+  }
+
+  if (!response.ok) {
+    const detail =
+      body && typeof body === "object" && "detail" in (body as Record<string, unknown>)
+        ? String((body as Record<string, unknown>).detail)
+        : "";
+    switch (response.status) {
+      case 401:
+        throw new Error("Authentication failed. The internal token is invalid.");
+      case 404:
+        throw new Error(detail || "Influencer not found.");
+      case 409:
+        throw new Error(detail || "This user is already registered.");
+      case 422:
+        throw new Error(detail || "Some fields are invalid. Please review and try again.");
+      default:
+        throw new Error(detail || `Preregistration failed (HTTP ${response.status}).`);
+    }
+  }
+
+  if (
+    !body ||
+    typeof body !== "object" ||
+    !("verification_url" in (body as Record<string, unknown>)) ||
+    typeof (body as Record<string, unknown>).verification_url !== "string"
+  ) {
+    throw new Error("Unexpected response from the preregistration service.");
+  }
+
+  return body as PreregisterSuccess;
 };
 
 // ── Link Generator ─────────────────────────────────────────────────────────────
@@ -28,10 +86,12 @@ interface LinkGeneratorProps {
 
 export const LinkGenerator = ({ username }: LinkGeneratorProps) => {
   const [name, setName] = useState("");
-  const [nickname, setNickname] = useState("");
+  const [telegramId, setTelegramId] = useState("");
   const [email, setEmail] = useState("");
   const [generatedLink, setGeneratedLink] = useState("");
   const [copied, setCopied] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -40,19 +100,52 @@ export const LinkGenerator = ({ username }: LinkGeneratorProps) => {
     };
   }, []);
 
-  const handleGenerate = () => {
-    const hasInput = name.trim() || nickname.trim() || email.trim();
-    if (!hasInput) return;
-    setGeneratedLink(buildAffiliateLink(username, name, nickname, email));
-    setCopied(false);
+  const handleGenerate = async () => {
+    if (loading) return;
+
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim();
+    const trimmedTelegram = telegramId.trim();
+
+    if (!trimmedName || !trimmedEmail || !trimmedTelegram) {
+      setErrorMessage("Please fill in name, telegram ID and email.");
+      return;
+    }
+    if (!/^\d+$/.test(trimmedTelegram)) {
+      setErrorMessage("Telegram ID must be a number.");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setErrorMessage("Please enter a valid email address.");
+      return;
+    }
+
+    setErrorMessage(null);
+    setLoading(true);
+    try {
+      const result = await callPreregister({
+        email: trimmedEmail,
+        influencer_id: username,
+        telegram_id: Number(trimmedTelegram),
+        full_name: trimmedName,
+      });
+      setGeneratedLink(result.verification_url);
+      setCopied(false);
+    } catch (err) {
+      setGeneratedLink("");
+      setErrorMessage(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleReset = () => {
     setName("");
-    setNickname("");
+    setTelegramId("");
     setEmail("");
     setGeneratedLink("");
     setCopied(false);
+    setErrorMessage(null);
   };
 
   const handleCopy = async () => {
@@ -66,7 +159,7 @@ export const LinkGenerator = ({ username }: LinkGeneratorProps) => {
     }
   };
 
-  const canGenerate = !!(name.trim() || nickname.trim() || email.trim());
+  const canGenerate = !!(name.trim() && telegramId.trim() && email.trim()) && !loading;
 
   return (
     <div className="flex flex-col gap-[16px]">
@@ -90,7 +183,7 @@ export const LinkGenerator = ({ username }: LinkGeneratorProps) => {
         </p>
       </div>
 
-      {/* Name + Nickname row */}
+      {/* Name + Telegram ID row */}
       <div className="grid lg:grid-cols-2 gap-[10px]">
         <input
           type="text"
@@ -101,9 +194,11 @@ export const LinkGenerator = ({ username }: LinkGeneratorProps) => {
         />
         <input
           type="text"
-          value={nickname}
-          onChange={(e) => setNickname(e.target.value)}
-          placeholder="Nickname"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          value={telegramId}
+          onChange={(e) => setTelegramId(e.target.value.replaceAll(/\D/g, ""))}
+          placeholder="Telegram ID"
           className="buttonXl inputMJ text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#9e9e9e]"
         />
       </div>
@@ -158,20 +253,40 @@ export const LinkGenerator = ({ username }: LinkGeneratorProps) => {
           disabled={!canGenerate}
           className="buttonSubtle bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-full px-[20px] py-[11px] text-white text-[13px] font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0 whitespace-nowrap"
         >
-          Generate Link
+          {loading ? "Generating..." : "Generate Link"}
         </button>
       </div>
 
+      {/* Error message */}
+      {errorMessage && (
+        <div className="flex items-start gap-2 border border-[rgba(255,15,95,0.35)] bg-[rgba(255,15,95,0.08)] text-[#ff6b99] text-[12px] px-4 py-3 rounded-[8px]">
+          <svg
+            className="w-[14px] h-[14px] mt-[2px] shrink-0"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 9v2m0 4h.01M4.062 19h15.876c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L2.33 16c-.77 1.333.192 3 1.732 3z"
+            />
+          </svg>
+          <span>{errorMessage}</span>
+        </div>
+      )}
+
       {/* Generated link */}
       {generatedLink && (
-        <div className="flex flex-col gap-4 border border-neutral-800 p-8 rounded-xl bg-tm-neutral-color08">
+        <div className="flex flex-col gap-4 border border-neutral-800 p-8 rounded-xl bg-tm-neutral-color08 min-w-0 w-full overflow-hidden">
           <div className="flex flex-row w-full">
             <p className="text-[11px] font-bold uppercase tracking-[0.3px] text-[#9e9e9e]">
               Generated Link
             </p>
           </div>
-          <div className="flex flex-col lg:grid-cols-[4fr_1fr] lg:grid gap-2">
-            <div className="flex items-center gap-2 inputMJ p-4 w-full ">
+          <div className="flex flex-col lg:grid-cols-[minmax(0,4fr)_minmax(0,1fr)] lg:grid gap-2 min-w-0 w-full">
+            <div className="flex items-center gap-2 inputMJ p-4 w-full min-w-0 overflow-hidden">
               <svg
                 className="w-[14px] h-[14px] text-[#555] shrink-0"
                 fill="none"
@@ -185,7 +300,7 @@ export const LinkGenerator = ({ username }: LinkGeneratorProps) => {
                   d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
                 />
               </svg>
-              <p className="flex-1 text-[#9e9e9e] text-[13px] truncate font-mono">
+              <p className="flex-1 min-w-0 text-[#9e9e9e] text-[13px] truncate font-mono">
                 {generatedLink}
               </p>
             </div>
