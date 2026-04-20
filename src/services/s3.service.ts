@@ -1,8 +1,15 @@
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
-const region = process.env.TEASEME_S3_REGION || 'ap-southeast-2';
-const bucket = process.env.TEASEME_S3_BUCKET || 'bucket-live-message-tease-me';
+const region = process.env.TEASEME_S3_REGION;
+if (!region) {
+  throw new Error('[s3.service] Missing required environment variable: TEASEME_S3_REGION');
+}
+
+const bucket = process.env.TEASEME_S3_BUCKET;
+if (!bucket) {
+  throw new Error('[s3.service] Missing required environment variable: TEASEME_S3_BUCKET');
+}
 
 // Reuse the SES_* IAM credentials — they already have access to the TeaseMe bucket
 // (confirmed via the sample presigned URL). Falls back to the default AWS SDK

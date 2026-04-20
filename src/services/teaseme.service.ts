@@ -156,7 +156,7 @@ export const syncUserFromTeaseMe = async (
       });
     }
 
-    return tx.user.findUnique({
+    return tx.user.findUniqueOrThrow({
       where: { id: userId },
       select: {
         id: true,
@@ -173,5 +173,5 @@ export const syncUserFromTeaseMe = async (
     });
   });
 
-  return updated as SyncedUser;
+  return updated;
 };

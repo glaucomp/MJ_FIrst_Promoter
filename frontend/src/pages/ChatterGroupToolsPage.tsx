@@ -191,6 +191,7 @@ export const ChatterGroupToolsPage = () => {
                     target="_blank"
                     rel="noopener noreferrer"
                     title={link.platform}
+                    aria-label={`Open ${link.platform}`}
                     className="w-[52px] h-[52px] flex items-center justify-center bg-[#141416] border border-[rgba(255,255,255,0.06)] rounded-[12px] hover:border-[rgba(255,255,255,0.2)] transition-colors"
                   >
                     <SocialIcon platform={link.platform} />

@@ -270,14 +270,26 @@ export const getMyGroups = async (req: AuthRequest, res: Response) => {
       groups = refreshed.map((m) => m.group);
     }
 
-    // Mint fresh presigned URLs on every request (never store them in DB).
+    // Mint fresh presigned URLs on every request (never store them in DB),
+    // but dedupe repeated signing work within this request.
+    const presignedUrlCache = new Map<string, Promise<string | null>>();
+    const getCachedPresignedUrl = (key: string | null | undefined) => {
+      if (!key) return getPresignedUrl(key);
+      let urlPromise = presignedUrlCache.get(key);
+      if (!urlPromise) {
+        urlPromise = getPresignedUrl(key);
+        presignedUrlCache.set(key, urlPromise);
+      }
+      return urlPromise;
+    };
+
     const hydrated = await Promise.all(
       groups.map(async (g) => {
         if (!g.promoter) return g;
         const { profilePhotoKey, profileVideoKey, ...rest } = g.promoter;
         const [photoUrl, videoUrl] = await Promise.all([
-          getPresignedUrl(profilePhotoKey),
-          getPresignedUrl(profileVideoKey),
+          getCachedPresignedUrl(profilePhotoKey),
+          getCachedPresignedUrl(profileVideoKey),
         ]);
         return {
           ...g,
