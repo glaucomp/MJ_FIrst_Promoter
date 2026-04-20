@@ -1480,18 +1480,21 @@ export const Reports = () => {
       fromMs = period === "all" ? 0 : cutoffMs(PERIOD_DAYS[period]);
     }
 
-    // Build a map: userId → { name, totalRevenue }
+    // Build a map: userId → { name, totalRevenue, photoUrl }
     // covering both direct referrals and their children (full network)
-    const earningsMap = new Map<string, { name: string; revenue: number }>();
+    const earningsMap = new Map<string, { name: string; revenue: number; photoUrl: string | null }>();
 
     const accumulateCommissions = (
-      person: { id: string; firstName: string; lastName: string },
+      person: { id: string; firstName: string; lastName: string; photoUrl?: string | null },
       commissions: Array<{ amount: number; userId: string; createdAt: string }>,
     ) => {
       const entry = earningsMap.get(person.id) ?? {
         name: `${person.firstName} ${person.lastName}`,
         revenue: 0,
+        photoUrl: person.photoUrl ?? null,
       };
+      // If a later pass has a photo and the earlier one didn't, keep the photo.
+      if (!entry.photoUrl && person.photoUrl) entry.photoUrl = person.photoUrl;
       const earned = commissions
         .filter((c) => {
           if (c.amount <= 0 || c.userId !== person.id) return false;
@@ -2322,7 +2325,7 @@ export const Reports = () => {
               </span>
             </div>
           ) : (
-            topPerformers.map(({ name, revenue }, idx) => {
+            topPerformers.map(({ name, revenue, photoUrl }, idx) => {
               const initials = name
                 .split(" ")
                 .map((n) => n[0])
@@ -2354,12 +2357,21 @@ export const Reports = () => {
                     boxShadow: '0 -1px 0 0 rgba(255,255,255,0.10)',
                   }}
                 >
-                  <div
-                    className="rounded-full flex items-center justify-center font-bold text-white shrink-0"
-                    style={{ width: '16px', height: '16px', background: avatarBg, fontSize: '7px' }}
-                  >
-                    {initials}
-                  </div>
+                  {photoUrl ? (
+                    <img
+                      src={photoUrl}
+                      alt={name}
+                      className="rounded-full shrink-0 object-cover"
+                      style={{ width: '16px', height: '16px' }}
+                    />
+                  ) : (
+                    <div
+                      className="rounded-full flex items-center justify-center font-bold text-white shrink-0"
+                      style={{ width: '16px', height: '16px', background: avatarBg, fontSize: '7px' }}
+                    >
+                      {initials}
+                    </div>
+                  )}
                   <span className="flex-1 truncate" style={{ fontSize: 'var(--font-size-body-s)', fontWeight: 'var(--font-weight-medium)', lineHeight: '140%', letterSpacing: '0.2px', color: '#7A7A7A' }}>
                     {name}
                   </span>
