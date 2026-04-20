@@ -16,6 +16,17 @@ router.post(
   ],
   chatterController.createChatter,
 );
+router.post(
+  '/preregister-vip',
+  authenticate,
+  [
+    body('email').isEmail().normalizeEmail(),
+    body('influencer_id').isString().trim().notEmpty(),
+    body('telegram_id').isInt({ min: 1 }),
+    body('full_name').isString().trim().notEmpty(),
+  ],
+  chatterController.preregisterVipUser,
+);
 router.get('/me/groups', authenticate, chatterController.getMyGroups);
 router.get('/', authenticate, chatterController.listChatters);
 router.get('/:id', authenticate, chatterController.getChatter);

@@ -5,7 +5,7 @@ Use this checklist to ensure your MJ First Promoter platform is ready to run.
 ## 📦 Installation Checklist
 
 ### System Requirements
-- [ ] Node.js 18+ installed (`node --version`)
+- [ ] Node.js 20+ installed (`node --version`)
 - [ ] npm installed (`npm --version`)
 - [ ] PostgreSQL installed and running (`pg_isready`)
 - [ ] Git installed (optional, for version control)

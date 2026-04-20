@@ -27,6 +27,16 @@ export class TeaseMeApiError extends Error {
   }
 }
 
+export class TeaseMeSyncValidationError extends Error {
+  constructor(
+    message: string,
+    public readonly status: 400 | 404
+  ) {
+    super(message);
+    this.name = 'TeaseMeSyncValidationError';
+  }
+}
+
 /**
  * Fetches an influencer profile from the TeaseMe public API.
  * Throws TeaseMeApiError on non-2xx responses or network failures.
@@ -92,21 +102,36 @@ export const syncUserFromTeaseMe = async (
     select: { id: true, username: true },
   });
   if (!user) {
-    throw new TeaseMeApiError(`User ${userId} not found`);
+    throw new TeaseMeSyncValidationError(`User ${userId} not found`, 404);
   }
   if (!user.username) {
-    throw new TeaseMeApiError(`User ${userId} has no username; cannot sync`);
+    throw new TeaseMeSyncValidationError(`User ${userId} has no username; cannot sync`, 400);
   }
 
   const influencer = await fetchInfluencer(user.username);
+
+  const normalizeSocialUrl = (rawUrl: string): string | null => {
+    const trimmed = rawUrl.trim();
+    if (!trimmed) return null;
+    try {
+      const parsed = new URL(trimmed);
+      if (!['http:', 'https:'].includes(parsed.protocol)) return null;
+      if (!parsed.hostname) return null;
+      return parsed.toString();
+    } catch {
+      return null;
+    }
+  };
 
   // Dedupe by platform (TeaseMe may return duplicates), normalise platform to lowercase.
   const byPlatform = new Map<string, string>();
   for (const link of influencer.social_links || []) {
     if (!link?.platform || !link?.url) continue;
     const platform = String(link.platform).toLowerCase().trim();
+    const url = normalizeSocialUrl(String(link.url));
     if (!platform) continue;
-    if (!byPlatform.has(platform)) byPlatform.set(platform, link.url);
+    if (!url) continue;
+    if (!byPlatform.has(platform)) byPlatform.set(platform, url);
   }
 
   const updated = await prisma.$transaction(async (tx) => {

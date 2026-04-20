@@ -1,6 +1,10 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
-import { syncUserFromTeaseMe, TeaseMeApiError } from '../services/teaseme.service';
+import {
+  syncUserFromTeaseMe,
+  TeaseMeApiError,
+  TeaseMeSyncValidationError,
+} from '../services/teaseme.service';
 import { getPresignedUrl } from '../services/s3.service';
 
 /**
@@ -36,9 +40,20 @@ export const syncTeaseMeForUser = async (req: AuthRequest, res: Response) => {
       message: 'User synced from TeaseMe',
     });
   } catch (error) {
+    if (error instanceof TeaseMeSyncValidationError) {
+      console.error('TeaseMe sync validation error:', error.message);
+      return res.status(error.status).json({ error: error.message });
+    }
+
     if (error instanceof TeaseMeApiError) {
       console.error('TeaseMe sync error:', error.message, error.status, error.body);
-      return res.status(error.status && error.status < 500 ? 400 : 502).json({
+      const statusCode =
+        typeof error.status === 'number'
+          ? error.status >= 500
+            ? 502
+            : error.status
+          : 502;
+      return res.status(statusCode).json({
         error: error.message,
         teasemeStatus: error.status,
       });

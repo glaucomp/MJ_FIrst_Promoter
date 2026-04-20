@@ -8,6 +8,8 @@ import { syncUserFromTeaseMe } from '../services/teaseme.service';
 import { getPresignedUrl } from '../services/s3.service';
 
 const prisma = new PrismaClient();
+const PREREGISTER_URL = process.env.PREREGISTER_VIP_TEASEME_USER;
+const PREREGISTER_TOKEN = process.env.MJFP_TOKEN;
 
 const isAccountManagerOrAdmin = (req: AuthRequest): boolean => {
   if (!req.user) return false;
@@ -69,6 +71,79 @@ export const createChatter = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('Create chatter error:', error);
     res.status(500).json({ error: 'Failed to create chatter' });
+  }
+};
+
+// POST /api/chatters/preregister-vip — preregister via backend proxy (authenticated)
+export const preregisterVipUser = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    if (req.user.userType !== UserType.CHATTER) {
+      return res.status(403).json({ error: 'Only chatters can preregister users' });
+    }
+
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(422).json({
+        error: 'Validation failed',
+        errors: errors.array(),
+      });
+    }
+
+    if (!PREREGISTER_URL || !PREREGISTER_TOKEN) {
+      return res.status(503).json({ error: 'Preregistration service is not configured' });
+    }
+
+    const payload = {
+      email: String(req.body.email).trim(),
+      influencer_id: String(req.body.influencer_id).trim(),
+      telegram_id: Number(req.body.telegram_id),
+      full_name: String(req.body.full_name).trim(),
+    };
+
+    let upstream: globalThis.Response;
+    try {
+      upstream = await fetch(PREREGISTER_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Internal-Token': PREREGISTER_TOKEN,
+        },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(10_000),
+      });
+    } catch {
+      return res.status(502).json({ error: 'Could not reach preregistration service' });
+    }
+
+    const body = await upstream.json().catch(() => null);
+
+    if (!upstream.ok) {
+      const detail =
+        body && typeof body === 'object' && 'detail' in (body as Record<string, unknown>)
+          ? String((body as Record<string, unknown>).detail)
+          : '';
+      return res.status(upstream.status).json({
+        error: detail || `Preregistration failed (HTTP ${upstream.status})`,
+      });
+    }
+
+    if (
+      !body ||
+      typeof body !== 'object' ||
+      !('verification_url' in (body as Record<string, unknown>)) ||
+      typeof (body as Record<string, unknown>).verification_url !== 'string'
+    ) {
+      return res.status(502).json({ error: 'Unexpected response from preregistration service' });
+    }
+
+    return res.json(body);
+  } catch (error) {
+    console.error('Preregister VIP error:', error);
+    return res.status(500).json({ error: 'Failed to preregister user' });
   }
 };
 

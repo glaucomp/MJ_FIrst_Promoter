@@ -3,8 +3,7 @@ import { elevenLabsApi } from "../services/api";
 import PhoneTip from '../assets/imagePhoneTip.svg';
 import DesktopTip from '../assets/imageDesktopTip.svg';
 
-const PREREGISTER_URL = import.meta.env.VITE_PREREGISTER_VIP_TEASEME_USER as string | undefined;
-const MJFP_TOKEN = import.meta.env.VITE_MJFP_TOKEN as string | undefined;
+const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5555/api';
 
 interface PreregisterSuccess {
   status: "ok";
@@ -19,19 +18,17 @@ const callPreregister = async (payload: {
   telegram_id: number;
   full_name: string;
 }): Promise<PreregisterSuccess> => {
-  if (!PREREGISTER_URL) {
-    throw new Error("Preregister endpoint is not configured.");
-  }
-  if (!MJFP_TOKEN) {
-    throw new Error("Preregister token is not configured.");
+  const token = localStorage.getItem("auth_token");
+  if (!token) {
+    throw new Error("You must be logged in to generate an invite.");
   }
 
   let response: Response;
   try {
-    response = await fetch(PREREGISTER_URL, {
+    response = await fetch(`${API_URL}/chatters/preregister-vip`, {
       method: "POST",
       headers: {
-        "X-Internal-Token": MJFP_TOKEN,
+        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
@@ -54,7 +51,9 @@ const callPreregister = async (payload: {
         : "";
     switch (response.status) {
       case 401:
-        throw new Error("Authentication failed. The internal token is invalid.");
+        throw new Error("Session expired. Please log in again.");
+      case 403:
+        throw new Error("You are not allowed to preregister users.");
       case 404:
         throw new Error(detail || "Influencer not found.");
       case 409:

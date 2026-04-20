@@ -39,7 +39,7 @@ sudo apt install -y curl git build-essential
 
 ---
 
-## 🟢 Step 2: Install Node.js (v18 or later)
+## 🟢 Step 2: Install Node.js (v20 or later)
 
 ```bash
 # Install Node.js 20.x
