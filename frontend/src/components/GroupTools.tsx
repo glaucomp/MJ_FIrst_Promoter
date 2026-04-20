@@ -45,23 +45,29 @@ const callPreregister = async (payload: {
   }
 
   if (!response.ok) {
-    const detail =
-      body && typeof body === "object" && "detail" in (body as Record<string, unknown>)
-        ? String((body as Record<string, unknown>).detail)
-        : "";
+    const pickMessage = (raw: unknown): string => {
+      if (!raw || typeof raw !== "object") return "";
+      const record = raw as Record<string, unknown>;
+      for (const key of ["error", "message", "detail"] as const) {
+        const value = record[key];
+        if (typeof value === "string" && value.trim()) return value;
+      }
+      return "";
+    };
+    const serverMessage = pickMessage(body);
     switch (response.status) {
       case 401:
-        throw new Error("Session expired. Please log in again.");
+        throw new Error(serverMessage || "Session expired. Please log in again.");
       case 403:
-        throw new Error("You are not allowed to preregister users.");
+        throw new Error(serverMessage || "You are not allowed to preregister users.");
       case 404:
-        throw new Error(detail || "Influencer not found.");
+        throw new Error(serverMessage || "Influencer not found.");
       case 409:
-        throw new Error(detail || "This user is already registered.");
+        throw new Error(serverMessage || "This user is already registered.");
       case 422:
-        throw new Error(detail || "Some fields are invalid. Please review and try again.");
+        throw new Error(serverMessage || "Some fields are invalid. Please review and try again.");
       default:
-        throw new Error(detail || `Preregistration failed (HTTP ${response.status}).`);
+        throw new Error(serverMessage || `Preregistration failed (HTTP ${response.status}).`);
     }
   }
 

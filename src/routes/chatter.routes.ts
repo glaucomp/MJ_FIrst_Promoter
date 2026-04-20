@@ -43,7 +43,7 @@ router.post(
   [
     body('email').isEmail().normalizeEmail(),
     body('influencer_id').isString().trim().notEmpty(),
-    body('telegram_id').isInt({ min: 1 }),
+    body('telegram_id').isInt({ min: 1 }).toInt(),
     body('full_name').isString().trim().notEmpty(),
   ],
   chatterController.preregisterVipUser,
