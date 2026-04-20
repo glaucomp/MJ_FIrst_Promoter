@@ -106,7 +106,7 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
             }).map((item) => {
               const isActive = location.pathname === item.path;
               const iconColor = isActive
-                ? 'var(--color-tm-primary-color05)'
+                ? 'var(--color-tm-primary-color05, white)'
                 : 'white';
 
               if (isOpen) {

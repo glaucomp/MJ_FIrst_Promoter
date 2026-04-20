@@ -69,8 +69,8 @@ export const TopBar = () => {
           }).map((item) => {
             const isActive = location.pathname === item.path;
             const iconColor = isActive
-              ? 'var(--color-tm-primary-color05)'
-              : '#9e9e9e';
+              ? 'var(--color-tm-primary-color05, white)'
+              : 'white';
 
             return (
               <button
