@@ -82,7 +82,21 @@ export const ChatterDashboard = () => {
 
       {!isLoading && !error && groups.length > 0 && (
         <div className="flex flex-col gap-[16px]">
-          {groups.map(group => (
+          {groups.map(group => {
+            const promoterName = group.promoter
+              ? [group.promoter.firstName, group.promoter.lastName].filter(Boolean).join(' ') ||
+                group.promoter.username ||
+                group.name
+              : group.name;
+            const promoterPhoto = group.promoter?.photoUrl ?? null;
+            const avatarInitials =
+              promoterName
+                .split(' ')
+                .slice(0, 2)
+                .map(w => w[0]?.toUpperCase() ?? '')
+                .join('') || group.name.slice(0, 2).toUpperCase();
+
+            return (
             <button
               key={group.id}
               onClick={() => openTools(group)}
@@ -90,19 +104,41 @@ export const ChatterDashboard = () => {
             >
               {/* Card header */}
               <div className="p-[28px] flex items-start justify-between gap-[16px]">
-                <div className="flex flex-col gap-[8px]">
-                  <h3 className="text-white text-[22px] font-bold leading-[1.2]">{group.name}</h3>
-                  {group.tag && (
-                    <span className="self-start px-[10px] py-[3px] rounded-[100px] text-[12px] font-semibold text-[#ff2a71]">
-                      {group.tag}
-                    </span>
-                  )}
+                <div className="flex items-center gap-[14px] min-w-0">
+                  {/* Promoter avatar */}
+                  <div className="w-[56px] h-[56px] rounded-full bg-linear-to-br from-[#ff0f5f] to-[#cc0047] flex items-center justify-center shrink-0 overflow-hidden border border-[rgba(255,255,255,0.08)]">
+                    {promoterPhoto ? (
+                      <img
+                        src={promoterPhoto}
+                        alt={promoterName}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-white text-[16px] font-bold leading-none">
+                        {avatarInitials}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-[6px] min-w-0">
+                    <h3 className="text-white text-[22px] font-bold leading-[1.2] truncate">{group.name}</h3>
+                    {group.tag && (
+                      <span className="self-start px-[10px] py-[3px] rounded-[100px] text-[12px] font-semibold text-[#ff2a71]">
+                        {group.tag}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="flex flex-col items-end gap-[6px] shrink-0">
+                <div className="flex flex-col items-end gap-[12px] shrink-0">
                   <div className="flex items-baseline gap-[5px]">
                     <span className="text-[#9e9e9e] text-[13px]">Referral Bonus</span>
                     <span className="text-white text-[14px] font-bold">{group.commissionPercentage}%</span>
                   </div>
+                  <span
+                    className="inline-flex items-center justify-center px-[28px] py-[10px] rounded-[100px] bg-linear-to-b from-[#2a2a2e] to-[#151517] border border-[rgba(255,255,255,0.08)] text-white text-[13px] font-semibold shadow-[0_2px_6px_rgba(0,0,0,0.35)] group-hover/card:border-[rgba(255,42,113,0.5)] transition-colors"
+                    aria-hidden="true"
+                  >
+                    View Tools
+                  </span>
                 </div>
               </div>
 
@@ -132,7 +168,8 @@ export const ChatterDashboard = () => {
                 </span>
               </div>
             </button>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

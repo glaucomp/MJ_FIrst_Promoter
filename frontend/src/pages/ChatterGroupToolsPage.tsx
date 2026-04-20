@@ -142,9 +142,9 @@ export const ChatterGroupToolsPage = () => {
           )}
         </div>
 
-        {/* Talk Like [Model] */}
+        {/* Talk Like [Influencer] */}
         <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-[18px] p-4 lg:p-8">
-          <VoiceMessage modelName={modelName} voiceId={voiceId} />
+          <VoiceMessage modelName={promoterName} voiceId={voiceId} />
         </div>
 
         {/* Model Info */}
@@ -161,7 +161,7 @@ export const ChatterGroupToolsPage = () => {
               <rect x="15" y="5" width="2" height="4" rx="1" />
             </svg>
             <p className="text-[13px] font-bold uppercase tracking-[0.3px] text-white">
-              {modelName} Info
+              {promoterName} Info
             </p>
           </div>
 
@@ -171,10 +171,10 @@ export const ChatterGroupToolsPage = () => {
             <div className="flex-1 bg-[#141416] border border-[rgba(255,255,255,0.06)] rounded-[14px] p-[20px] flex items-center gap-[18px]">
               <div className="w-[72px] h-[72px] rounded-full bg-linear-to-br from-[#ff0f5f] to-[#cc0047] flex items-center justify-center shrink-0 overflow-hidden">
                 {photoUrl ? (
-                  <img src={photoUrl} alt={modelName} className="w-full h-full object-cover" />
+                  <img src={photoUrl} alt={promoterName} className="w-full h-full object-cover" />
                 ) : (
                   <span className="text-white text-[22px] font-bold leading-none">
-                    {modelName.split(' ').slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('')}
+                    {promoterName.split(' ').slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('')}
                   </span>
                 )}
               </div>
