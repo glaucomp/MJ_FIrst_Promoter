@@ -1,28 +1,8 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-
 import type { UserRole } from '../types';
-
-interface NavItem {
-  id: string;
-  icon: string;
-  label: string;
-  path: string;
-  adminOnly?: boolean;
-  allowedRoles?: UserRole[];
-}
-
-const navItems: NavItem[] = [
-  { id: 'dashboard', icon: '📊', label: 'Dashboard', path: '/dashboard', allowedRoles: ['admin', 'team_manager', 'account_manager', 'promoter'] },
-  { id: 'models', icon: '👥', label: 'Models', path: '/models', allowedRoles: ['admin', 'team_manager', 'account_manager', 'promoter'] },
-  { id: 'chatter-portal', icon: '🎭', label: 'Persona', path: '/chatter-portal', allowedRoles: ['chatter'] },
-  { id: 'chatters', icon: '💬', label: 'Chatters', path: '/chatters', allowedRoles: ['account_manager'] },
-  { id: 'chatter-groups', icon: '🗂️', label: 'Chatter Groups', path: '/chatter-groups', allowedRoles: ['account_manager'] },
-  { id: 'campaigns', icon: '🎯', label: 'Campaigns', path: '/campaigns', adminOnly: true },
-  { id: 'reports', icon: '📈', label: 'Reports', path: '/reports' },
-  { id: 'payouts', icon: '💸', label: 'Payouts', path: '/payouts', adminOnly: true },
-  { id: 'settings', icon: '⚙️', label: 'Settings', path: '/settings' },
-];
+import { IconLogout } from './NavIcons';
+import { navItems } from './navConfig';
 
 export const TopBar = () => {
   const navigate = useNavigate();
@@ -30,7 +10,7 @@ export const TopBar = () => {
   const { logout, user } = useAuth();
 
   return (
-    <div 
+    <div
       className="fixed top-0 left-0 right-0 h-[60px] bg-[#212121] border-b border-[rgba(255,255,255,0.03)] z-50"
       style={{
         boxShadow: '0px -1px 0px 0px rgba(255,255,255,0.1), 0px 2px 4px 0px rgba(0,0,0,0.3)'
@@ -54,6 +34,10 @@ export const TopBar = () => {
             return true;
           }).map((item) => {
             const isActive = location.pathname === item.path;
+            const iconColor = isActive
+              ? 'var(--color-tm-primary-color05, white)'
+              : 'white';
+
             return (
               <button
                 key={item.id}
@@ -64,10 +48,13 @@ export const TopBar = () => {
                     : 'hover:bg-[#292929]/50'
                 }`}
               >
-                <span className="text-[14px]">{item.icon}</span>
-                <span className={`text-[13px] font-medium ${
-                  isActive ? 'text-[#ff2a71]' : 'text-[#9e9e9e]'
-                }`}>
+                <div style={{ color: iconColor }} className="flex items-center justify-center">
+                  <item.Icon width={16} height={16} />
+                </div>
+                <span
+                  className="text-[13px] font-medium"
+                  style={{ color: iconColor }}
+                >
                   {item.label}
                 </span>
               </button>
@@ -80,8 +67,9 @@ export const TopBar = () => {
           onClick={logout}
           aria-label="Log out"
           className="flex items-center justify-center w-[36px] h-[36px] rounded-[6px] hover:bg-[#292929]/50 transition-all"
+          style={{ color: 'white' }}
         >
-          <span className="text-[16px]" aria-hidden="true">🚪</span>
+          <IconLogout width={20} height={19} />
         </button>
       </div>
     </div>
