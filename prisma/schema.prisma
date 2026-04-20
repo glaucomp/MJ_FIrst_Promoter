@@ -77,8 +77,8 @@ model User {
 
   // TeaseMe sync fields
   voiceId               String?
-  profilePhotoKey       String?            // S3 key, e.g. "influencers/juliana/profile.jpg"
-  profileVideoKey       String?            // S3 key, e.g. "influencers/juliana/video.mp4"
+  profilePhotoKey       String?            // S3 key, e.g. "influencers/<username>/profile.jpg"
+  profileVideoKey       String?            // S3 key, e.g. "influencers/<username>/video.mp4"
   teasemeSyncedAt       DateTime?
 
   // Relationships
