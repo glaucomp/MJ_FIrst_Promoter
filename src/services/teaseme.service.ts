@@ -90,6 +90,19 @@ export interface SyncedUser {
   socialLinks: { platform: string; url: string }[];
 }
 
+const normalizeSocialUrl = (rawUrl: string): string | null => {
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return null;
+  try {
+    const parsed = new URL(trimmed);
+    if (!['http:', 'https:'].includes(parsed.protocol)) return null;
+    if (!parsed.hostname) return null;
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+};
+
 /**
  * Syncs a User row with data from TeaseMe, keyed by the user's username.
  * Updates voiceId, S3 keys, teasemeSyncedAt and replaces the user's socialLinks.
@@ -109,19 +122,6 @@ export const syncUserFromTeaseMe = async (
   }
 
   const influencer = await fetchInfluencer(user.username);
-
-  const normalizeSocialUrl = (rawUrl: string): string | null => {
-    const trimmed = rawUrl.trim();
-    if (!trimmed) return null;
-    try {
-      const parsed = new URL(trimmed);
-      if (!['http:', 'https:'].includes(parsed.protocol)) return null;
-      if (!parsed.hostname) return null;
-      return parsed.toString();
-    } catch {
-      return null;
-    }
-  };
 
   // Dedupe by platform (TeaseMe may return duplicates), normalise platform to lowercase.
   const byPlatform = new Map<string, string>();

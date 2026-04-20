@@ -47,12 +47,14 @@ export const syncTeaseMeForUser = async (req: AuthRequest, res: Response) => {
 
     if (error instanceof TeaseMeApiError) {
       console.error('TeaseMe sync error:', error.message, error.status, error.body);
-      const statusCode =
-        typeof error.status === 'number'
-          ? error.status >= 500
-            ? 502
-            : error.status
-          : 502;
+      let statusCode = 502;
+      if (typeof error.status === 'number') {
+        if (error.status >= 500) {
+          statusCode = 502;
+        } else {
+          statusCode = error.status;
+        }
+      }
       return res.status(statusCode).json({
         error: error.message,
         teasemeStatus: error.status,

@@ -1,13 +1,26 @@
-import { Router } from 'express';
+import { Request, Router } from 'express';
 import { body } from 'express-validator';
-import { authenticate } from '../middleware/auth.middleware';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
+import { authenticate, AuthRequest } from '../middleware/auth.middleware';
 import * as chatterController from '../controllers/chatter.controller';
 
 const router = Router();
+const rateLimitKeyByUserOrIp = (req: Request) => {
+  const authReq = req as AuthRequest;
+  return authReq.user?.id ? `user:${authReq.user.id}` : ipKeyGenerator(req.ip ?? 'unknown');
+};
 
 router.post(
   '/',
   authenticate,
+  rateLimit({
+    windowMs: 60 * 1_000,
+    limit: 10,
+    keyGenerator: rateLimitKeyByUserOrIp,
+    handler: (_req, res) => res.status(429).json({ error: 'Too many requests' }),
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+  }),
   [
     body('email').isEmail().normalizeEmail(),
     body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
@@ -19,6 +32,14 @@ router.post(
 router.post(
   '/preregister-vip',
   authenticate,
+  rateLimit({
+    windowMs: 60 * 1_000,
+    limit: 10,
+    keyGenerator: rateLimitKeyByUserOrIp,
+    handler: (_req, res) => res.status(429).json({ error: 'Too many requests' }),
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+  }),
   [
     body('email').isEmail().normalizeEmail(),
     body('influencer_id').isString().trim().notEmpty(),

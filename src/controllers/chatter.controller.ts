@@ -100,7 +100,7 @@ export const preregisterVipUser = async (req: AuthRequest, res: Response) => {
     const payload = {
       email: String(req.body.email).trim(),
       influencer_id: String(req.body.influencer_id).trim(),
-      telegram_id: Number(req.body.telegram_id),
+      telegram_id: req.body.telegram_id as number,
       full_name: String(req.body.full_name).trim(),
     };
 
@@ -115,16 +115,21 @@ export const preregisterVipUser = async (req: AuthRequest, res: Response) => {
         body: JSON.stringify(payload),
         signal: AbortSignal.timeout(10_000),
       });
-    } catch {
+    } catch (error) {
+      if (error instanceof Error && error.name === 'TimeoutError') {
+        return res.status(504).json({ error: 'Preregistration service timed out' });
+      }
       return res.status(502).json({ error: 'Could not reach preregistration service' });
     }
 
     const body = await upstream.json().catch(() => null);
+    const parsedBody =
+      body && typeof body === 'object' ? (body as Record<string, unknown>) : null;
 
     if (!upstream.ok) {
       const detail =
-        body && typeof body === 'object' && 'detail' in (body as Record<string, unknown>)
-          ? String((body as Record<string, unknown>).detail)
+        parsedBody && 'detail' in parsedBody
+          ? String(parsedBody.detail)
           : '';
       return res.status(upstream.status).json({
         error: detail || `Preregistration failed (HTTP ${upstream.status})`,
@@ -132,15 +137,14 @@ export const preregisterVipUser = async (req: AuthRequest, res: Response) => {
     }
 
     if (
-      !body ||
-      typeof body !== 'object' ||
-      !('verification_url' in (body as Record<string, unknown>)) ||
-      typeof (body as Record<string, unknown>).verification_url !== 'string'
+      !parsedBody ||
+      !('verification_url' in parsedBody) ||
+      typeof parsedBody.verification_url !== 'string'
     ) {
       return res.status(502).json({ error: 'Unexpected response from preregistration service' });
     }
 
-    return res.json(body);
+    return res.json(parsedBody);
   } catch (error) {
     console.error('Preregister VIP error:', error);
     return res.status(500).json({ error: 'Failed to preregister user' });
