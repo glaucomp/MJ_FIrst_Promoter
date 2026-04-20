@@ -62,7 +62,7 @@ The platform supports four user types:
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 18+
+- Node.js 20+
 - PostgreSQL
 - npm or yarn
 

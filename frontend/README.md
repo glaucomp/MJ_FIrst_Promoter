@@ -51,7 +51,7 @@ A responsive dashboard application for the TeaseMe platform with role-based acce
 
 ### Prerequisites
 
-- Node.js 16+ and npm
+- Node.js 20+ and npm
 
 ### Installation
 

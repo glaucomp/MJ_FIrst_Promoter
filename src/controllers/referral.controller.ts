@@ -3,6 +3,7 @@ import { Response } from "express";
 import { validationResult } from "express-validator";
 import { nanoid } from "nanoid";
 import { AuthRequest } from "../middleware/auth.middleware";
+import { getPresignedUrl } from "../services/s3.service";
 
 const prisma = new PrismaClient();
 
@@ -271,6 +272,8 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
             email: true,
             firstName: true,
             lastName: true,
+            username: true,
+            profilePhotoKey: true,
             createdAt: true,
           },
         },
@@ -282,6 +285,8 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
                 email: true,
                 firstName: true,
                 lastName: true,
+                username: true,
+                profilePhotoKey: true,
               },
             },
             commissions: {
@@ -322,6 +327,41 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
       return true;
     });
 
+    // Presign every unique profile photo key once, then swap the stable S3 key
+    // for a short-lived URL (1h) on each referredUser before responding.
+    // The DB never stores the URL; the key is the only persistent reference.
+    const photoKeys = new Set<string>();
+    for (const ref of referrals) {
+      if (ref.referredUser?.profilePhotoKey) photoKeys.add(ref.referredUser.profilePhotoKey);
+      for (const cr of ref.childReferrals) {
+        if (cr.referredUser?.profilePhotoKey) photoKeys.add(cr.referredUser.profilePhotoKey);
+      }
+    }
+    const photoUrlByKey = new Map<string, string | null>();
+    await Promise.all(
+      Array.from(photoKeys).map(async (key) => {
+        photoUrlByKey.set(key, await getPresignedUrl(key));
+      })
+    );
+    const hydrateReferredUser = <T extends { profilePhotoKey?: string | null } | null | undefined>(
+      ru: T
+    ): (Omit<NonNullable<T>, "profilePhotoKey"> & { photoUrl: string | null }) | null => {
+      if (!ru) return null;
+      const { profilePhotoKey, ...rest } = ru;
+      return {
+        ...rest,
+        photoUrl: profilePhotoKey ? photoUrlByKey.get(profilePhotoKey) ?? null : null,
+      } as Omit<NonNullable<T>, "profilePhotoKey"> & { photoUrl: string | null };
+    };
+    const hydratedReferrals = referrals.map((ref) => ({
+      ...ref,
+      referredUser: hydrateReferredUser(ref.referredUser),
+      childReferrals: ref.childReferrals.map((cr) => ({
+        ...cr,
+        referredUser: hydrateReferredUser(cr.referredUser),
+      })),
+    }));
+
     // Calculate earnings
     const paidEarnings = referrals.reduce((sum, ref) => {
       return (
@@ -340,7 +380,7 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
     }, 0);
 
     res.json({
-      referrals,
+      referrals: hydratedReferrals,
       totalEarnings,
       paidEarnings,
       totalReferrals: referrals.length,

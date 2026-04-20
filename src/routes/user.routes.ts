@@ -3,6 +3,7 @@ import { body } from 'express-validator';
 import * as userController from '../controllers/user.controller';
 import { authenticate, authorize } from '../middleware/auth.middleware';
 import { createPromoter } from '../controllers/promoter.api.controller';
+import { syncTeaseMeForUser } from '../controllers/teaseme.controller';
 import { UserRole } from '@prisma/client';
 
 const router = Router();
@@ -68,6 +69,14 @@ router.get(
   authenticate,
   authorize(UserRole.ADMIN),
   userController.getAccountManagers
+);
+
+// Sync a user's profile from TeaseMe (admin only)
+router.post(
+  '/:id/sync-teaseme',
+  authenticate,
+  authorize(UserRole.ADMIN),
+  syncTeaseMeForUser
 );
 
 export default router;

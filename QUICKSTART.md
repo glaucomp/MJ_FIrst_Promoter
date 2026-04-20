@@ -5,7 +5,7 @@ Get your referral tracking platform running in 5 minutes!
 ## 📋 Prerequisites
 
 Make sure you have installed:
-- **Node.js 18+** ([Download](https://nodejs.org/))
+- **Node.js 20+** ([Download](https://nodejs.org/))
 - **PostgreSQL** ([Download](https://www.postgresql.org/download/))
 - **npm** (comes with Node.js)
 

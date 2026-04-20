@@ -75,6 +75,12 @@ model User {
   chatterGroupId        String?            @unique
   chatterGroup          ChatterGroup?      @relation("PromoterChatterGroup", fields: [chatterGroupId], references: [id], onDelete: SetNull)
 
+  // TeaseMe sync fields
+  voiceId               String?
+  profilePhotoKey       String?            // S3 key, e.g. "influencers/<username>/profile.jpg"
+  profileVideoKey       String?            // S3 key, e.g. "influencers/<username>/video.mp4"
+  teasemeSyncedAt       DateTime?
+
   // Relationships
   createdCampaigns      Campaign[]         @relation("CampaignCreator")
   referralsMade         Referral[]         @relation("ReferrerReferrals")
@@ -85,6 +91,7 @@ model User {
   apiKeys               ApiKey[]
   chatterGroupMemberships ChatterGroupMember[]
   createdChatterGroups  ChatterGroup[]     @relation("ChatterGroupCreator")
+  socialLinks           SocialLink[]
 
   @@index([email])
   @@index([username])
@@ -323,6 +330,22 @@ model ChatterGroup {
 
   @@index([createdById])
   @@map("chatter_groups")
+}
+
+// Social links for a user (one-to-many)
+model SocialLink {
+  id        String   @id @default(cuid())
+  platform  String   // "onlyfans", "instagram", "tiktok", "bluesky", ...
+  url       String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, platform])
+  @@index([userId])
+  @@map("social_links")
 }
 
 // Junction table: many-to-many between chatters and chatter groups
