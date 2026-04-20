@@ -614,14 +614,39 @@ export const ChatterGroups = () => {
             >
               {/* Card header — static */}
               <div className="p-[28px] flex items-start justify-between gap-[16px]">
-                {/* Left: name + tag */}
-                <div className="flex flex-col gap-[8px]">
-                  <h3 className="text-white text-[22px] font-bold leading-[1.2]">{group.name}</h3>
-                  {group.tag && (
-                    <span className="self-start px-[10px] py-[3px] rounded-[100px] text-[12px] font-semibold text-[#ff2a71]">
-                      {group.tag}
-                    </span>
-                  )}
+                {/* Left: avatar + name + tag */}
+                <div className="flex items-center gap-[14px] min-w-0">
+                  {(() => {
+                    const promoterName = group.promoter
+                      ? [group.promoter.firstName, group.promoter.lastName].filter(Boolean).join(' ') ||
+                        group.promoter.username ||
+                        group.promoter.email ||
+                        group.name
+                      : group.name;
+                    const initials =
+                      promoterName
+                        .split(' ')
+                        .slice(0, 2)
+                        .map(w => w[0]?.toUpperCase() ?? '')
+                        .join('') || group.name.slice(0, 2).toUpperCase();
+                    return (
+                      <div className="w-[56px] h-[56px] rounded-full bg-linear-to-br from-[#ff0f5f] to-[#cc0047] flex items-center justify-center shrink-0 overflow-hidden border border-[rgba(255,255,255,0.08)]">
+                        {group.promoter?.photoUrl ? (
+                          <img src={group.promoter.photoUrl} alt={promoterName} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-white text-[16px] font-bold leading-none">{initials}</span>
+                        )}
+                      </div>
+                    );
+                  })()}
+                  <div className="flex flex-col gap-[8px] min-w-0">
+                    <h3 className="text-white text-[22px] font-bold leading-[1.2] truncate">{group.name}</h3>
+                    {group.tag && (
+                      <span className="self-start px-[10px] py-[3px] rounded-[100px] text-[12px] font-semibold text-[#ff2a71]">
+                        {group.tag}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Right: referral bonus + admin actions */}

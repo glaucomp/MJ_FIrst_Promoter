@@ -1,12 +1,12 @@
-import { useEffect, useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { modelsApi, type Campaign, type CampaignInput } from '../services/api';
+import { useEffect, useState } from "react";
+import { useAuth } from "../contexts/AuthContext";
+import { modelsApi, type Campaign, type CampaignInput } from "../services/api";
 
 const EMPTY_FORM: CampaignInput = {
-  name: '',
-  description: '',
-  websiteUrl: '',
-  defaultReferralUrl: '',
+  name: "",
+  description: "",
+  websiteUrl: "",
+  defaultReferralUrl: "",
   commissionRate: 30,
   secondaryRate: 10,
   recurringRate: null,
@@ -20,13 +20,13 @@ export const Campaigns = () => {
   const { logout } = useAuth();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
   const [form, setForm] = useState<CampaignInput>(EMPTY_FORM);
-  const [formError, setFormError] = useState('');
+  const [formError, setFormError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   // Delete state
@@ -40,15 +40,17 @@ export const Campaigns = () => {
 
   const loadCampaigns = async () => {
     setIsLoading(true);
-    setError('');
+    setError("");
     try {
       const data = await modelsApi.getAllCampaigns();
       setCampaigns(data);
     } catch (err) {
-      if (err instanceof Error && err.message === 'SESSION_EXPIRED') {
+      if (err instanceof Error && err.message === "SESSION_EXPIRED") {
         logout();
       } else {
-        setError(err instanceof Error ? err.message : 'Failed to load campaigns');
+        setError(
+          err instanceof Error ? err.message : "Failed to load campaigns",
+        );
       }
     } finally {
       setIsLoading(false);
@@ -58,7 +60,7 @@ export const Campaigns = () => {
   const openCreate = () => {
     setEditingCampaign(null);
     setForm(EMPTY_FORM);
-    setFormError('');
+    setFormError("");
     setIsModalOpen(true);
   };
 
@@ -66,9 +68,9 @@ export const Campaigns = () => {
     setEditingCampaign(c);
     setForm({
       name: c.name,
-      description: c.description ?? '',
+      description: c.description ?? "",
       websiteUrl: c.websiteUrl,
-      defaultReferralUrl: c.defaultReferralUrl ?? '',
+      defaultReferralUrl: c.defaultReferralUrl ?? "",
       commissionRate: c.commissionRate,
       secondaryRate: c.secondaryRate ?? 0,
       recurringRate: c.recurringRate ?? null,
@@ -77,32 +79,48 @@ export const Campaigns = () => {
       visibleToPromoters: c.visibleToPromoters,
       maxInvitesPerMonth: c.maxInvitesPerMonth,
     });
-    setFormError('');
+    setFormError("");
     setIsModalOpen(true);
   };
 
   const handleSave = async () => {
-    if (!form.name.trim()) { setFormError('Name is required'); return; }
-    if (!form.websiteUrl.trim()) { setFormError('Website URL is required'); return; }
-    if (form.commissionRate < 0 || form.commissionRate > 100) { setFormError('Commission rate must be 0–100'); return; }
+    if (!form.name.trim()) {
+      setFormError("Name is required");
+      return;
+    }
+    if (!form.websiteUrl.trim()) {
+      setFormError("Website URL is required");
+      return;
+    }
+    if (form.commissionRate < 0 || form.commissionRate > 100) {
+      setFormError("Commission rate must be 0–100");
+      return;
+    }
 
     setIsSaving(true);
-    setFormError('');
+    setFormError("");
     try {
       const payload = {
         ...form,
         maxInvitesPerMonth: form.maxInvitesPerMonth ?? null,
       };
       if (editingCampaign) {
-        const updated = await modelsApi.updateCampaign(editingCampaign.id, payload);
-        setCampaigns(prev => prev.map(c => c.id === updated.id ? updated : c));
+        const updated = await modelsApi.updateCampaign(
+          editingCampaign.id,
+          payload,
+        );
+        setCampaigns((prev) =>
+          prev.map((c) => (c.id === updated.id ? updated : c)),
+        );
       } else {
         const created = await modelsApi.createCampaign(payload);
-        setCampaigns(prev => [created, ...prev]);
+        setCampaigns((prev) => [created, ...prev]);
       }
       setIsModalOpen(false);
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Failed to save campaign');
+      setFormError(
+        err instanceof Error ? err.message : "Failed to save campaign",
+      );
     } finally {
       setIsSaving(false);
     }
@@ -111,8 +129,12 @@ export const Campaigns = () => {
   const handleToggleActive = async (c: Campaign) => {
     setTogglingId(c.id);
     try {
-      const updated = await modelsApi.updateCampaign(c.id, { isActive: !c.isActive });
-      setCampaigns(prev => prev.map(x => x.id === updated.id ? updated : x));
+      const updated = await modelsApi.updateCampaign(c.id, {
+        isActive: !c.isActive,
+      });
+      setCampaigns((prev) =>
+        prev.map((x) => (x.id === updated.id ? updated : x)),
+      );
     } catch {
       // silent — could show toast
     } finally {
@@ -124,10 +146,12 @@ export const Campaigns = () => {
     setDeletingId(id);
     try {
       await modelsApi.deleteCampaign(id);
-      setCampaigns(prev => prev.filter(c => c.id !== id));
+      setCampaigns((prev) => prev.filter((c) => c.id !== id));
       setConfirmDeleteId(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete campaign');
+      setError(
+        err instanceof Error ? err.message : "Failed to delete campaign",
+      );
     } finally {
       setDeletingId(null);
     }
@@ -137,7 +161,9 @@ export const Campaigns = () => {
     <div className="flex flex-col gap-6">
       {/* Header */}
       <div className="flex items-start justify-between flex-col lg:flex-row gap-3">
-        <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">Campaigns</h1>
+        <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">
+          Campaigns
+        </h1>
         <div className="flex items-center  justify-between lg:justify-end lg:gap-4 w-full">
           <p className="text-[16px] text-[#9e9e9e]">{campaigns.length} total</p>
           <button
@@ -159,7 +185,7 @@ export const Campaigns = () => {
         <p className="text-[#9e9e9e] text-[16px]">Loading...</p>
       ) : (
         <div className="flex flex-col gap-[12px]">
-          {campaigns.map(c => (
+          {campaigns.map((c) => (
             <div
               key={c.id}
               className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[16px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)]"
@@ -168,11 +194,17 @@ export const Campaigns = () => {
                 {/* Top row */}
                 <div className="flex items-start justify-between gap-[12px] flex-col lg:flex-row">
                   <div className="flex flex-col gap-[4px]">
-                    <p className="text-white text-[18px] font-semibold">{c.name}</p>
+                    <p className="text-white text-[18px] font-semibold">
+                      {c.name}
+                    </p>
                     {c.description && (
-                      <p className="text-[#9e9e9e] text-[13px]">{c.description}</p>
+                      <p className="text-[#9e9e9e] text-[13px]">
+                        {c.description}
+                      </p>
                     )}
-                    <p className="text-[#666] text-[12px] break-all mt-[2px]">{c.websiteUrl}</p>
+                    <p className="text-[#666] text-[12px] break-all mt-[2px]">
+                      {c.websiteUrl}
+                    </p>
                   </div>
 
                   <div className="flex flex-row items-center gap-[8px]">
@@ -182,20 +214,26 @@ export const Campaigns = () => {
                       disabled={togglingId === c.id}
                       className={`px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border transition-colors ${
                         c.isActive
-                          ? 'bg-tm-success-color12 border-[#00d948] text-[#28ff70] hover:bg-[#005518]'
-                          : 'bg-[#333] border-[#555] text-[#9e9e9e] hover:bg-[#3a3a3a]'
+                          ? "bg-tm-success-color12 border-[#00d948] text-[#28ff70] hover:bg-[#005518]"
+                          : "bg-[#333] border-[#555] text-[#9e9e9e] hover:bg-[#3a3a3a]"
                       } disabled:opacity-50`}
                     >
-                      {togglingId === c.id ? '...' : c.isActive ? 'Active' : 'Inactive'}
+                      {togglingId === c.id
+                        ? "..."
+                        : c.isActive
+                          ? "Active"
+                          : "Inactive"}
                     </button>
 
                     {/* Visibility badge */}
-                    <span className={`px-[12px] py-[6px] rounded-[100px] text-[12px] font-bold border ${
-                      c.visibleToPromoters
-                        ? 'bg-[#001a66] border-[#0047cc] text-[#4d9fff]'
-                        : 'bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]'
-                    }`}>
-                      {c.visibleToPromoters ? 'Public' : 'Hidden'}
+                    <span
+                      className={`px-[12px] py-[6px] rounded-[100px] text-[12px] font-bold border ${
+                        c.visibleToPromoters
+                          ? "bg-[#001a66] border-[#0047cc] text-[#4d9fff]"
+                          : "bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]"
+                      }`}
+                    >
+                      {c.visibleToPromoters ? "Public" : "Hidden"}
                     </span>
                   </div>
                 </div>
@@ -203,35 +241,59 @@ export const Campaigns = () => {
                 {/* Stats row */}
                 <div className="grid grid-cols-3 gap-2 lg:grid lg:grid-cols-6 lg:gap-4">
                   <div className="flex flex-col gap-[2px]">
-                    <p className="text-[#666] text-[11px] uppercase tracking-[0.5px]">Commission</p>
-                    <p className="text-white text-[15px] font-bold">{c.commissionRate}%</p>
+                    <p className="text-[#666] text-[11px] uppercase tracking-[0.5px]">
+                      Commission
+                    </p>
+                    <p className="text-white text-[15px] font-bold">
+                      {c.commissionRate}%
+                    </p>
                   </div>
                   {c.secondaryRate != null && c.secondaryRate > 0 && (
                     <div className="flex flex-col gap-[2px]">
-                      <p className="text-[#666] text-[11px] uppercase tracking-[0.5px]">Upline</p>
-                      <p className="text-white text-[15px] font-bold">{c.secondaryRate}%</p>
+                      <p className="text-[#666] text-[11px] uppercase tracking-[0.5px]">
+                        Upline
+                      </p>
+                      <p className="text-white text-[15px] font-bold">
+                        {c.secondaryRate}%
+                      </p>
                     </div>
                   )}
-                  {c.recurringRate != null && c.recurringRate > 0 && c.visibleToPromoters && (
-                    <div className="flex flex-col gap-[2px]">
-                      <p className="text-[#666] text-[11px] uppercase tracking-[0.5px]">Acc Mgr</p>
-                      <p className="text-white text-[15px] font-bold">{c.recurringRate}%</p>
-                    </div>
-                  )}
+                  {c.recurringRate != null &&
+                    c.recurringRate > 0 &&
+                    c.visibleToPromoters && (
+                      <div className="flex flex-col gap-[2px]">
+                        <p className="text-[#666] text-[11px] uppercase tracking-[0.5px]">
+                          Acc Mgr
+                        </p>
+                        <p className="text-white text-[15px] font-bold">
+                          {c.recurringRate}%
+                        </p>
+                      </div>
+                    )}
                   <div className="flex flex-col gap-[2px]">
-                    <p className="text-[#666] text-[11px] uppercase tracking-[0.5px]">Cookie</p>
-                    <p className="text-white text-[15px] font-bold">{c.cookieLifeDays}d</p>
+                    <p className="text-[#666] text-[11px] uppercase tracking-[0.5px]">
+                      Cookie
+                    </p>
+                    <p className="text-white text-[15px] font-bold">
+                      {c.cookieLifeDays}d
+                    </p>
                   </div>
                   <div className="flex flex-col gap-[2px]">
-                    <p className="text-[#666] text-[11px] uppercase tracking-[0.5px]">Invites/mo</p>
+                    <p className="text-[#666] text-[11px] uppercase tracking-[0.5px]">
+                      Invites/mo
+                    </p>
                     <p className="text-white text-[15px] font-bold">
-                      {c.maxInvitesPerMonth ?? '∞'}
+                      {c.maxInvitesPerMonth ?? "∞"}
                     </p>
                   </div>
                   {c._count && (
                     <div className="flex flex-col gap-[2px]">
-                      <p className="text-[#666] text-[11px] uppercase tracking-[0.5px]">Referrals</p>
-                      <p className="text-white text-[15px] font-bold">{c._count.referrals}</p>
+                      <p className="text-[#666] text-[11px] uppercase tracking-[0.5px]">
+                        Referrals
+                      </p>
+                      <p className="text-white text-[15px] font-bold">
+                        {c._count.referrals}
+                      </p>
                     </div>
                   )}
                 </div>
@@ -247,13 +309,15 @@ export const Campaigns = () => {
 
                   {confirmDeleteId === c.id ? (
                     <div className="flex items-center gap-[8px]">
-                      <span className="text-[#9e9e9e] text-[12px]">Delete?</span>
+                      <span className="text-[#9e9e9e] text-[12px]">
+                        Delete?
+                      </span>
                       <button
                         onClick={() => handleDelete(c.id)}
                         disabled={deletingId === c.id}
                         className="px-[10px] py-[4px] rounded-[6px] text-[12px] font-bold bg-tm-danger-color12 border border-[#cc0000] text-[#ff2a2a] hover:bg-[#880000] disabled:opacity-50 transition-colors"
                       >
-                        {deletingId === c.id ? '...' : 'Yes'}
+                        {deletingId === c.id ? "..." : "Yes"}
                       </button>
                       <button
                         onClick={() => setConfirmDeleteId(null)}
@@ -277,7 +341,9 @@ export const Campaigns = () => {
 
           {campaigns.length === 0 && (
             <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] text-center">
-              <p className="text-[#9e9e9e] text-[16px]">No campaigns yet. Create the first one.</p>
+              <p className="text-[#9e9e9e] text-[16px]">
+                No campaigns yet. Create the first one.
+              </p>
             </div>
           )}
         </div>
@@ -286,12 +352,12 @@ export const Campaigns = () => {
       {/* Create / Edit Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-[20px] py-[20px]">
-          <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1)] w-full max-w-[540px] max-h-[90vh] overflow-y-auto">
+          <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1)] w-full lg:max-w-[960px] max-h-[90vh] overflow-y-auto">
             <div className="flex flex-col gap-[18px]">
               {/* Modal header */}
               <div className="flex items-center justify-between">
                 <h2 className="text-[20px] font-bold text-white">
-                  {editingCampaign ? 'Edit Campaign' : 'Create Campaign'}
+                  {editingCampaign ? "Edit Campaign" : "Create Campaign"}
                 </h2>
                 <button
                   onClick={() => setIsModalOpen(false)}
@@ -305,7 +371,9 @@ export const Campaigns = () => {
                 <input
                   type="text"
                   value={form.name}
-                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, name: e.target.value }))
+                  }
                   placeholder="Influencer Referral Campaign"
                   className={inputCls}
                 />
@@ -314,8 +382,10 @@ export const Campaigns = () => {
               <Field label="Description">
                 <input
                   type="text"
-                  value={form.description ?? ''}
-                  onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                  value={form.description ?? ""}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, description: e.target.value }))
+                  }
                   placeholder="Optional description"
                   className={inputCls}
                 />
@@ -325,7 +395,9 @@ export const Campaigns = () => {
                 <input
                   type="url"
                   value={form.websiteUrl}
-                  onChange={e => setForm(f => ({ ...f, websiteUrl: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, websiteUrl: e.target.value }))
+                  }
                   placeholder="https://teaseme.live"
                   className={inputCls}
                 />
@@ -334,8 +406,13 @@ export const Campaigns = () => {
               <Field label="Default Referral URL">
                 <input
                   type="url"
-                  value={form.defaultReferralUrl ?? ''}
-                  onChange={e => setForm(f => ({ ...f, defaultReferralUrl: e.target.value }))}
+                  value={form.defaultReferralUrl ?? ""}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      defaultReferralUrl: e.target.value,
+                    }))
+                  }
                   placeholder="https://teaseme.live/join"
                   className={inputCls}
                 />
@@ -346,18 +423,32 @@ export const Campaigns = () => {
                 <Field label="Commission %" className="flex-1">
                   <input
                     type="number"
-                    min={0} max={100} step={0.1}
+                    min={0}
+                    max={100}
+                    step={0.1}
                     value={form.commissionRate}
-                    onChange={e => setForm(f => ({ ...f, commissionRate: parseFloat(e.target.value) || 0 }))}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        commissionRate: parseFloat(e.target.value) || 0,
+                      }))
+                    }
                     className={inputCls}
                   />
                 </Field>
                 <Field label="Upline %" className="flex-1">
                   <input
                     type="number"
-                    min={0} max={100} step={0.1}
+                    min={0}
+                    max={100}
+                    step={0.1}
                     value={form.secondaryRate ?? 0}
-                    onChange={e => setForm(f => ({ ...f, secondaryRate: parseFloat(e.target.value) || 0 }))}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        secondaryRate: parseFloat(e.target.value) || 0,
+                      }))
+                    }
                     className={inputCls}
                   />
                 </Field>
@@ -365,11 +456,16 @@ export const Campaigns = () => {
                   <Field label="Acc Manager %" className="flex-1">
                     <input
                       type="number"
-                      min={0} max={100} step={0.1}
+                      min={0}
+                      max={100}
+                      step={0.1}
                       value={form.recurringRate ?? 0}
-                      onChange={e => {
+                      onChange={(e) => {
                         const v = Number.parseFloat(e.target.value);
-                        setForm(f => ({ ...f, recurringRate: v > 0 ? v : null }));
+                        setForm((f) => ({
+                          ...f,
+                          recurringRate: v > 0 ? v : null,
+                        }));
                       }}
                       className={inputCls}
                     />
@@ -384,7 +480,12 @@ export const Campaigns = () => {
                     type="number"
                     min={1}
                     value={form.cookieLifeDays ?? 90}
-                    onChange={e => setForm(f => ({ ...f, cookieLifeDays: parseInt(e.target.value) || 90 }))}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        cookieLifeDays: parseInt(e.target.value) || 90,
+                      }))
+                    }
                     className={inputCls}
                   />
                 </Field>
@@ -392,11 +493,14 @@ export const Campaigns = () => {
                   <input
                     type="number"
                     min={0}
-                    value={form.maxInvitesPerMonth ?? ''}
+                    value={form.maxInvitesPerMonth ?? ""}
                     placeholder="Unlimited"
-                    onChange={e => {
+                    onChange={(e) => {
                       const v = e.target.value;
-                      setForm(f => ({ ...f, maxInvitesPerMonth: v === '' ? null : parseInt(v) }));
+                      setForm((f) => ({
+                        ...f,
+                        maxInvitesPerMonth: v === "" ? null : parseInt(v),
+                      }));
                     }}
                     className={inputCls}
                   />
@@ -408,18 +512,26 @@ export const Campaigns = () => {
                 <Toggle
                   label="Visible to Promoters"
                   value={form.visibleToPromoters ?? true}
-                  onChange={v => setForm(f => ({ ...f, visibleToPromoters: v, ...(!v && { recurringRate: null }) }))}
+                  onChange={(v) =>
+                    setForm((f) => ({
+                      ...f,
+                      visibleToPromoters: v,
+                      ...(!v && { recurringRate: null }),
+                    }))
+                  }
                 />
                 <Toggle
                   label="Auto Approve"
                   value={form.autoApprove ?? true}
-                  onChange={v => setForm(f => ({ ...f, autoApprove: v }))}
+                  onChange={(v) => setForm((f) => ({ ...f, autoApprove: v }))}
                 />
               </div>
 
               {formError && (
                 <div className="bg-tm-danger-color12 border border-[#cc0000] rounded-[8px] px-[14px] py-[10px]">
-                  <p className="text-[#ff2a2a] text-[13px] font-medium">{formError}</p>
+                  <p className="text-[#ff2a2a] text-[13px] font-medium">
+                    {formError}
+                  </p>
                 </div>
               )}
 
@@ -428,7 +540,11 @@ export const Campaigns = () => {
                 disabled={isSaving}
                 className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[24px] py-[14px] text-white text-[16px] font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isSaving ? 'Saving...' : editingCampaign ? 'Save Changes' : 'Create Campaign'}
+                {isSaving
+                  ? "Saving..."
+                  : editingCampaign
+                    ? "Save Changes"
+                    : "Create Campaign"}
               </button>
             </div>
           </div>
@@ -440,12 +556,13 @@ export const Campaigns = () => {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-const inputCls = 'bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[14px] py-[11px] text-[14px] text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555] w-full';
+const inputCls =
+  "bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[14px] py-[11px] text-[14px] text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555] w-full";
 
 const Field = ({
   label,
   children,
-  className = '',
+  className = "",
 }: {
   label: string;
   children: React.ReactNode;
@@ -472,15 +589,19 @@ const Toggle = ({
     onClick={() => onChange(!value)}
     className={`flex-1 flex items-center justify-between rounded-[8px] px-[14px] py-[12px] border transition-all ${
       value
-        ? 'bg-[#ff0f5f]/10 border-[#ff0f5f]'
-        : 'bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.2)]'
+        ? "bg-[#ff0f5f]/10 border-[#ff0f5f]"
+        : "bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.2)]"
     }`}
   >
-    <span className={`text-[13px] font-bold ${value ? 'text-tm-primary-color05' : 'text-[#9e9e9e]'}`}>
+    <span
+      className={`text-[13px] font-bold ${value ? "text-tm-primary-color05" : "text-[#9e9e9e]"}`}
+    >
       {label}
     </span>
-    <div className={`w-[16px] h-[16px] rounded-full border-2 ${
-      value ? 'border-[#ff0f5f] bg-[#ff0f5f]' : 'border-[#555]'
-    }`} />
+    <div
+      className={`w-[16px] h-[16px] rounded-full border-2 ${
+        value ? "border-[#ff0f5f] bg-[#ff0f5f]" : "border-[#555]"
+      }`}
+    />
   </button>
 );
