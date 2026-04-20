@@ -32,8 +32,9 @@ const promoterSelectWithPhoto = {
 
 /**
  * Re-syncs any promoter whose TeaseMe cache is stale (or never synced).
- * Deduped by promoter id, bounded concurrency, failures are swallowed so
- * the response is never blocked on outbound latency.
+ * Deduped by promoter id, bounded concurrency, and individual sync failures
+ * are swallowed. Callers that `await` this helper will still wait for the
+ * outbound TeaseMe sync work to complete.
  */
 const refreshStalePromoters = async <
   T extends {
