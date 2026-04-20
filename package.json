@@ -12,8 +12,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "seed": "ts-node src/seed.ts",
-    "sync:juliana": "ts-node src/scripts/sync-teaseme-juliana.ts"
+    "seed": "ts-node src/seed.ts"
   },
   "keywords": [
     "referral",
