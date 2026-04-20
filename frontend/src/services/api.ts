@@ -109,6 +109,9 @@ export interface Referral {
     email: string;
     firstName: string;
     lastName: string;
+    username?: string | null;
+    /** Presigned GET URL (1h expiry). */
+    photoUrl?: string | null;
   };
   commissions?: ReferralCommission[];
   childReferrals?: Array<{
@@ -118,6 +121,9 @@ export interface Referral {
       email: string;
       firstName: string;
       lastName: string;
+      username?: string | null;
+      /** Presigned GET URL (1h expiry). */
+      photoUrl?: string | null;
     };
     commissions?: ReferralCommission[];
   }>;
