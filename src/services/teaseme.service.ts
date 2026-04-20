@@ -11,10 +11,32 @@ export interface TeaseMeSocialLink {
 
 export interface TeaseMeInfluencer {
   voice_id?: string | null;
+  // TeaseMe currently nests `social_links` inside `bio_json`, but older profiles
+  // (and some staging environments) return it at the top level. We read both.
   social_links?: TeaseMeSocialLink[] | null;
+  bio_json?: {
+    social_links?: TeaseMeSocialLink[] | null;
+    [key: string]: unknown;
+  } | null;
   profile_photo_key?: string | null;
   profile_video_key?: string | null;
 }
+
+/**
+ * TeaseMe returns `social_links` at two possible locations depending on the
+ * influencer's profile shape. Prefer the top-level list when non-empty;
+ * otherwise fall back to the list nested under `bio_json`.
+ */
+export const extractSocialLinks = (
+  influencer: TeaseMeInfluencer
+): TeaseMeSocialLink[] => {
+  if (Array.isArray(influencer.social_links) && influencer.social_links.length > 0) {
+    return influencer.social_links;
+  }
+  const nested = influencer.bio_json?.social_links;
+  if (Array.isArray(nested)) return nested;
+  return [];
+};
 
 export class TeaseMeApiError extends Error {
   constructor(
@@ -103,6 +125,33 @@ const normalizeSocialUrl = (rawUrl: string): string | null => {
   }
 };
 
+// We only surface these four platforms in the UI — everything else returned by TeaseMe
+// is dropped during sync so the DB stays aligned with what we can render.
+const ALLOWED_SOCIAL_PLATFORMS = new Set(['bluesky', 'instagram', 'tiktok', 'onlyfans']);
+
+// Map incoming platform aliases to our canonical keys.
+const normalizeSocialPlatform = (raw: string): string | null => {
+  const key = String(raw).toLowerCase().trim();
+  if (!key) return null;
+  switch (key) {
+    case 'ig':
+    case 'insta':
+    case 'instagram':
+      return 'instagram';
+    case 'tt':
+    case 'tiktok':
+      return 'tiktok';
+    case 'bluesky':
+    case 'bsky':
+      return 'bluesky';
+    case 'of':
+    case 'onlyfans':
+      return 'onlyfans';
+    default:
+      return ALLOWED_SOCIAL_PLATFORMS.has(key) ? key : null;
+  }
+};
+
 /**
  * Syncs a User row with data from TeaseMe, keyed by the user's username.
  * Updates voiceId, S3 keys, teasemeSyncedAt and replaces the user's socialLinks.
@@ -122,17 +171,34 @@ export const syncUserFromTeaseMe = async (
   }
 
   const influencer = await fetchInfluencer(user.username);
+  const rawLinks = extractSocialLinks(influencer);
 
-  // Dedupe by platform (TeaseMe may return duplicates), normalise platform to lowercase.
+  // Dedupe by platform (TeaseMe may return duplicates), normalise the platform key,
+  // drop anything outside our supported whitelist, and validate the URL.
   const byPlatform = new Map<string, string>();
-  for (const link of influencer.social_links || []) {
-    if (!link?.platform || !link?.url) continue;
-    const platform = String(link.platform).toLowerCase().trim();
+  const rejected: { reason: string; platform?: string; url?: string }[] = [];
+  for (const link of rawLinks) {
+    if (!link?.platform || !link?.url) {
+      rejected.push({ reason: 'missing platform or url', platform: link?.platform, url: link?.url });
+      continue;
+    }
+    const platform = normalizeSocialPlatform(link.platform);
+    if (!platform) {
+      rejected.push({ reason: 'platform not in whitelist', platform: link.platform });
+      continue;
+    }
     const url = normalizeSocialUrl(String(link.url));
-    if (!platform) continue;
-    if (!url) continue;
+    if (!url) {
+      rejected.push({ reason: 'invalid url', platform, url: link.url });
+      continue;
+    }
     if (!byPlatform.has(platform)) byPlatform.set(platform, url);
   }
+
+  console.info(
+    `[teaseme.sync] user=${user.username} raw=${rawLinks.length} kept=${byPlatform.size}` +
+      (rejected.length ? ` rejected=${JSON.stringify(rejected)}` : '')
+  );
 
   const updated = await prisma.$transaction(async (tx) => {
     await tx.user.update({
@@ -145,16 +211,22 @@ export const syncUserFromTeaseMe = async (
       },
     });
 
-    await tx.socialLink.deleteMany({ where: { userId } });
+    const deleted = await tx.socialLink.deleteMany({ where: { userId } });
+    let insertedCount = 0;
     if (byPlatform.size > 0) {
-      await tx.socialLink.createMany({
+      const result = await tx.socialLink.createMany({
         data: Array.from(byPlatform.entries()).map(([platform, url]) => ({
           userId,
           platform,
           url,
         })),
       });
+      insertedCount = result.count;
     }
+    console.info(
+      `[teaseme.sync] user=${user.username} deleted=${deleted.count} inserted=${insertedCount} ` +
+        `platforms=[${Array.from(byPlatform.keys()).join(',')}]`
+    );
 
     return tx.user.findUniqueOrThrow({
       where: { id: userId },

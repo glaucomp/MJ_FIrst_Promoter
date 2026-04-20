@@ -38,7 +38,15 @@ export interface ChatterGroup {
   updatedAt: string;
   createdBy: { id: string; email: string; firstName: string | null; lastName: string | null };
   members: ChatterGroupMember[];
-  promoter: { id: string; email: string; firstName: string | null; lastName: string | null } | null;
+  promoter: {
+    id: string;
+    email: string;
+    username: string | null;
+    firstName: string | null;
+    lastName: string | null;
+    /** Presigned GET URL (1h expiry) for the promoter's profile photo. */
+    photoUrl: string | null;
+  } | null;
 }
 
 export interface DashboardStats {

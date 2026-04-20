@@ -1,8 +1,14 @@
 import { Response } from 'express';
 import { PrismaClient, UserRole, UserType } from '@prisma/client';
 import { AuthRequest } from '../middleware/auth.middleware';
+import { getPresignedUrl } from '../services/s3.service';
+import { syncUserFromTeaseMe } from '../services/teaseme.service';
 
 const prisma = new PrismaClient();
+
+// Keep this in sync with SYNC_TTL_MS in `chatter.controller.ts`. We re-pull TeaseMe
+// data (voice, photo, video, social_links) when the cached copy is older than this.
+const TEASEME_SYNC_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
 
 const isAccountManagerOrAdmin = (req: AuthRequest): boolean => {
   if (!req.user) return false;
@@ -10,6 +16,84 @@ const isAccountManagerOrAdmin = (req: AuthRequest): boolean => {
     req.user.role === UserRole.ADMIN ||
     req.user.userType === UserType.ACCOUNT_MANAGER
   );
+};
+
+// Shared promoter select + photo-key hydration helpers so every chatter-group
+// response exposes a short-lived presigned `photoUrl` without leaking S3 keys.
+const promoterSelectWithPhoto = {
+  id: true,
+  email: true,
+  username: true,
+  firstName: true,
+  lastName: true,
+  profilePhotoKey: true,
+  teasemeSyncedAt: true,
+} as const;
+
+/**
+ * Re-syncs any promoter whose TeaseMe cache is stale (or never synced).
+ * Deduped by promoter id, bounded concurrency, and individual sync failures
+ * are swallowed. Callers that `await` this helper will still wait for the
+ * outbound TeaseMe sync work to complete.
+ */
+const refreshStalePromoters = async <
+  T extends {
+    promoter: { id: string; username: string | null; teasemeSyncedAt: Date | null } | null;
+  },
+>(
+  groups: T[],
+): Promise<boolean> => {
+  const now = Date.now();
+  const toSync = new Map<string, string>();
+  for (const g of groups) {
+    const p = g.promoter;
+    if (!p?.username || toSync.has(p.id)) continue;
+    const lastSyncedAt = p.teasemeSyncedAt ? p.teasemeSyncedAt.getTime() : null;
+    const isStale = lastSyncedAt === null || now - lastSyncedAt > TEASEME_SYNC_TTL_MS;
+    if (isStale) toSync.set(p.id, p.username);
+  }
+  if (toSync.size === 0) return false;
+
+  const queue = Array.from(toSync.entries()); // [id, username]
+  const concurrency = Math.min(3, queue.length);
+  let cursor = 0;
+  const worker = async () => {
+    while (cursor < queue.length) {
+      const index = cursor++;
+      const [id, username] = queue[index];
+      try {
+        await syncUserFromTeaseMe(id);
+      } catch (err) {
+        console.error(
+          `[chatter-group.refreshStalePromoters] TeaseMe sync failed for ${username}:`,
+          err instanceof Error ? err.message : err,
+        );
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: concurrency }, () => worker()));
+  return true;
+};
+
+type GroupWithPromoterPhoto<T> = T & {
+  promoter:
+    | (Omit<NonNullable<T extends { promoter: infer P } ? P : never>, 'profilePhotoKey'> & {
+        photoUrl: string | null;
+      })
+    | null;
+};
+
+const hydratePromoterPhoto = async <
+  T extends { promoter: { profilePhotoKey?: string | null } | null },
+>(
+  group: T,
+): Promise<GroupWithPromoterPhoto<T>> => {
+  if (!group.promoter) {
+    return { ...group, promoter: null } as GroupWithPromoterPhoto<T>;
+  }
+  const { profilePhotoKey, ...rest } = group.promoter;
+  const photoUrl = await getPresignedUrl(profilePhotoKey);
+  return { ...group, promoter: { ...rest, photoUrl } } as GroupWithPromoterPhoto<T>;
 };
 
 // POST /api/chatter-groups — create a new chatter group
@@ -47,11 +131,11 @@ export const createChatterGroup = async (req: AuthRequest, res: Response) => {
             chatter: { select: { id: true, email: true, firstName: true, lastName: true } },
           },
         },
-        promoter: { select: { id: true, email: true, firstName: true, lastName: true } },
+        promoter: { select: promoterSelectWithPhoto },
       },
     });
 
-    res.status(201).json({ group, message: 'Chatter group created successfully' });
+    res.status(201).json({ group: await hydratePromoterPhoto(group), message: 'Chatter group created successfully' });
   } catch (error) {
     console.error('Create chatter group error:', error);
     res.status(500).json({ error: 'Failed to create chatter group' });
@@ -65,7 +149,7 @@ export const listChatterGroups = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ error: 'Only admins or account managers can list chatter groups' });
     }
 
-    const groups = await prisma.chatterGroup.findMany({
+    const listQuery = {
       include: {
         createdBy: { select: { id: true, email: true, firstName: true, lastName: true } },
         members: {
@@ -73,12 +157,22 @@ export const listChatterGroups = async (req: AuthRequest, res: Response) => {
             chatter: { select: { id: true, email: true, firstName: true, lastName: true } },
           },
         },
-        promoter: { select: { id: true, email: true, firstName: true, lastName: true } },
+        promoter: { select: promoterSelectWithPhoto },
       },
       orderBy: { createdAt: 'desc' },
-    });
+    } as const;
 
-    res.json({ groups });
+    let groups = await prisma.chatterGroup.findMany(listQuery);
+
+    // Refresh any stale TeaseMe data (voice, photo, video, social_links) before responding.
+    const didAttemptRefresh = await refreshStalePromoters(groups);
+    if (didAttemptRefresh) {
+      // Re-read so we pick up rows written by the sync above (social_links, voiceId, etc.).
+      groups = await prisma.chatterGroup.findMany(listQuery);
+    }
+
+    const hydratedGroups = await Promise.all(groups.map(hydratePromoterPhoto));
+    res.json({ groups: hydratedGroups });
   } catch (error) {
     console.error('List chatter groups error:', error);
     res.status(500).json({ error: 'Failed to list chatter groups' });
@@ -92,9 +186,6 @@ export const getChatterGroup = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ error: 'Only admins or account managers can view chatter groups' });
     }
 
-    if (!isAccountManagerOrAdmin(req)) {
-      return res.status(403).json({ error: 'Forbidden' });
-    }
     const { id } = req.params;
 
     const group = await prisma.chatterGroup.findUnique({
@@ -106,7 +197,7 @@ export const getChatterGroup = async (req: AuthRequest, res: Response) => {
             chatter: { select: { id: true, email: true, firstName: true, lastName: true } },
           },
         },
-        promoter: { select: { id: true, email: true, firstName: true, lastName: true } },
+        promoter: { select: promoterSelectWithPhoto },
       },
     });
 
@@ -114,7 +205,7 @@ export const getChatterGroup = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'Chatter group not found' });
     }
 
-    res.json({ group });
+    res.json({ group: await hydratePromoterPhoto(group) });
   } catch (error) {
     console.error('Get chatter group error:', error);
     res.status(500).json({ error: 'Failed to get chatter group' });
@@ -162,11 +253,11 @@ export const updateChatterGroup = async (req: AuthRequest, res: Response) => {
             chatter: { select: { id: true, email: true, firstName: true, lastName: true } },
           },
         },
-        promoter: { select: { id: true, email: true, firstName: true, lastName: true } },
+        promoter: { select: promoterSelectWithPhoto },
       },
     });
 
-    res.json({ group, message: 'Chatter group updated successfully' });
+    res.json({ group: await hydratePromoterPhoto(group), message: 'Chatter group updated successfully' });
   } catch (error) {
     console.error('Update chatter group error:', error);
     res.status(500).json({ error: 'Failed to update chatter group' });
