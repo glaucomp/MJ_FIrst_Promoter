@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { LinkGenerator, VoiceMessage } from "../components/GroupTools";
 import type { ChatterMyGroup } from "../services/api";
@@ -140,7 +140,18 @@ const SocialCopyButton = ({
   url: string;
 }) => {
   const [copied, setCopied] = useState(false);
+  const resetTimeoutRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(
+    null
+  );
   const label = prettyPlatform(platform);
+
+  useEffect(() => {
+    return () => {
+      if (resetTimeoutRef.current) {
+        globalThis.clearTimeout(resetTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleCopy = async () => {
     try {
@@ -162,7 +173,10 @@ const SocialCopyButton = ({
         el.remove();
       }
       setCopied(true);
-      globalThis.setTimeout(() => setCopied(false), 1400);
+      if (resetTimeoutRef.current) {
+        globalThis.clearTimeout(resetTimeoutRef.current);
+      }
+      resetTimeoutRef.current = globalThis.setTimeout(() => setCopied(false), 1400);
     } catch (err) {
       console.error("Failed to copy social link", err);
     }

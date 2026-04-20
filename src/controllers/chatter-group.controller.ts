@@ -42,7 +42,7 @@ const refreshStalePromoters = async <
   },
 >(
   groups: T[],
-): Promise<void> => {
+): Promise<boolean> => {
   const now = Date.now();
   const toSync = new Map<string, string>();
   for (const g of groups) {
@@ -52,7 +52,7 @@ const refreshStalePromoters = async <
     const isStale = lastSyncedAt === null || now - lastSyncedAt > TEASEME_SYNC_TTL_MS;
     if (isStale) toSync.set(p.id, p.username);
   }
-  if (toSync.size === 0) return;
+  if (toSync.size === 0) return false;
 
   const queue = Array.from(toSync.entries()); // [id, username]
   const concurrency = Math.min(3, queue.length);
@@ -72,6 +72,7 @@ const refreshStalePromoters = async <
     }
   };
   await Promise.all(Array.from({ length: concurrency }, () => worker()));
+  return true;
 };
 
 type GroupWithPromoterPhoto<T> = T & {
@@ -164,9 +165,11 @@ export const listChatterGroups = async (req: AuthRequest, res: Response) => {
     let groups = await prisma.chatterGroup.findMany(listQuery);
 
     // Refresh any stale TeaseMe data (voice, photo, video, social_links) before responding.
-    await refreshStalePromoters(groups);
-    // Re-read so we pick up rows written by the sync above (social_links, voiceId, etc.).
-    groups = await prisma.chatterGroup.findMany(listQuery);
+    const didAttemptRefresh = await refreshStalePromoters(groups);
+    if (didAttemptRefresh) {
+      // Re-read so we pick up rows written by the sync above (social_links, voiceId, etc.).
+      groups = await prisma.chatterGroup.findMany(listQuery);
+    }
 
     const hydratedGroups = await Promise.all(groups.map(hydratePromoterPhoto));
     res.json({ groups: hydratedGroups });
