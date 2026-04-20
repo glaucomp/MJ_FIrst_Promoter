@@ -70,7 +70,7 @@ export const TopBar = () => {
             const isActive = location.pathname === item.path;
             const iconColor = isActive
               ? 'var(--color-tm-primary-color05)'
-              : 'white';
+              : '#9e9e9e';
 
             return (
               <button
