@@ -1,15 +1,15 @@
-import { Response } from 'express';
-import { PrismaClient, UserRole, UserType } from '@prisma/client';
-import bcrypt from 'bcryptjs';
-import { nanoid } from 'nanoid';
-import { validationResult } from 'express-validator';
-import { AuthRequest } from '../middleware/auth.middleware';
-import { syncUserFromTeaseMe } from '../services/teaseme.service';
-import { getPresignedUrl } from '../services/s3.service';
+import { PrismaClient, UserRole, UserType } from "@prisma/client";
+import bcrypt from "bcryptjs";
+import { Response } from "express";
+import { validationResult } from "express-validator";
+import { nanoid } from "nanoid";
+import { AuthRequest } from "../middleware/auth.middleware";
+import { getPresignedUrl } from "../services/s3.service";
+import { syncUserFromTeaseMe } from "../services/teaseme.service";
 
 const prisma = new PrismaClient();
-const PREREGISTER_URL = process.env.PREREGISTER_VIP_TEASEME_USER;
-const PREREGISTER_TOKEN = process.env.MJFP_TOKEN;
+const PREREGISTER_URL = process.env.VITE_PREREGISTER_VIP_TEASEME_USER;
+const PREREGISTER_TOKEN = process.env.VITE_MJFP_TOKEN;
 
 const isAccountManagerOrAdmin = (req: AuthRequest): boolean => {
   if (!req.user) return false;
@@ -23,13 +23,15 @@ const isAccountManagerOrAdmin = (req: AuthRequest): boolean => {
 export const createChatter = async (req: AuthRequest, res: Response) => {
   try {
     if (!isAccountManagerOrAdmin(req)) {
-      return res.status(403).json({ error: 'Only admins or account managers can create chatters' });
+      return res
+        .status(403)
+        .json({ error: "Only admins or account managers can create chatters" });
     }
 
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
-        error: 'Validation failed',
+        error: "Validation failed",
         errors: errors.array(),
       });
     }
@@ -38,7 +40,9 @@ export const createChatter = async (req: AuthRequest, res: Response) => {
 
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
-      return res.status(400).json({ error: 'A user with that email already exists' });
+      return res
+        .status(400)
+        .json({ error: "A user with that email already exists" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -67,10 +71,10 @@ export const createChatter = async (req: AuthRequest, res: Response) => {
       },
     });
 
-    res.status(201).json({ chatter, message: 'Chatter created successfully' });
+    res.status(201).json({ chatter, message: "Chatter created successfully" });
   } catch (error) {
-    console.error('Create chatter error:', error);
-    res.status(500).json({ error: 'Failed to create chatter' });
+    console.error("Create chatter error:", error);
+    res.status(500).json({ error: "Failed to create chatter" });
   }
 };
 
@@ -86,36 +90,36 @@ type PreregisterUpstream =
   | { ok: false; status: number; error: string };
 
 const callPreregisterUpstream = async (
-  payload: PreregisterPayload
+  payload: PreregisterPayload,
 ): Promise<PreregisterUpstream> => {
   let upstream: globalThis.Response;
   try {
     upstream = await fetch(PREREGISTER_URL!, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'X-Internal-Token': PREREGISTER_TOKEN!,
+        "Content-Type": "application/json",
+        "X-Internal-Token": PREREGISTER_TOKEN!,
       },
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(10_000),
     });
   } catch (error) {
     const status =
-      error instanceof Error && error.name === 'TimeoutError' ? 504 : 502;
+      error instanceof Error && error.name === "TimeoutError" ? 504 : 502;
     const message =
       status === 504
-        ? 'Preregistration service timed out'
-        : 'Could not reach preregistration service';
+        ? "Preregistration service timed out"
+        : "Could not reach preregistration service";
     return { ok: false, status, error: message };
   }
 
   const raw = await upstream.json().catch(() => null);
   const parsed =
-    raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : null;
+    raw && typeof raw === "object" ? (raw as Record<string, unknown>) : null;
 
   if (!upstream.ok) {
     const detail =
-      parsed && typeof parsed.detail === 'string' ? parsed.detail : '';
+      parsed && typeof parsed.detail === "string" ? parsed.detail : "";
     return {
       ok: false,
       status: upstream.status,
@@ -123,11 +127,11 @@ const callPreregisterUpstream = async (
     };
   }
 
-  if (!parsed || typeof parsed.verification_url !== 'string') {
+  if (!parsed || typeof parsed.verification_url !== "string") {
     return {
       ok: false,
       status: 502,
-      error: 'Unexpected response from preregistration service',
+      error: "Unexpected response from preregistration service",
     };
   }
 
@@ -138,28 +142,34 @@ const callPreregisterUpstream = async (
 export const preregisterVipUser = async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      return res.status(401).json({ error: "Unauthorized" });
     }
 
     if (req.user.userType !== UserType.CHATTER) {
-      return res.status(403).json({ error: 'Only chatters can preregister users' });
+      return res
+        .status(403)
+        .json({ error: "Only chatters can preregister users" });
     }
 
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(422).json({
-        error: 'Validation failed',
+        error: "Validation failed",
         errors: errors.array(),
       });
     }
 
     if (!PREREGISTER_URL || !PREREGISTER_TOKEN) {
-      return res.status(503).json({ error: 'Preregistration service is not configured' });
+      return res
+        .status(503)
+        .json({ error: "Preregistration service is not configured" });
     }
 
     const telegramId = Number(req.body.telegram_id);
     if (!Number.isInteger(telegramId) || telegramId < 1) {
-      return res.status(422).json({ error: 'telegram_id must be a positive integer' });
+      return res
+        .status(422)
+        .json({ error: "telegram_id must be a positive integer" });
     }
 
     const payload: PreregisterPayload = {
@@ -175,8 +185,8 @@ export const preregisterVipUser = async (req: AuthRequest, res: Response) => {
     }
     return res.json(result.body);
   } catch (error) {
-    console.error('Preregister VIP error:', error);
-    return res.status(500).json({ error: 'Failed to preregister user' });
+    console.error("Preregister VIP error:", error);
+    return res.status(500).json({ error: "Failed to preregister user" });
   }
 };
 
@@ -184,11 +194,13 @@ export const preregisterVipUser = async (req: AuthRequest, res: Response) => {
 export const getMyGroups = async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      return res.status(401).json({ error: "Unauthorized" });
     }
 
     if (req.user.userType !== UserType.CHATTER) {
-      return res.status(403).json({ error: 'Only chatters can access their groups' });
+      return res
+        .status(403)
+        .json({ error: "Only chatters can access their groups" });
     }
     const promoterSelect = {
       id: true,
@@ -255,7 +267,7 @@ export const getMyGroups = async (req: AuthRequest, res: Response) => {
           } catch (err) {
             console.error(
               `[chatter.getMyGroups] TeaseMe sync failed for ${p.username}:`,
-              err instanceof Error ? err.message : err
+              err instanceof Error ? err.message : err,
             );
           }
         }
@@ -299,13 +311,13 @@ export const getMyGroups = async (req: AuthRequest, res: Response) => {
             videoUrl,
           },
         };
-      })
+      }),
     );
 
     res.json({ groups: hydrated });
   } catch (error) {
-    console.error('Get my groups error:', error);
-    res.status(500).json({ error: 'Failed to fetch groups' });
+    console.error("Get my groups error:", error);
+    res.status(500).json({ error: "Failed to fetch groups" });
   }
 };
 
@@ -313,7 +325,7 @@ export const getMyGroups = async (req: AuthRequest, res: Response) => {
 export const listChatters = async (req: AuthRequest, res: Response) => {
   try {
     if (!isAccountManagerOrAdmin(req)) {
-      return res.status(403).json({ error: 'Insufficient permissions' });
+      return res.status(403).json({ error: "Insufficient permissions" });
     }
 
     const chatters = await prisma.user.findMany({
@@ -333,7 +345,7 @@ export const listChatters = async (req: AuthRequest, res: Response) => {
           },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
 
     const mapped = chatters.map((c) => ({
@@ -344,8 +356,8 @@ export const listChatters = async (req: AuthRequest, res: Response) => {
 
     res.json({ chatters: mapped });
   } catch (error) {
-    console.error('List chatters error:', error);
-    res.status(500).json({ error: 'Failed to list chatters' });
+    console.error("List chatters error:", error);
+    res.status(500).json({ error: "Failed to list chatters" });
   }
 };
 
@@ -353,7 +365,7 @@ export const listChatters = async (req: AuthRequest, res: Response) => {
 export const getChatter = async (req: AuthRequest, res: Response) => {
   try {
     if (!isAccountManagerOrAdmin(req)) {
-      return res.status(403).json({ error: 'Insufficient permissions' });
+      return res.status(403).json({ error: "Insufficient permissions" });
     }
 
     const { id } = req.params;
@@ -375,16 +387,16 @@ export const getChatter = async (req: AuthRequest, res: Response) => {
           },
         },
         commissions: {
-          where: { type: 'chatter' },
+          where: { type: "chatter" },
           select: { id: true, amount: true, status: true, createdAt: true },
-          orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: "desc" },
           take: 20,
         },
       },
     });
 
     if (!chatter) {
-      return res.status(404).json({ error: 'Chatter not found' });
+      return res.status(404).json({ error: "Chatter not found" });
     }
 
     res.json({
@@ -395,8 +407,8 @@ export const getChatter = async (req: AuthRequest, res: Response) => {
       },
     });
   } catch (error) {
-    console.error('Get chatter error:', error);
-    res.status(500).json({ error: 'Failed to get chatter' });
+    console.error("Get chatter error:", error);
+    res.status(500).json({ error: "Failed to get chatter" });
   }
 };
 
@@ -404,7 +416,7 @@ export const getChatter = async (req: AuthRequest, res: Response) => {
 export const deleteChatter = async (req: AuthRequest, res: Response) => {
   try {
     if (!isAccountManagerOrAdmin(req)) {
-      return res.status(403).json({ error: 'Insufficient permissions' });
+      return res.status(403).json({ error: "Insufficient permissions" });
     }
 
     const { id } = req.params;
@@ -414,14 +426,14 @@ export const deleteChatter = async (req: AuthRequest, res: Response) => {
     });
 
     if (!chatter) {
-      return res.status(404).json({ error: 'Chatter not found' });
+      return res.status(404).json({ error: "Chatter not found" });
     }
 
     await prisma.user.delete({ where: { id } });
 
-    res.json({ message: 'Chatter deleted successfully' });
+    res.json({ message: "Chatter deleted successfully" });
   } catch (error) {
-    console.error('Delete chatter error:', error);
-    res.status(500).json({ error: 'Failed to delete chatter' });
+    console.error("Delete chatter error:", error);
+    res.status(500).json({ error: "Failed to delete chatter" });
   }
 };
