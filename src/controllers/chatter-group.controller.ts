@@ -2,8 +2,13 @@ import { Response } from 'express';
 import { PrismaClient, UserRole, UserType } from '@prisma/client';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { getPresignedUrl } from '../services/s3.service';
+import { syncUserFromTeaseMe } from '../services/teaseme.service';
 
 const prisma = new PrismaClient();
+
+// Keep this in sync with SYNC_TTL_MS in `chatter.controller.ts`. We re-pull TeaseMe
+// data (voice, photo, video, social_links) when the cached copy is older than this.
+const TEASEME_SYNC_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
 
 const isAccountManagerOrAdmin = (req: AuthRequest): boolean => {
   if (!req.user) return false;
@@ -22,7 +27,51 @@ const promoterSelectWithPhoto = {
   firstName: true,
   lastName: true,
   profilePhotoKey: true,
+  teasemeSyncedAt: true,
 } as const;
+
+/**
+ * Re-syncs any promoter whose TeaseMe cache is stale (or never synced).
+ * Deduped by promoter id, bounded concurrency, failures are swallowed so
+ * the response is never blocked on outbound latency.
+ */
+const refreshStalePromoters = async <
+  T extends {
+    promoter: { id: string; username: string | null; teasemeSyncedAt: Date | null } | null;
+  },
+>(
+  groups: T[],
+): Promise<void> => {
+  const now = Date.now();
+  const toSync = new Map<string, string>();
+  for (const g of groups) {
+    const p = g.promoter;
+    if (!p?.username || toSync.has(p.id)) continue;
+    const lastSyncedAt = p.teasemeSyncedAt ? p.teasemeSyncedAt.getTime() : null;
+    const isStale = lastSyncedAt === null || now - lastSyncedAt > TEASEME_SYNC_TTL_MS;
+    if (isStale) toSync.set(p.id, p.username);
+  }
+  if (toSync.size === 0) return;
+
+  const queue = Array.from(toSync.entries()); // [id, username]
+  const concurrency = Math.min(3, queue.length);
+  let cursor = 0;
+  const worker = async () => {
+    while (cursor < queue.length) {
+      const index = cursor++;
+      const [id, username] = queue[index];
+      try {
+        await syncUserFromTeaseMe(id);
+      } catch (err) {
+        console.error(
+          `[chatter-group.refreshStalePromoters] TeaseMe sync failed for ${username}:`,
+          err instanceof Error ? err.message : err,
+        );
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: concurrency }, () => worker()));
+};
 
 type GroupWithPromoterPhoto<T> = T & {
   promoter:
@@ -98,7 +147,7 @@ export const listChatterGroups = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ error: 'Only admins or account managers can list chatter groups' });
     }
 
-    const groups = await prisma.chatterGroup.findMany({
+    const listQuery = {
       include: {
         createdBy: { select: { id: true, email: true, firstName: true, lastName: true } },
         members: {
@@ -109,7 +158,14 @@ export const listChatterGroups = async (req: AuthRequest, res: Response) => {
         promoter: { select: promoterSelectWithPhoto },
       },
       orderBy: { createdAt: 'desc' },
-    });
+    } as const;
+
+    let groups = await prisma.chatterGroup.findMany(listQuery);
+
+    // Refresh any stale TeaseMe data (voice, photo, video, social_links) before responding.
+    await refreshStalePromoters(groups);
+    // Re-read so we pick up rows written by the sync above (social_links, voiceId, etc.).
+    groups = await prisma.chatterGroup.findMany(listQuery);
 
     const hydratedGroups = await Promise.all(groups.map(hydratePromoterPhoto));
     res.json({ groups: hydratedGroups });

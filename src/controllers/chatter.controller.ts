@@ -242,14 +242,22 @@ export const getMyGroups = async (req: AuthRequest, res: Response) => {
 
     let groups = memberships.map((m) => m.group);
 
-    // Lazy auto-sync: promoters that have never been synced get pulled from TeaseMe.
+    // Lazy auto-sync: pull promoter data (voice, photo, video, social links) from TeaseMe
+    // on first access AND whenever the cached copy is older than SYNC_TTL_MS. This keeps
+    // newly-added fields (e.g. OnlyFans link added to TeaseMe after initial sync) from
+    // getting stuck in an "already synced, never refreshed" state.
     // - Deduped by promoter id (a chatter can belong to several groups under the same promoter)
     // - Bounded concurrency to avoid bursty outbound traffic on the read path
     // - Failures are logged and swallowed so the response is never blocked
+    const SYNC_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
+    const now = Date.now();
     const toSyncMap = new Map<string, { id: string; username: string }>();
     for (const g of groups) {
       const p = g.promoter;
-      if (p?.username && p.teasemeSyncedAt === null && !toSyncMap.has(p.id)) {
+      if (!p?.username || toSyncMap.has(p.id)) continue;
+      const lastSyncedAt = p.teasemeSyncedAt ? p.teasemeSyncedAt.getTime() : null;
+      const isStale = lastSyncedAt === null || now - lastSyncedAt > SYNC_TTL_MS;
+      if (isStale) {
         toSyncMap.set(p.id, { id: p.id, username: p.username });
       }
     }
