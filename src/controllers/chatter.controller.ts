@@ -248,7 +248,8 @@ export const getMyGroups = async (req: AuthRequest, res: Response) => {
     // getting stuck in an "already synced, never refreshed" state.
     // - Deduped by promoter id (a chatter can belong to several groups under the same promoter)
     // - Bounded concurrency to avoid bursty outbound traffic on the read path
-    // - Failures are logged and swallowed so the response is never blocked
+    // - Failures are logged and swallowed, but stale reads still wait for refresh so the
+    //   response can be re-fetched with freshly-synced data
     const SYNC_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
     const now = Date.now();
     const toSyncMap = new Map<string, { id: string; username: string }>();
