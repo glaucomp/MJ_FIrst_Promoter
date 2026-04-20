@@ -89,7 +89,7 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
                     }`}
                   >
                     <div style={{ color: iconColor }} className="shrink-0 flex items-center justify-center">
-                      <item.Icon width={18} height={18} />
+                      <item.Icon width={18} height={18} aria-hidden="true" focusable="false" />
                     </div>
                     <span
                       className="text-[16px] font-medium leading-[1.4] tracking-[0.2px] flex-1 text-left"
@@ -115,7 +115,7 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
                   }`}
                 >
                   <div style={{ color: iconColor }} className="flex items-center justify-center">
-                    <item.Icon width={18} height={18} />
+                      <item.Icon width={18} height={18} aria-hidden="true" focusable="false" />
                   </div>
                 </button>
               );
