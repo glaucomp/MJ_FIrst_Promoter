@@ -38,6 +38,7 @@ const InitialsAvatar = ({
 // in src/services/teaseme.service.ts. Anything outside this set is ignored.
 const PLATFORM_LABELS: Record<string, string> = {
   teaseme: "TeaseMe",
+  bluesky: "Bluesky",
   instagram: "Instagram",
   tiktok: "TikTok",
   onlyfans: "OnlyFans",
@@ -51,9 +52,10 @@ const SocialIcon = ({ platform }: { platform: string }) => {
   const key = platform.toLowerCase();
   switch (key) {
     case "teaseme":
+    case "bluesky":
       return (
         <svg
-          className="w-[24px] h-[24px] text-[#0085ff]"
+          className="w-[24px] h-[24px] text-[#1185fe]"
           viewBox="0 0 24 24"
           fill="currentColor"
         >

@@ -24,8 +24,8 @@ export interface TeaseMeInfluencer {
 
 /**
  * TeaseMe returns `social_links` at two possible locations depending on the
- * influencer's profile shape. Prefer the top-level list if present, otherwise
- * fall back to the list nested under `bio_json`.
+ * influencer's profile shape. Prefer the top-level list when non-empty;
+ * otherwise fall back to the list nested under `bio_json`.
  */
 export const extractSocialLinks = (
   influencer: TeaseMeInfluencer
