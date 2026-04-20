@@ -126,9 +126,6 @@ export const getChatterGroup = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ error: 'Only admins or account managers can view chatter groups' });
     }
 
-    if (!isAccountManagerOrAdmin(req)) {
-      return res.status(403).json({ error: 'Forbidden' });
-    }
     const { id } = req.params;
 
     const group = await prisma.chatterGroup.findUnique({
