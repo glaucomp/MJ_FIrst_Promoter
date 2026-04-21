@@ -8,8 +8,11 @@ import { getPresignedUrl } from "../services/s3.service";
 import { syncUserFromTeaseMe } from "../services/teaseme.service";
 
 const prisma = new PrismaClient();
-const PREREGISTER_URL = process.env.VITE_PREREGISTER_VIP_TEASEME_USER;
-const PREREGISTER_TOKEN = process.env.VITE_MJFP_TOKEN;
+const PREREGISTER_URL =
+  process.env.PREREGISTER_VIP_TEASEME_USER ||
+  process.env.VITE_PREREGISTER_VIP_TEASEME_USER;
+const PREREGISTER_TOKEN =
+  process.env.MJFP_TOKEN || process.env.VITE_MJFP_TOKEN;
 
 const isAccountManagerOrAdmin = (req: AuthRequest): boolean => {
   if (!req.user) return false;
