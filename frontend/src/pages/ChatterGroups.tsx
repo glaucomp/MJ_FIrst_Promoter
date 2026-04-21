@@ -721,7 +721,7 @@ export const ChatterGroups = () => {
               </div>
 
               {/* Linked Promoter — subtle footer row */}
-              <div className="flex items-center justify-between pt-[2px] border-t border-[rgba(255,255,255,0.04)]">
+              <div className="flex items-center justify-between px-[28px] py-[14px] border-t border-[rgba(255,255,255,0.04)]">
                 <div className="flex items-center gap-[6px]">
                   <span className="text-[#444] text-[11px] font-semibold uppercase tracking-[0.3px]">Linked Promoter</span>
                   <span className="text-[#666] text-[12px]">

@@ -1,15 +1,20 @@
-import { useEffect, useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { modelsApi, type ApiUser, type Referral, type TrackingLink } from '../services/api';
-import { InviteModal } from '../components/InviteModal';
-import { CreateUserModal } from '../components/CreateUserModal';
+import { useEffect, useState } from "react";
+import { CreateUserModal } from "../components/CreateUserModal";
+import { InviteModal } from "../components/InviteModal";
+import { useAuth } from "../contexts/AuthContext";
+import {
+  modelsApi,
+  type ApiUser,
+  type Referral,
+  type TrackingLink,
+} from "../services/api";
 
 const SessionExpiredBanner = ({ onLogout }: { onLogout: () => void }) => (
   <div className="bg-tm-danger-color12 border border-[#cc0000] rounded-[8px] p-[16px] flex flex-col gap-[12px]">
     <p className="text-[#ff2a2a] text-[14px] font-bold">Session expired</p>
     <p className="text-[#ff8080] text-[13px]">
-      Your login session is no longer valid. This usually happens after the server restarts.
-      Please log out and log back in to continue.
+      Your login session is no longer valid. This usually happens after the
+      server restarts. Please log out and log back in to continue.
     </p>
     <button
       onClick={onLogout}
@@ -26,9 +31,11 @@ export const Models = () => {
   const [myReferrals, setMyReferrals] = useState<Referral[]>([]);
   const [trackingLinks, setTrackingLinks] = useState<TrackingLink[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string>('');
+  const [error, setError] = useState<string>("");
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
-  const [modalType, setModalType] = useState<'referral' | 'tracking'>('referral');
+  const [modalType, setModalType] = useState<"referral" | "tracking">(
+    "referral",
+  );
   const [isCreateUserModalOpen, setIsCreateUserModalOpen] = useState(false);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -39,25 +46,26 @@ export const Models = () => {
 
   const loadData = async () => {
     setIsLoading(true);
-    setError('');
+    setError("");
     try {
-      if (user?.baseRole === 'admin') {
+      if (user?.baseRole === "admin") {
         const users = await modelsApi.getAllUsers();
         // Exclude admin accounts from the list
-        setAllUsers(users.filter(u => u.userType?.toLowerCase() !== 'admin'));
+        setAllUsers(users.filter((u) => u.userType?.toLowerCase() !== "admin"));
       } else if (
-        user?.baseRole === 'account_manager' ||
-        (user?.baseRole === 'team_manager' && user?.role === 'team_manager')
+        user?.baseRole === "account_manager" ||
+        (user?.baseRole === "team_manager" && user?.role === "team_manager")
       ) {
         const referrals = await modelsApi.getMyReferrals();
         setMyReferrals(referrals);
-      } else if (user?.baseRole === 'promoter') {
+      } else if (user?.baseRole === "promoter") {
         const links = await modelsApi.getMyTrackingLinks();
         setTrackingLinks(links);
       }
       // team_manager in promoter mode: no list data needed
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load data';
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to load data";
       setError(errorMessage);
     } finally {
       setIsLoading(false);
@@ -68,16 +76,16 @@ export const Models = () => {
     setDeletingUserId(userId);
     try {
       await modelsApi.deleteUser(userId);
-      setAllUsers(prev => prev.filter(u => u.id !== userId));
+      setAllUsers((prev) => prev.filter((u) => u.id !== userId));
       setConfirmDeleteId(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete user');
+      setError(err instanceof Error ? err.message : "Failed to delete user");
     } finally {
       setDeletingUserId(null);
     }
   };
 
-  const handleOpenInviteModal = (type: 'referral' | 'tracking') => {
+  const handleOpenInviteModal = (type: "referral" | "tracking") => {
     setModalType(type);
     setIsInviteModalOpen(true);
   };
@@ -90,20 +98,26 @@ export const Models = () => {
   if (isLoading) {
     return (
       <div className="flex flex-col gap-6">
-        <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">Models</h1>
+        <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">
+          Models
+        </h1>
         <p className="text-[16px] text-[#9e9e9e]">Loading...</p>
       </div>
     );
   }
 
   // ── ADMIN ─────────────────────────────────────────────────────────────────
-  if (user?.baseRole === 'admin') {
+  if (user?.baseRole === "admin") {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex items-start justify-between flex-col lg:flex-row gap-3">
-          <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">All Users</h1>
+          <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">
+            All Users
+          </h1>
           <div className="flex items-center  justify-between lg:justify-end lg:gap-4 w-full">
-            <p className="text-[16px] text-[#9e9e9e]">{allUsers.length} total</p>
+            <p className="text-[16px] text-[#9e9e9e]">
+              {allUsers.length} total
+            </p>
             <button
               onClick={() => setIsCreateUserModalOpen(true)}
               className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
@@ -113,7 +127,7 @@ export const Models = () => {
           </div>
         </div>
 
-        {error === 'SESSION_EXPIRED' ? (
+        {error === "SESSION_EXPIRED" ? (
           <SessionExpiredBanner onLogout={logout} />
         ) : error ? (
           <div className="bg-red-500/10 border border-red-500/30 rounded-[8px] p-[16px]">
@@ -137,14 +151,14 @@ export const Models = () => {
                     <span
                       className={`px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border ${
                         apiUser.isActive
-                          ? 'bg-tm-success-color12 border-[#00d948] text-[#28ff70]'
-                          : 'bg-tm-danger-color12 border-[#cc0000] text-[#ff2a2a]'
+                          ? "bg-tm-success-color12 border-[#00d948] text-[#28ff70]"
+                          : "bg-tm-danger-color12 border-[#cc0000] text-[#ff2a2a]"
                       }`}
                     >
-                      {apiUser.isActive ? 'Active' : 'Inactive'}
+                      {apiUser.isActive ? "Active" : "Inactive"}
                     </span>
                     <span className="px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]">
-                      {apiUser.userType?.toLowerCase().replace('_', ' ')}
+                      {apiUser.userType?.toLowerCase().replace("_", " ")}
                     </span>
                   </div>
                 </div>
@@ -152,7 +166,9 @@ export const Models = () => {
                 <div className="flex flex-col items-start lg:items-end gap-[8px] w-full">
                   {apiUser.stats && (
                     <div className="text-left flex flex-col gap-[4px] w-full lg:text-right">
-                      <p className="text-[#9e9e9e] text-[12px] uppercase">Earnings</p>
+                      <p className="text-[#9e9e9e] text-[12px] uppercase">
+                        Earnings
+                      </p>
                       <p className="text-white text-[20px] font-bold">
                         ${apiUser.stats.totalEarnings.toFixed(2)}
                       </p>
@@ -164,13 +180,15 @@ export const Models = () => {
 
                   {confirmDeleteId === apiUser.id ? (
                     <div className="flex items-center gap-[8px] mt-[4px]">
-                      <span className="text-[#9e9e9e] text-[12px]">Delete?</span>
+                      <span className="text-[#9e9e9e] text-[12px]">
+                        Delete?
+                      </span>
                       <button
                         onClick={() => handleDeleteUser(apiUser.id)}
                         disabled={deletingUserId === apiUser.id}
                         className="px-[10px] py-[4px] rounded-[6px] text-[12px] font-bold bg-tm-danger-color12 border border-[#cc0000] text-[#ff2a2a] hover:bg-[#880000] disabled:opacity-50 transition-colors"
                       >
-                        {deletingUserId === apiUser.id ? '...' : 'Yes'}
+                        {deletingUserId === apiUser.id ? "..." : "Yes"}
                       </button>
                       <button
                         onClick={() => setConfirmDeleteId(null)}
@@ -203,7 +221,7 @@ export const Models = () => {
           isOpen={isCreateUserModalOpen}
           onClose={() => setIsCreateUserModalOpen(false)}
           onCreated={(newUser) => {
-            setAllUsers(prev => [newUser, ...prev]);
+            setAllUsers((prev) => [newUser, ...prev]);
           }}
         />
       </div>
@@ -211,20 +229,23 @@ export const Models = () => {
   }
 
   // ── ACCOUNT MANAGER ───────────────────────────────────────────────────────
-  if (user?.baseRole === 'account_manager') {
+  if (user?.baseRole === "account_manager") {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">My Promoters</h1>
+          <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">
+            My Promoters
+          </h1>
           <button
-            onClick={() => handleOpenInviteModal('referral')}
-            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+            onClick={() => handleOpenInviteModal("referral")}
+            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all 
+whitespace-nowrap"
           >
             + Create Referral Link
           </button>
         </div>
 
-        {error === 'SESSION_EXPIRED' ? (
+        {error === "SESSION_EXPIRED" ? (
           <SessionExpiredBanner onLogout={logout} />
         ) : error ? (
           <div className="bg-red-500/10 border border-red-500/30 rounded-[8px] p-[16px]">
@@ -232,7 +253,9 @@ export const Models = () => {
           </div>
         ) : null}
 
-        <p className="text-[14px] text-[#9e9e9e]">{myReferrals.length} total referrals</p>
+        <p className="text-[14px] text-[#9e9e9e]">
+          {myReferrals.length} total referrals
+        </p>
 
         <ReferralList referrals={myReferrals} />
 
@@ -247,11 +270,13 @@ export const Models = () => {
   }
 
   // ── TEAM MANAGER → acting as PROMOTER ─────────────────────────────────────
-  if (user?.baseRole === 'team_manager' && user?.role === 'promoter') {
+  if (user?.baseRole === "team_manager" && user?.role === "promoter") {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">Referral Link</h1>
+          <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">
+            Referral Link
+          </h1>
         </div>
 
         <p className="text-[14px] text-[#9e9e9e]">
@@ -259,7 +284,7 @@ export const Models = () => {
         </p>
 
         <button
-          onClick={() => handleOpenInviteModal('referral')}
+          onClick={() => handleOpenInviteModal("referral")}
           className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[14px] text-white text-[16px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all w-full"
         >
           + Create Referral Link
@@ -276,20 +301,22 @@ export const Models = () => {
   }
 
   // ── TEAM MANAGER → acting as TEAM MANAGER ────────────────────────────────
-  if (user?.baseRole === 'team_manager' && user?.role === 'team_manager') {
+  if (user?.baseRole === "team_manager" && user?.role === "team_manager") {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">My Team</h1>
+          <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">
+            My Team
+          </h1>
           <button
-            onClick={() => handleOpenInviteModal('referral')}
+            onClick={() => handleOpenInviteModal("referral")}
             className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
           >
             + Create Referral Link
           </button>
         </div>
 
-        {error === 'SESSION_EXPIRED' ? (
+        {error === "SESSION_EXPIRED" ? (
           <SessionExpiredBanner onLogout={logout} />
         ) : error ? (
           <div className="bg-red-500/10 border border-red-500/30 rounded-[8px] p-[16px]">
@@ -297,7 +324,9 @@ export const Models = () => {
           </div>
         ) : null}
 
-        <p className="text-[14px] text-[#9e9e9e]">{myReferrals.length} total referrals</p>
+        <p className="text-[14px] text-[#9e9e9e]">
+          {myReferrals.length} total referrals
+        </p>
 
         <ReferralList referrals={myReferrals} />
 
@@ -312,13 +341,15 @@ export const Models = () => {
   }
 
   // ── PURE PROMOTER ─────────────────────────────────────────────────────────
-  if (user?.baseRole === 'promoter') {
+  if (user?.baseRole === "promoter") {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">My Tracking Links</h1>
+          <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">
+            My Tracking Links
+          </h1>
           <button
-            onClick={() => handleOpenInviteModal('tracking')}
+            onClick={() => handleOpenInviteModal("tracking")}
             className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
           >
             + Create Link
@@ -338,14 +369,23 @@ export const Models = () => {
               <div className="flex flex-col gap-[12px]">
                 <div className="flex items-center justify-between">
                   <div className="flex flex-col gap-[4px]">
-                    <p className="text-white text-[16px] font-semibold">{link.campaign.name}</p>
+                    <p className="text-white text-[16px] font-semibold">
+                      {link.campaign.name}
+                    </p>
                     <p className="text-[#9e9e9e] text-[12px]">
-                      Code: <span className="font-mono text-white">{link.shortCode}</span>
+                      Code:{" "}
+                      <span className="font-mono text-white">
+                        {link.shortCode}
+                      </span>
                     </p>
                   </div>
                   <div className="text-right flex flex-col gap-[4px] w-full">
-                    <p className="text-[#9e9e9e] text-[12px] uppercase">Clicks</p>
-                    <p className="text-white text-[20px] font-bold">{link.clicks}</p>
+                    <p className="text-[#9e9e9e] text-[12px] uppercase">
+                      Clicks
+                    </p>
+                    <p className="text-white text-[20px] font-bold">
+                      {link.clicks}
+                    </p>
                   </div>
                 </div>
 
@@ -371,7 +411,8 @@ export const Models = () => {
           {trackingLinks.length === 0 && (
             <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] text-center">
               <p className="text-[#9e9e9e] text-[16px]">
-                No tracking links yet. Create your first link to start earning commissions.
+                No tracking links yet. Create your first link to start earning
+                commissions.
               </p>
             </div>
           )}
@@ -389,7 +430,9 @@ export const Models = () => {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">Models</h1>
+      <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">
+        Models
+      </h1>
       <p className="text-[#9e9e9e] text-[16px]">Access denied</p>
     </div>
   );
@@ -419,38 +462,47 @@ const ReferralList = ({ referrals }: { referrals: Referral[] }) => {
               {referral.referredUser ? (
                 <>
                   <p className="text-white text-[18px] font-semibold">
-                    {referral.referredUser.firstName} {referral.referredUser.lastName}
+                    {referral.referredUser.firstName}{" "}
+                    {referral.referredUser.lastName}
                   </p>
-                  <p className="text-[#9e9e9e] text-[14px]">{referral.referredUser.email}</p>
+                  <p className="text-[#9e9e9e] text-[14px]">
+                    {referral.referredUser.email}
+                  </p>
                 </>
               ) : (
                 <>
                   <p className="text-white text-[18px] font-semibold">
                     Invite Code: {referral.inviteCode}
                   </p>
-                  <p className="text-[#9e9e9e] text-[14px]">Pending — not yet accepted</p>
+                  <p className="text-[#9e9e9e] text-[14px]">
+                    Pending — not yet accepted
+                  </p>
                 </>
               )}
               <div className="flex items-center gap-[8px]">
                 <span
                   className={`px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border ${
-                    referral.status === 'ACTIVE'
-                      ? 'bg-tm-success-color12 border-[#00d948] text-[#28ff70]'
-                      : referral.status === 'PENDING'
-                      ? 'bg-[#664400] border-[#cc8800] text-[#ffaa00]'
-                      : referral.status === 'INACTIVE'
-                      ? 'bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]'
-                      : 'bg-tm-danger-color12 border-[#cc0000] text-[#ff2a2a]'
+                    referral.status === "ACTIVE"
+                      ? "bg-tm-success-color12 border-[#00d948] text-[#28ff70]"
+                      : referral.status === "PENDING"
+                        ? "bg-[#664400] border-[#cc8800] text-[#ffaa00]"
+                        : referral.status === "INACTIVE"
+                          ? "bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]"
+                          : "bg-tm-danger-color12 border-[#cc0000] text-[#ff2a2a]"
                   }`}
                 >
                   {referral.status}
                 </span>
-                <span className="text-[#9e9e9e] text-[12px]">{referral.campaign.name}</span>
+                <span className="text-[#9e9e9e] text-[12px]">
+                  {referral.campaign.name}
+                </span>
               </div>
             </div>
             <div className="text-right flex flex-col gap-[4px] w-full">
               <p className="text-[#9e9e9e] text-[12px] uppercase">Level</p>
-              <p className="text-white text-[20px] font-bold">{referral.level}</p>
+              <p className="text-white text-[20px] font-bold">
+                {referral.level}
+              </p>
             </div>
           </div>
         </div>
