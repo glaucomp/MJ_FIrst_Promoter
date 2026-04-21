@@ -67,7 +67,7 @@ export const TopBar = () => {
           onClick={logout}
           aria-label="Log out"
           className="flex items-center justify-center w-[36px] h-[36px] rounded-[6px] hover:bg-[#292929]/50 transition-all"
-          style={{ color: 'white' }}
+          style={{ color: '#ff0f5f' }}
         >
           <IconLogout width={20} height={19} />
         </button>

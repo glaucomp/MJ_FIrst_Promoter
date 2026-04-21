@@ -8,6 +8,12 @@ const prisma = new PrismaClient();
 
 // POST /api/v1/promoters/create
 export const createPromoter = async (req: ApiKeyRequest, res: Response) => {
+  console.log('[CREATE PROMOTER] ➡️  Handler entered');
+  console.log('[CREATE PROMOTER] Headers:', {
+    'content-type': req.headers['content-type'],
+    'x-api-key': req.headers['x-api-key'] ? 'present' : 'MISSING',
+  });
+  console.log('[CREATE PROMOTER] Body:', JSON.stringify(req.body, null, 2));
   try {
     const { 
       email, 
@@ -24,8 +30,10 @@ export const createPromoter = async (req: ApiKeyRequest, res: Response) => {
     } = req.body;
 
     if (!email) {
+      console.warn('[CREATE PROMOTER] ❌ 400 — email is required');
       return res.status(400).json({ error: 'email is required' });
     }
+    console.log(`[CREATE PROMOTER] Creating/looking up promoter: email=${email}, username=${username ?? '(auto)'}, ref_id=${ref_id ?? '(auto)'}, parent=${parent_promoter_id ?? 'none'}`);
 
     // Check if promoter already exists
     const existing = await prisma.user.findUnique({
@@ -33,6 +41,7 @@ export const createPromoter = async (req: ApiKeyRequest, res: Response) => {
     });
 
     if (existing) {
+      console.log(`[CREATE PROMOTER] ℹ️  Already exists — id=${existing.id}, email=${existing.email}`);
       return res.status(200).json({
         id: existing.id,
         email: existing.email,
@@ -172,9 +181,10 @@ export const createPromoter = async (req: ApiKeyRequest, res: Response) => {
       response.parent_promoter_id = parent_promoter_id;
     }
     
+    console.log(`[CREATE PROMOTER] ✅ 201 — sending response for ${promoter.email} (id=${promoter.id})`);
     res.status(201).json(response);
   } catch (error) {
-    console.error('Create promoter error:', error);
+    console.error('[CREATE PROMOTER] 💥 Create promoter error:', error);
     res.status(500).json({ error: 'Failed to create promoter' });
   }
 };
