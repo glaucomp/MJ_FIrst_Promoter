@@ -681,7 +681,7 @@ export const checkInviteQuota = async (req: AuthRequest, res: Response) => {
         nextResetDate,
         quota: {
           used: invitesThisMonth,
-          remaining: 0,
+          remaining: null,
           unlimited: true,
         },
       });
