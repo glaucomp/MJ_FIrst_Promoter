@@ -219,22 +219,15 @@ export const Chatters = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
-  const isAdmin = user?.baseRole === "admin";
-  const canManage = isAdmin || user?.baseRole === "account_manager";
-
-  // Admin-only: list of account managers + the currently-selected filter.
-  const [accountManagers, setAccountManagers] = useState<AccountManagerSummary[]>([]);
-  const [selectedManagerId, setSelectedManagerId] = useState<string>(""); // "" = all
+  const canManage = user?.baseRole === "account_manager";
   const [search, setSearch] = useState("");
 
   const loadChatters = useCallback(
-    async (accountManagerId?: string) => {
+    async () => {
       setIsLoading(true);
       setError("");
       try {
-        const data = await chattersApi.list(
-          accountManagerId ? { accountManagerId } : undefined,
-        );
+        const data = await chattersApi.list();
         setChatters(data.chatters);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load chatters");
