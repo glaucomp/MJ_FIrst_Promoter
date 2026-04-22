@@ -329,7 +329,7 @@ export const Campaigns = () => {
                   ) : (
                     <button
                       onClick={() => setConfirmDeleteId(c.id)}
-                      className="text-tm-danger-color04  text-sm   hover:text-tm-danger-color05 hover:-translate-y-0.5 transition-all"
+                      className="text-tm-danger-color04 text-sm hover:text-tm-danger-color05 hover:-translate-y-0.5 transition-all"
                     >
                       Delete
                     </button>
