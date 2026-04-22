@@ -370,8 +370,13 @@ export const assignAccountManager = async (req: AuthRequest, res: Response) => {
     if (!target) {
       return res.status(404).json({ error: 'User not found' });
     }
-    if (target.userType === UserType.ADMIN) {
-      return res.status(400).json({ error: 'Admins cannot be assigned to an account manager' });
+    if (
+      target.userType === UserType.ADMIN ||
+      target.userType === UserType.ACCOUNT_MANAGER
+    ) {
+      return res.status(400).json({
+        error: 'Admins and account managers cannot be assigned to an account manager',
+      });
     }
 
     if (accountManagerId) {
