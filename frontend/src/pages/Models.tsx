@@ -165,8 +165,8 @@ export const Models = () => {
     const needsAssignment: ApiUser[] = [];
     for (const u of rowableUsers) {
       // `accountManager` is resolved on the server: it prefers the explicit
-      // `createdBy` but falls back to the referring AM on active referrals,
-      // so it matches how commissions are actually routed.
+      // `accountManagerId` assignment, then `createdById`, then the
+      // referring AM from active referrals.
       const ownerId = u.accountManager?.id;
       if (ownerId && knownAmIds.has(ownerId)) {
         const arr = byManager.get(ownerId) ?? [];
