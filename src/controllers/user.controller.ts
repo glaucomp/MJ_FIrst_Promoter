@@ -554,7 +554,10 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
 export const getAccountManagers = async (_req: AuthRequest, res: Response) => {
   try {
     const managers = await prisma.user.findMany({
-      where: { userType: UserType.ACCOUNT_MANAGER, isActive: true },
+      where: {
+        userType: { in: [UserType.ACCOUNT_MANAGER, UserType.ADMIN] },
+        isActive: true,
+      },
       select: {
         id: true,
         email: true,
