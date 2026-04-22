@@ -21,34 +21,32 @@ const isAccountManagerOrAdmin = (req: AuthRequest): boolean => {
 
 const isAdmin = (req: AuthRequest): boolean => req.user?.role === UserRole.ADMIN;
 
+// Minimum shape `canAccessLoadedGroup` needs to make its decision. Any wider
+// payload returned by callers (e.g. with full include shapes) is structurally
+// assignable to this, so callers that already loaded the group can pass it
+// straight through without re-querying.
+type GroupForAccessCheck = {
+  createdById: string | null;
+  promoter: { id: string } | null;
+  members: ReadonlyArray<{ chatterId: string }>;
+};
+
 // Returns true when the caller is allowed to read/modify the given group.
 // Admins can touch any group. Account managers see groups where either they
 // created the group, or the group's linked promoter / creator / any chatter
 // member resolves to the caller as their effective account manager (same
 // ownership rule as `listChatterGroups`). The check is async because it walks
-// the referral/createdBy graph.
-const canAccessGroupById = async (
+// the referral/ownership graph.
+//
+// Takes an already-loaded group so handlers that've already fetched it (e.g.
+// `getChatterGroup`) don't pay for a second findUnique just to authorize.
+const canAccessLoadedGroup = async (
   req: AuthRequest,
-  groupId: string,
+  group: GroupForAccessCheck,
 ): Promise<boolean> => {
-  if (isAdmin(req)) {
-    const exists = await prisma.chatterGroup.findUnique({
-      where: { id: groupId },
-      select: { id: true },
-    });
-    return !!exists;
-  }
+  if (isAdmin(req)) return true;
 
   const callerId = req.user!.id;
-  const group = await prisma.chatterGroup.findUnique({
-    where: { id: groupId },
-    select: {
-      createdById: true,
-      promoter: { select: { id: true } },
-      members: { select: { chatterId: true } },
-    },
-  });
-  if (!group) return false;
   if (group.createdById === callerId) return true;
 
   const ids = new Set<string>();
@@ -64,6 +62,34 @@ const canAccessGroupById = async (
     if (amByUser.get(uid) === callerId) return true;
   }
   return false;
+};
+
+// Convenience wrapper for handlers that only have the group id. Performs a
+// single findUnique with just the fields `canAccessLoadedGroup` needs.
+const canAccessGroupById = async (
+  req: AuthRequest,
+  groupId: string,
+): Promise<boolean> => {
+  // Admin fast path — skip the ownership-graph columns and just confirm the
+  // row exists so we can distinguish 404 from access-denied uniformly.
+  if (isAdmin(req)) {
+    const exists = await prisma.chatterGroup.findUnique({
+      where: { id: groupId },
+      select: { id: true },
+    });
+    return !!exists;
+  }
+
+  const group = await prisma.chatterGroup.findUnique({
+    where: { id: groupId },
+    select: {
+      createdById: true,
+      promoter: { select: { id: true } },
+      members: { select: { chatterId: true } },
+    },
+  });
+  if (!group) return false;
+  return canAccessLoadedGroup(req, group);
 };
 
 // Shared promoter select + photo-key hydration helpers so every chatter-group
@@ -379,11 +405,10 @@ export const getChatterGroup = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'Chatter group not found' });
     }
 
-    const canAccessLoadedGroup =
-      req.user?.role === UserRole.ADMIN ||
-      group.createdBy?.id === req.user?.id;
-
-    if (!canAccessLoadedGroup && !(await canAccessGroupById(req, id))) {
+    // Authorize against the group we already loaded — no second findUnique.
+    // `group` carries `createdById`, `promoter.id`, and `members[].chatterId`
+    // from the include above, which is everything `canAccessLoadedGroup` needs.
+    if (!(await canAccessLoadedGroup(req, group))) {
       return res.status(404).json({ error: 'Chatter group not found' });
     }
 

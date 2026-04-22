@@ -583,9 +583,12 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
 
 export const getAccountManagers = async (_req: AuthRequest, res: Response) => {
   try {
+    // Strictly ACCOUNT_MANAGER. Admins were previously included here but the
+    // admin Users page uses this list to build AM section headers, and admins
+    // don't own users in that model — they'd show up with 0 users forever.
     const managers = await prisma.user.findMany({
       where: {
-        userType: { in: [UserType.ACCOUNT_MANAGER, UserType.ADMIN] },
+        userType: UserType.ACCOUNT_MANAGER,
         isActive: true,
       },
       select: {
