@@ -1,4 +1,10 @@
-export type UserRole = 'admin' | 'team_manager' | 'account_manager' | 'promoter' | 'chatter';
+export type UserRole =
+  | 'admin'
+  | 'team_manager'
+  | 'account_manager'
+  | 'promoter'
+  | 'chatter'
+  | 'payer';
 
 export interface User {
   id: string;

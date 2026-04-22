@@ -61,7 +61,11 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
 
     const isAdmin = caller.role === UserRole.ADMIN;
     const isAccountManager = caller.userType === UserType.ACCOUNT_MANAGER;
-    if (!isAdmin && !isAccountManager) {
+    // Payers are read-only back-office users. They can read the user list so
+    // Reports can resolve promoter names next to commissions, but they share
+    // the admin's unscoped view (no AM filtering).
+    const isPayer = caller.userType === UserType.PAYER;
+    if (!isAdmin && !isAccountManager && !isPayer) {
       return res.status(403).json({ error: 'Insufficient permissions' });
     }
 
@@ -191,7 +195,7 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
     // list. Admins see every row returned by the base query. This runs off
     // the already-resolved ownership map (no extra DB round-trips) and
     // prevents N+1 stats queries on rows that would be filtered out anyway.
-    const visibleUsers = isAdmin
+    const visibleUsers = isAdmin || isPayer
       ? users
       : users.filter((user) => {
           if (user.userType === UserType.ADMIN) return false;
@@ -398,10 +402,12 @@ export const assignAccountManager = async (req: AuthRequest, res: Response) => {
     }
     if (
       target.userType === UserType.ADMIN ||
-      target.userType === UserType.ACCOUNT_MANAGER
+      target.userType === UserType.ACCOUNT_MANAGER ||
+      target.userType === UserType.PAYER
     ) {
       return res.status(400).json({
-        error: 'Admins and account managers cannot be assigned to an account manager',
+        error:
+          'Admins, account managers and payers cannot be assigned to an account manager',
       });
     }
 
@@ -483,16 +489,28 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ error: 'Insufficient permissions' });
     }
 
-    const { email, password, firstName, lastName, userType } = req.body;
+    const { email, password, firstName, lastName, userType } = req.body as {
+      email?: string;
+      password?: string;
+      firstName?: string;
+      lastName?: string;
+      userType?: string;
+    };
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
-    // Admins can create AMs, TMs and promoters. AMs can only create promoters
-    // (chatters go through POST /api/chatters).
+    // Admins can create AMs, TMs, promoters and payers. AMs can only create
+    // promoters (chatters go through POST /api/chatters). Payers are an
+    // admin-only role that sees Reports / Payouts / Settings and nothing else.
     const allowedTypes: UserType[] = callerIsAdmin
-      ? [UserType.ACCOUNT_MANAGER, UserType.TEAM_MANAGER, UserType.PROMOTER]
+      ? [
+          UserType.ACCOUNT_MANAGER,
+          UserType.TEAM_MANAGER,
+          UserType.PROMOTER,
+          UserType.PAYER,
+        ]
       : [UserType.PROMOTER];
     const requestedType = userType as UserType | undefined;
     if (requestedType && !allowedTypes.includes(requestedType)) {
@@ -554,7 +572,10 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
     });
 
     // For account managers created by admin: automatically link them to the
-    // admin via a referral so commissions can flow.
+    // admin via a referral so commissions can flow. AMs are auto-approved to
+    // invite on every active campaign — the invite gate in
+    // referral.controller.ts gates hidden campaigns on userType only, so we
+    // don't need per-campaign referrals here.
     if (callerIsAdmin && resolvedType === UserType.ACCOUNT_MANAGER) {
       const adminCampaign = await prisma.campaign.findFirst({
         where: { isActive: true, visibleToPromoters: false },

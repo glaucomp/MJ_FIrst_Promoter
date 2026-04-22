@@ -28,8 +28,12 @@ export const getAllTransactions = async (req: AuthRequest, res: Response) => {
     const startDate = req.query.startDate as string | undefined;
     const endDate   = req.query.endDate   as string | undefined;
 
+    // Payers see the same aggregate transaction feed as admins — they need
+    // it to audit payout cycles on the Reports page.
     const isAdmin =
-      user.role === UserRole.ADMIN || user.userType === UserType.ADMIN;
+      user.role === UserRole.ADMIN ||
+      user.userType === UserType.ADMIN ||
+      user.userType === UserType.PAYER;
     const pageNum = Math.max(1, Number.parseInt(page, 10));
     const limitNum = Math.min(100, Math.max(1, Number.parseInt(limit, 10)));
     const skip = (pageNum - 1) * limitNum;

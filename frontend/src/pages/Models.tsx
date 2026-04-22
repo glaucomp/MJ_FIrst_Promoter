@@ -29,6 +29,7 @@ const USER_TYPE_OPTIONS: { value: string; label: string }[] = [
   { value: "TEAM_MANAGER", label: "Team manager" },
   { value: "PROMOTER", label: "Promoter" },
   { value: "CHATTER", label: "Chatter" },
+  { value: "PAYER", label: "Payer" },
 ];
 
 const SessionExpiredBanner = ({ onLogout }: { onLogout: () => void }) => (
@@ -153,12 +154,20 @@ export const Models = () => {
   );
 
   const NEEDS_ASSIGNMENT_KEY = "__needs_assignment__";
+  const PAYERS_KEY = "__payers__";
 
   const adminSections = useMemo(() => {
     if (!isAdmin) return [];
 
-    const rowableUsers = visibleAdminUsers.filter(
-      (u) => u.userType?.toUpperCase() !== "ACCOUNT_MANAGER",
+    // Account managers are their own section headers, and payers live in a
+    // dedicated bucket at the bottom (they never belong to an AM), so both
+    // are excluded from the rowable set the AM groups pull from.
+    const rowableUsers = visibleAdminUsers.filter((u) => {
+      const t = u.userType?.toUpperCase();
+      return t !== "ACCOUNT_MANAGER" && t !== "PAYER";
+    });
+    const payers = visibleAdminUsers.filter(
+      (u) => u.userType?.toUpperCase() === "PAYER",
     );
 
     const byManager = new Map<string, ApiUser[]>();
@@ -181,7 +190,7 @@ export const Models = () => {
       key: string;
       manager: AccountManagerSummary | null;
       users: ApiUser[];
-      variant: "manager" | "needs";
+      variant: "manager" | "needs" | "payers";
     }[] = [];
 
     if (needsAssignment.length > 0) {
@@ -199,6 +208,15 @@ export const Models = () => {
         manager: am,
         users: byManager.get(am.id) ?? [],
         variant: "manager",
+      });
+    }
+
+    if (payers.length > 0) {
+      sections.push({
+        key: PAYERS_KEY,
+        manager: null,
+        users: payers,
+        variant: "payers",
       });
     }
 
@@ -407,14 +425,16 @@ export const Models = () => {
         <div className="flex flex-col gap-[20px]">
           {adminSections.map((section) => {
             const isNeeds = section.variant === "needs";
-            const headerLabel = isNeeds
-              ? "Needs assignment"
-              : section.manager
-                ? formatManagerName(section.manager)
-                : "Unassigned";
-            const headerSubtitle = isNeeds
-              ? "Drag each user onto an account manager below"
-              : (section.manager?.email ?? "");
+            const isPayers = section.variant === "payers";
+            let headerLabel: string;
+            if (isNeeds) headerLabel = "Needs assignment";
+            else if (isPayers) headerLabel = "Payers";
+            else if (section.manager) headerLabel = formatManagerName(section.manager);
+            else headerLabel = "Unassigned";
+            let headerSubtitle: string;
+            if (isNeeds) headerSubtitle = "Drag each user onto an account manager below";
+            else if (isPayers) headerSubtitle = "Back-office users — no account manager required";
+            else headerSubtitle = section.manager?.email ?? "";
             const isCollapsed = !!collapsedSections[section.key];
             const sectionTotal = section.users.reduce(
               (sum, u) => sum + (u.stats?.totalEarnings ?? 0),
@@ -502,7 +522,7 @@ export const Models = () => {
                       {section.users.length} user
                       {section.users.length !== 1 ? "s" : ""}
                     </span>
-                    {sectionTotal > 0 && !isNeeds && (
+                    {sectionTotal > 0 && !isNeeds && !isPayers && (
                       <span className="text-white text-[13px] font-semibold">
                         ${sectionTotal.toFixed(2)}
                       </span>
@@ -527,35 +547,55 @@ export const Models = () => {
                           : "No users in this bucket."}
                       </p>
                     ) : (
-                      section.users.map((apiUser) => (
+                      section.users.map((apiUser) => {
+                        // Payers are pinned to their dedicated section — no
+                        // drag-drop reassignment, no ⋮⋮ handle, no grab cursor.
+                        const isDraggable = !isPayers;
+                        return (
                         <div
                           key={apiUser.id}
-                          draggable
-                          onDragStart={(e) => {
-                            e.dataTransfer.setData("text/plain", apiUser.id);
-                            e.dataTransfer.effectAllowed = "move";
-                            setDraggingUserId(apiUser.id);
-                          }}
-                          onDragEnd={() => {
-                            setDraggingUserId(null);
-                            setDropTargetKey(null);
-                          }}
-                          className={`bg-linear-to-t from-[#212121] to-[#23252a] border rounded-[8px] p-[16px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] cursor-grab active:cursor-grabbing transition-opacity ${
+                          draggable={isDraggable}
+                          onDragStart={
+                            isDraggable
+                              ? (e) => {
+                                  e.dataTransfer.setData("text/plain", apiUser.id);
+                                  e.dataTransfer.effectAllowed = "move";
+                                  setDraggingUserId(apiUser.id);
+                                }
+                              : undefined
+                          }
+                          onDragEnd={
+                            isDraggable
+                              ? () => {
+                                  setDraggingUserId(null);
+                                  setDropTargetKey(null);
+                                }
+                              : undefined
+                          }
+                          className={`bg-linear-to-t from-[#212121] to-[#23252a] border rounded-[8px] p-[16px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] transition-opacity ${
+                            isDraggable ? "cursor-grab active:cursor-grabbing" : ""
+                          } ${
                             draggingUserId === apiUser.id
                               ? "opacity-40 border-[#ff0f5f]"
                               : "border-[rgba(255,255,255,0.03)]"
                           } ${reassigningUserId === apiUser.id ? "animate-pulse" : ""}`}
-                          title="Drag onto an account manager to reassign"
+                          title={
+                            isDraggable
+                              ? "Drag onto an account manager to reassign"
+                              : undefined
+                          }
                         >
                           <div className="flex items-start justify-between gap-[12px] flex-col lg:flex-row">
                             <div className="flex flex-col gap-[8px] w-full">
                               <div className="flex items-center gap-[8px]">
-                                <span
-                                  className="text-[#666] text-[14px] select-none"
-                                  aria-hidden
-                                >
-                                  ⋮⋮
-                                </span>
+                                {isDraggable && (
+                                  <span
+                                    className="text-[#666] text-[14px] select-none"
+                                    aria-hidden
+                                  >
+                                    ⋮⋮
+                                  </span>
+                                )}
                                 <p className="text-white text-[18px] font-semibold">
                                   {apiUser.firstName} {apiUser.lastName}
                                 </p>
@@ -580,7 +620,7 @@ export const Models = () => {
                             </div>
 
                             <div className="flex flex-col items-start lg:items-end gap-[8px] w-full">
-                              {apiUser.stats && (
+                              {apiUser.stats && !isPayers && (
                                 <div className="text-left flex flex-col gap-[4px] w-full lg:text-right">
                                   <p className="text-[#9e9e9e] text-[12px] uppercase">
                                     Earnings
@@ -622,7 +662,8 @@ export const Models = () => {
                             </div>
                           </div>
                         </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
                 )}

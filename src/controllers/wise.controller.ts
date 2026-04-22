@@ -6,8 +6,13 @@ import type { RecipientInput } from "../services/wise.service";
 
 const prisma = new PrismaClient();
 
+// Payers are a back-office role that can run payouts alongside admins. For
+// authorization purposes they count as "admin" on the Wise + payout flows,
+// but they're still blocked from user-management endpoints.
 const isAdmin = (user: NonNullable<AuthRequest["user"]>) =>
-  user.role === UserRole.ADMIN || user.userType === UserType.ADMIN;
+  user.role === UserRole.ADMIN ||
+  user.userType === UserType.ADMIN ||
+  user.userType === UserType.PAYER;
 
 /** Commissions created within this many days are on refund hold and cannot be paid out. */
 const REFUND_HOLD_DAYS = 7;
