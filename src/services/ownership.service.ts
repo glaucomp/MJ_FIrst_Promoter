@@ -144,14 +144,14 @@ export const resolveAccountManagersFor = async (
 
     // 3. Transitive upstream via referrers, then via createdBy
     for (const refId of referrerIds) {
-      const upstream = resolve(refId, seen);
+      const upstream = resolve(refId, new Set(seen));
       if (upstream) {
         cache.set(userId, upstream);
         return upstream;
       }
     }
     if (createdBy) {
-      const upstream = resolve(createdBy.id, seen);
+      const upstream = resolve(createdBy.id, new Set(seen));
       if (upstream) {
         cache.set(userId, upstream);
         return upstream;
