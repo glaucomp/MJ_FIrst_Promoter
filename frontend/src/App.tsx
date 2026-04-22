@@ -118,6 +118,16 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/referrals"
+        element={
+          <ProtectedRoute allowedRoles={['account_manager', 'team_manager', 'promoter']}>
+            <DashboardLayout>
+              <Models />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/chatters"
         element={
           <ProtectedRoute allowedRoles={['account_manager']}>

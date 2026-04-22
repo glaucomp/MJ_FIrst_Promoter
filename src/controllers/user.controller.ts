@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { nanoid } from 'nanoid';
 import { validationResult } from 'express-validator';
 import { AuthRequest } from '../middleware/auth.middleware';
+import { resolveAccountManagersFor } from '../services/ownership.service';
 
 const prisma = new PrismaClient();
 
@@ -53,12 +54,27 @@ export const createAccountManager = async (req: AuthRequest, res: Response) => {
 
 export const getAllUsers = async (req: AuthRequest, res: Response) => {
   try {
-    const { role, search } = req.query;
+    const caller = req.user;
+    if (!caller) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const isAdmin = caller.role === UserRole.ADMIN;
+    const isAccountManager = caller.userType === UserType.ACCOUNT_MANAGER;
+    if (!isAdmin && !isAccountManager) {
+      return res.status(403).json({ error: 'Insufficient permissions' });
+    }
+
+    const { role, search, accountManagerId, userType } = req.query;
 
     const where: any = {};
-    
+
     if (role) {
       where.role = role as UserRole;
+    }
+
+    if (userType) {
+      where.userType = userType as UserType;
     }
 
     if (search) {
@@ -66,6 +82,26 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
         { email: { contains: search as string, mode: 'insensitive' } },
         { firstName: { contains: search as string, mode: 'insensitive' } },
         { lastName: { contains: search as string, mode: 'insensitive' } }
+      ];
+    }
+
+    // Admin filter: list only users "owned" by a given account manager.
+    // For chatters we trust `createdById`. For promoters / team managers the
+    // AM relationship is modelled via an ACTIVE referral where the AM is the
+    // referrer — so we fall back to that when `createdById` isn't set.
+    if (accountManagerId && typeof accountManagerId === 'string') {
+      where.AND = [
+        ...(where.AND ?? []),
+        {
+          OR: [
+            { createdById: accountManagerId },
+            {
+              referralsReceived: {
+                some: { referrerId: accountManagerId, status: 'ACTIVE' },
+              },
+            },
+          ],
+        },
       ];
     }
 
@@ -80,6 +116,15 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
         userType: true,
         isActive: true,
         createdAt: true,
+        createdBy: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            userType: true,
+          },
+        },
         _count: {
           select: {
             createdCampaigns: true,
@@ -91,7 +136,92 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
       orderBy: { createdAt: 'desc' }
     });
 
-    // Calculate real stats for each user
+    // Build a graph to resolve the *effective* account manager for every user.
+    // We look at the whole system (not just the filtered set) because a user
+    // might be referred by a team manager/promoter who is themselves referred
+    // by an AM — e.g. Kelly ← Juliana (team manager) ← Jorlyn (AM).
+    const allBasicUsers = await prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        userType: true,
+        isActive: true,
+        createdById: true,
+      },
+    });
+    const userById = new Map(allBasicUsers.map((u) => [u.id, u]));
+
+    const activeReferrals = await prisma.referral.findMany({
+      where: { status: 'ACTIVE' },
+      orderBy: { acceptedAt: 'asc' },
+      select: { referrerId: true, referredUserId: true },
+    });
+    const incomingByUser = new Map<string, string[]>();
+    for (const r of activeReferrals) {
+      if (!r.referredUserId) continue;
+      const arr = incomingByUser.get(r.referredUserId) ?? [];
+      arr.push(r.referrerId);
+      incomingByUser.set(r.referredUserId, arr);
+    }
+
+    type BasicUser = (typeof allBasicUsers)[number];
+    const isActiveAm = (u: BasicUser | undefined | null) =>
+      !!u && u.userType === UserType.ACCOUNT_MANAGER && u.isActive !== false;
+
+    // Walk up the chain (createdBy first, then active incoming referrers) to
+    // find the first active AM. Memoized + cycle-guarded.
+    const resolveCache = new Map<string, BasicUser | null>();
+    const resolveAm = (userId: string, seen: Set<string> = new Set()): BasicUser | null => {
+      if (resolveCache.has(userId)) return resolveCache.get(userId)!;
+      if (seen.has(userId)) return null;
+      seen.add(userId);
+
+      const u = userById.get(userId);
+      if (!u) {
+        resolveCache.set(userId, null);
+        return null;
+      }
+
+      // 1. Explicit createdBy
+      const createdBy = u.createdById ? userById.get(u.createdById) : null;
+      if (isActiveAm(createdBy)) {
+        resolveCache.set(userId, createdBy!);
+        return createdBy!;
+      }
+
+      // 2. Active incoming referrers (direct or transitive)
+      const referrerIds = incomingByUser.get(userId) ?? [];
+      for (const refId of referrerIds) {
+        const ref = userById.get(refId);
+        if (isActiveAm(ref)) {
+          resolveCache.set(userId, ref!);
+          return ref!;
+        }
+      }
+      for (const refId of referrerIds) {
+        const upstream = resolveAm(refId, seen);
+        if (upstream) {
+          resolveCache.set(userId, upstream);
+          return upstream;
+        }
+      }
+
+      // 3. Upstream via createdBy chain (rare, but keeps things consistent)
+      if (createdBy) {
+        const upstream = resolveAm(createdBy.id, seen);
+        if (upstream) {
+          resolveCache.set(userId, upstream);
+          return upstream;
+        }
+      }
+
+      resolveCache.set(userId, null);
+      return null;
+    };
+
+    // Calculate stats + effective AM per user
     const usersWithStats = await Promise.all(
       users.map(async (user) => {
         const referrals = await prisma.referral.findMany({
@@ -102,8 +232,20 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
           where: { userId: user.id }
         });
 
+        const resolved = resolveAm(user.id);
+        const accountManager = resolved
+          ? {
+              id: resolved.id,
+              email: resolved.email,
+              firstName: resolved.firstName,
+              lastName: resolved.lastName,
+              userType: resolved.userType,
+            }
+          : null;
+
         return {
           ...user,
+          accountManager,
           stats: {
             totalReferrals: referrals.length,
             activeReferrals: referrals.filter(r => r.status === 'ACTIVE').length,
@@ -114,7 +256,18 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
       })
     );
 
-    res.json({ users: usersWithStats });
+    // Scope the response for account-manager callers: they only see users
+    // whose effective AM resolves to themselves, and they never see admins or
+    // other account managers in this list.
+    const scoped = isAdmin
+      ? usersWithStats
+      : usersWithStats.filter((u) => {
+          if (u.userType === UserType.ADMIN) return false;
+          if (u.userType === UserType.ACCOUNT_MANAGER) return false;
+          return u.accountManager?.id === caller.id;
+        });
+
+    res.json({ users: scoped });
   } catch (error) {
     console.error('Get users error:', error);
     res.status(500).json({ error: 'Failed to fetch users' });
@@ -210,6 +363,76 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// PATCH /api/users/:id/account-manager
+// Admin-only. Reassigns a user to a different account manager (or clears the
+// assignment with `null`). Used by the drag-and-drop flow on the Admin Users
+// page. The target must be an active ACCOUNT_MANAGER; we never let users be
+// "owned" by another promoter/chatter/admin through this endpoint.
+export const assignAccountManager = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { accountManagerId } = req.body as { accountManagerId: string | null };
+
+    const target = await prisma.user.findUnique({
+      where: { id },
+      select: { id: true, userType: true },
+    });
+    if (!target) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    if (target.userType === UserType.ADMIN) {
+      return res.status(400).json({ error: 'Admins cannot be assigned to an account manager' });
+    }
+
+    if (accountManagerId) {
+      const manager = await prisma.user.findUnique({
+        where: { id: accountManagerId },
+        select: { id: true, userType: true, isActive: true },
+      });
+      if (!manager || manager.userType !== UserType.ACCOUNT_MANAGER || !manager.isActive) {
+        return res.status(400).json({ error: 'Target is not an active account manager' });
+      }
+      if (manager.id === id) {
+        return res.status(400).json({ error: 'A user cannot be assigned to themselves' });
+      }
+    }
+
+    const updated = await prisma.user.update({
+      where: { id },
+      data: { createdById: accountManagerId ?? null },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        userType: true,
+        createdBy: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            userType: true,
+          },
+        },
+      },
+    });
+
+    // Mirror the shape used by getAllUsers so the frontend can replace a row
+    // with the response directly if it wants to.
+    const accountManager =
+      updated.createdBy?.userType === UserType.ACCOUNT_MANAGER
+        ? updated.createdBy
+        : null;
+
+    res.json({ user: { ...updated, accountManager } });
+  } catch (error) {
+    console.error('Assign account manager error:', error);
+    res.status(500).json({ error: 'Failed to assign account manager' });
+  }
+};
+
 export const deleteUser = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
@@ -227,16 +450,34 @@ export const deleteUser = async (req: AuthRequest, res: Response) => {
 
 export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
   try {
+    const caller = req.user;
+    if (!caller) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    const callerIsAdmin = caller.role === UserRole.ADMIN;
+    const callerIsAm = caller.userType === UserType.ACCOUNT_MANAGER;
+    if (!callerIsAdmin && !callerIsAm) {
+      return res.status(403).json({ error: 'Insufficient permissions' });
+    }
+
     const { email, password, firstName, lastName, userType } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
-    const allowedTypes: UserType[] = [UserType.ACCOUNT_MANAGER, UserType.TEAM_MANAGER, UserType.PROMOTER];
-    const resolvedType: UserType = allowedTypes.includes(userType as UserType)
-      ? (userType as UserType)
-      : UserType.PROMOTER;
+    // Admins can create AMs, TMs and promoters. AMs can only create promoters
+    // (chatters go through POST /api/chatters).
+    const allowedTypes: UserType[] = callerIsAdmin
+      ? [UserType.ACCOUNT_MANAGER, UserType.TEAM_MANAGER, UserType.PROMOTER]
+      : [UserType.PROMOTER];
+    const requestedType = userType as UserType | undefined;
+    if (requestedType && !allowedTypes.includes(requestedType)) {
+      return res.status(403).json({
+        error: `You are not allowed to create a ${requestedType.toLowerCase().replace('_', ' ')}`,
+      });
+    }
+    const resolvedType: UserType = requestedType ?? UserType.PROMOTER;
 
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
@@ -254,6 +495,14 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
       counter++;
     }
 
+    // Link the new user to their creator so they show up in the right
+    // section on the Users page. For admin-created AMs we leave createdById
+    // null (admins shouldn't own users); for everything else we stamp it.
+    const createdById =
+      callerIsAm || (callerIsAdmin && resolvedType !== UserType.ACCOUNT_MANAGER)
+        ? caller.id
+        : null;
+
     const newUser = await prisma.user.create({
       data: {
         email,
@@ -265,6 +514,7 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
         userType: resolvedType,
         inviteCode: username,
         isActive: true,
+        createdById,
       },
       select: {
         id: true,
@@ -278,8 +528,9 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
       },
     });
 
-    // For account managers: automatically link them to the admin via a referral
-    if (resolvedType === UserType.ACCOUNT_MANAGER) {
+    // For account managers created by admin: automatically link them to the
+    // admin via a referral so commissions can flow.
+    if (callerIsAdmin && resolvedType === UserType.ACCOUNT_MANAGER) {
       const adminCampaign = await prisma.campaign.findFirst({
         where: { isActive: true, visibleToPromoters: false },
       });
@@ -288,7 +539,7 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
           data: {
             inviteCode: nanoid(10),
             campaignId: adminCampaign.id,
-            referrerId: req.user!.id,
+            referrerId: caller.id,
             referredUserId: newUser.id,
             status: 'ACTIVE',
             level: 1,
@@ -305,10 +556,10 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const getAccountManagers = async (req: AuthRequest, res: Response) => {
+export const getAccountManagers = async (_req: AuthRequest, res: Response) => {
   try {
     const managers = await prisma.user.findMany({
-      where: { role: UserRole.PROMOTER, isActive: true },
+      where: { userType: UserType.ACCOUNT_MANAGER, isActive: true },
       select: {
         id: true,
         email: true,
@@ -317,11 +568,12 @@ export const getAccountManagers = async (req: AuthRequest, res: Response) => {
         createdAt: true,
         _count: {
           select: {
-            createdCampaigns: true
-          }
-        }
+            createdCampaigns: true,
+            createdChatterGroups: true,
+          },
+        },
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }, { email: 'asc' }],
     });
 
     res.json({ managers });
@@ -363,7 +615,18 @@ export const getPromoters = async (req: AuthRequest, res: Response) => {
       orderBy: { createdAt: 'desc' },
     });
 
-    res.json({ users });
+    // Scope to the caller's team when they're an account manager. Admins see
+    // every promoter/TM. Uses the shared effective-AM resolver so visibility
+    // here matches the Users page, chatter groups, etc.
+    const isAdmin = req.user.role === UserRole.ADMIN;
+    let visibleUsers = users;
+    if (!isAdmin) {
+      const callerId = req.user.id;
+      const amByUser = await resolveAccountManagersFor(users.map((u) => u.id));
+      visibleUsers = users.filter((u) => amByUser.get(u.id) === callerId);
+    }
+
+    res.json({ users: visibleUsers });
   } catch (error) {
     console.error('Get promoters error:', error);
     res.status(500).json({ error: 'Failed to fetch promoters' });

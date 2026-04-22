@@ -151,6 +151,27 @@ export interface ApiUser {
   userType: string;
   isActive: boolean;
   createdAt: string;
+  /** Raw creator of this user (could be an admin or a deleted user). */
+  createdBy?: {
+    id: string;
+    email: string;
+    firstName: string | null;
+    lastName: string | null;
+    userType?: string;
+  } | null;
+  /**
+   * Effective account manager for this user — resolved on the server as:
+   * `createdBy` if that's an AM, otherwise the earliest active referring AM.
+   * This is what the admin Users page groups by, so it matches the commission
+   * routing driven by the referral system.
+   */
+  accountManager?: {
+    id: string;
+    email: string;
+    firstName: string | null;
+    lastName: string | null;
+    userType?: string;
+  } | null;
   stats?: {
     totalReferrals: number;
     activeReferrals: number;
@@ -179,8 +200,13 @@ const handleResponse = async (response: Response, fallbackMessage: string) => {
 };
 
 export const modelsApi = {
-  async getAllUsers(): Promise<ApiUser[]> {
-    const response = await fetch(`${API_URL}/users`, {
+  async getAllUsers(options?: { accountManagerId?: string; userType?: string; search?: string }): Promise<ApiUser[]> {
+    const params = new URLSearchParams();
+    if (options?.accountManagerId) params.set('accountManagerId', options.accountManagerId);
+    if (options?.userType) params.set('userType', options.userType);
+    if (options?.search) params.set('search', options.search);
+    const qs = params.toString();
+    const response = await fetch(`${API_URL}/users${qs ? `?${qs}` : ''}`, {
       headers: getAuthHeaders(),
     });
     const data = await handleResponse(response, 'Failed to fetch users');
@@ -286,6 +312,19 @@ export const modelsApi = {
       headers: getAuthHeaders(),
     });
     await handleResponse(response, 'Failed to delete user');
+  },
+
+  async assignAccountManager(
+    userId: string,
+    accountManagerId: string | null,
+  ): Promise<ApiUser> {
+    const response = await fetch(`${API_URL}/users/${userId}/account-manager`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ accountManagerId }),
+    });
+    const data = await handleResponse(response, 'Failed to reassign user');
+    return data.user;
   },
 
   async createUser(data: {
@@ -611,9 +650,38 @@ export const wiseApi = {
   },
 };
 
+export interface AccountManagerSummary {
+  id: string;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  createdAt: string;
+  _count?: {
+    createdCampaigns?: number;
+    createdChatterGroups?: number;
+  };
+}
+
+export const usersApi = {
+  /**
+   * Admin-only. Returns every active ACCOUNT_MANAGER so the admin UI can
+   * offer a "filter by account manager" dropdown.
+   */
+  async listAccountManagers(): Promise<AccountManagerSummary[]> {
+    const response = await fetch(`${API_URL}/users/role/account-managers`, {
+      headers: getAuthHeaders(),
+    });
+    const data = await handleResponse(response, 'Failed to fetch account managers');
+    return data.managers;
+  },
+};
+
 export const chattersApi = {
-  async list(): Promise<{ chatters: import('../types').Chatter[] }> {
-    const response = await fetch(`${API_URL}/chatters`, { headers: getAuthHeaders() });
+  async list(options?: { accountManagerId?: string }): Promise<{ chatters: import('../types').Chatter[] }> {
+    const params = new URLSearchParams();
+    if (options?.accountManagerId) params.set('accountManagerId', options.accountManagerId);
+    const qs = params.toString();
+    const response = await fetch(`${API_URL}/chatters${qs ? `?${qs}` : ''}`, { headers: getAuthHeaders() });
     return handleResponse(response, 'Failed to list chatters');
   },
 
@@ -709,8 +777,11 @@ export const elevenLabsApi = {
 };
 
 export const chatterGroupsApi = {
-  async list(): Promise<{ groups: import('../types').ChatterGroup[] }> {
-    const response = await fetch(`${API_URL}/chatter-groups`, { headers: getAuthHeaders() });
+  async list(options?: { accountManagerId?: string }): Promise<{ groups: import('../types').ChatterGroup[] }> {
+    const params = new URLSearchParams();
+    if (options?.accountManagerId) params.set('accountManagerId', options.accountManagerId);
+    const qs = params.toString();
+    const response = await fetch(`${API_URL}/chatter-groups${qs ? `?${qs}` : ''}`, { headers: getAuthHeaders() });
     return handleResponse(response, 'Failed to list chatter groups');
   },
 

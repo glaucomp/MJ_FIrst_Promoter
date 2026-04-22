@@ -30,19 +30,21 @@ router.post(
   userController.createAccountManager
 );
 
-// Create any non-admin user (admin only)
+// Create a non-admin user. Admins can create AMs/TMs/promoters; account
+// managers can create promoters only. Controller enforces the role rules.
 router.post(
   '/create',
   authenticate,
-  authorize(UserRole.ADMIN),
   userController.createUserByAdmin
 );
 
-// Get all users (superuser only)
+// Get all users. Admins see everyone; account managers see only users whose
+// effective account manager resolves to themselves (their direct team +
+// everyone transitively under them via referrals). The role check happens
+// inside the controller because AMs have role=PROMOTER + userType=ACCOUNT_MANAGER.
 router.get(
   '/',
   authenticate,
-  authorize(UserRole.ADMIN),
   userController.getAllUsers
 );
 
@@ -54,6 +56,14 @@ router.get('/:id', authenticate, userController.getUserById);
 
 // Update user
 router.put('/:id', authenticate, userController.updateUser);
+
+// Reassign a user to a different account manager (admin only; drag-drop on Users page)
+router.patch(
+  '/:id/account-manager',
+  authenticate,
+  authorize(UserRole.ADMIN),
+  userController.assignAccountManager,
+);
 
 // Delete user (superuser only)
 router.delete(

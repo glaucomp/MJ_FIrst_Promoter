@@ -22,6 +22,33 @@ const isAccountManagerOrAdmin = (req: AuthRequest): boolean => {
   );
 };
 
+const isAdmin = (req: AuthRequest): boolean =>
+  req.user?.role === UserRole.ADMIN && req.user?.userType === UserType.ADMIN;
+
+// A chatter is considered "owned" by an AM when either:
+//   (a) the AM created them (users.createdById), or
+//   (b) the chatter is a member of a group the AM created.
+// (b) keeps legacy chatters (created before we tracked `createdById`) visible
+// to whichever AM actually works with them.
+const chattersOwnedByWhere = (accountManagerId: string) => ({
+  userType: UserType.CHATTER,
+  OR: [
+    { createdById: accountManagerId },
+    {
+      chatterGroupMemberships: {
+        some: { group: { createdById: accountManagerId } },
+      },
+    },
+  ],
+});
+
+const createdBySelect = {
+  id: true,
+  email: true,
+  firstName: true,
+  lastName: true,
+} as const;
+
 // POST /api/chatters — create a new chatter (admin or account manager)
 export const createChatter = async (req: AuthRequest, res: Response) => {
   try {
@@ -61,6 +88,7 @@ export const createChatter = async (req: AuthRequest, res: Response) => {
         userType: UserType.CHATTER,
         inviteCode,
         isActive: true,
+        createdById: req.user!.id,
       },
       select: {
         id: true,
@@ -71,6 +99,7 @@ export const createChatter = async (req: AuthRequest, res: Response) => {
         userType: true,
         isActive: true,
         createdAt: true,
+        createdBy: { select: createdBySelect },
       },
     });
 
@@ -333,15 +362,36 @@ export const getMyGroups = async (req: AuthRequest, res: Response) => {
   }
 };
 
-// GET /api/chatters — list all chatters
+// GET /api/chatters — list chatters
+//
+// Scoping:
+// - ADMIN sees every chatter. Supports `?accountManagerId=<id>` to filter to
+//   chatters owned by a specific AM (created by OR in one of their groups).
+// - ACCOUNT_MANAGER only sees chatters they own. The `accountManagerId`
+//   query param is ignored for non-admins (they're always scoped to themselves).
 export const listChatters = async (req: AuthRequest, res: Response) => {
   try {
     if (!isAccountManagerOrAdmin(req)) {
       return res.status(403).json({ error: "Insufficient permissions" });
     }
 
+    const admin = isAdmin(req);
+    const requestedAmId =
+      typeof req.query.accountManagerId === "string"
+        ? req.query.accountManagerId.trim()
+        : "";
+
+    let where: any;
+    if (admin) {
+      where = requestedAmId
+        ? chattersOwnedByWhere(requestedAmId)
+        : { userType: UserType.CHATTER };
+    } else {
+      where = chattersOwnedByWhere(req.user!.id);
+    }
+
     const chatters = await prisma.user.findMany({
-      where: { userType: UserType.CHATTER },
+      where,
       select: {
         id: true,
         email: true,
@@ -349,10 +399,15 @@ export const listChatters = async (req: AuthRequest, res: Response) => {
         lastName: true,
         isActive: true,
         createdAt: true,
+        createdBy: { select: createdBySelect },
         chatterGroupMemberships: {
           select: {
             group: {
-              select: { id: true, name: true },
+              select: {
+                id: true,
+                name: true,
+                createdBy: { select: createdBySelect },
+              },
             },
           },
         },
@@ -382,8 +437,12 @@ export const getChatter = async (req: AuthRequest, res: Response) => {
 
     const { id } = req.params;
 
+    const where = isAdmin(req)
+      ? { id, userType: UserType.CHATTER }
+      : { AND: [{ id }, chattersOwnedByWhere(req.user!.id)] };
+
     const chatter = await prisma.user.findFirst({
-      where: { id, userType: UserType.CHATTER },
+      where,
       select: {
         id: true,
         email: true,
@@ -391,10 +450,16 @@ export const getChatter = async (req: AuthRequest, res: Response) => {
         lastName: true,
         isActive: true,
         createdAt: true,
+        createdBy: { select: createdBySelect },
         chatterGroupMemberships: {
           select: {
             group: {
-              select: { id: true, name: true, commissionPercentage: true },
+              select: {
+                id: true,
+                name: true,
+                commissionPercentage: true,
+                createdBy: { select: createdBySelect },
+              },
             },
           },
         },
@@ -433,9 +498,11 @@ export const deleteChatter = async (req: AuthRequest, res: Response) => {
 
     const { id } = req.params;
 
-    const chatter = await prisma.user.findFirst({
-      where: { id, userType: UserType.CHATTER },
-    });
+    const where = isAdmin(req)
+      ? { id, userType: UserType.CHATTER }
+      : { AND: [{ id }, chattersOwnedByWhere(req.user!.id)] };
+
+    const chatter = await prisma.user.findFirst({ where });
 
     if (!chatter) {
       return res.status(404).json({ error: "Chatter not found" });
