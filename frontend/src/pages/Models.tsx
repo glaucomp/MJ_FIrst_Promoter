@@ -654,7 +654,7 @@ export const Models = () => {
                               ) : (
                                 <button
                                   onClick={() => setConfirmDeleteId(apiUser.id)}
-                                  className="text-tm-danger-color02  opacity-80 text-[12px] font-bold transition-colors  hover:text-tm-danger-color05"
+                                  className="text-tm-danger-color02 opacity-80 text-[12px] font-bold transition-colors hover:text-tm-danger-color05"
                                 >
                                   Delete
                                 </button>
