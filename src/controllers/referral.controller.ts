@@ -7,6 +7,10 @@ import { getPresignedUrl } from "../services/s3.service";
 
 const prisma = new PrismaClient();
 
+const hasAccountManagerAccess = (user: AuthRequest["user"]) => {
+  return user?.userType === UserType.ACCOUNT_MANAGER;
+};
+
 export const createReferralInvite = async (req: AuthRequest, res: Response) => {
   try {
     const errors = validationResult(req);
@@ -34,13 +38,12 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
     }
 
     const isAdminCaller = user.role === UserRole.ADMIN;
-    const isAmCaller = user.userType === UserType.ACCOUNT_MANAGER;
+    const isAmCaller = hasAccountManagerAccess(user);
 
-    // Hidden campaigns are restricted to admins and account managers. AMs
-    // are auto-approved for every active campaign, so no per-campaign
-    // approval check is needed — simply being an AM grants access. Pure
-    // promoters / team managers / chatters still can't invite on hidden
-    // campaigns.
+    // Hidden campaigns are restricted to admins and account managers. AM access
+    // is centralized through `hasAccountManagerAccess`, which uses `userType`
+    // as the single source of truth. Pure promoters / team managers / chatters
+    // still can't invite on hidden campaigns.
     if (!campaign.visibleToPromoters && !isAdminCaller && !isAmCaller) {
       return res.status(403).json({
         error: "Access denied",
