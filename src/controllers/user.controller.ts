@@ -136,36 +136,25 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
       orderBy: { createdAt: 'desc' }
     });
 
-    // Build a graph to resolve the *effective* account manager for every user.
-    // We look at the whole system (not just the filtered set) because a user
-    // might be referred by a team manager/promoter who is themselves referred
-    // by an AM — e.g. Kelly ← Juliana (team manager) ← Jorlyn (AM).
-    const allBasicUsers = await prisma.user.findMany({
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        userType: true,
-        isActive: true,
-        createdById: true,
-      },
-    });
-    const userById = new Map(allBasicUsers.map((u) => [u.id, u]));
-
-    const activeReferrals = await prisma.referral.findMany({
-      where: { status: 'ACTIVE' },
-      orderBy: { acceptedAt: 'asc' },
-      select: { referrerId: true, referredUserId: true },
-    });
-    const incomingByUser = new Map<string, string[]>();
-    for (const r of activeReferrals) {
-      if (!r.referredUserId) continue;
-      const arr = incomingByUser.get(r.referredUserId) ?? [];
-      arr.push(r.referrerId);
-      incomingByUser.set(r.referredUserId, arr);
-    }
-
+    // Resolve the effective account manager through the shared ownership
+    // service so this endpoint stays aligned with the rest of the system.
+    const resolvedAccountManagers = await resolveAccountManagersFor(
+      users.map((user) => user.id)
+    );
+    const effectiveAccountManagerByUserId = new Map(
+      resolvedAccountManagers.map((resolution) => [
+        resolution.userId,
+        resolution.accountManager
+          ? {
+              id: resolution.accountManager.id,
+              email: resolution.accountManager.email,
+              firstName: resolution.accountManager.firstName,
+              lastName: resolution.accountManager.lastName,
+              userType: resolution.accountManager.userType,
+            }
+          : null,
+      ])
+    );
     type BasicUser = (typeof allBasicUsers)[number];
     const isActiveAm = (u: BasicUser | undefined | null) =>
       !!u && u.userType === UserType.ACCOUNT_MANAGER && u.isActive !== false;

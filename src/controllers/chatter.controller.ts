@@ -23,7 +23,7 @@ const isAccountManagerOrAdmin = (req: AuthRequest): boolean => {
 };
 
 const isAdmin = (req: AuthRequest): boolean =>
-  req.user?.role === UserRole.ADMIN && req.user?.userType === UserType.ADMIN;
+  req.user?.role === UserRole.ADMIN || req.user?.userType === UserType.ADMIN;
 
 // A chatter is considered "owned" by an AM when either:
 //   (a) the AM created them (users.createdById), or

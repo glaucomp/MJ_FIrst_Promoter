@@ -777,11 +777,8 @@ export const elevenLabsApi = {
 };
 
 export const chatterGroupsApi = {
-  async list(options?: { accountManagerId?: string }): Promise<{ groups: import('../types').ChatterGroup[] }> {
-    const params = new URLSearchParams();
-    if (options?.accountManagerId) params.set('accountManagerId', options.accountManagerId);
-    const qs = params.toString();
-    const response = await fetch(`${API_URL}/chatter-groups${qs ? `?${qs}` : ''}`, { headers: getAuthHeaders() });
+  async list(): Promise<{ groups: import('../types').ChatterGroup[] }> {
+    const response = await fetch(`${API_URL}/chatter-groups`, { headers: getAuthHeaders() });
     return handleResponse(response, 'Failed to list chatter groups');
   },
 
