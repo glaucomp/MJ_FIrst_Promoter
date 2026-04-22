@@ -218,16 +218,24 @@ export const Chatters = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-
-  const canManage = user?.baseRole === "account_manager";
   const [search, setSearch] = useState("");
 
+  // Admin-only filter: pick an account manager to scope the list to the
+  // chatters owned by that AM. Empty string means "all account managers".
+  const [selectedManagerId, setSelectedManagerId] = useState("");
+  const [accountManagers, setAccountManagers] = useState<AccountManagerSummary[]>([]);
+
+  const canManage = user?.baseRole === "account_manager";
+  const isAdmin = user?.baseRole === "admin";
+
   const loadChatters = useCallback(
-    async () => {
+    async (accountManagerId?: string) => {
       setIsLoading(true);
       setError("");
       try {
-        const data = await chattersApi.list();
+        const data = await chattersApi.list(
+          accountManagerId ? { accountManagerId } : undefined,
+        );
         setChatters(data.chatters);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load chatters");
