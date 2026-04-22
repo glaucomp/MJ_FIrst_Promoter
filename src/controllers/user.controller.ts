@@ -210,51 +210,87 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
       return null;
     };
 
-    // Calculate stats + effective AM per user
-    const usersWithStats = await Promise.all(
-      users.map(async (user) => {
-        const referrals = await prisma.referral.findMany({
-          where: { referrerId: user.id }
+    // Scope the list for account-manager callers *before* doing any per-user
+    // stats work. They only see users whose effective AM resolves to
+    // themselves, and they never see admins or other account managers in this
+    // list. Admins see every row returned by the base query. This runs off
+    // the in-memory ownership graph (no extra DB round-trips) and prevents
+    // N+1 stats queries on rows that would be filtered out afterwards.
+    const visibleUsers = isAdmin
+      ? users
+      : users.filter((user) => {
+          if (user.userType === UserType.ADMIN) return false;
+          if (user.userType === UserType.ACCOUNT_MANAGER) return false;
+          return resolveAm(user.id)?.id === caller.id;
         });
 
-        const commissions = await prisma.commission.findMany({
-          where: { userId: user.id }
-        });
+    // Batch stats lookups into two grouped queries instead of a findMany per
+    // user. This collapses the old 2·N queries into 2 total, regardless of
+    // how many users are visible.
+    const visibleIds = visibleUsers.map((u) => u.id);
 
-        const resolved = resolveAm(user.id);
-        const accountManager = resolved
-          ? {
-              id: resolved.id,
-              email: resolved.email,
-              firstName: resolved.firstName,
-              lastName: resolved.lastName,
-              userType: resolved.userType,
-            }
-          : null;
+    const [referralGroups, commissionGroups] = visibleIds.length
+      ? await Promise.all([
+          prisma.referral.groupBy({
+            by: ['referrerId', 'status'],
+            where: { referrerId: { in: visibleIds } },
+            _count: { _all: true },
+          }),
+          prisma.commission.groupBy({
+            by: ['userId', 'status'],
+            where: { userId: { in: visibleIds } },
+            _sum: { amount: true },
+          }),
+        ])
+      : [[], []];
 
-        return {
-          ...user,
-          accountManager,
-          stats: {
-            totalReferrals: referrals.length,
-            activeReferrals: referrals.filter(r => r.status === 'ACTIVE').length,
-            totalEarnings: commissions.reduce((sum, c) => sum + c.amount, 0),
-            pendingEarnings: commissions.filter(c => c.status === 'unpaid' || c.status === 'pending').reduce((sum, c) => sum + c.amount, 0)
+    type ReferralStats = { total: number; active: number };
+    const referralStatsByUser = new Map<string, ReferralStats>();
+    for (const g of referralGroups) {
+      const prev = referralStatsByUser.get(g.referrerId) ?? { total: 0, active: 0 };
+      prev.total += g._count._all;
+      if (g.status === 'ACTIVE') prev.active += g._count._all;
+      referralStatsByUser.set(g.referrerId, prev);
+    }
+
+    type CommissionStats = { total: number; pending: number };
+    const commissionStatsByUser = new Map<string, CommissionStats>();
+    for (const g of commissionGroups) {
+      const amount = g._sum.amount ?? 0;
+      const prev = commissionStatsByUser.get(g.userId) ?? { total: 0, pending: 0 };
+      prev.total += amount;
+      if (g.status === 'unpaid' || g.status === 'pending') {
+        prev.pending += amount;
+      }
+      commissionStatsByUser.set(g.userId, prev);
+    }
+
+    const scoped = visibleUsers.map((user) => {
+      const referralStats = referralStatsByUser.get(user.id) ?? { total: 0, active: 0 };
+      const commissionStats = commissionStatsByUser.get(user.id) ?? { total: 0, pending: 0 };
+
+      const resolved = resolveAm(user.id);
+      const accountManager = resolved
+        ? {
+            id: resolved.id,
+            email: resolved.email,
+            firstName: resolved.firstName,
+            lastName: resolved.lastName,
+            userType: resolved.userType,
           }
-        };
-      })
-    );
+        : null;
 
-    // Scope the response for account-manager callers: they only see users
-    // whose effective AM resolves to themselves, and they never see admins or
-    // other account managers in this list.
-    const scoped = isAdmin
-      ? usersWithStats
-      : usersWithStats.filter((u) => {
-          if (u.userType === UserType.ADMIN) return false;
-          if (u.userType === UserType.ACCOUNT_MANAGER) return false;
-          return u.accountManager?.id === caller.id;
-        });
+      return {
+        ...user,
+        accountManager,
+        stats: {
+          totalReferrals: referralStats.total,
+          activeReferrals: referralStats.active,
+          totalEarnings: commissionStats.total,
+          pendingEarnings: commissionStats.pending,
+        },
+      };
+    });
 
     res.json({ users: scoped });
   } catch (error) {
