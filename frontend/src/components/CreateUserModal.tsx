@@ -96,8 +96,8 @@ export const CreateUserModal = ({
         user = {
           id: chatter.id,
           email: chatter.email,
-          firstName: chatter.firstName ?? null,
-          lastName: chatter.lastName ?? null,
+          firstName: chatter.firstName ?? "",
+          lastName: chatter.lastName ?? "",
           role: "PROMOTER",
           userType: "CHATTER",
           isActive: true,
