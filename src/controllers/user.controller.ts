@@ -341,7 +341,27 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
 export const assignAccountManager = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { accountManagerId } = req.body as { accountManagerId: string | null };
+
+    // Require `accountManagerId` to be explicitly present and to be either a
+    // non-empty string (assign) or `null` (unassign). Treating a missing
+    // field the same as `null` would let a PATCH with an empty body silently
+    // clear the ownership link — which is almost certainly not what the
+    // caller intended and would break Users-page invariants.
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    if (!Object.prototype.hasOwnProperty.call(body, 'accountManagerId')) {
+      return res.status(400).json({
+        error: 'accountManagerId is required (pass null to unassign)',
+      });
+    }
+    const accountManagerId = body.accountManagerId;
+    if (
+      accountManagerId !== null &&
+      (typeof accountManagerId !== 'string' || accountManagerId.length === 0)
+    ) {
+      return res.status(400).json({
+        error: 'accountManagerId must be a non-empty string or null',
+      });
+    }
 
     const target = await prisma.user.findUnique({
       where: { id },
@@ -369,7 +389,7 @@ export const assignAccountManager = async (req: AuthRequest, res: Response) => {
 
     const updated = await prisma.user.update({
       where: { id },
-      data: { createdById: accountManagerId ?? null },
+      data: { createdById: accountManagerId },
       select: {
         id: true,
         email: true,
