@@ -160,10 +160,11 @@ export interface ApiUser {
     userType?: string;
   } | null;
   /**
-   * Effective account manager for this user — resolved on the server as:
-   * `createdBy` if that's an AM, otherwise the earliest active referring AM.
+   * Effective account manager for this user — resolved on the server by
+   * preferring a dedicated `accountManagerId` assignment, then falling back to
+   * `createdById`, then walking ACTIVE referrals transitively until an AM is found.
    * This is what the admin Users page groups by, so it matches the commission
-   * routing driven by the referral system.
+   * routing driven by the current referral and assignment rules.
    */
   accountManager?: {
     id: string;
