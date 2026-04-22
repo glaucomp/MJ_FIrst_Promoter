@@ -496,7 +496,7 @@ export const Models = () => {
                     </span>
                     <div className="flex flex-col min-w-0">
                       <p
-                        className={`text-[16px] font-bold truncate ${
+                        className={`text-xl truncate ${
                           isNeeds ? "text-[#ffd27a]" : "text-white"
                         }`}
                       >
@@ -504,8 +504,8 @@ export const Models = () => {
                       </p>
                       {headerSubtitle && (
                         <p
-                          className={`text-[12px] truncate ${
-                            isNeeds ? "text-[#d9b26a]" : "text-[#9e9e9e]"
+                          className={`text-sm mt-1 truncate ${
+                            isNeeds ? "text-[#d9b26a]" : "text-tm-text-color09"
                           }`}
                         >
                           {headerSubtitle}
@@ -541,7 +541,7 @@ export const Models = () => {
                     }`}
                   >
                     {section.users.length === 0 ? (
-                      <p className="text-[#666] text-[13px] italic px-[8px] py-[6px]">
+                      <p className="text-[#666] text-base  px-4 py-3">
                         {canDrop
                           ? "Drop a user here to assign them to this account manager."
                           : "No users in this bucket."}
@@ -654,7 +654,7 @@ export const Models = () => {
                               ) : (
                                 <button
                                   onClick={() => setConfirmDeleteId(apiUser.id)}
-                                  className="text-tm-danger-color02  opacity-80 text-[12px] font-bold transition-colors mt-[4px] hover:text-tm-danger-color05"
+                                  className="text-tm-danger-color02 opacity-80 text-[12px] font-bold transition-colors hover:text-tm-danger-color05"
                                 >
                                   Delete
                                 </button>
