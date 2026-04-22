@@ -42,7 +42,7 @@ export const TopBar = () => {
               <button
                 key={item.id}
                 onClick={() => navigate(item.path)}
-                className={`flex items-center gap-[6px] px-[16px] py-[8px] rounded-[6px] transition-all ${
+                className={`flex items-center gap-[6px] px-[16px] py-[8px] rounded-[6px] hover:-translate-y-0.5 transition-all ${
                   isActive
                     ? 'bg-[#660022] border border-[#ff2a71]'
                     : 'hover:bg-[#292929]/50'

@@ -194,15 +194,15 @@ export const Campaigns = () => {
                 {/* Top row */}
                 <div className="flex items-start justify-between gap-[12px] flex-col lg:flex-row">
                   <div className="flex flex-col gap-[4px]">
-                    <p className="text-white text-[18px] font-semibold">
+                    <p className="text-white text-2xl">
                       {c.name}
                     </p>
                     {c.description && (
-                      <p className="text-[#9e9e9e] text-[13px]">
+                      <p className="text-tm-text-color09 text-base">
                         {c.description}
                       </p>
                     )}
-                    <p className="text-[#666] text-[12px] break-all mt-[2px]">
+                    <p className="text-tm-text-color10 text-sm break-all my-2">
                       {c.websiteUrl}
                     </p>
                   </div>
@@ -212,9 +212,9 @@ export const Campaigns = () => {
                     <button
                       onClick={() => handleToggleActive(c)}
                       disabled={togglingId === c.id}
-                      className={`px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border transition-colors ${
+                      className={`px-[12px] py-[4px] rounded-[100px] text-xs font-bold border transition-all ${
                         c.isActive
-                          ? "bg-tm-success-color12 border-[#00d948] text-[#28ff70] hover:bg-[#005518]"
+                          ? "bg-tm-success-color12 border-[#00d948] text-[#28ff70] hover:bg-[#005518] hover:scale-95"
                           : "bg-[#333] border-[#555] text-[#9e9e9e] hover:bg-[#3a3a3a]"
                       } disabled:opacity-50`}
                     >
@@ -227,9 +227,9 @@ export const Campaigns = () => {
 
                     {/* Visibility badge */}
                     <span
-                      className={`px-[12px] py-[6px] rounded-[100px] text-[12px] font-bold border ${
+                      className={`px-[12px] py-[6px] rounded-[100px] text-xs font-bold border ${
                         c.visibleToPromoters
-                          ? "bg-[#001a66] border-[#0047cc] text-[#4d9fff]"
+                          ? "bg-tm-secondary-color11 border-tm-secondary-color05 text-tm-secondary-color03"
                           : "bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]"
                       }`}
                     >
@@ -239,21 +239,21 @@ export const Campaigns = () => {
                 </div>
 
                 {/* Stats row */}
-                <div className="grid grid-cols-3 gap-2 lg:grid lg:grid-cols-6 lg:gap-4">
-                  <div className="flex flex-col gap-[2px]">
-                    <p className="text-[#666] text-[11px] uppercase tracking-[0.5px]">
+                <div className="grid grid-cols-3 gap-2 lg:grid lg:grid-cols-6 lg:gap-4 lg:text-center lg:mt-3">
+                  <div className="flex flex-col gap-2">
+                    <p className="text-tm-text-color10 text-xs uppercase font-bold">
                       Commission
                     </p>
-                    <p className="text-white text-[15px] font-bold">
+                    <p className="text-white text-lg ">
                       {c.commissionRate}%
                     </p>
                   </div>
                   {c.secondaryRate != null && c.secondaryRate > 0 && (
-                    <div className="flex flex-col gap-[2px]">
-                      <p className="text-[#666] text-[11px] uppercase tracking-[0.5px]">
+                    <div className="flex flex-col gap-2">
+                      <p className="text-tm-text-color10 text-xs uppercase font-bold">
                         Upline
                       </p>
-                      <p className="text-white text-[15px] font-bold">
+                      <p className="text-white text-lg ">
                         {c.secondaryRate}%
                       </p>
                     </div>
@@ -261,37 +261,37 @@ export const Campaigns = () => {
                   {c.recurringRate != null &&
                     c.recurringRate > 0 &&
                     c.visibleToPromoters && (
-                      <div className="flex flex-col gap-[2px]">
-                        <p className="text-[#666] text-[11px] uppercase tracking-[0.5px]">
+                      <div className="flex flex-col gap-2">
+                        <p className="text-tm-text-color10 text-xs uppercase font-bold">
                           Acc Mgr
                         </p>
-                        <p className="text-white text-[15px] font-bold">
+                        <p className="text-white text-lg ">
                           {c.recurringRate}%
                         </p>
                       </div>
                     )}
-                  <div className="flex flex-col gap-[2px]">
-                    <p className="text-[#666] text-[11px] uppercase tracking-[0.5px]">
+                  <div className="flex flex-col gap-2">
+                    <p className="text-tm-text-color10 text-xs uppercase font-bold">
                       Cookie
                     </p>
-                    <p className="text-white text-[15px] font-bold">
+                    <p className="text-white text-lg ">
                       {c.cookieLifeDays}d
                     </p>
                   </div>
-                  <div className="flex flex-col gap-[2px]">
-                    <p className="text-[#666] text-[11px] uppercase tracking-[0.5px]">
+                  <div className="flex flex-col gap-2">
+                    <p className="text-tm-text-color10 text-xs uppercase font-bold">
                       Invites/mo
                     </p>
-                    <p className="text-white text-[15px] font-bold">
+                    <p className="text-white text-lg ">
                       {c.maxInvitesPerMonth ?? "∞"}
                     </p>
                   </div>
                   {c._count && (
-                    <div className="flex flex-col gap-[2px]">
-                      <p className="text-[#666] text-[11px] uppercase tracking-[0.5px]">
+                    <div className="flex flex-col gap-2">
+                      <p className="text-tm-text-color10 text-xs uppercase font-bold">
                         Referrals
                       </p>
-                      <p className="text-white text-[15px] font-bold">
+                      <p className="text-white text-lg ">
                         {c._count.referrals}
                       </p>
                     </div>
@@ -299,29 +299,29 @@ export const Campaigns = () => {
                 </div>
 
                 {/* Actions row */}
-                <div className="flex items-center justify-between pt-[4px] border-t border-[rgba(255,255,255,0.05)]">
+                <div className="flex items-center justify-end gap-4 pt-6 pb-4 mt-4 border-t border-[rgba(255,255,255,0.05)]">
                   <button
                     onClick={() => openEdit(c)}
-                    className="text-[#9e9e9e] text-[13px] font-bold hover:text-white transition-colors"
+                    className="text-[#9e9e9e] text-sm hover:text-white hover:-translate-y-0.5 transition-all"
                   >
                     Edit
                   </button>
 
                   {confirmDeleteId === c.id ? (
                     <div className="flex items-center gap-[8px]">
-                      <span className="text-[#9e9e9e] text-[12px]">
+                      <span className="text-[#9e9e9e] text-xs">
                         Delete?
                       </span>
                       <button
                         onClick={() => handleDelete(c.id)}
                         disabled={deletingId === c.id}
-                        className="px-[10px] py-[4px] rounded-[6px] text-[12px] font-bold bg-tm-danger-color12 border border-[#cc0000] text-[#ff2a2a] hover:bg-[#880000] disabled:opacity-50 transition-colors"
+                        className="px-[10px] py-[4px] rounded-[6px] text-xs bg-tm-danger-color12 border border-[#cc0000] text-[#ff2a2a] hover:bg-[#880000] disabled:opacity-50 transition-colors"
                       >
                         {deletingId === c.id ? "..." : "Yes"}
                       </button>
                       <button
                         onClick={() => setConfirmDeleteId(null)}
-                        className="px-[10px] py-[4px] rounded-[6px] text-[12px] font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white transition-colors"
+                        className="px-[10px] py-[4px] rounded-[6px] text-xs bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white transition-colors"
                       >
                         No
                       </button>
@@ -329,7 +329,7 @@ export const Campaigns = () => {
                   ) : (
                     <button
                       onClick={() => setConfirmDeleteId(c.id)}
-                      className="text-tm-danger-color02  opacity-80 text-[12px] font-bold transition-colors mt-[4px] hover:text-tm-danger-color05"
+                      className="text-tm-danger-color04  text-sm   hover:text-tm-danger-color05 hover:-translate-y-0.5 transition-all"
                     >
                       Delete
                     </button>
@@ -529,7 +529,7 @@ export const Campaigns = () => {
 
               {formError && (
                 <div className="bg-tm-danger-color12 border border-[#cc0000] rounded-[8px] px-[14px] py-[10px]">
-                  <p className="text-[#ff2a2a] text-[13px] font-medium">
+                  <p className="text-[#ff2a2a] text-sm font-medium">
                     {formError}
                   </p>
                 </div>
@@ -569,7 +569,7 @@ const Field = ({
   className?: string;
 }) => (
   <div className={`flex flex-col gap-[6px] ${className}`}>
-    <label className="text-[#9e9e9e] text-[12px] font-bold uppercase tracking-[0.2px]">
+    <label className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.2px]">
       {label}
     </label>
     {children}
@@ -594,7 +594,7 @@ const Toggle = ({
     }`}
   >
     <span
-      className={`text-[13px] font-bold ${value ? "text-tm-primary-color05" : "text-[#9e9e9e]"}`}
+      className={`text-sm font-bold ${value ? "text-tm-primary-color05" : "text-[#9e9e9e]"}`}
     >
       {label}
     </span>
