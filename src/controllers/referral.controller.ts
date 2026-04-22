@@ -52,8 +52,13 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Check monthly invite limit
-    if (campaign.maxInvitesPerMonth && campaign.maxInvitesPerMonth > 0) {
+    // Check monthly invite limit (Admins and Account Managers are exempt)
+    if (
+      campaign.maxInvitesPerMonth &&
+      campaign.maxInvitesPerMonth > 0 &&
+      !isAdminCaller &&
+      !isAmCaller
+    ) {
       const startOfMonth = new Date();
       startOfMonth.setDate(1);
       startOfMonth.setHours(0, 0, 0, 0);
@@ -627,6 +632,22 @@ export const checkInviteQuota = async (req: AuthRequest, res: Response) => {
 
     if (!campaign) {
       return res.status(404).json({ error: "Campaign not found" });
+    }
+
+    const isAdminCaller = user.role === UserRole.ADMIN;
+    const isAmCaller = hasAccountManagerAccess(user);
+
+    // Admins and Account Managers are exempt from monthly invite limits
+    if (isAdminCaller || isAmCaller) {
+      return res.json({
+        campaignId: campaign.id,
+        campaignName: campaign.name,
+        limit: null,
+        used: 0,
+        remaining: null,
+        status: "unlimited",
+        message: "You have unlimited invites on this campaign",
+      });
     }
 
     // If no limit set, return unlimited
