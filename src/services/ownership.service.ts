@@ -24,32 +24,83 @@ export const resolveAccountManagersFor = async (
   const result = new Map<string, string | null>();
   if (userIds.length === 0) return result;
 
-  // Load every user + every active referral so we can walk the full graph.
-  // This mirrors the logic in `user.controller.ts#getAllUsers` so a group's
-  // "effective AM" stays consistent with a user's "effective AM".
-  const allBasicUsers = await prisma.user.findMany({
-    select: {
-      id: true,
-      userType: true,
-      isActive: true,
-      createdById: true,
-    },
-  });
-  const userById = new Map<string, BasicUser>(
-    allBasicUsers.map((u) => [u.id, u as BasicUser]),
-  );
-
-  const activeReferrals = await prisma.referral.findMany({
-    where: { status: 'ACTIVE' },
-    orderBy: { acceptedAt: 'asc' },
-    select: { referrerId: true, referredUserId: true },
-  });
+  const requestedIds = [...new Set(userIds)];
+  const userById = new Map<string, BasicUser>();
   const incomingByUser = new Map<string, string[]>();
-  for (const r of activeReferrals) {
-    if (!r.referredUserId) continue;
-    const arr = incomingByUser.get(r.referredUserId) ?? [];
-    arr.push(r.referrerId);
-    incomingByUser.set(r.referredUserId, arr);
+  const loadedUserIds = new Set<string>();
+  const loadedReferralTargets = new Set<string>();
+
+  const loadUsers = async (ids: string[]) => {
+    const idsToLoad = [...new Set(ids)].filter((id) => !loadedUserIds.has(id));
+    if (idsToLoad.length === 0) return;
+
+    const users = await prisma.user.findMany({
+      where: { id: { in: idsToLoad } },
+      select: {
+        id: true,
+        userType: true,
+        isActive: true,
+        createdById: true,
+      },
+    });
+
+    for (const user of users) {
+      userById.set(user.id, user as BasicUser);
+    }
+    for (const id of idsToLoad) {
+      loadedUserIds.add(id);
+    }
+  };
+
+  const loadIncomingReferrals = async (referredUserIds: string[]) => {
+    const idsToLoad = [...new Set(referredUserIds)].filter(
+      (id) => !loadedReferralTargets.has(id),
+    );
+    if (idsToLoad.length === 0) return;
+
+    const referrals = await prisma.referral.findMany({
+      where: {
+        status: 'ACTIVE',
+        referredUserId: { in: idsToLoad },
+      },
+      orderBy: { acceptedAt: 'asc' },
+      select: { referrerId: true, referredUserId: true },
+    });
+
+    for (const referral of referrals) {
+      if (!referral.referredUserId) continue;
+      const arr = incomingByUser.get(referral.referredUserId) ?? [];
+      arr.push(referral.referrerId);
+      incomingByUser.set(referral.referredUserId, arr);
+    }
+    for (const id of idsToLoad) {
+      loadedReferralTargets.add(id);
+    }
+  };
+
+  // Load only the upstream subgraph reachable from the requested users via
+  // createdBy and active referral edges.
+  let frontier = requestedIds;
+  while (frontier.length > 0) {
+    await loadUsers(frontier);
+    await loadIncomingReferrals(frontier);
+
+    const nextFrontier = new Set<string>();
+    for (const id of frontier) {
+      const user = userById.get(id);
+      if (user?.createdById && !loadedUserIds.has(user.createdById)) {
+        nextFrontier.add(user.createdById);
+      }
+
+      const referrerIds = incomingByUser.get(id) ?? [];
+      for (const referrerId of referrerIds) {
+        if (!loadedUserIds.has(referrerId)) {
+          nextFrontier.add(referrerId);
+        }
+      }
+    }
+
+    frontier = [...nextFrontier];
   }
 
   const isActiveAm = (u: BasicUser | undefined | null) =>
