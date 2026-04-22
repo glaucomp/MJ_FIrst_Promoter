@@ -8,9 +8,14 @@ export const getAllCommissions = async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user!;
 
-    const isAdmin = user.role === UserRole.ADMIN || user.userType === UserType.ADMIN;
-    // Admins see all commissions, but never commissions assigned to admin accounts
-    const where = isAdmin
+    // Payers share admin-level visibility on the Reports / Payouts screens.
+    const isAdminLike =
+      user.role === UserRole.ADMIN ||
+      user.userType === UserType.ADMIN ||
+      user.userType === UserType.PAYER;
+    // Admins and payers see all commissions, but never commissions assigned to
+    // admin accounts.
+    const where = isAdminLike
       ? { user: { role: { not: UserRole.ADMIN }, userType: { not: UserType.ADMIN } } }
       : { userId: user.id };
 
@@ -87,11 +92,14 @@ export const updateCommissionStatus = async (
     const { id } = req.params;
     const { status } = req.body;
 
-    const isAdmin = user.role === UserRole.ADMIN || user.userType === UserType.ADMIN;
-    if (!isAdmin) {
+    const canManagePayouts =
+      user.role === UserRole.ADMIN ||
+      user.userType === UserType.ADMIN ||
+      user.userType === UserType.PAYER;
+    if (!canManagePayouts) {
       return res
         .status(403)
-        .json({ error: "Only admins can update commission status" });
+        .json({ error: "Only admins or payers can update commission status" });
     }
 
     if (!["unpaid", "pending", "paid"].includes(status)) {
