@@ -379,7 +379,11 @@ export const getChatterGroup = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'Chatter group not found' });
     }
 
-    if (!(await canAccessGroupById(req, id))) {
+    const canAccessLoadedGroup =
+      req.user?.role === UserRole.ADMIN ||
+      group.createdBy?.id === req.user?.id;
+
+    if (!canAccessLoadedGroup && !(await canAccessGroupById(req, id))) {
       return res.status(404).json({ error: 'Chatter group not found' });
     }
 
