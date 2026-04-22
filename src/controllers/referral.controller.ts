@@ -502,6 +502,32 @@ export const generateTrackingLink = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: "Campaign not found" });
     }
 
+    // A user can only have one tracking link per campaign (conceptually
+    // "unique URLs for each user/campaign combination" per the schema). If
+    // one already exists we return it instead of failing with a P2002 — the
+    // `shortCode` column is globally unique and is derived from the user's
+    // username, so re-creating would violate the constraint.
+    const trackingLinkInclude = {
+      campaign: {
+        select: { id: true, name: true, websiteUrl: true },
+      },
+      user: {
+        select: { id: true, username: true, email: true },
+      },
+    } as const;
+
+    const existingTrackingLink = await prisma.trackingLink.findFirst({
+      where: { userId: user.id, campaignId },
+      include: trackingLinkInclude,
+    });
+
+    if (existingTrackingLink) {
+      return res.status(200).json({
+        trackingLink: existingTrackingLink,
+        message: "Existing tracking link returned",
+      });
+    }
+
     // Use username as short code (fallback to user.id if no username)
     const shortCode = user.username || user.id;
 
@@ -517,35 +543,48 @@ export const generateTrackingLink = async (req: AuthRequest, res: Response) => {
     urlObj.searchParams.set("fpr", shortCode);
     const fullUrl = urlObj.toString();
 
-    const trackingLink = await prisma.trackingLink.create({
-      data: {
-        shortCode,
-        fullUrl,
-        userId: user.id,
-        campaignId,
-      },
-      include: {
-        campaign: {
-          select: {
-            id: true,
-            name: true,
-            websiteUrl: true,
-          },
+    // The shortCode column is globally unique. If this user already has a
+    // tracking link on a different campaign we reuse the same shortCode, so
+    // fall back to returning that pre-existing row on a P2002 collision.
+    try {
+      const trackingLink = await prisma.trackingLink.create({
+        data: {
+          shortCode,
+          fullUrl,
+          userId: user.id,
+          campaignId,
         },
-        user: {
-          select: {
-            id: true,
-            username: true,
-            email: true,
-          },
-        },
-      },
-    });
+        include: trackingLinkInclude,
+      });
 
-    res.status(201).json({
-      trackingLink,
-      message: "Tracking link created successfully",
-    });
+      return res.status(201).json({
+        trackingLink,
+        message: "Tracking link created successfully",
+      });
+    } catch (createError: unknown) {
+      const isUniqueViolation =
+        typeof createError === "object" &&
+        createError !== null &&
+        (createError as { code?: string }).code === "P2002";
+
+      if (!isUniqueViolation) {
+        throw createError;
+      }
+
+      const fallback = await prisma.trackingLink.findUnique({
+        where: { shortCode },
+        include: trackingLinkInclude,
+      });
+
+      if (!fallback) {
+        throw createError;
+      }
+
+      return res.status(200).json({
+        trackingLink: fallback,
+        message: "Existing tracking link returned",
+      });
+    }
   } catch (error) {
     console.error("Generate tracking link error:", error);
     res.status(500).json({ error: "Failed to generate tracking link" });
