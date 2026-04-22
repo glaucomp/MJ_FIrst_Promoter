@@ -21,6 +21,7 @@ enum UserType {
   TEAM_MANAGER
   PROMOTER
   CHATTER
+  PAYER
 }
 
 enum ReferralStatus {

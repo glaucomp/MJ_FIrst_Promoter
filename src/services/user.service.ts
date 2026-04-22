@@ -2,7 +2,12 @@ import { PrismaClient, UserRole, UserType } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-export type UserTypeString = 'admin' | 'account_manager' | 'team_manager' | 'promoter';
+export type UserTypeString =
+  | 'admin'
+  | 'account_manager'
+  | 'team_manager'
+  | 'promoter'
+  | 'payer';
 
 export interface UserTypeInfo {
   userId: string;
@@ -27,7 +32,7 @@ export interface UserTypeInfo {
 export const getUserTypeInfo = async (userId: string): Promise<UserTypeInfo> => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, role: true }
+    select: { id: true, role: true, userType: true }
   });
 
   if (!user) {
@@ -47,6 +52,23 @@ export const getUserTypeInfo = async (userId: string): Promise<UserTypeInfo> => 
       hasDownline: false,
       totalReferrals: 0,
       totalCustomers: 0
+    };
+  }
+
+  // Payer: admin-created, back-office role. No referrals or downline, just
+  // read-only access to Reports / Payouts / Settings.
+  if (user.userType === UserType.PAYER) {
+    return {
+      userId,
+      userType: 'payer',
+      isAccountManager: false,
+      isTeamLeader: false,
+      isPromoter: false,
+      isAdmin: false,
+      invitedByAdmin: false,
+      hasDownline: false,
+      totalReferrals: 0,
+      totalCustomers: 0,
     };
   }
 
@@ -169,7 +191,7 @@ export const syncUserType = async (userId: string): Promise<void> => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, role: true }
+      select: { id: true, role: true, userType: true }
     });
 
     if (!user) {
@@ -182,6 +204,13 @@ export const syncUserType = async (userId: string): Promise<void> => {
         where: { id: userId },
         data: { userType: UserType.ADMIN }
       });
+      return;
+    }
+
+    // Payers are assigned explicitly by an admin via POST /api/users/create.
+    // They have no referral / downline signal, so skip the referral-based
+    // recomputation to avoid accidentally demoting them to PROMOTER.
+    if (user.userType === UserType.PAYER) {
       return;
     }
 

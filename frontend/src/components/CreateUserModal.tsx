@@ -5,7 +5,8 @@ type UserType =
   | "account_manager"
   | "team_manager"
   | "promoter"
-  | "chatter";
+  | "chatter"
+  | "payer";
 
 interface CreateUserModalProps {
   isOpen: boolean;
@@ -38,12 +39,17 @@ const USER_TYPE_META: Record<
     label: "Chatter",
     description: "Works inside chatter groups under this account manager",
   },
+  payer: {
+    label: "Payer",
+    description: "Back-office role — access to reports, payouts and settings",
+  },
 };
 
 const DEFAULT_ALLOWED: UserType[] = [
   "account_manager",
   "team_manager",
   "promoter",
+  "payer",
 ];
 
 export const CreateUserModal = ({
