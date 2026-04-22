@@ -637,33 +637,9 @@ export const checkInviteQuota = async (req: AuthRequest, res: Response) => {
     const isAdminCaller = user.role === UserRole.ADMIN;
     const isAmCaller = hasAccountManagerAccess(user);
 
-    // Admins and Account Managers are exempt from monthly invite limits
-    if (isAdminCaller || isAmCaller) {
-      return res.json({
-        campaignId: campaign.id,
-        campaignName: campaign.name,
-        limit: null,
-        used: 0,
-        remaining: null,
-        status: "unlimited",
-        message: "You have unlimited invites on this campaign",
-      });
-    }
-
-    // If no limit set, return unlimited
-    if (!campaign.maxInvitesPerMonth || campaign.maxInvitesPerMonth <= 0) {
-      return res.json({
-        campaignId: campaign.id,
-        campaignName: campaign.name,
-        limit: null,
-        used: 0,
-        remaining: null,
-        status: "unlimited",
-        message: "You have unlimited invites on this campaign",
-      });
-    }
-
-    // Calculate invites used this month
+    // Always compute real usage for this month so all response branches
+    // (including the admin/AM exemption) report accurate numbers for the UI
+    // and for debugging/reporting tools.
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
@@ -682,24 +658,56 @@ export const checkInviteQuota = async (req: AuthRequest, res: Response) => {
       },
     });
 
-    const remaining = campaign.maxInvitesPerMonth - invitesThisMonth;
+    const nextResetDate = new Date(
+      startOfMonth.getFullYear(),
+      startOfMonth.getMonth() + 1,
+      1,
+    ).toISOString();
+
+    const maxInvitesPerMonth = campaign.maxInvitesPerMonth;
+    const hasFiniteLimit =
+      typeof maxInvitesPerMonth === "number" && maxInvitesPerMonth > 0;
+    const isUnlimited = isAdminCaller || isAmCaller || !hasFiniteLimit;
+
+    if (isUnlimited) {
+      return res.json({
+        campaignId: campaign.id,
+        campaignName: campaign.name,
+        limit: null,
+        used: invitesThisMonth,
+        remaining: null,
+        status: "unlimited",
+        message: "You have unlimited invites on this campaign",
+        nextResetDate,
+        quota: {
+          used: invitesThisMonth,
+          remaining: 0,
+          unlimited: true,
+        },
+      });
+    }
+
+    const limit = maxInvitesPerMonth ?? 0;
+    const remaining = limit - invitesThisMonth;
     const isBlocked = remaining <= 0;
+    const safeRemaining = Math.max(0, remaining);
 
     return res.json({
       campaignId: campaign.id,
       campaignName: campaign.name,
-      limit: campaign.maxInvitesPerMonth,
+      limit,
       used: invitesThisMonth,
-      remaining: Math.max(0, remaining),
+      remaining: safeRemaining,
       status: isBlocked ? "blocked" : "available",
       message: isBlocked
         ? `Monthly invite limit reached. Try again next month.`
         : `You have ${remaining} invite${remaining === 1 ? "" : "s"} remaining this month`,
-      nextResetDate: new Date(
-        startOfMonth.getFullYear(),
-        startOfMonth.getMonth() + 1,
-        1,
-      ).toISOString(),
+      nextResetDate,
+      quota: {
+        used: invitesThisMonth,
+        remaining: safeRemaining,
+        unlimited: false,
+      },
     });
   } catch (error) {
     console.error("Check invite quota error:", error);
