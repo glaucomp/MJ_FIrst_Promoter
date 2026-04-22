@@ -136,92 +136,45 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
       orderBy: { createdAt: 'desc' }
     });
 
-    // Resolve the effective account manager through the shared ownership
-    // service so this endpoint stays aligned with the rest of the system.
-    const resolvedAccountManagers = await resolveAccountManagersFor(
-      users.map((user) => user.id)
+    // Resolve the effective account manager for every returned user through
+    // the shared ownership service. This keeps the endpoint aligned with the
+    // rest of the system (promoters list, chatter groups, etc.) and gives us
+    // a single in-memory map we can use both for scoping and for shaping the
+    // `accountManager` field on each row.
+    const amIdByUserId = await resolveAccountManagersFor(
+      users.map((user) => user.id),
     );
-    const effectiveAccountManagerByUserId = new Map(
-      resolvedAccountManagers.map((resolution) => [
-        resolution.userId,
-        resolution.accountManager
-          ? {
-              id: resolution.accountManager.id,
-              email: resolution.accountManager.email,
-              firstName: resolution.accountManager.firstName,
-              lastName: resolution.accountManager.lastName,
-              userType: resolution.accountManager.userType,
-            }
-          : null,
-      ])
-    );
-    type BasicUser = (typeof allBasicUsers)[number];
-    const isActiveAm = (u: BasicUser | undefined | null) =>
-      !!u && u.userType === UserType.ACCOUNT_MANAGER && u.isActive !== false;
 
-    // Walk up the chain (createdBy first, then active incoming referrers) to
-    // find the first active AM. Memoized + cycle-guarded.
-    const resolveCache = new Map<string, BasicUser | null>();
-    const resolveAm = (userId: string, seen: Set<string> = new Set()): BasicUser | null => {
-      if (resolveCache.has(userId)) return resolveCache.get(userId)!;
-      if (seen.has(userId)) return null;
-      seen.add(userId);
-
-      const u = userById.get(userId);
-      if (!u) {
-        resolveCache.set(userId, null);
-        return null;
-      }
-
-      // 1. Explicit createdBy
-      const createdBy = u.createdById ? userById.get(u.createdById) : null;
-      if (isActiveAm(createdBy)) {
-        resolveCache.set(userId, createdBy!);
-        return createdBy!;
-      }
-
-      // 2. Active incoming referrers (direct or transitive)
-      const referrerIds = incomingByUser.get(userId) ?? [];
-      for (const refId of referrerIds) {
-        const ref = userById.get(refId);
-        if (isActiveAm(ref)) {
-          resolveCache.set(userId, ref!);
-          return ref!;
-        }
-      }
-      for (const refId of referrerIds) {
-        const upstream = resolveAm(refId, seen);
-        if (upstream) {
-          resolveCache.set(userId, upstream);
-          return upstream;
-        }
-      }
-
-      // 3. Upstream via createdBy chain (rare, but keeps things consistent)
-      if (createdBy) {
-        const upstream = resolveAm(createdBy.id, seen);
-        if (upstream) {
-          resolveCache.set(userId, upstream);
-          return upstream;
-        }
-      }
-
-      resolveCache.set(userId, null);
-      return null;
-    };
+    // Batch-load the full AM records (only the distinct ids we actually need)
+    // in one query, so we can populate the embedded `accountManager` field
+    // without another per-user round-trip.
+    const distinctAmIds = [...new Set([...amIdByUserId.values()].filter((v): v is string => !!v))];
+    const amRecords = distinctAmIds.length
+      ? await prisma.user.findMany({
+          where: { id: { in: distinctAmIds } },
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            userType: true,
+          },
+        })
+      : [];
+    const amRecordById = new Map(amRecords.map((am) => [am.id, am]));
 
     // Scope the list for account-manager callers *before* doing any per-user
     // stats work. They only see users whose effective AM resolves to
     // themselves, and they never see admins or other account managers in this
     // list. Admins see every row returned by the base query. This runs off
-    // the in-memory ownership graph (no extra DB round-trips) and prevents
-    // N+1 stats queries on rows that would be filtered out afterwards.
+    // the already-resolved ownership map (no extra DB round-trips) and
+    // prevents N+1 stats queries on rows that would be filtered out anyway.
     const visibleUsers = isAdmin
       ? users
       : users.filter((user) => {
           if (user.userType === UserType.ADMIN) return false;
           if (user.userType === UserType.ACCOUNT_MANAGER) return false;
-          return resolveAm(user.id)?.id === caller.id;
+          return amIdByUserId.get(user.id) === caller.id;
         });
 
     // Batch stats lookups into two grouped queries instead of a findMany per
@@ -269,16 +222,8 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
       const referralStats = referralStatsByUser.get(user.id) ?? { total: 0, active: 0 };
       const commissionStats = commissionStatsByUser.get(user.id) ?? { total: 0, pending: 0 };
 
-      const resolved = resolveAm(user.id);
-      const accountManager = resolved
-        ? {
-            id: resolved.id,
-            email: resolved.email,
-            firstName: resolved.firstName,
-            lastName: resolved.lastName,
-            userType: resolved.userType,
-          }
-        : null;
+      const amId = amIdByUserId.get(user.id) ?? null;
+      const accountManager = amId ? amRecordById.get(amId) ?? null : null;
 
       return {
         ...user,
