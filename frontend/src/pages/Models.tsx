@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useMemo, useState, type DragEventHandler } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type DragEventHandler,
+} from "react";
 import { useLocation } from "react-router-dom";
 import { CreateUserModal } from "../components/CreateUserModal";
 import { InviteModal } from "../components/InviteModal";
@@ -72,10 +78,14 @@ export const Models = () => {
 
   // Admin view: account manager sections + filters. Grouping is always on;
   // filters just narrow what's visible inside each section.
-  const [accountManagers, setAccountManagers] = useState<AccountManagerSummary[]>([]);
+  const [accountManagers, setAccountManagers] = useState<
+    AccountManagerSummary[]
+  >([]);
   const [selectedUserType, setSelectedUserType] = useState<string>("");
   const [search, setSearch] = useState<string>("");
-  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+  const [collapsedSections, setCollapsedSections] = useState<
+    Record<string, boolean>
+  >({});
 
   const isAdmin = user?.baseRole === "admin";
   const isAccountManager = user?.baseRole === "account_manager";
@@ -223,9 +233,13 @@ export const Models = () => {
     return sections;
   }, [accountManagers, isAdmin, knownAmIds, visibleAdminUsers]);
 
-  const totalVisibleUsers = adminSections.reduce((sum, s) => sum + s.users.length, 0);
+  const totalVisibleUsers = adminSections.reduce(
+    (sum, s) => sum + s.users.length,
+    0,
+  );
   const needsAssignmentCount =
-    adminSections.find((s) => s.key === NEEDS_ASSIGNMENT_KEY)?.users.length ?? 0;
+    adminSections.find((s) => s.key === NEEDS_ASSIGNMENT_KEY)?.users.length ??
+    0;
 
   const toggleSection = (key: string) =>
     setCollapsedSections((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -233,7 +247,9 @@ export const Models = () => {
   // ── Drag & drop reassignment ────────────────────────────────────────────
   const [draggingUserId, setDraggingUserId] = useState<string | null>(null);
   const [dropTargetKey, setDropTargetKey] = useState<string | null>(null);
-  const [reassigningUserId, setReassigningUserId] = useState<string | null>(null);
+  const [reassigningUserId, setReassigningUserId] = useState<string | null>(
+    null,
+  );
 
   const handleDropOnManager = async (
     targetManager: AccountManagerSummary,
@@ -325,7 +341,8 @@ export const Models = () => {
 
   // ── ADMIN ─────────────────────────────────────────────────────────────────
   if (user?.baseRole === "admin") {
-    const activeFilterCount = (selectedUserType ? 1 : 0) + (search.trim() ? 1 : 0);
+    const activeFilterCount =
+      (selectedUserType ? 1 : 0) + (search.trim() ? 1 : 0);
 
     return (
       <div className="flex flex-col gap-6">
@@ -334,7 +351,7 @@ export const Models = () => {
             All Users
           </h1>
           <div className="flex items-center  justify-between lg:justify-end lg:gap-4 w-full">
-            <p className="text-[16px] text-[#9e9e9e]">
+            <p className="text-base text-[#9e9e9e]">
               {totalVisibleUsers} user{totalVisibleUsers !== 1 ? "s" : ""} ·{" "}
               {accountManagers.length} account manager
               {accountManagers.length !== 1 ? "s" : ""}
@@ -351,7 +368,10 @@ export const Models = () => {
         {/* Filter bar (search + user-type). Grouping by AM is always on. */}
         <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[12px] flex flex-col lg:flex-row lg:items-end gap-[12px]">
           <div className="flex flex-col gap-[6px] flex-1 min-w-[200px]">
-            <label htmlFor="admin-users-search" className="text-[#9e9e9e] text-[11px] font-bold uppercase tracking-[0.2px]">
+            <label
+              htmlFor="admin-users-search"
+              className="text-[#9e9e9e] text-[11px] font-bold uppercase tracking-[0.2px]"
+            >
               Search
             </label>
             <input
@@ -360,19 +380,22 @@ export const Models = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Name, email, or account manager…"
-              className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.08)] rounded-[8px] px-[12px] py-[9px] text-[14px] text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
+              className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.08)] rounded-[8px] px-4 py-4 text-base text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
             />
           </div>
 
           <div className="flex flex-col gap-[6px] min-w-[160px]">
-            <label htmlFor="admin-users-type" className="text-[#9e9e9e] text-[11px] font-bold uppercase tracking-[0.2px]">
+            <label
+              htmlFor="admin-users-type"
+              className="text-[#9e9e9e] text-[11px] font-bold uppercase tracking-[0.2px]"
+            >
               User Type
             </label>
             <select
               id="admin-users-type"
               value={selectedUserType}
               onChange={(e) => setSelectedUserType(e.target.value)}
-              className="bg-[#1c1c1e] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[12px] py-[9px] text-white text-[14px] focus:outline-none focus:border-[#ff0f5f] appearance-none cursor-pointer pr-[28px]"
+              className="bg-[#1c1c1e] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-4 py-4 text-white text-base focus:outline-none focus:border-[#ff0f5f] appearance-none cursor-pointer pr-[28px]"
               style={{
                 backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239e9e9e' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
                 backgroundRepeat: "no-repeat",
@@ -394,7 +417,7 @@ export const Models = () => {
                 setSelectedUserType("");
                 setSearch("");
               }}
-              className="text-[#9e9e9e] hover:text-white text-[12px] underline self-start lg:self-end lg:mb-[10px]"
+              className="text-[#9e9e9e] hover:text-white text-[12px] underline self-start lg:self-center "
             >
               Clear filters
             </button>
@@ -413,7 +436,8 @@ export const Models = () => {
           <div className="bg-[#3a2a0a] border border-[#b8860b]/50 rounded-[8px] px-[14px] py-[10px] flex items-center gap-[10px]">
             <span className="text-[#ffb84d] text-[14px]">⚠</span>
             <p className="text-[#ffd27a] text-[13px]">
-              {needsAssignmentCount} user{needsAssignmentCount !== 1 ? "s" : ""} need
+              {needsAssignmentCount} user{needsAssignmentCount !== 1 ? "s" : ""}{" "}
+              need
               {needsAssignmentCount === 1 ? "s" : ""} to be assigned. Drag them
               onto an account manager below.
             </p>
@@ -429,11 +453,15 @@ export const Models = () => {
             let headerLabel: string;
             if (isNeeds) headerLabel = "Needs assignment";
             else if (isPayers) headerLabel = "Payers";
-            else if (section.manager) headerLabel = formatManagerName(section.manager);
+            else if (section.manager)
+              headerLabel = formatManagerName(section.manager);
             else headerLabel = "Unassigned";
             let headerSubtitle: string;
-            if (isNeeds) headerSubtitle = "Drag each user onto an account manager below";
-            else if (isPayers) headerSubtitle = "Back-office users — no account manager required";
+            if (isNeeds)
+              headerSubtitle = "Drag each user onto an account manager below";
+            else if (isPayers)
+              headerSubtitle =
+                "Back-office users — no account manager required";
             else headerSubtitle = section.manager?.email ?? "";
             const isCollapsed = !!collapsedSections[section.key];
             const sectionTotal = section.users.reduce(
@@ -453,7 +481,11 @@ export const Models = () => {
             const onDragLeave: DragEventHandler<HTMLElement> = (e) => {
               // Only clear when leaving the section container itself, not
               // when moving between nested children.
-              if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) {
+              if (
+                !(e.currentTarget as HTMLElement).contains(
+                  e.relatedTarget as Node,
+                )
+              ) {
                 setDropTargetKey((k) => (k === section.key ? null : k));
               }
             };
@@ -470,9 +502,9 @@ export const Models = () => {
                 onDragOver={onDragOver}
                 onDragLeave={onDragLeave}
                 onDrop={onDrop}
-                className={`flex flex-col gap-[12px] rounded-[10px] transition-colors ${
+                className={`flex flex-col  rounded-[10px] transition-colors ${
                   isDropTarget
-                    ? "ring-2 ring-[#ff0f5f] ring-offset-2 ring-offset-[#0f0f0f]"
+                    ? "ring-2 ring-tm-text-color10 ring-offset-2 ring-offset-[#0f0f0f]"
                     : ""
                 }`}
               >
@@ -485,11 +517,11 @@ export const Models = () => {
                       : "bg-[#1a1a1a] border-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.16)]"
                   }`}
                 >
-                  <div className="flex items-center gap-[12px] min-w-0">
+                  <div className="flex items-start gap-[12px] min-w-0">
                     <span
-                      className={`inline-block text-[14px] transition-transform ${
+                      className={`inline-block text-2xl transition-transform ${
                         isCollapsed ? "" : "rotate-90"
-                      } ${isNeeds ? "text-[#ffb84d]" : "text-[#9e9e9e]"}`}
+                      } ${isNeeds ? "text-[#ffb84d]" : "text-tm-primary-color05"}`}
                       aria-hidden
                     >
                       ▸
@@ -515,8 +547,8 @@ export const Models = () => {
                   </div>
                   <div className="flex items-center gap-[12px] flex-shrink-0">
                     <span
-                      className={`text-[12px] ${
-                        isNeeds ? "text-[#d9b26a]" : "text-[#9e9e9e]"
+                      className={`text-base ${
+                        isNeeds ? "text-[#d9b26a]" : "text-tm-text-color09"
                       }`}
                     >
                       {section.users.length} user
@@ -532,7 +564,7 @@ export const Models = () => {
 
                 {!isCollapsed && (
                   <div
-                    className={`flex flex-col gap-[12px] pl-[12px] border-l-2 min-h-[32px] ${
+                    className={`flex flex-col justify-center align-center gap-[12px]  min-h-[32px] bg-tm-neutral-color08 px-6 py-8 rounded-b-xl overflow-clip  ${
                       isDropTarget
                         ? "border-[#ff0f5f]"
                         : isNeeds
@@ -541,127 +573,149 @@ export const Models = () => {
                     }`}
                   >
                     {section.users.length === 0 ? (
-                      <p className="text-[#666] text-base  px-4 py-3">
-                        {canDrop
-                          ? "Drop a user here to assign them to this account manager."
-                          : "No users in this bucket."}
-                      </p>
+                      <>
+                        {canDrop && (
+                        <svg className="text-tm-text-color11 mx-auto h-12" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="currentColor"><path d="m12.593 23.258l-.011.002l-.071.035l-.02.004l-.014-.004l-.071-.035q-.016-.005-.024.005l-.004.01l-.017.428l.005.02l.01.013l.104.074l.015.004l.012-.004l.104-.074l.012-.016l.004-.017l-.017-.427q-.004-.016-.017-.018m.265-.113l-.013.002l-.185.093l-.01.01l-.003.011l.018.43l.005.012l.008.007l.201.093q.019.005.029-.008l.004-.014l-.034-.614q-.005-.018-.02-.022m-.715.002a.02.02 0 0 0-.027.006l-.006.014l-.034.614q.001.018.017.024l.015-.002l.201-.093l.01-.008l.004-.011l.017-.43l-.003-.012l-.01-.01z"/><path fill="currentColor" d="M16 14a5 5 0 0 1 5 5v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1a5 5 0 0 1 5-5zm4-6a1 1 0 0 1 1 1v1h1a1 1 0 1 1 0 2h-1v1a1 1 0 1 1-2 0v-1h-1a1 1 0 1 1 0-2h1V9a1 1 0 0 1 1-1m-8-6a5 5 0 1 1 0 10a5 5 0 0 1 0-10"/></g></svg>
+                        )}
+
+                        <p className="text-tm-text-color10 text-center text-lg px-4 py-3">
+                          {canDrop
+                            ? "Drop a user here to assign them to this Account Manager."
+                            : "No users in this bucket."}
+                        </p>
+                      </>
                     ) : (
                       section.users.map((apiUser) => {
-                        // Payers are pinned to their dedicated section — no
-                        // drag-drop reassignment, no ⋮⋮ handle, no grab cursor.
                         const isDraggable = !isPayers;
+
                         return (
-                        <div
-                          key={apiUser.id}
-                          draggable={isDraggable}
-                          onDragStart={
-                            isDraggable
-                              ? (e) => {
-                                  e.dataTransfer.setData("text/plain", apiUser.id);
-                                  e.dataTransfer.effectAllowed = "move";
-                                  setDraggingUserId(apiUser.id);
-                                }
-                              : undefined
-                          }
-                          onDragEnd={
-                            isDraggable
-                              ? () => {
-                                  setDraggingUserId(null);
-                                  setDropTargetKey(null);
-                                }
-                              : undefined
-                          }
-                          className={`bg-linear-to-t from-[#212121] to-[#23252a] border rounded-[8px] p-[16px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] transition-opacity ${
-                            isDraggable ? "cursor-grab active:cursor-grabbing" : ""
-                          } ${
-                            draggingUserId === apiUser.id
-                              ? "opacity-40 border-[#ff0f5f]"
-                              : "border-[rgba(255,255,255,0.03)]"
-                          } ${reassigningUserId === apiUser.id ? "animate-pulse" : ""}`}
-                          title={
-                            isDraggable
-                              ? "Drag onto an account manager to reassign"
-                              : undefined
-                          }
-                        >
-                          <div className="flex items-start justify-between gap-[12px] flex-col lg:flex-row">
-                            <div className="flex flex-col gap-[8px] w-full">
-                              <div className="flex items-center gap-[8px]">
-                                {isDraggable && (
-                                  <span
-                                    className="text-[#666] text-[14px] select-none"
-                                    aria-hidden
-                                  >
-                                    ⋮⋮
-                                  </span>
-                                )}
-                                <p className="text-white text-[18px] font-semibold">
-                                  {apiUser.firstName} {apiUser.lastName}
-                                </p>
-                              </div>
-                              <p className="text-[#9e9e9e] text-[14px]">
-                                {apiUser.email}
-                              </p>
-                              <div className="flex items-center gap-[8px] w-full">
+                          <div
+                            key={apiUser.id}
+                            draggable={isDraggable}
+                            onDragStart={
+                              isDraggable
+                                ? (e) => {
+                                    e.dataTransfer.setData(
+                                      "text/plain",
+                                      apiUser.id,
+                                    );
+                                    e.dataTransfer.effectAllowed = "move";
+                                    setDraggingUserId(apiUser.id);
+                                  }
+                                : undefined
+                            }
+                            onDragEnd={
+                              isDraggable
+                                ? () => {
+                                    setDraggingUserId(null);
+                                    setDropTargetKey(null);
+                                  }
+                                : undefined
+                            }
+                            className={`bg-linear-to-t from-[#212121] to-[#23252a] border rounded-[8px] p-[16px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] transition-all ${
+                              isDraggable
+                                ? "cursor-grab active:cursor-grabbing"
+                                : ""
+                            } ${
+                              draggingUserId === apiUser.id
+                                ? "opacity-10 shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)]"
+                                : "border-[rgba(255,255,255,0.03)]"
+                            } ${reassigningUserId === apiUser.id ? "animate-pulse" : ""}`}
+                            title={
+                              isDraggable
+                                ? "Drag onto an account manager to reassign"
+                                : undefined
+                            }
+                          >
+                            <div className="flex items-start justify-between gap-[12px] flex-col lg:flex-row">
+                              {isDraggable && (
                                 <span
-                                  className={`px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border ${
-                                    apiUser.isActive
-                                      ? "bg-tm-success-color12 border-[#00d948] text-[#28ff70]"
-                                      : "bg-tm-danger-color12 border-[#cc0000] text-[#ff2a2a]"
-                                  }`}
+                                  className="text-[#666] text-xl font-bold select-none"
+                                  aria-hidden
                                 >
-                                  {apiUser.isActive ? "Active" : "Inactive"}
+                                  {" "}
+                                  ⋮⋮
                                 </span>
-                                <span className="px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]">
-                                  {apiUser.userType?.toLowerCase().replace("_", " ")}
-                                </span>
+                              )}
+                              <div className="flex flex-col gap-[8px] w-full">
+                                <div className="flex items-center gap-[8px]">
+                                  <p className="text-white text-[18px] font-semibold">
+                                    {apiUser.firstName} {apiUser.lastName}
+                                  </p>
+                                </div>
+                                <p className="text-[#9e9e9e] text-[14px]">
+                                  {apiUser.email}
+                                </p>
+                                <div className="flex items-center gap-[8px] w-full">
+                                  <span
+                                    className={`px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border ${
+                                      apiUser.isActive
+                                        ? "bg-tm-success-color12 border-[#00d948] text-[#28ff70]"
+                                        : "bg-tm-danger-color12 border-[#cc0000] text-[#ff2a2a]"
+                                    }`}
+                                  >
+                                    {apiUser.isActive ? "Active" : "Inactive"}
+                                  </span>
+                                  <span className="px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]">
+                                    {apiUser.userType
+                                      ?.toLowerCase()
+                                      .replace("_", " ")}
+                                  </span>
+                                </div>
                               </div>
-                            </div>
 
-                            <div className="flex flex-col items-start lg:items-end gap-[8px] w-full">
-                              {apiUser.stats && !isPayers && (
-                                <div className="text-left flex flex-col gap-[4px] w-full lg:text-right">
-                                  <p className="text-[#9e9e9e] text-[12px] uppercase">
-                                    Earnings
-                                  </p>
-                                  <p className="text-white text-[20px] font-bold">
-                                    ${apiUser.stats.totalEarnings.toFixed(2)}
-                                  </p>
-                                  <p className="text-[#9e9e9e] text-[12px]">
-                                    {apiUser.stats.activeReferrals} active referrals
-                                  </p>
-                                </div>
-                              )}
+                              <div className="flex flex-col items-start lg:items-end gap-[8px] w-full">
+                                {apiUser.stats && !isPayers && (
+                                  <div className="text-left flex flex-col gap-[4px] w-full lg:text-right">
+                                    <p className="text-[#9e9e9e] text-xs uppercase">
+                                      Earnings
+                                    </p>
+                                    <p className="text-white text-2xl font-bold">
+                                      ${apiUser.stats.totalEarnings.toFixed(2)}
+                                    </p>
+                                    <p className="text-[#9e9e9e] text-sm">
+                                      {apiUser.stats.activeReferrals} active
+                                      referrals
+                                    </p>
+                                  </div>
+                                )}
 
-                              {confirmDeleteId === apiUser.id ? (
-                                <div className="flex items-center gap-[8px] mt-[4px]">
-                                  <span className="text-[#9e9e9e] text-[12px]">Delete?</span>
+                                {confirmDeleteId === apiUser.id ? (
+                                  <div className="flex items-center gap-[8px] mt-[4px]">
+                                    <span className="text-[#9e9e9e] text-[12px]">
+                                      Delete?
+                                    </span>
+                                    <button
+                                      onClick={() =>
+                                        handleDeleteUser(apiUser.id)
+                                      }
+                                      disabled={deletingUserId === apiUser.id}
+                                      className="px-[10px] py-[4px] rounded-[6px] text-[12px] font-bold bg-tm-danger-color12 border border-[#cc0000] text-[#ff2a2a] hover:bg-[#880000] disabled:opacity-50 transition-colors"
+                                    >
+                                      {deletingUserId === apiUser.id
+                                        ? "..."
+                                        : "Yes"}
+                                    </button>
+                                    <button
+                                      onClick={() => setConfirmDeleteId(null)}
+                                      className="px-[10px] py-[4px] rounded-[6px] text-[12px] font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white transition-colors"
+                                    >
+                                      No
+                                    </button>
+                                  </div>
+                                ) : (
                                   <button
-                                    onClick={() => handleDeleteUser(apiUser.id)}
-                                    disabled={deletingUserId === apiUser.id}
-                                    className="px-[10px] py-[4px] rounded-[6px] text-[12px] font-bold bg-tm-danger-color12 border border-[#cc0000] text-[#ff2a2a] hover:bg-[#880000] disabled:opacity-50 transition-colors"
+                                    onClick={() =>
+                                      setConfirmDeleteId(apiUser.id)
+                                    }
+                                    className="text-tm-danger-color04 text-sm hover:text-tm-danger-color05 hover:-translate-y-0.5 transition-all"
                                   >
-                                    {deletingUserId === apiUser.id ? "..." : "Yes"}
+                                    Delete
                                   </button>
-                                  <button
-                                    onClick={() => setConfirmDeleteId(null)}
-                                    className="px-[10px] py-[4px] rounded-[6px] text-[12px] font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white transition-colors"
-                                  >
-                                    No
-                                  </button>
-                                </div>
-                              ) : (
-                                <button
-                                  onClick={() => setConfirmDeleteId(apiUser.id)}
-                                  className="text-tm-danger-color02 opacity-80 text-[12px] font-bold transition-colors hover:text-tm-danger-color05"
-                                >
-                                  Delete
-                                </button>
-                              )}
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
                         );
                       })
                     )}
@@ -696,7 +750,8 @@ export const Models = () => {
   // ── ACCOUNT MANAGER · USERS VIEW (/models) ────────────────────────────────
   // Same card UI as admin Users, but flat (no AM sections, no drag-drop).
   if (isAccountManager && isUsersRoute) {
-    const activeFilterCount = (selectedUserType ? 1 : 0) + (search.trim() ? 1 : 0);
+    const activeFilterCount =
+      (selectedUserType ? 1 : 0) + (search.trim() ? 1 : 0);
 
     return (
       <div className="flex flex-col gap-6">
@@ -705,7 +760,7 @@ export const Models = () => {
             My Users
           </h1>
           <div className="flex items-center justify-between lg:justify-end lg:gap-4 w-full">
-            <p className="text-[16px] text-[#9e9e9e]">
+            <p className="text-base text-[#9e9e9e]">
               {visibleAdminUsers.length} user
               {visibleAdminUsers.length !== 1 ? "s" : ""}
             </p>
@@ -754,13 +809,13 @@ export const Models = () => {
                 backgroundPosition: "right 8px center",
               }}
             >
-              {USER_TYPE_OPTIONS.filter((o) => o.value !== "ACCOUNT_MANAGER").map(
-                (o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ),
-              )}
+              {USER_TYPE_OPTIONS.filter(
+                (o) => o.value !== "ACCOUNT_MANAGER",
+              ).map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -806,7 +861,9 @@ export const Models = () => {
                     <p className="text-white text-[18px] font-semibold">
                       {apiUser.firstName} {apiUser.lastName}
                     </p>
-                    <p className="text-[#9e9e9e] text-[14px]">{apiUser.email}</p>
+                    <p className="text-[#9e9e9e] text-[14px]">
+                      {apiUser.email}
+                    </p>
                     <div className="flex items-center gap-[8px] w-full">
                       <span
                         className={`px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border ${
