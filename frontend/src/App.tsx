@@ -7,7 +7,6 @@ import { Reports } from './pages/Reports';
 import { Settings } from './pages/Settings';
 import { Campaigns } from './pages/Campaigns';
 import { Payouts } from './pages/Payouts';
-import { Chatters } from './pages/Chatters';
 import { ChatterGroups } from './pages/ChatterGroups';
 import { ChatterDashboard } from './pages/ChatterDashboard';
 import { ChatterGroupToolsPage } from './pages/ChatterGroupToolsPage';
@@ -123,16 +122,6 @@ function AppRoutes() {
           <ProtectedRoute allowedRoles={['account_manager', 'team_manager', 'promoter']}>
             <DashboardLayout>
               <Models />
-            </DashboardLayout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/chatters"
-        element={
-          <ProtectedRoute allowedRoles={['account_manager']}>
-            <DashboardLayout>
-              <Chatters />
             </DashboardLayout>
           </ProtectedRoute>
         }

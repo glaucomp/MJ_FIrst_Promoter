@@ -25,14 +25,16 @@ const isAccountManagerOrAdmin = (req: AuthRequest): boolean => {
 const isAdmin = (req: AuthRequest): boolean =>
   req.user?.role === UserRole.ADMIN || req.user?.userType === UserType.ADMIN;
 
-// A chatter is considered "owned" by an AM when either:
-//   (a) the AM created them (users.createdById), or
-//   (b) the chatter is a member of a group the AM created.
-// (b) keeps legacy chatters (created before we tracked `createdById`) visible
-// to whichever AM actually works with them.
+// A chatter is considered "owned" by an AM when any of these hold:
+//   (a) the AM is the dedicated `accountManagerId` on the chatter,
+//   (b) the AM originally created them (`createdById`) — legacy fallback
+//       for rows that predate the dedicated ownership column,
+//   (c) the chatter is a member of a group the AM created — keeps pre-
+//       column chatters visible to whichever AM actually works with them.
 const chattersOwnedByWhere = (accountManagerId: string) => ({
   userType: UserType.CHATTER,
   OR: [
+    { accountManagerId },
     { createdById: accountManagerId },
     {
       chatterGroupMemberships: {
@@ -78,6 +80,12 @@ export const createChatter = async (req: AuthRequest, res: Response) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const inviteCode = nanoid(10);
 
+    // Dual-stamp when the caller is an active AM: they created the chatter
+    // AND own them. Admin-created chatters start unassigned (admins aren't
+    // AMs) and get linked via the drag-and-drop flow on the Users page.
+    const callerId = req.user!.id;
+    const callerIsAm = req.user!.userType === UserType.ACCOUNT_MANAGER;
+
     const chatter = await prisma.user.create({
       data: {
         email,
@@ -88,7 +96,8 @@ export const createChatter = async (req: AuthRequest, res: Response) => {
         userType: UserType.CHATTER,
         inviteCode,
         isActive: true,
-        createdById: req.user!.id,
+        createdById: callerId,
+        accountManagerId: callerIsAm ? callerId : null,
       },
       select: {
         id: true,

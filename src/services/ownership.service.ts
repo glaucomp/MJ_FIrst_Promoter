@@ -7,6 +7,7 @@ interface BasicUser {
   userType: UserType;
   isActive: boolean;
   createdById: string | null;
+  accountManagerId: string | null;
 }
 
 /**
@@ -41,6 +42,7 @@ export const resolveAccountManagersFor = async (
         userType: true,
         isActive: true,
         createdById: true,
+        accountManagerId: true,
       },
     });
 
@@ -79,7 +81,7 @@ export const resolveAccountManagersFor = async (
   };
 
   // Load only the upstream subgraph reachable from the requested users via
-  // createdBy and active referral edges.
+  // accountManager, createdBy, and active referral edges.
   let frontier = requestedIds;
   while (frontier.length > 0) {
     await loadUsers(frontier);
@@ -88,6 +90,9 @@ export const resolveAccountManagersFor = async (
     const nextFrontier = new Set<string>();
     for (const id of frontier) {
       const user = userById.get(id);
+      if (user?.accountManagerId && !loadedUserIds.has(user.accountManagerId)) {
+        nextFrontier.add(user.accountManagerId);
+      }
       if (user?.createdById && !loadedUserIds.has(user.createdById)) {
         nextFrontier.add(user.createdById);
       }
@@ -125,14 +130,26 @@ export const resolveAccountManagersFor = async (
       return u.id;
     }
 
-    // 1. Explicit createdBy
+    // 1. Dedicated `accountManagerId` link — preferred ownership signal once
+    //    PATCH /api/users/:id/account-manager (or creation by an AM) has
+    //    stamped it. `createdById` is NOT a secondary source of truth here;
+    //    it's only consulted as a best-effort fallback below for rows that
+    //    predate the dedicated column.
+    const assignedAm = u.accountManagerId ? userById.get(u.accountManagerId) : null;
+    if (isActiveAm(assignedAm)) {
+      cache.set(userId, assignedAm!.id);
+      return assignedAm!.id;
+    }
+
+    // 2. Legacy fallback: creator happens to be an active AM. Only used for
+    //    pre-Option-B rows where `accountManagerId` was never populated.
     const createdBy = u.createdById ? userById.get(u.createdById) : null;
     if (isActiveAm(createdBy)) {
       cache.set(userId, createdBy!.id);
       return createdBy!.id;
     }
 
-    // 2. Direct active referrer (earliest wins — referrals were ordered)
+    // 3. Direct active referrer (earliest wins — referrals were ordered)
     const referrerIds = incomingByUser.get(userId) ?? [];
     for (const refId of referrerIds) {
       const ref = userById.get(refId);
@@ -142,9 +159,17 @@ export const resolveAccountManagersFor = async (
       }
     }
 
-    // 3. Transitive upstream via referrers, then via createdBy
+    // 4. Transitive upstream via referrers, then via accountManager, then
+    //    via createdBy. Ordering mirrors the direct-match priorities above.
     for (const refId of referrerIds) {
       const upstream = resolve(refId, new Set(seen));
+      if (upstream) {
+        cache.set(userId, upstream);
+        return upstream;
+      }
+    }
+    if (assignedAm) {
+      const upstream = resolve(assignedAm.id, new Set(seen));
       if (upstream) {
         cache.set(userId, upstream);
         return upstream;

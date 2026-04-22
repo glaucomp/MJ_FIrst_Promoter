@@ -69,11 +69,30 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
 
     const where: any = {};
 
-    if (role) {
+    // Validate enum query params against their Prisma enum before passing
+    // them to the driver. Without this Prisma throws a P2009 at query time
+    // and we'd surface a 500 for what is really a caller-side mistake.
+    if (role !== undefined) {
+      if (
+        typeof role !== 'string' ||
+        !Object.values(UserRole).includes(role as UserRole)
+      ) {
+        return res.status(400).json({
+          error: `Invalid role. Must be one of: ${Object.values(UserRole).join(', ')}`,
+        });
+      }
       where.role = role as UserRole;
     }
 
-    if (userType) {
+    if (userType !== undefined) {
+      if (
+        typeof userType !== 'string' ||
+        !Object.values(UserType).includes(userType as UserType)
+      ) {
+        return res.status(400).json({
+          error: `Invalid userType. Must be one of: ${Object.values(UserType).join(', ')}`,
+        });
+      }
       where.userType = userType as UserType;
     }
 
@@ -85,15 +104,18 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
       ];
     }
 
-    // Admin filter: list only users "owned" by a given account manager.
-    // For chatters we trust `createdById`. For promoters / team managers the
-    // AM relationship is modelled via an ACTIVE referral where the AM is the
-    // referrer — so we fall back to that when `createdById` isn't set.
+    // Admin filter: list only users "owned" by a given account manager. The
+    // three OR branches match the same graph the ownership resolver walks:
+    //   1. explicit assignment via the new `accountManagerId` column,
+    //   2. legacy fallback where `createdById` happens to be the AM (rows
+    //      that predate the dedicated column, or admin-created chatters),
+    //   3. promoter/TM relationships modelled via an ACTIVE referral.
     if (accountManagerId && typeof accountManagerId === 'string') {
       where.AND = [
         ...(where.AND ?? []),
         {
           OR: [
+            { accountManagerId },
             { createdById: accountManagerId },
             {
               referralsReceived: {
@@ -338,6 +360,10 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
 // assignment with `null`). Used by the drag-and-drop flow on the Admin Users
 // page. The target must be an active ACCOUNT_MANAGER; we never let users be
 // "owned" by another promoter/chatter/admin through this endpoint.
+//
+// This endpoint writes ONLY the dedicated `accountManagerId` column —
+// `createdById` stays untouched so creation provenance is preserved across
+// reassignments.
 export const assignAccountManager = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
@@ -394,7 +420,7 @@ export const assignAccountManager = async (req: AuthRequest, res: Response) => {
 
     const updated = await prisma.user.update({
       where: { id },
-      data: { createdById: accountManagerId },
+      data: { accountManagerId },
       select: {
         id: true,
         email: true,
@@ -402,7 +428,7 @@ export const assignAccountManager = async (req: AuthRequest, res: Response) => {
         lastName: true,
         role: true,
         userType: true,
-        createdBy: {
+        accountManager: {
           select: {
             id: true,
             email: true,
@@ -415,10 +441,12 @@ export const assignAccountManager = async (req: AuthRequest, res: Response) => {
     });
 
     // Mirror the shape used by getAllUsers so the frontend can replace a row
-    // with the response directly if it wants to.
+    // with the response directly if it wants to. The `accountManager` object
+    // comes straight from the dedicated relation now — no more inferring it
+    // from `createdBy` since those concepts are properly separated.
     const accountManager =
-      updated.createdBy?.userType === UserType.ACCOUNT_MANAGER
-        ? updated.createdBy
+      updated.accountManager?.userType === UserType.ACCOUNT_MANAGER
+        ? updated.accountManager
         : null;
 
     res.json({ user: { ...updated, accountManager } });
@@ -490,13 +518,14 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
       counter++;
     }
 
-    // Link the new user to their creator so they show up in the right
-    // section on the Users page. For admin-created AMs we leave createdById
-    // null (admins shouldn't own users); for everything else we stamp it.
-    const createdById =
-      callerIsAm || (callerIsAdmin && resolvedType !== UserType.ACCOUNT_MANAGER)
-        ? caller.id
-        : null;
+    // Stamp provenance + ownership separately now that the two concerns are
+    // distinct columns:
+    //   • `createdById`      — always the caller. Immutable once written.
+    //   • `accountManagerId` — the caller only when they're an active AM.
+    //                          Admin-created users start unassigned and the
+    //                          admin can drop them onto an AM via the
+    //                          PATCH /api/users/:id/account-manager flow.
+    const accountManagerId = callerIsAm ? caller.id : null;
 
     const newUser = await prisma.user.create({
       data: {
@@ -509,7 +538,8 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
         userType: resolvedType,
         inviteCode: username,
         isActive: true,
-        createdById,
+        createdById: caller.id,
+        accountManagerId,
       },
       select: {
         id: true,

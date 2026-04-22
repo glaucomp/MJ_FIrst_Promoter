@@ -81,12 +81,23 @@ model User {
   profileVideoKey       String?            // S3 key, e.g. "influencers/<username>/video.mp4"
   teasemeSyncedAt       DateTime?
 
-  // Who created this user (used to scope chatters to the account manager who
-  // created them so one AM can't see another AM's chatters). Nullable so
-  // historical/self-registered users still work.
+  // Who originally created this user — immutable provenance. Nullable so
+  // historical/self-registered users still work. Do NOT mutate this column
+  // when reassigning ownership; use `accountManagerId` below for that.
   createdById           String?
   createdBy             User?              @relation("UserCreator", fields: [createdById], references: [id], onDelete: SetNull)
   createdUsers          User[]             @relation("UserCreator")
+
+  // The account manager currently responsible for this user. Mutable via
+  // PATCH /api/users/:id/account-manager. Distinct from `createdById` so
+  // reassignments don't destroy creation provenance. Nullable because admins
+  // (and historical rows that predate this column) have no AM. Reads that
+  // need to resolve "which AM owns this user?" should use
+  // services/ownership.service.ts, which prefers this field and falls back
+  // to `createdById` + active referrals for legacy rows.
+  accountManagerId      String?
+  accountManager        User?              @relation("UserAccountManager", fields: [accountManagerId], references: [id], onDelete: SetNull)
+  managedUsers          User[]             @relation("UserAccountManager")
 
   // Relationships
   createdCampaigns      Campaign[]         @relation("CampaignCreator")
@@ -105,6 +116,7 @@ model User {
   @@index([role])
   @@index([inviteCode])
   @@index([createdById])
+  @@index([accountManagerId])
   @@map("users")
 }
 
