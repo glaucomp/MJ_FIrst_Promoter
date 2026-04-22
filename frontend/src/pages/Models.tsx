@@ -29,6 +29,7 @@ const USER_TYPE_OPTIONS: { value: string; label: string }[] = [
   { value: "TEAM_MANAGER", label: "Team manager" },
   { value: "PROMOTER", label: "Promoter" },
   { value: "CHATTER", label: "Chatter" },
+  { value: "PAYER", label: "Payer" },
 ];
 
 const SessionExpiredBanner = ({ onLogout }: { onLogout: () => void }) => (
@@ -153,13 +154,28 @@ export const Models = () => {
   );
 
   const NEEDS_ASSIGNMENT_KEY = "__needs_assignment__";
+  const PAYERS_KEY = "__payers__";
 
   const adminSections = useMemo(() => {
     if (!isAdmin) return [];
 
-    const rowableUsers = visibleAdminUsers.filter(
-      (u) => u.userType?.toUpperCase() !== "ACCOUNT_MANAGER",
-    );
+    // Payers and account managers aren't rows in the AM-ownership grid:
+    //   • ACCOUNT_MANAGER → rendered as a section header instead.
+    //   • PAYER           → billing/finance identities that don't belong to
+    //                       any AM and don't need "approval" in any form,
+    //                       so we give them their own bottom section and
+    //                       never add them to "Needs assignment".
+    const rowableUsers: ApiUser[] = [];
+    const payers: ApiUser[] = [];
+    for (const u of visibleAdminUsers) {
+      const t = u.userType?.toUpperCase();
+      if (t === "ACCOUNT_MANAGER") continue;
+      if (t === "PAYER") {
+        payers.push(u);
+        continue;
+      }
+      rowableUsers.push(u);
+    }
 
     const byManager = new Map<string, ApiUser[]>();
     const needsAssignment: ApiUser[] = [];
@@ -181,7 +197,7 @@ export const Models = () => {
       key: string;
       manager: AccountManagerSummary | null;
       users: ApiUser[];
-      variant: "manager" | "needs";
+      variant: "manager" | "needs" | "payers";
     }[] = [];
 
     if (needsAssignment.length > 0) {
@@ -199,6 +215,15 @@ export const Models = () => {
         manager: am,
         users: byManager.get(am.id) ?? [],
         variant: "manager",
+      });
+    }
+
+    if (payers.length > 0) {
+      sections.push({
+        key: PAYERS_KEY,
+        manager: null,
+        users: payers,
+        variant: "payers",
       });
     }
 
@@ -407,14 +432,16 @@ export const Models = () => {
         <div className="flex flex-col gap-[20px]">
           {adminSections.map((section) => {
             const isNeeds = section.variant === "needs";
-            const headerLabel = isNeeds
-              ? "Needs assignment"
-              : section.manager
-                ? formatManagerName(section.manager)
-                : "Unassigned";
-            const headerSubtitle = isNeeds
-              ? "Drag each user onto an account manager below"
-              : (section.manager?.email ?? "");
+            const isPayers = section.variant === "payers";
+            let headerLabel: string;
+            if (isNeeds) headerLabel = "Needs assignment";
+            else if (isPayers) headerLabel = "Payers";
+            else if (section.manager) headerLabel = formatManagerName(section.manager);
+            else headerLabel = "Unassigned";
+            let headerSubtitle: string;
+            if (isNeeds) headerSubtitle = "Drag each user onto an account manager below";
+            else if (isPayers) headerSubtitle = "Billing accounts — no account manager required";
+            else headerSubtitle = section.manager?.email ?? "";
             const isCollapsed = !!collapsedSections[section.key];
             const sectionTotal = section.users.reduce(
               (sum, u) => sum + (u.stats?.totalEarnings ?? 0),
@@ -527,11 +554,17 @@ export const Models = () => {
                           : "No users in this bucket."}
                       </p>
                     ) : (
-                      section.users.map((apiUser) => (
+                      section.users.map((apiUser) => {
+                        // Payers are billing identities, not team members —
+                        // they don't belong to any AM so we don't allow
+                        // dragging their cards onto AM sections.
+                        const isDraggableCard = !isPayers;
+                        return (
                         <div
                           key={apiUser.id}
-                          draggable
+                          draggable={isDraggableCard}
                           onDragStart={(e) => {
+                            if (!isDraggableCard) return;
                             e.dataTransfer.setData("text/plain", apiUser.id);
                             e.dataTransfer.effectAllowed = "move";
                             setDraggingUserId(apiUser.id);
@@ -540,22 +573,30 @@ export const Models = () => {
                             setDraggingUserId(null);
                             setDropTargetKey(null);
                           }}
-                          className={`bg-linear-to-t from-[#212121] to-[#23252a] border rounded-[8px] p-[16px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] cursor-grab active:cursor-grabbing transition-opacity ${
+                          className={`bg-linear-to-t from-[#212121] to-[#23252a] border rounded-[8px] p-[16px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] transition-opacity ${
+                            isDraggableCard ? "cursor-grab active:cursor-grabbing" : ""
+                          } ${
                             draggingUserId === apiUser.id
                               ? "opacity-40 border-[#ff0f5f]"
                               : "border-[rgba(255,255,255,0.03)]"
                           } ${reassigningUserId === apiUser.id ? "animate-pulse" : ""}`}
-                          title="Drag onto an account manager to reassign"
+                          title={
+                            isDraggableCard
+                              ? "Drag onto an account manager to reassign"
+                              : undefined
+                          }
                         >
                           <div className="flex items-start justify-between gap-[12px] flex-col lg:flex-row">
                             <div className="flex flex-col gap-[8px] w-full">
                               <div className="flex items-center gap-[8px]">
-                                <span
-                                  className="text-[#666] text-[14px] select-none"
-                                  aria-hidden
-                                >
-                                  ⋮⋮
-                                </span>
+                                {isDraggableCard && (
+                                  <span
+                                    className="text-[#666] text-[14px] select-none"
+                                    aria-hidden
+                                  >
+                                    ⋮⋮
+                                  </span>
+                                )}
                                 <p className="text-white text-[18px] font-semibold">
                                   {apiUser.firstName} {apiUser.lastName}
                                 </p>
@@ -622,7 +663,8 @@ export const Models = () => {
                             </div>
                           </div>
                         </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
                 )}

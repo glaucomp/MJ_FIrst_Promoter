@@ -483,7 +483,13 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ error: 'Insufficient permissions' });
     }
 
-    const { email, password, firstName, lastName, userType } = req.body;
+    const { email, password, firstName, lastName, userType } = req.body as {
+      email?: string;
+      password?: string;
+      firstName?: string;
+      lastName?: string;
+      userType?: string;
+    };
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required' });
@@ -554,7 +560,10 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
     });
 
     // For account managers created by admin: automatically link them to the
-    // admin via a referral so commissions can flow.
+    // admin via a referral so commissions can flow. AMs are auto-approved to
+    // invite on every active campaign — the invite gate in
+    // referral.controller.ts gates hidden campaigns on userType only, so we
+    // don't need per-campaign referrals here.
     if (callerIsAdmin && resolvedType === UserType.ACCOUNT_MANAGER) {
       const adminCampaign = await prisma.campaign.findFirst({
         where: { isActive: true, visibleToPromoters: false },
