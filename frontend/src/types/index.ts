@@ -1,4 +1,10 @@
-export type UserRole = 'admin' | 'team_manager' | 'account_manager' | 'promoter' | 'chatter';
+export type UserRole =
+  | 'admin'
+  | 'team_manager'
+  | 'account_manager'
+  | 'promoter'
+  | 'chatter'
+  | 'payer';
 
 export interface User {
   id: string;
@@ -12,6 +18,13 @@ export interface User {
   wiseRecipientType?: string | null;
 }
 
+export interface AccountManagerRef {
+  id: string;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+}
+
 export interface Chatter {
   id: string;
   email: string;
@@ -19,7 +32,12 @@ export interface Chatter {
   lastName: string | null;
   isActive: boolean;
   createdAt: string;
-  groups: Pick<ChatterGroup, 'id' | 'name'>[];
+  /** Account manager (or admin) who created this chatter. Null for legacy records. */
+  createdBy: AccountManagerRef | null;
+  /** Groups this chatter belongs to; each group carries its own `createdBy`. */
+  groups: (Pick<ChatterGroup, 'id' | 'name'> & {
+    createdBy?: AccountManagerRef | null;
+  })[];
 }
 
 export interface ChatterGroupMember {
@@ -37,6 +55,18 @@ export interface ChatterGroup {
   createdAt: string;
   updatedAt: string;
   createdBy: { id: string; email: string; firstName: string | null; lastName: string | null };
+  /**
+   * Effective Account Manager for this group — the AM responsible for the
+   * linked promoter or chatters. `null` when nobody can be resolved. The
+   * backend prefers this over `createdBy` because `createdBy` may be an admin
+   * (and admins don't manage chatter groups).
+   */
+  accountManager: {
+    id: string;
+    email: string;
+    firstName: string | null;
+    lastName: string | null;
+  } | null;
   members: ChatterGroupMember[];
   promoter: {
     id: string;

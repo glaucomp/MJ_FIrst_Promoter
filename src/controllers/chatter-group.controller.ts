@@ -3,6 +3,7 @@ import { PrismaClient, UserRole, UserType } from '@prisma/client';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { getPresignedUrl } from '../services/s3.service';
 import { syncUserFromTeaseMe } from '../services/teaseme.service';
+import { resolveAccountManagersFor } from '../services/ownership.service';
 
 const prisma = new PrismaClient();
 
@@ -16,6 +17,79 @@ const isAccountManagerOrAdmin = (req: AuthRequest): boolean => {
     req.user.role === UserRole.ADMIN ||
     req.user.userType === UserType.ACCOUNT_MANAGER
   );
+};
+
+const isAdmin = (req: AuthRequest): boolean => req.user?.role === UserRole.ADMIN;
+
+// Minimum shape `canAccessLoadedGroup` needs to make its decision. Any wider
+// payload returned by callers (e.g. with full include shapes) is structurally
+// assignable to this, so callers that already loaded the group can pass it
+// straight through without re-querying.
+type GroupForAccessCheck = {
+  createdById: string | null;
+  promoter: { id: string } | null;
+  members: ReadonlyArray<{ chatterId: string }>;
+};
+
+// Returns true when the caller is allowed to read/modify the given group.
+// Admins can touch any group. Account managers see groups where either they
+// created the group, or the group's linked promoter / creator / any chatter
+// member resolves to the caller as their effective account manager (same
+// ownership rule as `listChatterGroups`). The check is async because it walks
+// the referral/ownership graph.
+//
+// Takes an already-loaded group so handlers that've already fetched it (e.g.
+// `getChatterGroup`) don't pay for a second findUnique just to authorize.
+const canAccessLoadedGroup = async (
+  req: AuthRequest,
+  group: GroupForAccessCheck,
+): Promise<boolean> => {
+  if (isAdmin(req)) return true;
+
+  const callerId = req.user!.id;
+  if (group.createdById === callerId) return true;
+
+  const ids = new Set<string>();
+  if (group.createdById) ids.add(group.createdById);
+  if (group.promoter?.id) ids.add(group.promoter.id);
+  for (const m of group.members) {
+    if (m.chatterId) ids.add(m.chatterId);
+  }
+  if (ids.size === 0) return false;
+
+  const amByUser = await resolveAccountManagersFor(Array.from(ids));
+  for (const uid of ids) {
+    if (amByUser.get(uid) === callerId) return true;
+  }
+  return false;
+};
+
+// Convenience wrapper for handlers that only have the group id. Performs a
+// single findUnique with just the fields `canAccessLoadedGroup` needs.
+const canAccessGroupById = async (
+  req: AuthRequest,
+  groupId: string,
+): Promise<boolean> => {
+  // Admin fast path — skip the ownership-graph columns and just confirm the
+  // row exists so we can distinguish 404 from access-denied uniformly.
+  if (isAdmin(req)) {
+    const exists = await prisma.chatterGroup.findUnique({
+      where: { id: groupId },
+      select: { id: true },
+    });
+    return !!exists;
+  }
+
+  const group = await prisma.chatterGroup.findUnique({
+    where: { id: groupId },
+    select: {
+      createdById: true,
+      promoter: { select: { id: true } },
+      members: { select: { chatterId: true } },
+    },
+  });
+  if (!group) return false;
+  return canAccessLoadedGroup(req, group);
 };
 
 // Shared promoter select + photo-key hydration helpers so every chatter-group
@@ -96,6 +170,101 @@ const hydratePromoterPhoto = async <
   return { ...group, promoter: { ...rest, photoUrl } } as GroupWithPromoterPhoto<T>;
 };
 
+// Group "account manager" exposed to the client: the AM effectively
+// responsible for the group. Priority: the linked promoter's AM → the group's
+// creator (if they are an AM) → the first member chatter's AM. Returns null
+// when we can't resolve anyone — the UI surfaces that as "Unassigned".
+type GroupLike = {
+  createdById: string | null;
+  createdBy: { id: string } | null;
+  promoter: { id: string } | null;
+  members: Array<{ chatter: { id: string } | null }>;
+};
+
+const attachAccountManagers = async <T extends GroupLike>(
+  groups: T[],
+): Promise<Array<T & { accountManager: AccountManagerSummary | null }>> => {
+  // Collect every candidate user id across all groups so we resolve the
+  // referral/createdBy graph in one pass.
+  const candidateIds = new Set<string>();
+  for (const g of groups) {
+    if (g.promoter?.id) candidateIds.add(g.promoter.id);
+    if (g.createdBy?.id) candidateIds.add(g.createdBy.id);
+    for (const m of g.members) {
+      if (m.chatter?.id) candidateIds.add(m.chatter.id);
+    }
+  }
+  if (candidateIds.size === 0) {
+    return groups.map((g) => ({ ...g, accountManager: null }));
+  }
+
+  const amByUser = await resolveAccountManagersFor(Array.from(candidateIds));
+
+  // Hydrate AM user summaries once (id → {name, email, ...}).
+  const amIds = new Set<string>();
+  for (const amId of amByUser.values()) {
+    if (amId) amIds.add(amId);
+  }
+  const amUsers = amIds.size
+    ? await prisma.user.findMany({
+        where: { id: { in: Array.from(amIds) } },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          userType: true,
+        },
+      })
+    : [];
+  const amById = new Map(amUsers.map((u) => [u.id, u]));
+
+  const pickAmId = (g: GroupLike): string | null => {
+    // Promoter first — the group exists to serve chatters of this promoter.
+    if (g.promoter?.id) {
+      const amId = amByUser.get(g.promoter.id);
+      if (amId) return amId;
+    }
+    // Then the group creator (only if creator resolves to an AM — admins do not).
+    if (g.createdBy?.id) {
+      const amId = amByUser.get(g.createdBy.id);
+      if (amId) return amId;
+    }
+    // Finally any member chatter's AM.
+    for (const m of g.members) {
+      if (!m.chatter?.id) continue;
+      const amId = amByUser.get(m.chatter.id);
+      if (amId) return amId;
+    }
+    return null;
+  };
+
+  return groups.map((g) => {
+    const amId = pickAmId(g);
+    const am = amId ? amById.get(amId) ?? null : null;
+    return {
+      ...g,
+      accountManager: am
+        ? {
+            id: am.id,
+            email: am.email,
+            firstName: am.firstName,
+            lastName: am.lastName,
+            userType: am.userType,
+          }
+        : null,
+    };
+  });
+};
+
+type AccountManagerSummary = {
+  id: string;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  userType: UserType;
+};
+
 // POST /api/chatter-groups — create a new chatter group
 export const createChatterGroup = async (req: AuthRequest, res: Response) => {
   try {
@@ -135,7 +304,9 @@ export const createChatterGroup = async (req: AuthRequest, res: Response) => {
       },
     });
 
-    res.status(201).json({ group: await hydratePromoterPhoto(group), message: 'Chatter group created successfully' });
+    const hydrated = await hydratePromoterPhoto(group);
+    const [withAm] = await attachAccountManagers([hydrated]);
+    res.status(201).json({ group: withAm, message: 'Chatter group created successfully' });
   } catch (error) {
     console.error('Create chatter group error:', error);
     res.status(500).json({ error: 'Failed to create chatter group' });
@@ -171,8 +342,37 @@ export const listChatterGroups = async (req: AuthRequest, res: Response) => {
       groups = await prisma.chatterGroup.findMany(listQuery);
     }
 
-    const hydratedGroups = await Promise.all(groups.map(hydratePromoterPhoto));
-    res.json({ groups: hydratedGroups });
+    // For account managers, expand visibility beyond "groups I created":
+    // show any group whose linked promoter, member chatter, or creator
+    // resolves to the caller as its *effective* Account Manager. This keeps
+    // chatter-group visibility aligned with user ownership (incl. transitive
+    // referral chains and admin-created groups delegated to the AM).
+    let visibleGroups = groups;
+    if (!isAdmin(req)) {
+      const callerId = req.user!.id;
+      const relevantUserIds = new Set<string>();
+      for (const g of groups) {
+        if (g.promoter?.id) relevantUserIds.add(g.promoter.id);
+        if (g.createdBy?.id) relevantUserIds.add(g.createdBy.id);
+        for (const m of g.members) {
+          if (m.chatter?.id) relevantUserIds.add(m.chatter.id);
+        }
+      }
+      const amByUser = await resolveAccountManagersFor(Array.from(relevantUserIds));
+      const ownsUser = (uid: string | null | undefined) =>
+        !!uid && (uid === callerId || amByUser.get(uid) === callerId);
+
+      visibleGroups = groups.filter((g) => {
+        if (g.createdById === callerId) return true;
+        if (ownsUser(g.promoter?.id)) return true;
+        if (ownsUser(g.createdBy?.id)) return true;
+        return g.members.some((m) => ownsUser(m.chatter?.id));
+      });
+    }
+
+    const hydratedGroups = await Promise.all(visibleGroups.map(hydratePromoterPhoto));
+    const withAm = await attachAccountManagers(hydratedGroups);
+    res.json({ groups: withAm });
   } catch (error) {
     console.error('List chatter groups error:', error);
     res.status(500).json({ error: 'Failed to list chatter groups' });
@@ -205,7 +405,16 @@ export const getChatterGroup = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'Chatter group not found' });
     }
 
-    res.json({ group: await hydratePromoterPhoto(group) });
+    // Authorize against the group we already loaded — no second findUnique.
+    // `group` carries `createdById`, `promoter.id`, and `members[].chatterId`
+    // from the include above, which is everything `canAccessLoadedGroup` needs.
+    if (!(await canAccessLoadedGroup(req, group))) {
+      return res.status(404).json({ error: 'Chatter group not found' });
+    }
+
+    const hydrated = await hydratePromoterPhoto(group);
+    const [withAm] = await attachAccountManagers([hydrated]);
+    res.json({ group: withAm });
   } catch (error) {
     console.error('Get chatter group error:', error);
     res.status(500).json({ error: 'Failed to get chatter group' });
@@ -222,8 +431,7 @@ export const updateChatterGroup = async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
     const { name, commissionPercentage, tag } = req.body;
 
-    const existing = await prisma.chatterGroup.findUnique({ where: { id } });
-    if (!existing) {
+    if (!(await canAccessGroupById(req, id))) {
       return res.status(404).json({ error: 'Chatter group not found' });
     }
 
@@ -257,7 +465,9 @@ export const updateChatterGroup = async (req: AuthRequest, res: Response) => {
       },
     });
 
-    res.json({ group: await hydratePromoterPhoto(group), message: 'Chatter group updated successfully' });
+    const hydrated = await hydratePromoterPhoto(group);
+    const [withAm] = await attachAccountManagers([hydrated]);
+    res.json({ group: withAm, message: 'Chatter group updated successfully' });
   } catch (error) {
     console.error('Update chatter group error:', error);
     res.status(500).json({ error: 'Failed to update chatter group' });
@@ -273,8 +483,7 @@ export const deleteChatterGroup = async (req: AuthRequest, res: Response) => {
 
     const { id } = req.params;
 
-    const existing = await prisma.chatterGroup.findUnique({ where: { id } });
-    if (!existing) {
+    if (!(await canAccessGroupById(req, id))) {
       return res.status(404).json({ error: 'Chatter group not found' });
     }
 
@@ -301,8 +510,7 @@ export const addMember = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'chatterId is required' });
     }
 
-    const group = await prisma.chatterGroup.findUnique({ where: { id } });
-    if (!group) {
+    if (!(await canAccessGroupById(req, id))) {
       return res.status(404).json({ error: 'Chatter group not found' });
     }
 
@@ -340,6 +548,10 @@ export const removeMember = async (req: AuthRequest, res: Response) => {
 
     const { id, chatterId } = req.params;
 
+    if (!(await canAccessGroupById(req, id))) {
+      return res.status(404).json({ error: 'Chatter group not found' });
+    }
+
     const member = await prisma.chatterGroupMember.findUnique({
       where: { chatterId_groupId: { chatterId, groupId: id } },
     });
@@ -373,8 +585,7 @@ export const linkPromoter = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'promoterId is required' });
     }
 
-    const group = await prisma.chatterGroup.findUnique({ where: { id } });
-    if (!group) {
+    if (!(await canAccessGroupById(req, id))) {
       return res.status(404).json({ error: 'Chatter group not found' });
     }
 
@@ -424,6 +635,10 @@ export const unlinkPromoter = async (req: AuthRequest, res: Response) => {
     }
 
     const { id, promoterId } = req.params;
+
+    if (!(await canAccessGroupById(req, id))) {
+      return res.status(404).json({ error: 'Chatter group not found' });
+    }
 
     const promoter = await prisma.user.findFirst({
       where: { id: promoterId, chatterGroupId: id },

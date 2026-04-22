@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole } from "@prisma/client";
+import { PrismaClient, UserRole, UserType } from "@prisma/client";
 import { Response } from "express";
 import { validationResult } from "express-validator";
 import { nanoid } from "nanoid";
@@ -6,6 +6,10 @@ import { AuthRequest } from "../middleware/auth.middleware";
 import { getPresignedUrl } from "../services/s3.service";
 
 const prisma = new PrismaClient();
+
+const hasAccountManagerAccess = (user: AuthRequest["user"]) => {
+  return user?.userType === UserType.ACCOUNT_MANAGER;
+};
 
 export const createReferralInvite = async (req: AuthRequest, res: Response) => {
   try {
@@ -33,24 +37,19 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
         .json({ error: "Cannot create invites for inactive campaigns" });
     }
 
-    // Check if campaign is visible to regular promoters
-    if (!campaign.visibleToPromoters) {
-      // This campaign is restricted - check if user is an account manager
-      // Account managers are users who were directly invited by an admin
-      const isAccountManager = await prisma.referral.findFirst({
-        where: {
-          referredUserId: user.id, // User was invited (not the referrer)
-          referrer: { role: UserRole.ADMIN }, // By an admin
-          status: "ACTIVE"
-        },
-      });
+    const isAdminCaller = user.role === UserRole.ADMIN;
+    const isAmCaller = hasAccountManagerAccess(user);
 
-      if (!isAccountManager && user.role !== UserRole.ADMIN) {
-        return res.status(403).json({
-          error: "Access denied",
-          message: "You don't have access to this campaign. Only account managers can promote hidden campaigns.",
-        });
-      }
+    // Hidden campaigns are restricted to admins and account managers. AM access
+    // is centralized through `hasAccountManagerAccess`, which uses `userType`
+    // as the single source of truth. Pure promoters / team managers / chatters
+    // still can't invite on hidden campaigns.
+    if (!campaign.visibleToPromoters && !isAdminCaller && !isAmCaller) {
+      return res.status(403).json({
+        error: "Access denied",
+        message:
+          "You don't have access to this campaign. Only account managers can promote hidden campaigns.",
+      });
     }
 
     // Check monthly invite limit
