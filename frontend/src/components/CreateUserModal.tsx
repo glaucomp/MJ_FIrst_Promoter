@@ -1,42 +1,70 @@
-import { useState } from "react";
-import { modelsApi, type ApiUser } from "../services/api";
+import { useMemo, useState } from "react";
+import { chattersApi, modelsApi, type ApiUser } from "../services/api";
 
-type UserType = "account_manager" | "team_manager" | "promoter";
+type UserType =
+  | "account_manager"
+  | "team_manager"
+  | "promoter"
+  | "chatter";
 
 interface CreateUserModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreated: (user: ApiUser) => void;
+  /**
+   * Which user types the current caller is allowed to create. Defaults to the
+   * admin set. Account managers should pass ["promoter", "chatter"].
+   */
+  allowedTypes?: UserType[];
 }
 
-const USER_TYPES: { value: UserType; label: string; description: string }[] = [
-  {
-    value: "account_manager",
+const USER_TYPE_META: Record<
+  UserType,
+  { label: string; description: string }
+> = {
+  account_manager: {
     label: "Account Manager",
     description: "Can invite promoters and manage campaigns",
   },
-  {
-    value: "team_manager",
+  team_manager: {
     label: "Team Manager",
     description: "Can manage a team and switch to promoter view",
   },
-  {
-    value: "promoter",
+  promoter: {
     label: "Promoter",
     description: "Creates tracking links and earns commissions",
   },
+  chatter: {
+    label: "Chatter",
+    description: "Works inside chatter groups under this account manager",
+  },
+};
+
+const DEFAULT_ALLOWED: UserType[] = [
+  "account_manager",
+  "team_manager",
+  "promoter",
 ];
 
 export const CreateUserModal = ({
   isOpen,
   onClose,
   onCreated,
+  allowedTypes,
 }: CreateUserModalProps) => {
+  const types = useMemo(
+    () =>
+      allowedTypes && allowedTypes.length > 0
+        ? allowedTypes
+        : DEFAULT_ALLOWED,
+    [allowedTypes],
+  );
+
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [userType, setUserType] = useState<UserType>("promoter");
+  const [userType, setUserType] = useState<UserType>(types[0]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState<ApiUser | null>(null);
@@ -55,13 +83,35 @@ export const CreateUserModal = ({
     setError("");
 
     try {
-      const user = await modelsApi.createUser({
-        email,
-        password,
-        firstName,
-        lastName,
-        userType,
-      });
+      let user: ApiUser;
+      if (userType === "chatter") {
+        // Chatters have their own creation endpoint which also handles the
+        // account-manager ownership stamp on the server.
+        const { chatter } = await chattersApi.create({
+          email,
+          password,
+          firstName: firstName || undefined,
+          lastName: lastName || undefined,
+        });
+        user = {
+          id: chatter.id,
+          email: chatter.email,
+          firstName: chatter.firstName ?? "",
+          lastName: chatter.lastName ?? "",
+          role: "PROMOTER",
+          userType: "CHATTER",
+          isActive: true,
+          createdAt: new Date().toISOString(),
+        };
+      } else {
+        user = await modelsApi.createUser({
+          email,
+          password,
+          firstName,
+          lastName,
+          userType,
+        });
+      }
       setSuccess(user);
       onCreated(user);
     } catch (err) {
@@ -76,7 +126,7 @@ export const CreateUserModal = ({
     setLastName("");
     setEmail("");
     setPassword("");
-    setUserType("promoter");
+    setUserType(types[0]);
     setError("");
     setSuccess(null);
     onClose();
@@ -206,37 +256,41 @@ export const CreateUserModal = ({
                   Role
                 </label>
                 <div className="flex flex-col gap-[8px]">
-                  {USER_TYPES.map((t) => (
-                    <button
-                      key={t.value}
-                      onClick={() => setUserType(t.value)}
-                      className={`flex items-center justify-between rounded-[8px] px-[14px] py-[12px] border text-left transition-all ${
-                        userType === t.value
-                          ? "bg-[#ff0f5f]/10 border-[#ff0f5f] "
-                          : "bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.2)]"
-                      }`}
-                    >
-                      <div>
-                        <p
-                          className={`text-base font-bold ${userType === t.value ? "text-tm-primary-color05" : "text-[#9e9e9e]"}`}
-                        >
-                          {t.label}
-                        </p>
-                        <p
-                          className={`text-[14px] ${userType === t.value ? "text-white" : "text-[#9e9e9e]"}`}
-                        >
-                          {t.description}
-                        </p>
-                      </div>
-                      <div
-                        className={`w-[16px] h-[16px] rounded-full border-2 flex-shrink-0 ${
-                          userType === t.value
-                            ? "border-[#ff0f5f] bg-[#ff0f5f]"
-                            : "border-[#555]"
+                  {types.map((value) => {
+                    const meta = USER_TYPE_META[value];
+                    const selected = userType === value;
+                    return (
+                      <button
+                        key={value}
+                        onClick={() => setUserType(value)}
+                        className={`flex items-center justify-between rounded-[8px] px-[14px] py-[12px] border text-left transition-all ${
+                          selected
+                            ? "bg-[#ff0f5f]/10 border-[#ff0f5f] "
+                            : "bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.2)]"
                         }`}
-                      />
-                    </button>
-                  ))}
+                      >
+                        <div>
+                          <p
+                            className={`text-base font-bold ${selected ? "text-tm-primary-color05" : "text-[#9e9e9e]"}`}
+                          >
+                            {meta.label}
+                          </p>
+                          <p
+                            className={`text-[14px] ${selected ? "text-white" : "text-[#9e9e9e]"}`}
+                          >
+                            {meta.description}
+                          </p>
+                        </div>
+                        <div
+                          className={`w-[16px] h-[16px] rounded-full border-2 flex-shrink-0 ${
+                            selected
+                              ? "border-[#ff0f5f] bg-[#ff0f5f]"
+                              : "border-[#555]"
+                          }`}
+                        />
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
