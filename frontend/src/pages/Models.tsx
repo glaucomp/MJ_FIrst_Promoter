@@ -380,7 +380,7 @@ export const Models = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Name, email, or account manager…"
-              className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.08)] rounded-[8px] px-[12px] py-[9px] text-[14px] text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
+              className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.08)] rounded-[8px] px-4 py-4 text-base text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
             />
           </div>
 
@@ -395,7 +395,7 @@ export const Models = () => {
               id="admin-users-type"
               value={selectedUserType}
               onChange={(e) => setSelectedUserType(e.target.value)}
-              className="bg-[#1c1c1e] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[12px] py-[9px] text-white text-[14px] focus:outline-none focus:border-[#ff0f5f] appearance-none cursor-pointer pr-[28px]"
+              className="bg-[#1c1c1e] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-4 py-4 text-white text-base focus:outline-none focus:border-[#ff0f5f] appearance-none cursor-pointer pr-[28px]"
               style={{
                 backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239e9e9e' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
                 backgroundRepeat: "no-repeat",
@@ -417,7 +417,7 @@ export const Models = () => {
                 setSelectedUserType("");
                 setSearch("");
               }}
-              className="text-[#9e9e9e] hover:text-white text-[12px] underline self-start lg:self-end lg:mb-[10px]"
+              className="text-[#9e9e9e] hover:text-white text-[12px] underline self-start lg:self-center "
             >
               Clear filters
             </button>
