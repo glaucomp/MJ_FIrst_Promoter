@@ -502,8 +502,38 @@ export const generateTrackingLink = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: "Campaign not found" });
     }
 
-    // Use username as short code (fallback to user.id if no username)
-    const shortCode = user.username || user.id;
+    // A user can only have one tracking link per campaign (conceptually
+    // "unique URLs for each user/campaign combination" per the schema). If
+    // one already exists we return it instead of failing with a P2002 — the
+    // `shortCode` column is globally unique and is derived from the user's
+    // username, so re-creating would violate the constraint.
+    const trackingLinkInclude = {
+      campaign: {
+        select: { id: true, name: true, websiteUrl: true },
+      },
+      user: {
+        select: { id: true, username: true, email: true },
+      },
+    } as const;
+
+    const existingTrackingLink = await prisma.trackingLink.findFirst({
+      where: { userId: user.id, campaignId },
+      include: trackingLinkInclude,
+    });
+
+    if (existingTrackingLink) {
+      return res.status(200).json({
+        trackingLink: existingTrackingLink,
+        message: "Existing tracking link returned",
+      });
+    }
+
+    // Preferred short code: username (fallback to user.id if no username).
+    // The `shortCode` column is globally unique, so if it's already taken by
+    // this user's tracking link on a different campaign we fall back to a
+    // campaign-scoped code (`<base>-<nanoid>`) instead of returning an
+    // unrelated campaign's row.
+    const baseShortCode = user.username || user.id;
 
     // Get campaign website URL
     const campaignWebsiteUrl =
@@ -512,40 +542,75 @@ export const generateTrackingLink = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: "Campaign URL not configured" });
     }
 
-    // Create tracking link using campaign's actual URL with fpr parameter
-    const urlObj = new URL(campaignWebsiteUrl);
-    urlObj.searchParams.set("fpr", shortCode);
-    const fullUrl = urlObj.toString();
+    const buildFullUrl = (code: string) => {
+      const urlObj = new URL(campaignWebsiteUrl);
+      urlObj.searchParams.set("fpr", code);
+      return urlObj.toString();
+    };
 
-    const trackingLink = await prisma.trackingLink.create({
-      data: {
-        shortCode,
-        fullUrl,
-        userId: user.id,
-        campaignId,
-      },
-      include: {
-        campaign: {
-          select: {
-            id: true,
-            name: true,
-            websiteUrl: true,
-          },
+    const createTrackingLinkWith = (shortCode: string) =>
+      prisma.trackingLink.create({
+        data: {
+          shortCode,
+          fullUrl: buildFullUrl(shortCode),
+          userId: user.id,
+          campaignId,
         },
-        user: {
-          select: {
-            id: true,
-            username: true,
-            email: true,
-          },
-        },
-      },
-    });
+        include: trackingLinkInclude,
+      });
 
-    res.status(201).json({
-      trackingLink,
-      message: "Tracking link created successfully",
-    });
+    const isUniqueViolation = (err: unknown) =>
+      typeof err === "object" &&
+      err !== null &&
+      (err as { code?: string }).code === "P2002";
+
+    try {
+      const trackingLink = await createTrackingLinkWith(baseShortCode);
+      return res.status(201).json({
+        trackingLink,
+        message: "Tracking link created successfully",
+      });
+    } catch (createError: unknown) {
+      if (!isUniqueViolation(createError)) {
+        throw createError;
+      }
+
+      // Concurrent creation for the exact same (user, campaign) pair — return
+      // that row so the caller still gets the correct per-campaign link.
+      const concurrentExisting = await prisma.trackingLink.findFirst({
+        where: { userId: user.id, campaignId },
+        include: trackingLinkInclude,
+      });
+
+      if (concurrentExisting) {
+        return res.status(200).json({
+          trackingLink: concurrentExisting,
+          message: "Existing tracking link returned",
+        });
+      }
+
+      // `shortCode` is taken by this user's link on a different campaign.
+      // Retry once with a campaign-scoped suffix so each campaign gets its
+      // own working tracking link — never return a foreign-campaign row.
+      const scopedShortCode = `${baseShortCode}-${nanoid(6)}`;
+
+      try {
+        const trackingLink = await createTrackingLinkWith(scopedShortCode);
+        return res.status(201).json({
+          trackingLink,
+          message: "Tracking link created successfully",
+        });
+      } catch (retryError: unknown) {
+        // Extremely unlikely — scoped collision. Surface as 409 rather than
+        // silently returning an unrelated row.
+        if (isUniqueViolation(retryError)) {
+          return res.status(409).json({
+            error: "Tracking link already exists for this campaign",
+          });
+        }
+        throw retryError;
+      }
+    }
   } catch (error) {
     console.error("Generate tracking link error:", error);
     res.status(500).json({ error: "Failed to generate tracking link" });
