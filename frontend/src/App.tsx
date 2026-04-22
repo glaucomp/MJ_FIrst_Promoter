@@ -35,10 +35,16 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   }
 
   if (allowedRoles && !allowedRoles.includes(user.baseRole)) {
-    return <Navigate to={user.baseRole === 'chatter' ? '/chatter-portal' : '/dashboard'} replace />;
+    return <Navigate to={defaultLandingFor(user.baseRole)} replace />;
   }
 
   return <>{children}</>;
+};
+
+const defaultLandingFor = (role: UserRole): string => {
+  if (role === 'chatter') return '/chatter-portal';
+  if (role === 'payer') return '/reports';
+  return '/dashboard';
 };
 
 const PublicRoute = ({ children }: { children: ReactNode }) => {
@@ -53,7 +59,7 @@ const PublicRoute = ({ children }: { children: ReactNode }) => {
   }
 
   if (user) {
-    return <Navigate to={user.baseRole === 'chatter' ? '/chatter-portal' : '/dashboard'} replace />;
+    return <Navigate to={defaultLandingFor(user.baseRole)} replace />;
   }
 
   return <>{children}</>;
@@ -61,7 +67,7 @@ const PublicRoute = ({ children }: { children: ReactNode }) => {
 
 const ChatterRedirect = () => {
   const { user } = useAuth();
-  return <Navigate to={user?.baseRole === 'chatter' ? '/chatter-portal' : '/dashboard'} replace />;
+  return <Navigate to={user ? defaultLandingFor(user.baseRole) : '/login'} replace />;
 };
 
 function AppRoutes() {
@@ -79,7 +85,7 @@ function AppRoutes() {
       <Route
         path="/dashboard"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={['admin', 'account_manager', 'team_manager', 'promoter']}>
             <DashboardLayout>
               <Dashboard />
             </DashboardLayout>
@@ -149,7 +155,7 @@ function AppRoutes() {
       <Route
         path="/payouts"
         element={
-          <ProtectedRoute allowedRoles={['admin']}>
+          <ProtectedRoute allowedRoles={['admin', 'payer']}>
             <DashboardLayout>
               <Payouts />
             </DashboardLayout>

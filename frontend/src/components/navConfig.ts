@@ -31,7 +31,8 @@ export const navItems: NavItem[] = [
   { id: 'chatter-portal', Icon: IconPersona, label: 'Persona', path: '/chatter-portal', allowedRoles: ['chatter'] },
   { id: 'chatter-groups', Icon: IconChatterGroups, label: 'Chatter Groups', path: '/chatter-groups', allowedRoles: ['account_manager'] },
   { id: 'campaigns', Icon: IconCampaign, label: 'Campaigns', path: '/campaigns', adminOnly: true },
-  { id: 'reports', Icon: IconReport, label: 'Reports', path: '/reports' },
-  { id: 'payouts', Icon: IconPayout, label: 'Payouts', path: '/payouts', adminOnly: true },
-  { id: 'settings', Icon: IconSettings, label: 'Settings', path: '/settings' },
+  // Payers are a back-office role that only sees Reports, Payouts and Settings.
+  { id: 'reports', Icon: IconReport, label: 'Reports', path: '/reports', allowedRoles: ['admin', 'team_manager', 'account_manager', 'promoter', 'payer'] },
+  { id: 'payouts', Icon: IconPayout, label: 'Payouts', path: '/payouts', allowedRoles: ['admin', 'payer'] },
+  { id: 'settings', Icon: IconSettings, label: 'Settings', path: '/settings', allowedRoles: ['admin', 'team_manager', 'account_manager', 'promoter', 'chatter', 'payer'] },
 ];

@@ -1273,7 +1273,8 @@ const TxListCard = ({
 export const Reports = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const isAdmin = user?.baseRole === "admin";
+  // Payers see the same aggregate Reports view as admins.
+  const isAdmin = user?.baseRole === "admin" || user?.baseRole === "payer";
   const isManager =
     user?.baseRole === "account_manager" ||
     (user?.baseRole === "team_manager" && user?.role === "team_manager");

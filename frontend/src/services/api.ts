@@ -333,7 +333,7 @@ export const modelsApi = {
     password: string;
     firstName: string;
     lastName: string;
-    userType: 'account_manager' | 'team_manager' | 'promoter';
+    userType: 'account_manager' | 'team_manager' | 'promoter' | 'payer';
   }): Promise<ApiUser> {
     const response = await fetch(`${API_URL}/users/create`, {
       method: 'POST',
