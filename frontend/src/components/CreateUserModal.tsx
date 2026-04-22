@@ -53,7 +53,10 @@ export const CreateUserModal = ({
   allowedTypes,
 }: CreateUserModalProps) => {
   const types = useMemo(
-    () => allowedTypes ?? DEFAULT_ALLOWED,
+    () =>
+      allowedTypes && allowedTypes.length > 0
+        ? allowedTypes
+        : DEFAULT_ALLOWED,
     [allowedTypes],
   );
 
