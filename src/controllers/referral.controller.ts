@@ -203,6 +203,11 @@ const buildInviteUrl = (
   const urlObj = new URL(targetUrl);
   urlObj.searchParams.set("fpr", params.refCode);
   urlObj.searchParams.set("inviteCode", params.inviteCode);
+  urlObj.searchParams.set("inviteeEmail", params.inviteeEmail);
+  urlObj.searchParams.set("inviterEmail", params.inviterEmail);
+  if (params.accountManagerEmail) {
+    urlObj.searchParams.set("accountManagerEmail", params.accountManagerEmail);
+  }
   return urlObj.toString();
 };
 
