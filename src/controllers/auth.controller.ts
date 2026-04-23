@@ -527,13 +527,30 @@ export const resetPassword = async (req: AuthRequest, res: Response) => {
         return null;
       }
 
+      const existing = await tx.user.findUnique({
+        where: { id: consumed.userId },
+        select: { isActive: true },
+      });
+      if (!existing) {
+        return null;
+      }
+
+      // A plain RESET token must not silently re-enable a user who was
+      // disabled after the token was issued. Treat this as an invalid link
+      // rather than leaking account status by 403ing.
+      const isInvite = consumed.purpose === PasswordResetPurpose.INVITE;
+      if (!isInvite && !existing.isActive) {
+        return null;
+      }
+
       const user = await tx.user.update({
         where: { id: consumed.userId },
         data: {
           password: hashedPassword,
-          // Invite flow doubles as activation — make sure the user can log in
-          // even if the row was created with `isActive: false` for any reason.
-          isActive: true,
+          // Invite flow doubles as activation — ensure the user can log in
+          // even if the row was created with `isActive: false`. RESET leaves
+          // `isActive` untouched so concurrent deactivations aren't reversed.
+          ...(isInvite ? { isActive: true } : {}),
         },
         select: {
           id: true,
