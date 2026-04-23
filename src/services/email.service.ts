@@ -199,15 +199,15 @@ Next Steps:
   async sendSetPasswordEmail(data: SetPasswordEmailData): Promise<boolean> {
     const { email, firstName, setupUrl, invitedByName, expiresAt } = data;
     const displayName = firstName?.trim() || email.split('@')[0];
-    const greetName = escapeHtml(displayName);
     const expiryText = formatExpiry(expiresAt);
-    const inviter = invitedByName?.trim()
-      ? `${escapeHtml(invitedByName.trim())} has invited you to `
+    const trimmedInviter = invitedByName?.trim();
+    const inviter = trimmedInviter
+      ? `${trimmedInviter} has invited you to `
       : 'You have been invited to ';
 
     const subject = 'Set up your TeaseMe HQ account';
     const bodyHtml = this.renderActionTemplate({
-      heading: `Welcome, ${greetName}!`,
+      heading: `Welcome, ${displayName}!`,
       intro: `${inviter}join the TeaseMe HQ platform. Click the button below to create your password and activate your account.`,
       buttonLabel: 'Set My Password',
       buttonUrl: setupUrl,
@@ -216,7 +216,7 @@ Next Steps:
 
     const bodyText = `Welcome, ${displayName}!
 
-${inviter.replace(/<[^>]+>/g, '')}join the TeaseMe HQ platform.
+${inviter}join the TeaseMe HQ platform.
 
 Click the link below to set your password and activate your account:
 ${setupUrl}
@@ -231,12 +231,11 @@ If you weren't expecting this invite, you can safely ignore this email.`;
   async sendPasswordResetEmail(data: PasswordResetEmailData): Promise<boolean> {
     const { email, firstName, resetUrl, expiresAt } = data;
     const displayName = firstName?.trim() || email.split('@')[0];
-    const greetName = escapeHtml(displayName);
     const expiryText = formatExpiry(expiresAt);
 
     const subject = 'Reset your TeaseMe HQ password';
     const bodyHtml = this.renderActionTemplate({
-      heading: `Hi ${greetName},`,
+      heading: `Hi ${displayName},`,
       intro:
         'We received a request to reset the password on your TeaseMe HQ account. Click the button below to choose a new one.',
       buttonLabel: 'Reset Password',

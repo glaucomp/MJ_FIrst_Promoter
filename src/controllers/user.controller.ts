@@ -8,6 +8,7 @@ import { AuthRequest } from '../middleware/auth.middleware';
 import { resolveAccountManagersFor } from '../services/ownership.service';
 import { createPasswordResetToken } from '../services/password-reset.service';
 import { emailService } from '../services/email.service';
+import { buildSetPasswordUrl } from '../utils/frontend-url';
 
 const prisma = new PrismaClient();
 
@@ -612,8 +613,7 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
         newUser.id,
         PasswordResetPurpose.INVITE,
       );
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-      const setupUrl = `${frontendUrl.replace(/\/$/, '')}/set-password/${rawToken}`;
+      const setupUrl = buildSetPasswordUrl(rawToken);
       const callerRecord = await prisma.user.findUnique({
         where: { id: caller.id },
         select: { firstName: true, lastName: true, email: true },

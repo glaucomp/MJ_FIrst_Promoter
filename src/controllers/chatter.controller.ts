@@ -12,6 +12,7 @@ import crypto from "node:crypto";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { emailService } from "../services/email.service";
 import { createPasswordResetToken } from "../services/password-reset.service";
+import { buildSetPasswordUrl } from "../utils/frontend-url";
 import { getPresignedUrl } from "../services/s3.service";
 import { syncUserFromTeaseMe } from "../services/teaseme.service";
 
@@ -132,8 +133,7 @@ export const createChatter = async (req: AuthRequest, res: Response) => {
         chatter.id,
         PasswordResetPurpose.INVITE,
       );
-      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
-      const setupUrl = `${frontendUrl.replace(/\/$/, "")}/set-password/${rawToken}`;
+      const setupUrl = buildSetPasswordUrl(rawToken);
       const callerRecord = await prisma.user.findUnique({
         where: { id: callerId },
         select: { firstName: true, lastName: true, email: true },

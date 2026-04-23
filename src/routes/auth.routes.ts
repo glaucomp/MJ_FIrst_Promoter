@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { body } from 'express-validator';
 import * as authController from '../controllers/auth.controller';
 import { authenticate } from '../middleware/auth.middleware';
+import { PASSWORD_MIN_LENGTH, PASSWORD_TOO_SHORT_MESSAGE } from '../utils/password-policy';
 
 const router = Router();
 
@@ -10,7 +11,7 @@ router.post(
   '/register',
   [
     body('email').isEmail().normalizeEmail(),
-    body('password').isLength({ min: 6 }),
+    body('password').isLength({ min: PASSWORD_MIN_LENGTH }).withMessage(PASSWORD_TOO_SHORT_MESSAGE),
     body('firstName').optional().trim(),
     body('lastName').optional().trim(),
     body('inviteCode').optional().trim()
@@ -53,7 +54,10 @@ router.get('/password-reset/:token/validate', authController.validateResetToken)
 // the user lands straight in their dashboard.
 router.post(
   '/password-reset',
-  [body('token').isString().notEmpty(), body('password').isString().isLength({ min: 8 })],
+  [
+    body('token').isString().notEmpty(),
+    body('password').isString().isLength({ min: PASSWORD_MIN_LENGTH }).withMessage(PASSWORD_TOO_SHORT_MESSAGE),
+  ],
   authController.resetPassword,
 );
 

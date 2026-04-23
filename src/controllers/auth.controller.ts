@@ -12,6 +12,7 @@ import {
   validatePasswordResetToken,
 } from "../services/password-reset.service";
 import { getUserTypeInfo } from "../services/user.service";
+import { buildSetPasswordUrl } from "../utils/frontend-url";
 
 const prisma = new PrismaClient();
 
@@ -441,24 +442,26 @@ export const refreshToken = async (req: AuthRequest, res: Response) => {
 // active user we create a short-lived RESET token and email the link.
 export const forgotPassword = async (req: AuthRequest, res: Response) => {
   try {
-    const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
-    if (!email) {
-      return res.status(400).json({ error: "Email is required" });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
     }
+
+    // express-validator's normalizeEmail() already lowercased; trim defensively.
+    const email = typeof req.body?.email === "string" ? req.body.email.trim() : "";
 
     const user = await prisma.user.findUnique({
       where: { email },
       select: { id: true, email: true, firstName: true, isActive: true },
     });
 
-    if (user && user.isActive) {
+    if (user?.isActive) {
       try {
         const { rawToken, expiresAt } = await createPasswordResetToken(
           user.id,
           PasswordResetPurpose.RESET,
         );
-        const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
-        const resetUrl = `${frontendUrl.replace(/\/$/, "")}/set-password/${rawToken}`;
+        const resetUrl = buildSetPasswordUrl(rawToken);
         await emailService.sendPasswordResetEmail({
           email: user.email,
           firstName: user.firstName,
@@ -508,17 +511,13 @@ export const validateResetToken = async (req: AuthRequest, res: Response) => {
 // user straight into their dashboard without a second login step.
 export const resetPassword = async (req: AuthRequest, res: Response) => {
   try {
-    const rawToken = typeof req.body?.token === "string" ? req.body.token : "";
-    const password = typeof req.body?.password === "string" ? req.body.password : "";
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
 
-    if (!rawToken) {
-      return res.status(400).json({ error: "Token is required" });
-    }
-    if (!password || password.length < 8) {
-      return res
-        .status(400)
-        .json({ error: "Password must be at least 8 characters" });
-    }
+    const rawToken: string = req.body.token;
+    const password: string = req.body.password;
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
