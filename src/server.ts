@@ -22,6 +22,13 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Trust the first reverse-proxy hop (e.g. AWS ALB) so `req.ip` reflects the
+// real client IP. Required for per-IP rate limiting to work in production.
+// Override via TRUST_PROXY_HOPS if the deployment has a different number of
+// proxies in front of the app (e.g. CloudFront + ALB = 2).
+const trustProxyHops = Number.parseInt(process.env.TRUST_PROXY_HOPS ?? '1', 10);
+app.set('trust proxy', Number.isFinite(trustProxyHops) && trustProxyHops >= 0 ? trustProxyHops : 1);
+
 // Middleware
 app.use(cors());
 app.use(express.json());
