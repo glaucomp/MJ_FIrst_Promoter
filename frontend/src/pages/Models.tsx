@@ -944,7 +944,7 @@ whitespace-nowrap"
           {myReferrals.length} total referrals
         </p>
 
-        <ReferralList referrals={myReferrals} />
+        <ReferralList referrals={myReferrals} setReferrals={setMyReferrals} />
 
         <InviteModal
           isOpen={isInviteModalOpen}
@@ -1015,7 +1015,7 @@ whitespace-nowrap"
           {myReferrals.length} total referrals
         </p>
 
-        <ReferralList referrals={myReferrals} />
+        <ReferralList referrals={myReferrals} setReferrals={setMyReferrals} />
 
         <InviteModal
           isOpen={isInviteModalOpen}
@@ -1126,7 +1126,137 @@ whitespace-nowrap"
 };
 
 // ── Shared Referral List component ────────────────────────────────────────────
-const ReferralList = ({ referrals }: { referrals: Referral[] }) => {
+type ReferralListProps = {
+  referrals: Referral[];
+  setReferrals?: React.Dispatch<React.SetStateAction<Referral[]>>;
+};
+
+type ReferralFilter = "all" | "pending" | "active" | "expired";
+
+const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [toast, setToast] = useState<
+    { kind: "success" | "error"; text: string } | null
+  >(null);
+  // Default filter hides expired invites. "all" here means "everything that
+  // isn't expired" — expired rows are only visible when the user clicks the
+  // Expired pill explicitly.
+  const [filter, setFilter] = useState<ReferralFilter>("all");
+
+  const counts = useMemo(() => {
+    const expired = referrals.filter((r) => r.isExpired).length;
+    const pending = referrals.filter(
+      (r) => r.status === "PENDING" && !r.isExpired,
+    ).length;
+    const active = referrals.filter((r) => r.status === "ACTIVE").length;
+    return {
+      all: referrals.length - expired,
+      pending,
+      active,
+      expired,
+    };
+  }, [referrals]);
+
+  const visibleReferrals = useMemo(() => {
+    switch (filter) {
+      case "pending":
+        return referrals.filter(
+          (r) => r.status === "PENDING" && !r.isExpired,
+        );
+      case "active":
+        return referrals.filter((r) => r.status === "ACTIVE");
+      case "expired":
+        return referrals.filter((r) => r.isExpired);
+      case "all":
+      default:
+        return referrals.filter((r) => !r.isExpired);
+    }
+  }, [referrals, filter]);
+
+  const showToast = (kind: "success" | "error", text: string) => {
+    setToast({ kind, text });
+    window.setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleCopy = async (referral: Referral) => {
+    const url = referral.inviteUrl;
+    if (!url) {
+      showToast("error", "No link available for this invite");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedId(referral.id);
+      window.setTimeout(
+        () => setCopiedId((cur) => (cur === referral.id ? null : cur)),
+        1500,
+      );
+    } catch {
+      showToast("error", "Failed to copy link");
+    }
+  };
+
+  const handleDelete = async (referral: Referral) => {
+    const label =
+      referral.metadata?.inviteeEmail ??
+      `invite code ${referral.inviteCode}`;
+    if (!window.confirm(`Delete pending invite for ${label}? This cannot be undone.`)) {
+      return;
+    }
+    setBusyId(referral.id);
+    try {
+      await modelsApi.deleteReferralInvite(referral.id);
+      setReferrals?.((prev) => prev.filter((r) => r.id !== referral.id));
+      showToast("success", "Invite deleted");
+    } catch (err) {
+      showToast(
+        "error",
+        err instanceof Error ? err.message : "Failed to delete invite",
+      );
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleResend = async (referral: Referral) => {
+    setBusyId(referral.id);
+    try {
+      const result = await modelsApi.resendReferralInvite(referral.id);
+      setReferrals?.((prev) =>
+        prev.map((r) =>
+          r.id === referral.id
+            ? {
+                ...r,
+                isExpired: false,
+                inviteUrl: result.inviteUrl,
+                metadata: {
+                  ...(r.metadata ?? {}),
+                  inviteeEmail: result.inviteeEmail,
+                  expiresAt: result.expiresAt,
+                  resendCount: result.resendCount,
+                  emailSentAt: new Date().toISOString(),
+                },
+              }
+            : r,
+        ),
+      );
+      showToast(
+        result.emailSent ? "success" : "error",
+        result.emailSent
+          ? `Invite email resent to ${result.inviteeEmail}`
+          : "Email delivery failed \u2014 share the link manually",
+      );
+    } catch (err) {
+      showToast(
+        "error",
+        err instanceof Error ? err.message : "Failed to resend invite",
+      );
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   if (referrals.length === 0) {
     return (
       <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] text-center">
@@ -1137,63 +1267,169 @@ const ReferralList = ({ referrals }: { referrals: Referral[] }) => {
     );
   }
 
+  const filterOptions: Array<{ id: ReferralFilter; label: string; count: number }> = [
+    { id: "all", label: "All", count: counts.all },
+    { id: "pending", label: "Pending", count: counts.pending },
+    { id: "active", label: "Active", count: counts.active },
+    { id: "expired", label: "Expired", count: counts.expired },
+  ];
+
   return (
     <div className="flex flex-col gap-[12px]">
-      {referrals.map((referral) => (
+      <div className="flex items-center gap-[8px] flex-wrap">
+        {filterOptions.map((opt) => {
+          const isSelected = filter === opt.id;
+          return (
+            <button
+              key={opt.id}
+              onClick={() => setFilter(opt.id)}
+              className={`px-[14px] py-[6px] rounded-[100px] text-[12px] font-bold border transition-colors ${
+                isSelected
+                  ? "bg-[#ff0f5f] border-[#ff0f5f] text-white"
+                  : "bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white hover:border-[rgba(255,255,255,0.3)]"
+              }`}
+            >
+              {opt.label}
+              <span className={`ml-[6px] font-normal ${isSelected ? "opacity-80" : ""}`}>
+                {opt.count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {toast && (
         <div
-          key={referral.id}
-          className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[16px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)]"
+          className={`rounded-[8px] px-[16px] py-[12px] border text-[14px] font-medium ${
+            toast.kind === "success"
+              ? "bg-tm-success-color12 border-[#00d948] text-[#28ff70]"
+              : "bg-tm-danger-color12 border-[#cc0000] text-[#ff2a2a]"
+          }`}
         >
-          <div className="flex items-center justify-between">
-            <div className="flex flex-col gap-[8px] w-full">
-              {referral.referredUser ? (
-                <>
-                  <p className="text-white text-[18px] font-semibold">
-                    {referral.referredUser.firstName}{" "}
-                    {referral.referredUser.lastName}
+          {toast.text}
+        </div>
+      )}
+
+      {visibleReferrals.length === 0 && (
+        <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] text-center">
+          <p className="text-[#9e9e9e] text-[14px]">
+            No {filter === "all" ? "active or pending" : filter} referrals
+            {filter === "all" && counts.expired > 0
+              ? ` — ${counts.expired} expired hidden`
+              : ""}
+            .
+          </p>
+        </div>
+      )}
+
+      {visibleReferrals.map((referral) => {
+        const isPending = referral.status === "PENDING" && !referral.referredUser;
+        const isExpired = Boolean(referral.isExpired);
+        const inviteeEmail = referral.metadata?.inviteeEmail ?? null;
+        const canCopy = Boolean(referral.inviteUrl);
+        const effectiveStatus = isExpired ? "EXPIRED" : referral.status;
+
+        const badgeClass =
+          effectiveStatus === "ACTIVE"
+            ? "bg-tm-success-color12 border-[#00d948] text-[#28ff70]"
+            : effectiveStatus === "PENDING"
+              ? "bg-[#664400] border-[#cc8800] text-[#ffaa00]"
+              : effectiveStatus === "EXPIRED"
+                ? "bg-tm-danger-color12 border-[#cc0000] text-[#ff2a2a]"
+                : effectiveStatus === "INACTIVE"
+                  ? "bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]"
+                  : "bg-tm-danger-color12 border-[#cc0000] text-[#ff2a2a]";
+
+        let pendingLabel = "Pending — not yet accepted";
+        if (isExpired) pendingLabel = "Expired — resend to restart the 24h window";
+
+        return (
+          <div
+            key={referral.id}
+            className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[16px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)]"
+          >
+            <div className="flex items-center justify-between gap-[16px]">
+              <div className="flex flex-col gap-[8px] flex-1 min-w-0">
+                {referral.referredUser ? (
+                  <>
+                    <p className="text-white text-[18px] font-semibold">
+                      {referral.referredUser.firstName}{" "}
+                      {referral.referredUser.lastName}
+                    </p>
+                    <p className="text-[#9e9e9e] text-[14px]">
+                      {referral.referredUser.email}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-white text-[18px] font-semibold truncate">
+                      Invitee:{" "}
+                      {inviteeEmail ?? (
+                        <span className="font-mono text-[14px] text-[#9e9e9e]">
+                          (no email · {referral.inviteCode})
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-[#9e9e9e] text-[14px]">{pendingLabel}</p>
+                  </>
+                )}
+                <div className="flex items-center gap-[8px] flex-wrap">
+                  <span
+                    className={`px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border ${badgeClass}`}
+                  >
+                    {effectiveStatus}
+                  </span>
+                  <span className="text-[#9e9e9e] text-[12px]">
+                    {referral.campaign.name}
+                  </span>
+                  {referral.metadata?.resendCount ? (
+                    <span className="text-[#9e9e9e] text-[12px]">
+                      · resent {referral.metadata.resendCount}×
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-[12px] flex-shrink-0">
+                {isPending && (
+                  <div className="flex items-center gap-[8px]">
+                    <button
+                      onClick={() => handleCopy(referral)}
+                      disabled={!canCopy}
+                      className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[6px] px-[12px] py-[6px] text-white text-[12px] font-bold hover:bg-[#252525] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {copiedId === referral.id ? "Copied!" : "Copy Link"}
+                    </button>
+                    <button
+                      onClick={() => handleResend(referral)}
+                      disabled={busyId === referral.id}
+                      className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[6px] px-[12px] py-[6px] text-white text-[12px] font-bold hover:from-[#ff1f69] hover:to-[#d10050] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    >
+                      {busyId === referral.id ? "Sending..." : "Resend"}
+                    </button>
+                    <button
+                      onClick={() => handleDelete(referral)}
+                      disabled={busyId === referral.id}
+                      title="Delete invite"
+                      aria-label="Delete invite"
+                      className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[6px] px-[10px] py-[6px] text-[#9e9e9e] text-[14px] font-bold hover:text-[#ff2a2a] hover:border-[#cc0000] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      &#x2715;
+                    </button>
+                  </div>
+                )}
+
+                <div className="text-right flex flex-col gap-[4px]">
+                  <p className="text-[#9e9e9e] text-[12px] uppercase">Level</p>
+                  <p className="text-white text-[20px] font-bold">
+                    {referral.level}
                   </p>
-                  <p className="text-[#9e9e9e] text-[14px]">
-                    {referral.referredUser.email}
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="text-white text-[18px] font-semibold">
-                    Invite Code: {referral.inviteCode}
-                  </p>
-                  <p className="text-[#9e9e9e] text-[14px]">
-                    Pending — not yet accepted
-                  </p>
-                </>
-              )}
-              <div className="flex items-center gap-[8px]">
-                <span
-                  className={`px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border ${
-                    referral.status === "ACTIVE"
-                      ? "bg-tm-success-color12 border-[#00d948] text-[#28ff70]"
-                      : referral.status === "PENDING"
-                        ? "bg-[#664400] border-[#cc8800] text-[#ffaa00]"
-                        : referral.status === "INACTIVE"
-                          ? "bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]"
-                          : "bg-tm-danger-color12 border-[#cc0000] text-[#ff2a2a]"
-                  }`}
-                >
-                  {referral.status}
-                </span>
-                <span className="text-[#9e9e9e] text-[12px]">
-                  {referral.campaign.name}
-                </span>
+                </div>
               </div>
             </div>
-            <div className="text-right flex flex-col gap-[4px] w-full">
-              <p className="text-[#9e9e9e] text-[12px] uppercase">Level</p>
-              <p className="text-white text-[20px] font-bold">
-                {referral.level}
-              </p>
-            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };

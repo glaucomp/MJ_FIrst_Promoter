@@ -1,14 +1,75 @@
-import { PrismaClient, UserRole, UserType } from "@prisma/client";
+import { Prisma, PrismaClient, UserRole, UserType } from "@prisma/client";
 import { Response } from "express";
 import { validationResult } from "express-validator";
 import { nanoid } from "nanoid";
 import { AuthRequest } from "../middleware/auth.middleware";
+import { emailService } from "../services/email.service";
 import { getPresignedUrl } from "../services/s3.service";
 
 const prisma = new PrismaClient();
 
+// Pending invites expire 24h after the most recent send. Clicking "Resend"
+// rebuilds the email and pushes the expiry forward by another 24h; the
+// status in the DB stays `PENDING` throughout — expiry is a computed flag
+// exposed to the UI, not a persisted enum value.
+const REFERRAL_INVITE_TTL_MS = 24 * 60 * 60 * 1000;
+
 const hasAccountManagerAccess = (user: AuthRequest["user"]) => {
   return user?.userType === UserType.ACCOUNT_MANAGER;
+};
+
+// Referral.metadata is typed as Prisma.JsonValue. Narrow it to the shape we
+// actually write so callers can read `inviteeEmail` / `expiresAt` / etc
+// without repeating the type guard everywhere.
+type ReferralMetadata = {
+  accountManagerEmail?: string | null;
+  inviterEmail?: string | null;
+  inviteeEmail?: string | null;
+  inviteCode?: string | null;
+  emailSentAt?: string | null;
+  expiresAt?: string | null;
+  resendCount?: number;
+};
+
+const readReferralMetadata = (raw: Prisma.JsonValue | null | undefined): ReferralMetadata => {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  return raw as ReferralMetadata;
+};
+
+const computeIsExpired = (
+  status: string,
+  createdAt: Date,
+  metadata: ReferralMetadata,
+): boolean => {
+  if (status !== "PENDING") return false;
+  const expiresAtRaw = metadata.expiresAt;
+  const expiresAtMs = expiresAtRaw
+    ? Date.parse(expiresAtRaw)
+    : createdAt.getTime() + REFERRAL_INVITE_TTL_MS;
+  if (Number.isNaN(expiresAtMs)) return false;
+  return Date.now() > expiresAtMs;
+};
+
+const buildInviteUrl = (
+  campaign: { websiteUrl: string; defaultReferralUrl: string | null },
+  params: {
+    refCode: string;
+    inviteCode: string;
+    inviteeEmail: string;
+    inviterEmail: string;
+    accountManagerEmail: string | null;
+  },
+): string => {
+  const targetUrl = campaign.defaultReferralUrl || campaign.websiteUrl;
+  const urlObj = new URL(targetUrl);
+  urlObj.searchParams.set("fpr", params.refCode);
+  urlObj.searchParams.set("inviteCode", params.inviteCode);
+  urlObj.searchParams.set("inviteeEmail", params.inviteeEmail);
+  urlObj.searchParams.set("inviterEmail", params.inviterEmail);
+  if (params.accountManagerEmail) {
+    urlObj.searchParams.set("accountManagerEmail", params.accountManagerEmail);
+  }
+  return urlObj.toString();
 };
 
 export const createReferralInvite = async (req: AuthRequest, res: Response) => {
@@ -35,6 +96,51 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
       return res
         .status(400)
         .json({ error: "Cannot create invites for inactive campaigns" });
+    }
+
+    // Block duplicates: same inviter + same campaign + same invitee email
+    // on either a pending invite (metadata.inviteeEmail) or an already
+    // accepted one (referredUser.email). We intentionally skip expired rows
+    // — those can be deleted or resent, not a hard block. The OR covers both
+    // the "still waiting on them to accept" and "they already signed up" case
+    // in a single query.
+    const existingInvite = await prisma.referral.findFirst({
+      where: {
+        referrerId: user.id,
+        campaignId: campaign.id,
+        status: { in: ["PENDING", "ACTIVE"] },
+        OR: [
+          {
+            referredUserId: null,
+            metadata: {
+              path: ["inviteeEmail"],
+              equals: email,
+            },
+          },
+          {
+            referredUser: { email },
+          },
+        ],
+      },
+      select: {
+        id: true,
+        inviteCode: true,
+        status: true,
+        referredUserId: true,
+      },
+    });
+
+    if (existingInvite) {
+      const isAccepted = existingInvite.referredUserId !== null;
+      return res.status(409).json({
+        error: "Duplicate invite",
+        message: isAccepted
+          ? `${email} has already accepted an invite on this campaign.`
+          : `There's already a pending invite to ${email} on this campaign. Use Resend instead of creating a new one.`,
+        existingReferralId: existingInvite.id,
+        existingInviteCode: existingInvite.inviteCode,
+        existingStatus: existingInvite.status,
+      });
     }
 
     const isAdminCaller = user.role === UserRole.ADMIN;
@@ -133,6 +239,49 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
       }
     }
 
+    // Load the inviter together with their account manager so we can persist
+    // the full identity bundle on the referral and resolve `inviterName` /
+    // `accountManagerEmail` for the outbound email. ADMIN / ACCOUNT_MANAGER
+    // inviters act as their own AM — pure promoters fall back to their
+    // assigned `accountManager.email`, which may still be null for legacy
+    // rows.
+    const inviter = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: {
+        email: true,
+        firstName: true,
+        lastName: true,
+        username: true,
+        inviteCode: true,
+        userType: true,
+        role: true,
+        accountManager: { select: { email: true } },
+      },
+    });
+
+    if (!inviter) {
+      return res.status(404).json({ error: "Inviter account not found" });
+    }
+
+    const inviterIsAmOrAdmin =
+      inviter.role === UserRole.ADMIN ||
+      inviter.userType === UserType.ACCOUNT_MANAGER;
+    const accountManagerEmail: string | null = inviterIsAmOrAdmin
+      ? inviter.email
+      : inviter.accountManager?.email ?? null;
+
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + REFERRAL_INVITE_TTL_MS);
+    const metadata = {
+      accountManagerEmail,
+      inviterEmail: inviter.email,
+      inviteeEmail: email as string,
+      inviteCode,
+      emailSentAt: now.toISOString(),
+      expiresAt: expiresAt.toISOString(),
+      resendCount: 0,
+    } satisfies Prisma.InputJsonValue;
+
     const referral = await prisma.referral.create({
       data: {
         inviteCode,
@@ -141,6 +290,7 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
         level,
         parentReferralId,
         status: "PENDING",
+        metadata,
       },
       include: {
         campaign: {
@@ -164,34 +314,232 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
       },
     });
 
-    // Get full user with username
-    const fullUser = await prisma.user.findUnique({
-      where: { id: user.id },
-      select: { username: true, inviteCode: true },
+    const refCode = inviter.username || inviter.inviteCode || user.id;
+    const inviteUrl = buildInviteUrl(referral.campaign, {
+      refCode,
+      inviteCode,
+      inviteeEmail: email as string,
+      inviterEmail: inviter.email,
+      accountManagerEmail,
     });
 
-    // Use username as the ref code
-    const refCode = fullUser?.username || fullUser?.inviteCode || user.id;
+    // Send email with the "Accept Invite" button pointing at `inviteUrl`.
+    // Failures are surfaced via `emailSent: false` rather than failing the
+    // whole request — the inviter can still copy/share the link manually.
+    const inviterName =
+      [inviter.firstName, inviter.lastName].filter(Boolean).join(" ").trim() ||
+      inviter.username ||
+      inviter.email;
 
-    // Generate invite URL - use campaign's defaultReferralUrl or websiteUrl
-    const targetUrl =
-      referral.campaign.defaultReferralUrl || referral.campaign.websiteUrl;
-
-    // Parse URL and add tracking parameter with username
-    const urlObj = new URL(targetUrl);
-    urlObj.searchParams.set("fpr", refCode);
-
-    const inviteUrl = urlObj.toString();
+    let emailSent = false;
+    try {
+      emailSent = await emailService.sendReferralInviteEmail({
+        inviteeEmail: email as string,
+        inviterName,
+        campaignName: referral.campaign.name,
+        acceptUrl: inviteUrl,
+      });
+    } catch (emailError) {
+      console.error("Referral invite email failed:", emailError);
+      emailSent = false;
+    }
 
     res.status(201).json({
       referral,
       inviteUrl,
       inviteCode,
+      emailSent,
       message: "Referral invite created successfully",
     });
   } catch (error) {
     console.error("Create referral error:", error);
     res.status(500).json({ error: "Failed to create referral invite" });
+  }
+};
+
+export const resendReferralInvite = async (
+  req: AuthRequest,
+  res: Response,
+) => {
+  try {
+    const { id } = req.params;
+    const user = req.user!;
+
+    const referral = await prisma.referral.findUnique({
+      where: { id },
+      include: {
+        campaign: {
+          select: {
+            id: true,
+            name: true,
+            websiteUrl: true,
+            defaultReferralUrl: true,
+          },
+        },
+        referrer: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            username: true,
+            inviteCode: true,
+          },
+        },
+      },
+    });
+
+    if (!referral) {
+      return res.status(404).json({ error: "Referral not found" });
+    }
+
+    // Only the original inviter or an admin can resend. AMs can only resend
+    // invites they themselves sent; we intentionally don't let arbitrary AMs
+    // re-mail strangers on behalf of their promoters.
+    if (user.role !== UserRole.ADMIN && referral.referrerId !== user.id) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    if (referral.status !== "PENDING" || referral.referredUserId) {
+      return res
+        .status(400)
+        .json({ error: "Only pending invites can be resent" });
+    }
+
+    const metadata = readReferralMetadata(referral.metadata);
+    const inviteeEmail = metadata.inviteeEmail;
+    if (!inviteeEmail) {
+      return res.status(400).json({
+        error:
+          "This invite has no recorded invitee email (created before the email-required flow). Please create a new invite.",
+      });
+    }
+    const inviterEmail = metadata.inviterEmail ?? referral.referrer.email;
+    const accountManagerEmail = metadata.accountManagerEmail ?? null;
+
+    const refCode =
+      referral.referrer.username ||
+      referral.referrer.inviteCode ||
+      referral.referrerId;
+    const inviteUrl = buildInviteUrl(referral.campaign, {
+      refCode,
+      inviteCode: referral.inviteCode,
+      inviteeEmail,
+      inviterEmail,
+      accountManagerEmail,
+    });
+
+    // Push expiry forward 24h from now and bump `resendCount`. We do this
+    // BEFORE sending so concurrent resend clicks can't both "win" and
+    // double-send — the second request sees the fresh emailSentAt and could
+    // be rate-limited later if needed.
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + REFERRAL_INVITE_TTL_MS);
+    const nextMetadata = {
+      ...metadata,
+      inviteeEmail,
+      inviterEmail,
+      accountManagerEmail,
+      inviteCode: referral.inviteCode,
+      emailSentAt: now.toISOString(),
+      expiresAt: expiresAt.toISOString(),
+      resendCount: (metadata.resendCount ?? 0) + 1,
+    } satisfies Prisma.InputJsonValue;
+
+    await prisma.referral.update({
+      where: { id: referral.id },
+      data: { metadata: nextMetadata },
+    });
+
+    const inviterName =
+      [referral.referrer.firstName, referral.referrer.lastName]
+        .filter(Boolean)
+        .join(" ")
+        .trim() ||
+      referral.referrer.username ||
+      referral.referrer.email;
+
+    let emailSent = false;
+    try {
+      emailSent = await emailService.sendReferralInviteEmail({
+        inviteeEmail,
+        inviterName,
+        campaignName: referral.campaign.name,
+        acceptUrl: inviteUrl,
+      });
+    } catch (emailError) {
+      console.error("Referral invite resend failed:", emailError);
+      emailSent = false;
+    }
+
+    return res.json({
+      emailSent,
+      inviteUrl,
+      inviteeEmail,
+      expiresAt: expiresAt.toISOString(),
+      resendCount: nextMetadata.resendCount,
+      message: emailSent
+        ? "Invite email resent"
+        : "Invite updated but email delivery failed",
+    });
+  } catch (error) {
+    console.error("Resend referral invite error:", error);
+    return res.status(500).json({ error: "Failed to resend invite" });
+  }
+};
+
+export const deleteReferralInvite = async (
+  req: AuthRequest,
+  res: Response,
+) => {
+  try {
+    const { id } = req.params;
+    const user = req.user!;
+
+    const referral = await prisma.referral.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        referrerId: true,
+        referredUserId: true,
+        status: true,
+        _count: { select: { childReferrals: true } },
+      },
+    });
+
+    if (!referral) {
+      return res.status(404).json({ error: "Referral not found" });
+    }
+
+    // Only the original inviter or an admin can delete. Same rule as resend.
+    if (user.role !== UserRole.ADMIN && referral.referrerId !== user.id) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    // Refuse to delete anything that has downstream state attached. Pending
+    // invites (no referred user, no children) are safe to hard-delete; once
+    // a user has signed up via the code we must keep the row for commission
+    // attribution + auditing. Admins hit the same guard — if this ever needs
+    // to be overridden, do it from the DB, not through this endpoint.
+    if (referral.referredUserId || referral.status !== "PENDING") {
+      return res.status(400).json({
+        error:
+          "Only pending invites can be deleted. This referral has already been accepted.",
+      });
+    }
+    if (referral._count.childReferrals > 0) {
+      return res.status(400).json({
+        error:
+          "Cannot delete a referral that has downstream referrals attached.",
+      });
+    }
+
+    await prisma.referral.delete({ where: { id: referral.id } });
+
+    return res.json({ success: true, id: referral.id });
+  } catch (error) {
+    console.error("Delete referral invite error:", error);
+    return res.status(500).json({ error: "Failed to delete invite" });
   }
 };
 
@@ -253,10 +601,13 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user!;
 
-    // Get user's username to filter customer tracking referrals
+    // Get the current user's username + inviteCode. `username` is used to
+    // filter customer-tracking referrals out of the list (below); the pair
+    // `{ username, inviteCode }` is also used to reconstruct each pending
+    // row's `inviteUrl` via the same logic as `createReferralInvite`.
     const userDetails = await prisma.user.findUnique({
       where: { id: user.id },
-      select: { username: true }
+      select: { username: true, inviteCode: true },
     });
 
     const allReferrals = await prisma.referral.findMany({
@@ -267,6 +618,7 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
             id: true,
             name: true,
             websiteUrl: true,
+            defaultReferralUrl: true,
             commissionRate: true,
           },
         },
@@ -357,14 +709,42 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
         photoUrl: profilePhotoKey ? photoUrlByKey.get(profilePhotoKey) ?? null : null,
       } as Omit<NonNullable<T>, "profilePhotoKey"> & { photoUrl: string | null };
     };
-    const hydratedReferrals = referrals.map((ref) => ({
-      ...ref,
-      referredUser: hydrateReferredUser(ref.referredUser),
-      childReferrals: ref.childReferrals.map((cr) => ({
-        ...cr,
-        referredUser: hydrateReferredUser(cr.referredUser),
-      })),
-    }));
+    // Same ref-code derivation used in `createReferralInvite`. Used below to
+    // rebuild `inviteUrl` for pending rows so the UI can offer a "Copy link"
+    // action without hitting the server again.
+    const callerRefCode =
+      userDetails?.username || userDetails?.inviteCode || user.id;
+
+    const hydratedReferrals = referrals.map((ref) => {
+      const metadata = readReferralMetadata(ref.metadata);
+      const isExpired = computeIsExpired(ref.status, ref.createdAt, metadata);
+      // Only pending rows need an inviteUrl — accepted rows already have a
+      // `referredUser` so the UI wouldn't show the "Copy link" action. We
+      // skip rows missing inviteeEmail (legacy invites created before the
+      // email-required change) so we never emit a broken URL.
+      const inviteUrl =
+        ref.status === "PENDING" && metadata.inviteeEmail && metadata.inviterEmail
+          ? buildInviteUrl(ref.campaign, {
+              refCode: callerRefCode,
+              inviteCode: ref.inviteCode,
+              inviteeEmail: metadata.inviteeEmail,
+              inviterEmail: metadata.inviterEmail,
+              accountManagerEmail: metadata.accountManagerEmail ?? null,
+            })
+          : null;
+
+      return {
+        ...ref,
+        metadata,
+        isExpired,
+        inviteUrl,
+        referredUser: hydrateReferredUser(ref.referredUser),
+        childReferrals: ref.childReferrals.map((cr) => ({
+          ...cr,
+          referredUser: hydrateReferredUser(cr.referredUser),
+        })),
+      };
+    });
 
     // Calculate earnings
     const paidEarnings = referrals.reduce((sum, ref) => {

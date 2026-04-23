@@ -11,7 +11,25 @@ router.post(
   authenticate,
   [
     body("campaignId").trim().notEmpty(),
-    body("email").optional().isEmail().normalizeEmail(),
+    body("email")
+      .trim()
+      .notEmpty()
+      .withMessage("Email is required")
+      .isEmail()
+      // Preserve the email as the user entered it. The default
+      // normalizeEmail() strips dots + subaddresses from Gmail addresses
+      // ("dev.mjpro@gmail.com" -> "devmjpro@gmail.com"), which is correct
+      // for Gmail-routing but wrong for display + equality checks here.
+      // We only lowercase the domain/local part for consistent duplicate
+      // detection.
+      .normalizeEmail({
+        gmail_remove_dots: false,
+        gmail_remove_subaddress: false,
+        gmail_convert_googlemaildotcom: false,
+        outlookdotcom_remove_subaddress: false,
+        yahoo_remove_subaddress: false,
+        icloud_remove_subaddress: false,
+      }),
   ],
   referralController.createReferralInvite,
 );
@@ -24,6 +42,22 @@ router.get("/my-referrals", authenticate, referralController.getMyReferrals);
 
 // Check invite quota for a campaign (MUST be before /:id route)
 router.get("/quota/:campaignId", authenticate, referralController.checkInviteQuota);
+
+// Resend the invite email for a pending referral (owner or admin only).
+// Extends expiry by another 24h and bumps metadata.resendCount.
+router.post(
+  "/:id/resend",
+  authenticate,
+  referralController.resendReferralInvite,
+);
+
+// Delete a pending referral invite (owner or admin only). Refuses to delete
+// rows that already have a referredUser or downstream referrals.
+router.delete(
+  "/:id",
+  authenticate,
+  referralController.deleteReferralInvite,
+);
 
 // Get referral details
 router.get("/:id", authenticate, referralController.getReferralById);
