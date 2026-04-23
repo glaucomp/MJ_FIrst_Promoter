@@ -521,55 +521,53 @@ export const resetPassword = async (req: AuthRequest, res: Response) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const result = await prisma.$transaction(async (tx) => {
-      const consumed = await consumePasswordResetToken(rawToken);
-      if (!consumed) {
-        return null;
-      }
+    const consumed = await consumePasswordResetToken(rawToken);
+    if (!consumed) {
+      return null;
+    }
 
-      const existing = await tx.user.findUnique({
-        where: { id: consumed.userId },
-        select: { isActive: true },
-      });
-      if (!existing) {
-        return null;
-      }
-
-      // A plain RESET token must not silently re-enable a user who was
-      // disabled after the token was issued. Treat this as an invalid link
-      // rather than leaking account status by 403ing.
-      const isInvite = consumed.purpose === PasswordResetPurpose.INVITE;
-      if (!isInvite && !existing.isActive) {
-        return null;
-      }
-
-      const user = await tx.user.update({
-        where: { id: consumed.userId },
-        data: {
-          password: hashedPassword,
-          // Invite flow doubles as activation — ensure the user can log in
-          // even if the row was created with `isActive: false`. RESET leaves
-          // `isActive` untouched so concurrent deactivations aren't reversed.
-          ...(isInvite ? { isActive: true } : {}),
-        },
-        select: {
-          id: true,
-          email: true,
-          firstName: true,
-          lastName: true,
-          role: true,
-          userType: true,
-          isActive: true,
-          createdAt: true,
-        },
-      });
-
-      // Kill every other outstanding token so an unused invite email from the
-      // same mailbox can't be replayed to take over the account later.
-      await invalidateUserTokens(user.id);
-
-      return { consumed, user };
+    const existing = await prisma.user.findUnique({
+      where: { id: consumed.userId },
+      select: { isActive: true },
     });
+    if (!existing) {
+      return null;
+    }
+
+    // A plain RESET token must not silently re-enable a user who was
+    // disabled after the token was issued. Treat this as an invalid link
+    // rather than leaking account status by 403ing.
+    const isInvite = consumed.purpose === PasswordResetPurpose.INVITE;
+    if (!isInvite && !existing.isActive) {
+      return null;
+    }
+
+    const user = await prisma.user.update({
+      where: { id: consumed.userId },
+      data: {
+        password: hashedPassword,
+        // Invite flow doubles as activation — ensure the user can log in
+        // even if the row was created with `isActive: false`. RESET leaves
+        // `isActive` untouched so concurrent deactivations aren't reversed.
+        ...(isInvite ? { isActive: true } : {}),
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        userType: true,
+        isActive: true,
+        createdAt: true,
+      },
+    });
+
+    // Kill every other outstanding token so an unused invite email from the
+    // same mailbox can't be replayed to take over the account later.
+    await invalidateUserTokens(user.id);
+
+    const result = { consumed, user };
 
     if (!result) {
       return res
