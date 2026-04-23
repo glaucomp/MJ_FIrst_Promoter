@@ -161,8 +161,9 @@ export const CreateUserModal = ({
               {inviteEmailSent ? (
                 <div className="bg-[#006622] border border-[#00d948] rounded-[8px] px-[16px] py-[12px]">
                   <p className="text-[#28ff70] text-[14px] font-medium">
-                    Invite email sent to {success.email}. They have 72 hours to
-                    set their password and activate the account.
+                    Invite email sent to {success.email}. They can use the
+                    invite email to set their password and activate the
+                    account.
                   </p>
                 </div>
               ) : (
