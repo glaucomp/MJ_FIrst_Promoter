@@ -16,12 +16,12 @@ router.post(
       .notEmpty()
       .withMessage("Email is required")
       .isEmail()
-      // Preserve the email as the user entered it. The default
-      // normalizeEmail() strips dots + subaddresses from Gmail addresses
-      // ("dev.mjpro@gmail.com" -> "devmjpro@gmail.com"), which is correct
-      // for Gmail-routing but wrong for display + equality checks here.
-      // We only lowercase the domain/local part for consistent duplicate
-      // detection.
+      // Normalize the email before it reaches the controller, but keep
+      // provider-specific canonicalization conservative. In particular, do
+      // not strip Gmail dots or subaddresses (for example,
+      // "dev.mjpro@gmail.com" should not become "devmjpro@gmail.com"), and
+      // do not remove subaddresses for other supported providers. Note that
+      // normalizeEmail() may still lowercase parts of the address.
       .normalizeEmail({
         gmail_remove_dots: false,
         gmail_remove_subaddress: false,
