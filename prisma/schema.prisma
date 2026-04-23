@@ -143,7 +143,6 @@ model PasswordResetToken {
   createdAt  DateTime             @default(now())
 
   @@index([userId])
-  @@index([tokenHash])
   @@map("password_reset_tokens")
 }
 
