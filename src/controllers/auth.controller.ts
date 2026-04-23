@@ -520,45 +520,53 @@ export const resetPassword = async (req: AuthRequest, res: Response) => {
         .json({ error: "Password must be at least 8 characters" });
     }
 
-    const consumed = await consumePasswordResetToken(rawToken);
-    if (!consumed) {
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const result = await prisma.$transaction(async (tx) => {
+      const consumed = await consumePasswordResetToken(rawToken);
+      if (!consumed) {
+        return null;
+      }
+
+      const user = await tx.user.update({
+        where: { id: consumed.userId },
+        data: {
+          password: hashedPassword,
+          // Invite flow doubles as activation — make sure the user can log in
+          // even if the row was created with `isActive: false` for any reason.
+          isActive: true,
+        },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          role: true,
+          userType: true,
+          isActive: true,
+          createdAt: true,
+        },
+      });
+
+      // Kill every other outstanding token so an unused invite email from the
+      // same mailbox can't be replayed to take over the account later.
+      await invalidateUserTokens(user.id);
+
+      return { consumed, user };
+    });
+
+    if (!result) {
       return res
         .status(400)
         .json({ error: "This link is no longer valid. Please request a new one." });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const user = await prisma.user.update({
-      where: { id: consumed.userId },
-      data: {
-        password: hashedPassword,
-        // Invite flow doubles as activation — make sure the user can log in
-        // even if the row was created with `isActive: false` for any reason.
-        isActive: true,
-      },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
-        userType: true,
-        isActive: true,
-        createdAt: true,
-      },
-    });
-
-    // Kill every other outstanding token so an unused invite email from the
-    // same mailbox can't be replayed to take over the account later.
-    await invalidateUserTokens(user.id);
-
-    const token = generateToken(user.id, user.email, user.role);
+    const token = generateToken(result.user.id, result.user.email, result.user.role);
 
     res.json({
-      user,
+      user: result.user,
       token,
-      purpose: consumed.purpose.toLowerCase(),
+      purpose: result.consumed.purpose.toLowerCase(),
     });
   } catch (error) {
     console.error("Reset password error:", error);
