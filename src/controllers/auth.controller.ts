@@ -1,9 +1,16 @@
-import { PrismaClient, UserRole, UserType } from "@prisma/client";
+import { PasswordResetPurpose, PrismaClient, UserRole, UserType } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { Response } from "express";
 import { validationResult } from "express-validator";
 import jwt from "jsonwebtoken";
 import { AuthRequest } from "../middleware/auth.middleware";
+import { emailService } from "../services/email.service";
+import {
+  consumePasswordResetToken,
+  createPasswordResetToken,
+  invalidateUserTokens,
+  validatePasswordResetToken,
+} from "../services/password-reset.service";
 import { getUserTypeInfo } from "../services/user.service";
 
 const prisma = new PrismaClient();
@@ -425,6 +432,137 @@ export const refreshToken = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error("Refresh token error:", error);
     res.status(500).json({ error: "Failed to refresh token" });
+  }
+};
+
+// POST /api/auth/forgot-password { email }
+// Always responds 200 regardless of whether the email matches a real user so
+// the endpoint cannot be used to enumerate accounts. When it does match an
+// active user we create a short-lived RESET token and email the link.
+export const forgotPassword = async (req: AuthRequest, res: Response) => {
+  try {
+    const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true, email: true, firstName: true, isActive: true },
+    });
+
+    if (user && user.isActive) {
+      try {
+        const { rawToken, expiresAt } = await createPasswordResetToken(
+          user.id,
+          PasswordResetPurpose.RESET,
+        );
+        const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+        const resetUrl = `${frontendUrl.replace(/\/$/, "")}/set-password/${rawToken}`;
+        await emailService.sendPasswordResetEmail({
+          email: user.email,
+          firstName: user.firstName,
+          resetUrl,
+          expiresAt,
+        });
+      } catch (err) {
+        console.error("Forgot-password email error:", err);
+      }
+    }
+
+    res.json({
+      message: "If an account exists for that email, a reset link has been sent.",
+    });
+  } catch (error) {
+    console.error("Forgot password error:", error);
+    res.status(500).json({ error: "Failed to process request" });
+  }
+};
+
+// GET /api/auth/password-reset/:token/validate
+// Lets the FE render a friendly "Welcome <name>" or "Reset for <email>"
+// header before the user sets a password. Responds with `valid: false` for
+// any reason (missing/expired/consumed) to avoid leaking which.
+export const validateResetToken = async (req: AuthRequest, res: Response) => {
+  try {
+    const rawToken = req.params.token || "";
+    const info = await validatePasswordResetToken(rawToken);
+    if (!info) {
+      return res.json({ valid: false });
+    }
+    res.json({
+      valid: true,
+      email: info.email,
+      firstName: info.firstName,
+      purpose: info.purpose.toLowerCase(),
+    });
+  } catch (error) {
+    console.error("Validate reset token error:", error);
+    res.status(500).json({ error: "Failed to validate token" });
+  }
+};
+
+// POST /api/auth/password-reset { token, password }
+// Consumes the token, writes the new password, invalidates every other
+// outstanding token for the user, and returns a JWT so the FE can drop the
+// user straight into their dashboard without a second login step.
+export const resetPassword = async (req: AuthRequest, res: Response) => {
+  try {
+    const rawToken = typeof req.body?.token === "string" ? req.body.token : "";
+    const password = typeof req.body?.password === "string" ? req.body.password : "";
+
+    if (!rawToken) {
+      return res.status(400).json({ error: "Token is required" });
+    }
+    if (!password || password.length < 8) {
+      return res
+        .status(400)
+        .json({ error: "Password must be at least 8 characters" });
+    }
+
+    const consumed = await consumePasswordResetToken(rawToken);
+    if (!consumed) {
+      return res
+        .status(400)
+        .json({ error: "This link is no longer valid. Please request a new one." });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = await prisma.user.update({
+      where: { id: consumed.userId },
+      data: {
+        password: hashedPassword,
+        // Invite flow doubles as activation — make sure the user can log in
+        // even if the row was created with `isActive: false` for any reason.
+        isActive: true,
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        userType: true,
+        isActive: true,
+        createdAt: true,
+      },
+    });
+
+    // Kill every other outstanding token so an unused invite email from the
+    // same mailbox can't be replayed to take over the account later.
+    await invalidateUserTokens(user.id);
+
+    const token = generateToken(user.id, user.email, user.role);
+
+    res.json({
+      user,
+      token,
+      purpose: consumed.purpose.toLowerCase(),
+    });
+  } catch (error) {
+    console.error("Reset password error:", error);
+    res.status(500).json({ error: "Failed to reset password" });
   }
 };
 

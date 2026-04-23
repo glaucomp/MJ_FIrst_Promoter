@@ -37,4 +37,24 @@ router.get('/user-type', authenticate, authController.getUserType);
 // Refresh token
 router.post('/refresh', authenticate, authController.refreshToken);
 
+// Forgot password: always responds 200 regardless of whether the email
+// matches a real user, to avoid account enumeration.
+router.post(
+  '/forgot-password',
+  [body('email').isEmail().normalizeEmail()],
+  authController.forgotPassword,
+);
+
+// Validate an invite / reset token so the FE can show a friendly header
+// before collecting a new password.
+router.get('/password-reset/:token/validate', authController.validateResetToken);
+
+// Consume an invite / reset token and set a new password. Returns a JWT so
+// the user lands straight in their dashboard.
+router.post(
+  '/password-reset',
+  [body('token').isString().notEmpty(), body('password').isString().isLength({ min: 8 })],
+  authController.resetPassword,
+);
+
 export default router;

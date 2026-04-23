@@ -1,9 +1,17 @@
-import { PrismaClient, UserRole, UserType } from "@prisma/client";
+import {
+  PasswordResetPurpose,
+  PrismaClient,
+  UserRole,
+  UserType,
+} from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { Response } from "express";
 import { validationResult } from "express-validator";
 import { nanoid } from "nanoid";
+import crypto from "node:crypto";
 import { AuthRequest } from "../middleware/auth.middleware";
+import { emailService } from "../services/email.service";
+import { createPasswordResetToken } from "../services/password-reset.service";
 import { getPresignedUrl } from "../services/s3.service";
 import { syncUserFromTeaseMe } from "../services/teaseme.service";
 
@@ -11,8 +19,7 @@ const prisma = new PrismaClient();
 const PREREGISTER_URL =
   process.env.PREREGISTER_VIP_TEASEME_USER ||
   process.env.VITE_PREREGISTER_VIP_TEASEME_USER;
-const PREREGISTER_TOKEN =
-  process.env.MJFP_TOKEN || process.env.VITE_MJFP_TOKEN;
+const PREREGISTER_TOKEN = process.env.MJFP_TOKEN || process.env.VITE_MJFP_TOKEN;
 
 const isAccountManagerOrAdmin = (req: AuthRequest): boolean => {
   if (!req.user) return false;
@@ -68,7 +75,11 @@ export const createChatter = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const { email, password, firstName, lastName } = req.body;
+    const { email, firstName, lastName } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
 
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
@@ -77,7 +88,10 @@ export const createChatter = async (req: AuthRequest, res: Response) => {
         .json({ error: "A user with that email already exists" });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Placeholder password — the chatter will set their own via the invite
+    // email. Stored only because `users.password` is NOT NULL.
+    const placeholderSecret = crypto.randomBytes(32).toString("base64url");
+    const hashedPassword = await bcrypt.hash(placeholderSecret, 10);
     const inviteCode = nanoid(10);
 
     // Dual-stamp when the caller is an active AM: they created the chatter
@@ -112,7 +126,43 @@ export const createChatter = async (req: AuthRequest, res: Response) => {
       },
     });
 
-    res.status(201).json({ chatter, message: "Chatter created successfully" });
+    let inviteEmailSent = false;
+    try {
+      const { rawToken, expiresAt } = await createPasswordResetToken(
+        chatter.id,
+        PasswordResetPurpose.INVITE,
+      );
+      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+      const setupUrl = `${frontendUrl.replace(/\/$/, "")}/set-password/${rawToken}`;
+      const callerRecord = await prisma.user.findUnique({
+        where: { id: callerId },
+        select: { firstName: true, lastName: true, email: true },
+      });
+      const invitedByName =
+        [callerRecord?.firstName, callerRecord?.lastName]
+          .filter(Boolean)
+          .join(" ")
+          .trim() ||
+        callerRecord?.email ||
+        req.user!.email;
+      inviteEmailSent = await emailService.sendSetPasswordEmail({
+        email: chatter.email,
+        firstName: chatter.firstName,
+        setupUrl,
+        invitedByName,
+        expiresAt,
+      });
+    } catch (err) {
+      console.error("Failed to send chatter invite email:", err);
+    }
+
+    res.status(201).json({
+      chatter,
+      inviteEmailSent,
+      message: inviteEmailSent
+        ? "Chatter created and invite email sent"
+        : "Chatter created — invite email could not be sent",
+    });
   } catch (error) {
     console.error("Create chatter error:", error);
     res.status(500).json({ error: "Failed to create chatter" });
@@ -297,7 +347,9 @@ export const getMyGroups = async (req: AuthRequest, res: Response) => {
     for (const g of groups) {
       const p = g.promoter;
       if (!p?.username || toSyncMap.has(p.id)) continue;
-      const lastSyncedAt = p.teasemeSyncedAt ? p.teasemeSyncedAt.getTime() : null;
+      const lastSyncedAt = p.teasemeSyncedAt
+        ? p.teasemeSyncedAt.getTime()
+        : null;
       const isStale = lastSyncedAt === null || now - lastSyncedAt > SYNC_TTL_MS;
       if (isStale) {
         toSyncMap.set(p.id, { id: p.id, username: p.username });

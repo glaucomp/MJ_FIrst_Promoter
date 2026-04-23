@@ -1,10 +1,13 @@
 import { Response } from 'express';
-import { PrismaClient, UserRole, UserType } from '@prisma/client';
+import { PasswordResetPurpose, PrismaClient, UserRole, UserType } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import crypto from 'node:crypto';
 import { nanoid } from 'nanoid';
 import { validationResult } from 'express-validator';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { resolveAccountManagersFor } from '../services/ownership.service';
+import { createPasswordResetToken } from '../services/password-reset.service';
+import { emailService } from '../services/email.service';
 
 const prisma = new PrismaClient();
 
@@ -416,7 +419,7 @@ export const assignAccountManager = async (req: AuthRequest, res: Response) => {
         where: { id: accountManagerId },
         select: { id: true, userType: true, isActive: true },
       });
-      if (!manager || manager.userType !== UserType.ACCOUNT_MANAGER || !manager.isActive) {
+      if (manager?.userType !== UserType.ACCOUNT_MANAGER || !manager.isActive) {
         return res.status(400).json({ error: 'Target is not an active account manager' });
       }
       if (manager.id === id) {
@@ -489,16 +492,15 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ error: 'Insufficient permissions' });
     }
 
-    const { email, password, firstName, lastName, userType } = req.body as {
+    const { email, firstName, lastName, userType } = req.body as {
       email?: string;
-      password?: string;
       firstName?: string;
       lastName?: string;
       userType?: string;
     };
 
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
     }
 
     // Admins can create AMs, TMs, promoters and payers. AMs can only create
@@ -525,7 +527,12 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'A user with that email already exists' });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Generate an unguessable placeholder hash. The user never sees it — they
+    // set their real password through the invite-email flow below. We still
+    // need *a* hash because `users.password` is NOT NULL in the schema, and
+    // we don't want to weaken that constraint for historical rows.
+    const placeholderSecret = crypto.randomBytes(32).toString('base64url');
+    const hashedPassword = await bcrypt.hash(placeholderSecret, 10);
 
     // Derive a unique username from the email prefix
     const baseUsername = email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '_');
@@ -595,7 +602,44 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    res.status(201).json({ user: { ...newUser, stats: { totalReferrals: 0, activeReferrals: 0, totalEarnings: 0, pendingEarnings: 0 } }, message: 'User created successfully' });
+    // Send the password-setup invite. We intentionally don't fail the
+    // whole request if the email send fails — the user row is already
+    // created, and the caller can re-issue an invite from the UI. We do
+    // surface the outcome in the response so the modal can tell the admin.
+    let inviteEmailSent = false;
+    try {
+      const { rawToken, expiresAt } = await createPasswordResetToken(
+        newUser.id,
+        PasswordResetPurpose.INVITE,
+      );
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const setupUrl = `${frontendUrl.replace(/\/$/, '')}/set-password/${rawToken}`;
+      const callerRecord = await prisma.user.findUnique({
+        where: { id: caller.id },
+        select: { firstName: true, lastName: true, email: true },
+      });
+      const invitedByName = [callerRecord?.firstName, callerRecord?.lastName]
+        .filter(Boolean)
+        .join(' ')
+        .trim() || callerRecord?.email || caller.email;
+      inviteEmailSent = await emailService.sendSetPasswordEmail({
+        email: newUser.email,
+        firstName: newUser.firstName,
+        setupUrl,
+        invitedByName,
+        expiresAt,
+      });
+    } catch (err) {
+      console.error('Failed to send invite email:', err);
+    }
+
+    res.status(201).json({
+      user: { ...newUser, stats: { totalReferrals: 0, activeReferrals: 0, totalEarnings: 0, pendingEarnings: 0 } },
+      inviteEmailSent,
+      message: inviteEmailSent
+        ? 'User created and invite email sent'
+        : 'User created — invite email could not be sent',
+    });
   } catch (error) {
     console.error('Create user error:', error);
     res.status(500).json({ error: 'Failed to create user' });
