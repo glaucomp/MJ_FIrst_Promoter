@@ -212,6 +212,7 @@ model Referral {
   clicks            ClickTracking[]
   customers         Customer[]
   transactions      Transaction[]
+  preUser           PreUser?
 
   @@index([inviteCode])
   @@index([campaignId])
@@ -219,6 +220,31 @@ model Referral {
   @@index([referredUserId])
   @@index([status])
   @@map("referrals")
+}
+
+// PreUser — TeaseMe onboarding state for a referral invite that hasn't yet
+// registered in our own system. Seeded alongside Referral in `createReferralInvite`
+// and polled against TeaseMe's `user-status` endpoint to track lifecycle
+// progress (Step 1 → Step N). Deleted when the invitee hits our `/api/auth/register`
+// (they become a real User) or when the parent Referral is hard-deleted
+// (ON DELETE CASCADE). Never mutates Referral.status — that transition is
+// still owned by the register handler.
+model PreUser {
+  id            String    @id @default(cuid())
+  email         String
+  referralId    String?   @unique
+  inviteCode    String?   @unique
+  teasemeUserId String?
+  currentStep   Int       @default(0)
+  stepHistory   Json?
+  lastCheckedAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  referral Referral? @relation(fields: [referralId], references: [id], onDelete: Cascade)
+
+  @@index([email])
+  @@map("pre_users")
 }
 
 // TrackingLink table - unique URLs for each user/campaign combination

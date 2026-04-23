@@ -15,7 +15,6 @@ import {
   type AccountManagerSummary,
   type ApiUser,
   type Referral,
-  type TrackingLink,
 } from "../services/api";
 
 const formatManagerName = (m: {
@@ -65,7 +64,6 @@ export const Models = () => {
   const isUsersRoute = location.pathname === "/models";
   const [allUsers, setAllUsers] = useState<ApiUser[]>([]);
   const [myReferrals, setMyReferrals] = useState<Referral[]>([]);
-  const [trackingLinks, setTrackingLinks] = useState<TrackingLink[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>("");
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
@@ -104,13 +102,14 @@ export const Models = () => {
         setAllUsers(users.filter((u) => u.userType?.toLowerCase() !== "admin"));
       } else if (
         user?.baseRole === "account_manager" ||
-        (user?.baseRole === "team_manager" && user?.role === "team_manager")
+        (user?.baseRole === "team_manager" && user?.role === "team_manager") ||
+        user?.baseRole === "promoter"
       ) {
+        // Promoters see the same My Promoters list as account managers —
+        // the invite creation flow (email + Step N chip) is shared, just
+        // subject to `campaign.maxInvitesPerMonth` on the backend.
         const referrals = await modelsApi.getMyReferrals();
         setMyReferrals(referrals);
-      } else if (user?.baseRole === "promoter") {
-        const links = await modelsApi.getMyTrackingLinks();
-        setTrackingLinks(links);
       }
     } catch (err) {
       const errorMessage =
@@ -1028,87 +1027,43 @@ whitespace-nowrap"
   }
 
   // ── PURE PROMOTER ─────────────────────────────────────────────────────────
+  // Mirrors the ACCOUNT MANAGER REFERRALS VIEW above. The invite flow is the
+  // same in both cases; the backend enforces `campaign.maxInvitesPerMonth` for
+  // non-admin/non-AM callers so promoters are naturally capped. InviteModal
+  // also surfaces the remaining quota client-side via `getInviteQuota`.
   if (user?.baseRole === "promoter") {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">
-            My Tracking Links
+            My Promoters
           </h1>
           <button
-            onClick={() => handleOpenInviteModal("tracking")}
-            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+            onClick={() => handleOpenInviteModal("referral")}
+            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all whitespace-nowrap"
           >
-            + Create Link
+            + Create Referral Link
           </button>
         </div>
 
+        {error === "SESSION_EXPIRED" ? (
+          <SessionExpiredBanner onLogout={logout} />
+        ) : error ? (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-[8px] p-[16px]">
+            <p className="text-red-400 text-[14px] font-semibold">{error}</p>
+          </div>
+        ) : null}
+
         <p className="text-[14px] text-[#9e9e9e]">
-          Share these links to earn commissions from customer purchases
+          {myReferrals.length} total referrals
         </p>
 
-        <div className="flex flex-col gap-[12px]">
-          {trackingLinks.map((link) => (
-            <div
-              key={link.id}
-              className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[16px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)]"
-            >
-              <div className="flex flex-col gap-[12px]">
-                <div className="flex items-center justify-between">
-                  <div className="flex flex-col gap-[4px]">
-                    <p className="text-white text-[16px] font-semibold">
-                      {link.campaign.name}
-                    </p>
-                    <p className="text-[#9e9e9e] text-[12px]">
-                      Code:{" "}
-                      <span className="font-mono text-white">
-                        {link.shortCode}
-                      </span>
-                    </p>
-                  </div>
-                  <div className="text-right flex flex-col gap-[4px] w-full">
-                    <p className="text-[#9e9e9e] text-[12px] uppercase">
-                      Clicks
-                    </p>
-                    <p className="text-white text-[20px] font-bold">
-                      {link.clicks}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[12px] py-[8px] flex items-center justify-between gap-[8px]">
-                  <p className="text-[#9e9e9e] text-[12px] break-all font-mono flex-1">
-                    {link.fullUrl}
-                  </p>
-                  <button
-                    onClick={() => navigator.clipboard.writeText(link.fullUrl)}
-                    className="text-[#ff0f5f] text-[12px] font-bold hover:text-[#ff1f69] transition-colors whitespace-nowrap"
-                  >
-                    Copy
-                  </button>
-                </div>
-
-                <p className="text-[#9e9e9e] text-[12px]">
-                  Created {new Date(link.createdAt).toLocaleDateString()}
-                </p>
-              </div>
-            </div>
-          ))}
-
-          {trackingLinks.length === 0 && (
-            <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] text-center">
-              <p className="text-[#9e9e9e] text-[16px]">
-                No tracking links yet. Create your first link to start earning
-                commissions.
-              </p>
-            </div>
-          )}
-        </div>
+        <ReferralList referrals={myReferrals} setReferrals={setMyReferrals} />
 
         <InviteModal
           isOpen={isInviteModalOpen}
           onClose={handleCloseModal}
-          type={modalType}
+          type="referral"
           userRole="promoter"
         />
       </div>
@@ -1385,6 +1340,20 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
                   {referral.metadata?.resendCount ? (
                     <span className="text-[#9e9e9e] text-[12px]">
                       · resent {referral.metadata.resendCount}×
+                    </span>
+                  ) : null}
+                  {referral.preUser ? (
+                    <span
+                      className="px-[8px] py-[2px] rounded-[100px] text-[11px] font-medium border border-[rgba(255,255,255,0.1)] bg-[#1a1a1a] text-[#9e9e9e]"
+                      title={
+                        referral.preUser.lastCheckedAt
+                          ? `Last checked ${new Date(referral.preUser.lastCheckedAt).toLocaleString()}`
+                          : "Not polled yet"
+                      }
+                    >
+                      {referral.preUser.currentStep > 0
+                        ? `Step ${referral.preUser.currentStep}`
+                        : "Not started"}
                     </span>
                   ) : null}
                 </div>

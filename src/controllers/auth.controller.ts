@@ -99,6 +99,17 @@ export const register = async (req: AuthRequest, res: Response) => {
         },
       });
 
+      // Drop the TeaseMe lifecycle tracker — once the invitee registers on
+      // our side the Referral itself becomes the source of truth and the
+      // "Step N" chip should disappear. The OR covers the canonical link
+      // plus any orphan rows that share the email (e.g. rows seeded by a
+      // different inviter for the same mailbox).
+      await prisma.preUser.deleteMany({
+        where: {
+          OR: [{ referralId: referral.id }, { email: user.email }],
+        },
+      });
+
       // AUTO-CREATE: Customer tracking referral for the new promoter
       // This allows them to track their own customer sales
       try {

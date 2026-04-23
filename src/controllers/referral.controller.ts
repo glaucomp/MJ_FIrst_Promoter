@@ -5,6 +5,7 @@ import { nanoid } from "nanoid";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { emailService } from "../services/email.service";
 import { getPresignedUrl } from "../services/s3.service";
+import { fetchTeasemePreUserStatus } from "../services/teaseme.service";
 
 const prisma = new PrismaClient();
 
@@ -13,6 +14,144 @@ const prisma = new PrismaClient();
 // status in the DB stays `PENDING` throughout — expiry is a computed flag
 // exposed to the UI, not a persisted enum value.
 const REFERRAL_INVITE_TTL_MS = 24 * 60 * 60 * 1000;
+
+// How long a PreUser's TeaseMe-derived lifecycle data is considered fresh
+// before the next My Promoters load re-polls tmapi. 5 min default keeps the
+// chip close to real-time without hammering upstream on every list render.
+const TEASEME_POLL_TTL_MS = (() => {
+  const raw = Number(process.env.TEASEME_POLL_TTL_MS);
+  return Number.isFinite(raw) && raw >= 0 ? raw : 5 * 60 * 1000;
+})();
+
+// Cap simultaneous upstream calls so a large invite list doesn't fan out into
+// dozens of parallel tmapi requests.
+const TEASEME_POLL_CONCURRENCY = 5;
+
+// Keep the audit trail from unbounded growth — a single invite should never
+// accumulate more than this many step transitions in the stepHistory column.
+const STEP_HISTORY_MAX = 20;
+
+type StepHistoryEntry = { step: number; at: string };
+
+const readStepHistory = (raw: Prisma.JsonValue | null | undefined): StepHistoryEntry[] => {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(
+    (e): e is StepHistoryEntry =>
+      !!e && typeof e === "object" && !Array.isArray(e) &&
+      typeof (e as StepHistoryEntry).step === "number" &&
+      typeof (e as StepHistoryEntry).at === "string",
+  );
+};
+
+type PreUserRow = {
+  id: string;
+  email: string;
+  inviteCode: string | null;
+  currentStep: number;
+  lastCheckedAt: Date | null;
+  stepHistory: Prisma.JsonValue | null;
+  teasemeUserId: string | null;
+};
+
+type ReferralRowWithPreUser = { preUser: PreUserRow | null };
+
+/**
+ * For each referral in `rows`, check whether the attached PreUser's
+ * TeaseMe-derived state is stale (TTL elapsed) and, if so, re-poll tmapi.
+ * Mutates each `rows[i].preUser` in-place so the caller's response payload
+ * reflects the freshly-written DB state without a second read. Bounded
+ * concurrency keeps a fan-out spike from overwhelming the upstream.
+ *
+ * Never flips `Referral.status` — that transition is owned exclusively by
+ * the register handler, which deletes the PreUser on successful signup.
+ */
+const refreshPreUserSteps = async (
+  rows: ReferralRowWithPreUser[],
+): Promise<void> => {
+  const now = Date.now();
+  const staleRows = rows.filter((row) => {
+    const pre = row.preUser;
+    if (!pre) return false;
+    if (!pre.lastCheckedAt) return true;
+    return now - pre.lastCheckedAt.getTime() > TEASEME_POLL_TTL_MS;
+  });
+
+  if (staleRows.length === 0) return;
+
+  let cursor = 0;
+  const workers = Array.from(
+    { length: Math.min(TEASEME_POLL_CONCURRENCY, staleRows.length) },
+    async () => {
+      while (cursor < staleRows.length) {
+        const idx = cursor++;
+        const row = staleRows[idx];
+        const pre = row.preUser!;
+        try {
+          const status = await fetchTeasemePreUserStatus({
+            email: pre.email,
+            inviteCode: pre.inviteCode ?? undefined,
+          });
+          const nextCheckedAt = new Date();
+          if (!status) {
+            // Upstream miss / error — just bump lastCheckedAt so we don't
+            // spin on the same row every list render.
+            const updated = await prisma.preUser.update({
+              where: { id: pre.id },
+              data: { lastCheckedAt: nextCheckedAt },
+              select: {
+                id: true,
+                email: true,
+                inviteCode: true,
+                currentStep: true,
+                lastCheckedAt: true,
+                stepHistory: true,
+                teasemeUserId: true,
+              },
+            });
+            row.preUser = updated;
+            continue;
+          }
+
+          const history = readStepHistory(pre.stepHistory);
+          const nextHistory =
+            status.step > pre.currentStep
+              ? [
+                  ...history,
+                  { step: status.step, at: nextCheckedAt.toISOString() },
+                ].slice(-STEP_HISTORY_MAX)
+              : history;
+
+          const updated = await prisma.preUser.update({
+            where: { id: pre.id },
+            data: {
+              currentStep: status.step,
+              teasemeUserId: status.teasemeUserId ?? pre.teasemeUserId,
+              lastCheckedAt: nextCheckedAt,
+              stepHistory: nextHistory as unknown as Prisma.InputJsonValue,
+            },
+            select: {
+              id: true,
+              email: true,
+              inviteCode: true,
+              currentStep: true,
+              lastCheckedAt: true,
+              stepHistory: true,
+              teasemeUserId: true,
+            },
+          });
+          row.preUser = updated;
+        } catch (err) {
+          console.error("[refreshPreUserSteps] poll failed", {
+            preUserId: pre.id,
+            err: (err as Error).message,
+          });
+        }
+      }
+    },
+  );
+
+  await Promise.allSettled(workers);
+};
 
 const hasAccountManagerAccess = (user: AuthRequest["user"]) => {
   return user?.userType === UserType.ACCOUNT_MANAGER;
@@ -282,36 +421,54 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
       resendCount: 0,
     } satisfies Prisma.InputJsonValue;
 
-    const referral = await prisma.referral.create({
-      data: {
-        inviteCode,
-        campaignId,
-        referrerId: user.id,
-        level,
-        parentReferralId,
-        status: "PENDING",
-        metadata,
-      },
-      include: {
-        campaign: {
-          select: {
-            id: true,
-            name: true,
-            websiteUrl: true,
-            defaultReferralUrl: true,
-            commissionRate: true,
-            secondaryRate: true,
+    // Create the Referral and seed a matching PreUser row atomically. The
+    // PreUser tracks TeaseMe onboarding lifecycle (step 0..N) until the
+    // invitee registers on our side, at which point the register handler
+    // deletes it. Keeping both writes in one transaction guarantees we never
+    // have a pending invite without its lifecycle row.
+    const referral = await prisma.$transaction(async (tx) => {
+      const created = await tx.referral.create({
+        data: {
+          inviteCode,
+          campaignId,
+          referrerId: user.id,
+          level,
+          parentReferralId,
+          status: "PENDING",
+          metadata,
+        },
+        include: {
+          campaign: {
+            select: {
+              id: true,
+              name: true,
+              websiteUrl: true,
+              defaultReferralUrl: true,
+              commissionRate: true,
+              secondaryRate: true,
+            },
+          },
+          referrer: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+            },
           },
         },
-        referrer: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-          },
+      });
+
+      await tx.preUser.create({
+        data: {
+          email: email as string,
+          referralId: created.id,
+          inviteCode,
+          currentStep: 0,
         },
-      },
+      });
+
+      return created;
     });
 
     const refCode = inviter.username || inviter.inviteCode || user.id;
@@ -449,6 +606,21 @@ export const resendReferralInvite = async (
     await prisma.referral.update({
       where: { id: referral.id },
       data: { metadata: nextMetadata },
+    });
+
+    // Force the next My Promoters load to re-poll tmapi immediately instead
+    // of waiting for the normal TTL — a resend usually means the inviter
+    // wants fresh status. Upsert so rows that pre-date this migration still
+    // get a PreUser without requiring a backfill.
+    await prisma.preUser.upsert({
+      where: { referralId: referral.id },
+      update: { lastCheckedAt: null },
+      create: {
+        email: inviteeEmail,
+        referralId: referral.id,
+        inviteCode: referral.inviteCode,
+        currentStep: 0,
+      },
     });
 
     const inviterName =
@@ -622,6 +794,17 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
             commissionRate: true,
           },
         },
+        preUser: {
+          select: {
+            id: true,
+            email: true,
+            inviteCode: true,
+            currentStep: true,
+            lastCheckedAt: true,
+            stepHistory: true,
+            teasemeUserId: true,
+          },
+        },
         referredUser: {
           select: {
             id: true,
@@ -668,6 +851,12 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
       },
       orderBy: { createdAt: "desc" },
     });
+
+    // Refresh TeaseMe lifecycle state for any stale PreUser rows before
+    // shaping the response, so the UI sees the freshest possible "Step N"
+    // chip. Mutates each ref.preUser in-place; no-op for rows already inside
+    // TTL or for rows already registered (no PreUser attached).
+    await refreshPreUserSteps(allReferrals);
 
     // Filter out:
     // 1. Self-referrals (referredUserId === own id, e.g. username-based tracking records)

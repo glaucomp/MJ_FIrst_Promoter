@@ -201,6 +201,14 @@ export interface Referral {
   // The campaign tracking URL with all 4 referral query params appended.
   // Null for accepted rows or legacy rows missing inviteeEmail.
   inviteUrl?: string | null;
+  // TeaseMe onboarding snapshot for pending invites. Null once the invitee
+  // has registered on our side (the backend deletes the PreUser row then),
+  // and null for legacy rows that pre-date the lifecycle tracker.
+  preUser?: {
+    currentStep: number;
+    lastCheckedAt: string | null;
+    teasemeUserId: string | null;
+  } | null;
 }
 
 export interface TrackingLink {

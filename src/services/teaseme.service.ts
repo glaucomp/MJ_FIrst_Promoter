@@ -4,6 +4,86 @@ const prisma = new PrismaClient();
 
 const TEASEME_API_URL = (process.env.TEASEME_API_URL || 'https://api.teaseme.live').replace(/\/$/, '');
 
+// TeaseMe lifecycle lookup for the pre-user polling flow. Hitting this with a
+// referral's email + inviteCode tells us which onboarding step the invitee is
+// on inside TeaseMe so the My Promoters list can render a "Step N" chip while
+// the user hasn't yet registered on our side.
+const TEASEME_STATUS_URL = (
+  process.env.TEASEME_STATUS_URL || 'https://tmapi.mxjprod.work/auth/user-status'
+).replace(/\/$/, '');
+const TEASEME_STATUS_TIMEOUT_MS = 3_000;
+
+export interface TeasemePreUserStatus {
+  step: number;
+  active: boolean;
+  teasemeUserId: string | null;
+}
+
+/**
+ * Look up a pre-registered user's TeaseMe onboarding status. At least one of
+ * `email` / `inviteCode` must be provided — TeaseMe matches on `inviteCode`
+ * first (authoritative, unique) and falls back to `email`. Returns `null` on
+ * 404 / non-2xx / timeout / network error so callers can keep the last-known
+ * state rather than propagating upstream outages to the UI.
+ */
+export const fetchTeasemePreUserStatus = async (
+  params: { email?: string; inviteCode?: string },
+): Promise<TeasemePreUserStatus | null> => {
+  const email = params.email?.trim() || '';
+  const inviteCode = params.inviteCode?.trim() || '';
+  if (!email && !inviteCode) {
+    throw new Error('fetchTeasemePreUserStatus requires email or inviteCode');
+  }
+
+  const token = process.env.MJFP_TOKEN || process.env.VITE_MJFP_TOKEN;
+  if (!token) {
+    // Without the shared token the upstream will refuse every request — fail
+    // open so the list still renders instead of looping on 401s.
+    return null;
+  }
+
+  const url = new URL(TEASEME_STATUS_URL);
+  if (email) url.searchParams.set('email', email);
+  if (inviteCode) url.searchParams.set('inviteCode', inviteCode);
+
+  let res: Response;
+  try {
+    res = await fetch(url.toString(), {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        'X-Internal-Token': token,
+      },
+      signal: AbortSignal.timeout(TEASEME_STATUS_TIMEOUT_MS),
+    });
+  } catch {
+    return null;
+  }
+
+  if (!res.ok) return null;
+
+  let body: unknown = null;
+  try {
+    body = await res.json();
+  } catch {
+    return null;
+  }
+  if (!body || typeof body !== 'object') return null;
+
+  const raw = body as Record<string, unknown>;
+  const step = typeof raw.step === 'number' ? raw.step : Number(raw.step);
+  if (!Number.isFinite(step)) return null;
+
+  return {
+    step: Math.max(0, Math.trunc(step)),
+    active: Boolean(raw.active),
+    teasemeUserId:
+      typeof raw.teasemeUserId === 'string' && raw.teasemeUserId
+        ? raw.teasemeUserId
+        : null,
+  };
+};
+
 export interface TeaseMeSocialLink {
   platform: string;
   url: string;
