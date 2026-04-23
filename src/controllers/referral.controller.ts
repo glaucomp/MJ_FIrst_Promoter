@@ -234,10 +234,11 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
 
     // Block duplicates: same inviter + same campaign + same invitee email
     // on either a pending invite (metadata.inviteeEmail) or an already
-    // accepted one (referredUser.email). We intentionally skip expired rows
-    // — those can be deleted or resent, not a hard block. The OR covers both
-    // the "still waiting on them to accept" and "they already signed up" case
-    // in a single query.
+    // accepted one (referredUser.email). This query matches any `PENDING`
+    // or `ACTIVE` row, including pending invites whose computed expiry has
+    // passed, because expiry is not represented in the persisted `status`.
+    // The OR covers both the "still waiting on them to accept" and "they
+    // already signed up" case in a single query.
     const existingInvite = await prisma.referral.findFirst({
       where: {
         referrerId: user.id,
