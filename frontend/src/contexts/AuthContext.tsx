@@ -7,6 +7,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   login: (email: string, password: string) => Promise<User>;
+  loginWithToken: (token: string, apiUser: unknown) => User;
   logout: () => void;
   switchRole: (role: UserRole) => void;
   updateUser: (patch: Partial<User>) => void;
@@ -75,6 +76,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return mappedUser;
   };
 
+  // Used by the Set Password flow: the server returns a JWT + user on
+  // successful password reset, and we drop the new session straight into
+  // the context so the user doesn't have to log in a second time.
+  const loginWithToken = (newToken: string, apiUser: unknown): User => {
+    const mappedUser = mapApiUserToUser(apiUser);
+    setToken(newToken);
+    setUser(mappedUser);
+    localStorage.setItem('auth_token', newToken);
+    localStorage.setItem('auth_user', JSON.stringify(mappedUser));
+    return mappedUser;
+  };
+
   const logout = () => {
     setUser(null);
     setToken(null);
@@ -100,7 +113,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, switchRole, updateUser, isLoading }}>
+    <AuthContext.Provider value={{ user, token, login, loginWithToken, logout, switchRole, updateUser, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

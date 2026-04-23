@@ -31,6 +31,11 @@ enum ReferralStatus {
   CANCELLED
 }
 
+enum PasswordResetPurpose {
+  INVITE
+  RESET
+}
+
 // API Key model for external integrations
 model ApiKey {
   id          String   @id @default(cuid())
@@ -111,6 +116,7 @@ model User {
   chatterGroupMemberships ChatterGroupMember[]
   createdChatterGroups  ChatterGroup[]     @relation("ChatterGroupCreator")
   socialLinks           SocialLink[]
+  passwordResetTokens   PasswordResetToken[]
 
   @@index([email])
   @@index([username])
@@ -119,6 +125,25 @@ model User {
   @@index([createdById])
   @@index([accountManagerId])
   @@map("users")
+}
+
+// Short-lived one-time tokens for the password invite / reset flow.
+// We only ever store the sha256 of the raw token — the raw value lives
+// exclusively in the email we send. `purpose` distinguishes an admin/AM
+// invite (first-time password setup) from a self-service forgot-password
+// flow so the UI can render the right copy.
+model PasswordResetToken {
+  id         String               @id @default(cuid())
+  userId     String
+  user       User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String               @unique
+  purpose    PasswordResetPurpose @default(INVITE)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime             @default(now())
+
+  @@index([userId])
+  @@map("password_reset_tokens")
 }
 
 // Campaign table - promotional campaigns with commission rates

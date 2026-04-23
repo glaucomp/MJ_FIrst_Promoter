@@ -23,7 +23,6 @@ router.post(
   }),
   [
     body('email').isEmail().normalizeEmail(),
-    body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
     body('firstName').optional().trim(),
     body('lastName').optional().trim(),
   ],
