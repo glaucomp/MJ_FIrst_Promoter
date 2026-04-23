@@ -420,7 +420,7 @@ export const assignAccountManager = async (req: AuthRequest, res: Response) => {
         where: { id: accountManagerId },
         select: { id: true, userType: true, isActive: true },
       });
-      if (manager?.userType !== UserType.ACCOUNT_MANAGER || !manager.isActive) {
+      if (!manager || manager.userType !== UserType.ACCOUNT_MANAGER || !manager.isActive) {
         return res.status(400).json({ error: 'Target is not an active account manager' });
       }
       if (manager.id === id) {
