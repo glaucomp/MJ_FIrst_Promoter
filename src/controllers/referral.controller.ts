@@ -928,6 +928,27 @@ export const orderReferralLandingPage = async (
     }
     const { referral } = loaded;
 
+    // Ordering a landing page is an AM-level action — restrict to account
+    // managers and admins only.
+    if (
+      user.role !== UserRole.ADMIN &&
+      user.userType !== UserType.ACCOUNT_MANAGER
+    ) {
+      return res.status(403).json({
+        error:
+          "Access denied: only account managers or admins can order landing pages",
+      });
+    }
+
+    // Only act on referrals that are still in progress (PENDING or ACTIVE).
+    // A CANCELLED/EXPIRED referral should not trigger new upstream work.
+    if (referral.status === "CANCELLED" || referral.status === "EXPIRED") {
+      return res.status(400).json({
+        error:
+          "A landing page can only be ordered for active or pending referrals",
+      });
+    }
+
     if (!referral.preUser) {
       return res.status(400).json({
         error:
@@ -966,7 +987,11 @@ export const orderReferralLandingPage = async (
     const updatedPreUser = await prisma.preUser.update({
       where: { id: referral.preUser.id },
       data: {
-        status: nextStatus ?? "building",
+        // Only overwrite status when upstream/poll returned a concrete value —
+        // TeaseMe is authoritative and we must not fabricate a status.
+        ...(nextStatus !== null && nextStatus !== undefined
+          ? { status: nextStatus }
+          : {}),
         currentStep: nextStep,
         teasemeUserId: nextTeasemeId,
         lastCheckedAt: new Date(),
