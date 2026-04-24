@@ -1876,7 +1876,7 @@ const CardActions = ({
           >
             <span className="inline-flex items-center justify-center gap-[6px]">
               <ReassignIcon className="w-[14px] h-[14px]" />
-              ReAssign
+              Reassign
             </span>
           </SecondaryButton>
         </div>
