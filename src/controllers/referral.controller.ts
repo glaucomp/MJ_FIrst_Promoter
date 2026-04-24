@@ -1020,7 +1020,12 @@ export const assignReferralChatters = async (
 
     // Assigning chatters only makes sense once the invitee has signed up —
     // otherwise there's no User row to link the group to.
-    if (!referral.referredUser) {
+    //
+    // Pin the narrowed referredUser into a local const so TypeScript keeps
+    // the non-null narrowing across the async transaction callback below
+    // (control-flow narrowing on property access is lost across awaits).
+    const referredUser = referral.referredUser;
+    if (!referredUser) {
       return res.status(400).json({
         error:
           "Chatters can only be assigned after the promoter has registered on the platform.",
@@ -1044,7 +1049,7 @@ export const assignReferralChatters = async (
           select: { id: true },
         });
 
-        if (existingPromoter && existingPromoter.id !== referral.referredUser.id) {
+        if (existingPromoter && existingPromoter.id !== referredUser.id) {
           await tx.user.update({
             where: { id: existingPromoter.id },
             data: { chatterGroupId: null },
@@ -1052,7 +1057,7 @@ export const assignReferralChatters = async (
         }
 
         await tx.user.update({
-          where: { id: referral.referredUser.id },
+          where: { id: referredUser.id },
           data: { chatterGroupId: chatterGroup.id },
         });
       });
@@ -1074,7 +1079,7 @@ export const assignReferralChatters = async (
     // it's persisted the button action has already "worked" locally.
     const upstream = await notifyChattersAssigned({
       inviteCode: referral.inviteCode,
-      email: referral.referredUser.email,
+      email: referredUser.email,
       chatterGroupId: chatterGroup.id,
     });
     if (!upstream) {
