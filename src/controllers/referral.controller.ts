@@ -1002,24 +1002,40 @@ export const assignReferralChatters = async (
       return res.status(404).json({ error: "Chatter group not found" });
     }
 
-    // If the group is already linked to a different promoter, unlink them
-    // first so the one-to-one relation on User.chatterGroupId stays valid.
-    const existingPromoter = await prisma.user.findFirst({
-      where: { chatterGroupId: chatterGroup.id },
-      select: { id: true },
-    });
-    if (existingPromoter && existingPromoter.id !== referral.referredUser.id) {
-      await prisma.user.update({
-        where: { id: existingPromoter.id },
-        data: { chatterGroupId: null },
+    try {
+      await prisma.$transaction(async (tx) => {
+        // If the group is already linked to a different promoter, unlink them
+        // first so the one-to-one relation on User.chatterGroupId stays valid.
+        const existingPromoter = await tx.user.findFirst({
+          where: { chatterGroupId: chatterGroup.id },
+          select: { id: true },
+        });
+
+        if (existingPromoter && existingPromoter.id !== referral.referredUser.id) {
+          await tx.user.update({
+            where: { id: existingPromoter.id },
+            data: { chatterGroupId: null },
+          });
+        }
+
+        await tx.user.update({
+          where: { id: referral.referredUser.id },
+          data: { chatterGroupId: chatterGroup.id },
+        });
       });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        return res.status(409).json({
+          error:
+            "Unable to assign chatter group because it is already assigned to another promoter.",
+        });
+      }
+
+      throw error;
     }
-
-    await prisma.user.update({
-      where: { id: referral.referredUser.id },
-      data: { chatterGroupId: chatterGroup.id },
-    });
-
     // Best-effort upstream notification. Failure here doesn't roll back the
     // local assignment — the chatter group is ours, not TeaseMe's, so once
     // it's persisted the button action has already "worked" locally.
