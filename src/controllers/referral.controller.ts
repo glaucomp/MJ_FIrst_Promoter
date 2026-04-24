@@ -861,6 +861,9 @@ export const reassignReferralInvite = async (
       console.warn("[reassignReferralInvite] upstream returned non-2xx", {
         referralId: referral.id,
       });
+      return res.status(502).json({
+        error: "Failed to reassign referral in upstream service",
+      });
     }
 
     const metadata = readReferralMetadata(referral.metadata);
