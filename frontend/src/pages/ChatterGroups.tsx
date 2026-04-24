@@ -610,7 +610,7 @@ export const ChatterGroups = () => {
           {sortedGroups.map(group => (
             <div
               key={group.id}
-              className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-[18px] flex flex-col"
+              className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-[18px] flex flex-col overflow-hidden"
             >
               {/* Card header — static */}
               <div className="p-[28px] flex items-start justify-between gap-[16px]">
@@ -640,9 +640,9 @@ export const ChatterGroups = () => {
                     );
                   })()}
                   <div className="flex flex-col gap-[8px] min-w-0">
-                    <h3 className="text-white text-[22px] font-bold leading-[1.2] truncate">{group.name}</h3>
+                    <h3 className="text-white text-2xl truncate">{group.name}</h3>
                     {group.tag && (
-                      <span className="self-start px-[10px] py-[3px] rounded-[100px] text-[12px] font-semibold text-[#ff2a71]">
+                      <span className="self-start px-[10px] py-[3px] rounded-[100px] text-[12px] font-semibold text-tm-primary-color05 border border-tm-primary-color05 bg-tm-primary-color12">
                         {group.tag}
                       </span>
                     )}
@@ -652,14 +652,14 @@ export const ChatterGroups = () => {
                 {/* Right: referral bonus + admin actions */}
                 <div className="flex flex-col items-end gap-[6px] shrink-0">
                   <div className="flex items-baseline gap-[5px]">
-                    <span className="text-[#9e9e9e] text-[13px]">Referral Bonus</span>
-                    <span className="text-white text-[14px] font-bold">{group.commissionPercentage}%</span>
+                    <span className="text-[#9e9e9e] text-base">Referral Bonus</span>
+                    <span className="text-white text-sm font-bold">{group.commissionPercentage}%</span>
                   </div>
                   {canManage && (
                     <div className="flex items-center gap-[10px]">
                       <button
                         onClick={() => { setEditingGroup(group); setIsGroupFormOpen(true); }}
-                        className="text-[#555] hover:text-[#9e9e9e] text-[12px] transition-colors"
+                        className="text-[#9e9e9e] text-sm hover:text-white hover:-translate-y-0.5 transition-all"
                       >
                         Edit
                       </button>
@@ -683,7 +683,7 @@ export const ChatterGroups = () => {
                       ) : (
                         <button
                           onClick={() => setConfirmDeleteId(group.id)}
-                          className="text-[#555] hover:text-[#ff2a2a] text-[12px] transition-colors"
+                          className="text-tm-danger-color04 text-sm hover:text-tm-danger-color05 hover:-translate-y-0.5 transition-all"
                         >
                           Delete
                         </button>
@@ -696,20 +696,20 @@ export const ChatterGroups = () => {
               {/* Card body */}
               <div className="px-[28px] pb-[24px] flex flex-col gap-[16px]">
                 {/* Team Members section */}
-                <div className="flex flex-col gap-[12px]">
-                  <div className="flex items-center justify-between">
-                    <p className="text-[#9e9e9e] text-[14px] font-semibold">Team Members</p>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-start gap-4">
+                    <p className="text-[#9e9e9e] text-base font-semibold">Team Members</p>
                     {canManage && (
                       <button
                         onClick={() => setManagingGroup(group)}
-                        className="text-[#555] hover:text-[#9e9e9e] text-[12px] transition-colors"
+                        className="bg-tm-neutral-color05 px-4 py-2 text-tm-text-color08 hover:text-tm-text-color10 text-base transition-colors rounded-lg"
                       >
                         {group.members.length === 0 ? '+ Add members' : 'Manage'}
                       </button>
                     )}
                   </div>
                   {group.members.length === 0 ? (
-                    <p className="text-[#555] text-[13px]">No chatters assigned yet.</p>
+                    <p className="text-[#555] text-base">No chatters assigned yet.</p>
                   ) : (
                     <div className="grid grid-cols-3 gap-[10px]">
                       {group.members.map(m => (
@@ -721,10 +721,10 @@ export const ChatterGroups = () => {
               </div>
 
               {/* Linked Promoter — subtle footer row */}
-              <div className="flex items-center justify-between px-[28px] py-[14px] border-t border-[rgba(255,255,255,0.04)]">
+              <div className="flex items-center justify-start gap-4 px-[28px] py-[14px] border-t border-[rgba(255,255,255,0.04)] bg-tm-neutral-color09">
                 <div className="flex items-center gap-[6px]">
-                  <span className="text-[#444] text-[11px] font-semibold uppercase tracking-[0.3px]">Linked Promoter</span>
-                  <span className="text-[#666] text-[12px]">
+                  <span className="text-tm-text-color08 text-sm font-semibold uppercase tracking-[0.3px]">Linked Promoter</span>
+                  <span className="text-tm-text-color01 text-base">
                     {group.promoter
                       ? [group.promoter.firstName, group.promoter.lastName].filter(Boolean).join(' ') || group.promoter.email
                       : 'None'}
@@ -733,7 +733,7 @@ export const ChatterGroups = () => {
                 {canManage && (
                   <button
                     onClick={() => setLinkingGroup(group)}
-                    className="text-[#555] hover:text-[#ff0f5f] text-[11px] font-semibold transition-colors"
+                    className="text-tm-primary-color05 hover:text-tm-text-color01 text-base font-semibold border border-tm-text-color12 py-1 px-4 rounded-xl transition-colors"
                   >
                     {group.promoter ? 'Change' : 'Link'}
                   </button>
