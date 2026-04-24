@@ -1322,9 +1322,9 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
     try {
       await modelsApi.denyReferralInvite(referral.id);
       // Flip local status to CANCELLED so `deriveChipState` returns "denied"
-      // and the row moves to the Expired filter (where denied lives alongside
-      // expired invites). We keep it in the list rather than removing it so
-      // the user can still see the audit trail and delete it explicitly.
+      // and the row moves to the Denied filter. We keep it in the list rather
+      // than removing it so the user can still see the audit trail and delete
+      // it explicitly.
       setReferrals?.((prev) =>
         prev.map((r) =>
           r.id === referral.id ? { ...r, status: "CANCELLED" as const } : r,
