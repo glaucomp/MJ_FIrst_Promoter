@@ -16,7 +16,13 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
   const [error, setError] = useState('');
   const [generatedUrl, setGeneratedUrl] = useState('');
   const [generatedCode, setGeneratedCode] = useState('');
+  const [emailSent, setEmailSent] = useState<boolean | null>(null);
+  const [sentToEmail, setSentToEmail] = useState('');
   const [quota, setQuota] = useState<{ used: number; remaining: number; unlimited: boolean } | null>(null);
+
+  // Lightweight client-side check only. Server does strict validation via
+  // express-validator (`isEmail().normalizeEmail()`).
+  const isEmailValid = /.+@.+\..+/.test(email.trim());
 
   useEffect(() => {
     if (isOpen) {
@@ -60,14 +66,21 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
       return;
     }
 
+    if (type === 'referral' && !isEmailValid) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
     setIsLoading(true);
     setError('');
 
     try {
       if (type === 'referral') {
-        const result = await modelsApi.createReferralInvite(selectedCampaignId, email || undefined);
+        const result = await modelsApi.createReferralInvite(selectedCampaignId, email.trim());
         setGeneratedUrl(result.inviteUrl);
         setGeneratedCode(result.inviteCode);
+        setEmailSent(result.emailSent ?? null);
+        setSentToEmail(email.trim());
         if (quota && !quota.unlimited) {
           setQuota({ ...quota, used: quota.used + 1, remaining: quota.remaining - 1 });
         }
@@ -96,14 +109,19 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
     setGeneratedUrl('');
     setGeneratedCode('');
     setEmail('');
+    setEmailSent(null);
+    setSentToEmail('');
     setError('');
     onClose();
   };
 
   if (!isOpen) return null;
 
-  const title = type === 'referral' 
-    ? (userRole === 'admin' || userRole === 'account_manager' ? 'Invite New Promoter' : 'Invite Team Member')
+  // Promoters now see the same "My Promoters" experience as AMs/admins, so
+  // they get the same modal heading. Team managers keep the "Team Member"
+  // wording since they're inviting teammates, not downstream promoters.
+  const title = type === 'referral'
+    ? (userRole === 'team_manager' ? 'Invite Team Member' : 'Invite New Promoter')
     : 'Create Tracking Link';
 
   return (
@@ -150,10 +168,11 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
               {type === 'referral' && (
                 <div className="flex flex-col gap-[8px]">
                   <label className="text-[#9e9e9e] text-[14px] leading-[1.4] font-bold uppercase tracking-[0.2px]">
-                    Email (Optional)
+                    Email
                   </label>
                   <input
                     type="email"
+                    required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="promoter@example.com"
@@ -170,7 +189,12 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
 
               <button
                 onClick={handleGenerate}
-                disabled={isLoading || !selectedCampaignId || (quota?.remaining === 0 && !quota?.unlimited)}
+                disabled={
+                  isLoading ||
+                  !selectedCampaignId ||
+                  (type === 'referral' && !isEmailValid) ||
+                  (quota?.remaining === 0 && !quota?.unlimited)
+                }
                 className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[24px] py-[14px] text-white text-[16px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? 'Generating...' : 'Generate Link'}
@@ -183,6 +207,22 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
                   {type === 'referral' ? 'Invite link generated successfully!' : 'Tracking link created successfully!'}
                 </p>
               </div>
+
+              {type === 'referral' && emailSent === true && (
+                <div className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[16px] py-[12px]">
+                  <p className="text-[#9e9e9e] text-[14px] leading-[1.4]">
+                    Invite email sent to <span className="text-white font-medium">{sentToEmail}</span>
+                  </p>
+                </div>
+              )}
+
+              {type === 'referral' && emailSent === false && (
+                <div className="bg-[#332200] border border-[#cc9900] rounded-[8px] px-[16px] py-[12px]">
+                  <p className="text-[#ffcc33] text-[14px] leading-[1.4]">
+                    Email delivery failed &mdash; share the link manually with <span className="font-medium">{sentToEmail}</span>.
+                  </p>
+                </div>
+              )}
 
               <div className="flex flex-col gap-[8px]">
                 <label className="text-[#9e9e9e] text-[14px] leading-[1.4] font-bold uppercase tracking-[0.2px]">

@@ -37,6 +37,13 @@ interface PasswordResetEmailData {
   expiresAt: Date;
 }
 
+interface ReferralInviteEmailData {
+  inviteeEmail: string;
+  inviterName: string;
+  campaignName: string;
+  acceptUrl: string;
+}
+
 const escapeHtml = (value: string) =>
   value
     .replace(/&/g, '&amp;')
@@ -253,6 +260,32 @@ ${resetUrl}
 This link expires in ${expiryText}. If you didn't request a reset, you can ignore this email.`;
 
     return this.sendEmail(email, subject, bodyHtml, bodyText);
+  }
+
+  async sendReferralInviteEmail(data: ReferralInviteEmailData): Promise<boolean> {
+    const { inviteeEmail, inviterName, campaignName, acceptUrl } = data;
+    const safeInviter = inviterName?.trim() || 'A promoter';
+
+    const subject = `${safeInviter} invited you to join ${campaignName}`;
+    const bodyHtml = this.renderActionTemplate({
+      heading: `You're invited to ${campaignName}`,
+      intro: `${safeInviter} sent you a referral invite. Click the button below to accept and get started.`,
+      buttonLabel: 'Accept Invite',
+      buttonUrl: acceptUrl,
+      footerNote:
+        'This invite link is single-use. If you weren\u2019t expecting this email, you can safely ignore it.',
+    });
+
+    const bodyText = `You're invited to ${campaignName}
+
+${safeInviter} sent you a referral invite.
+
+Click the link below to accept and get started:
+${acceptUrl}
+
+This invite link is single-use. If you weren't expecting this email, you can safely ignore it.`;
+
+    return this.sendEmail(inviteeEmail, subject, bodyHtml, bodyText);
   }
 
   private renderActionTemplate({

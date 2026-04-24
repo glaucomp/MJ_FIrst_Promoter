@@ -149,6 +149,16 @@ export interface ReferralCommission {
   userId: string;
 }
 
+export interface ReferralMetadata {
+  accountManagerEmail?: string | null;
+  inviterEmail?: string | null;
+  inviteeEmail?: string | null;
+  inviteCode?: string | null;
+  emailSentAt?: string | null;
+  expiresAt?: string | null;
+  resendCount?: number;
+}
+
 export interface Referral {
   id: string;
   inviteCode: string;
@@ -183,6 +193,22 @@ export interface Referral {
     commissions?: ReferralCommission[];
   }>;
   createdAt: string;
+  // Populated by getMyReferrals — invitee/inviter/AM emails + expiry. May be
+  // empty ({}) for legacy rows created before the email-required flow.
+  metadata?: ReferralMetadata;
+  // True when status === PENDING and now > (metadata.expiresAt || createdAt+24h).
+  isExpired?: boolean;
+  // The campaign tracking URL with all 4 referral query params appended.
+  // Null for accepted rows or legacy rows missing inviteeEmail.
+  inviteUrl?: string | null;
+  // TeaseMe onboarding snapshot for pending invites. Null once the invitee
+  // has registered on our side (the backend deletes the PreUser row then),
+  // and null for legacy rows that pre-date the lifecycle tracker.
+  preUser?: {
+    currentStep: number;
+    lastCheckedAt: string | null;
+    teasemeUserId: string | null;
+  } | null;
 }
 
 export interface TrackingLink {
@@ -293,10 +319,11 @@ export const modelsApi = {
     return data.referrals;
   },
 
-  async createReferralInvite(campaignId: string, email?: string): Promise<{
+  async createReferralInvite(campaignId: string, email: string): Promise<{
     inviteUrl: string;
     inviteCode: string;
     referral: Referral;
+    emailSent?: boolean;
   }> {
     const response = await fetch(`${API_URL}/referrals/create`, {
       method: 'POST',
@@ -304,6 +331,28 @@ export const modelsApi = {
       body: JSON.stringify({ campaignId, email }),
     });
     return handleResponse(response, 'Failed to create invite');
+  },
+
+  async resendReferralInvite(referralId: string): Promise<{
+    emailSent: boolean;
+    inviteUrl: string;
+    inviteeEmail: string;
+    expiresAt: string;
+    resendCount: number;
+  }> {
+    const response = await fetch(`${API_URL}/referrals/${referralId}/resend`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response, 'Failed to resend invite');
+  },
+
+  async deleteReferralInvite(referralId: string): Promise<{ success: true; id: string }> {
+    const response = await fetch(`${API_URL}/referrals/${referralId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response, 'Failed to delete invite');
   },
 
   async getInviteQuota(campaignId: string): Promise<{
