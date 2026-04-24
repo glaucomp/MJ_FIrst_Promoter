@@ -793,17 +793,16 @@ export const denyReferralInvite = async (req: AuthRequest, res: Response) => {
         .json({ error: "Only pending referrals can be denied" });
     }
 
-    // Fire upstream first so we don't flip local state if TeaseMe is down —
-    // but don't block on it; a persisted INACTIVE here is still useful. A
-    // null result just means upstream was unreachable; we log and proceed.
+    // Fire upstream first; if TeaseMe rejects or is unreachable we return 502
+    // so the UI can surface the failure without flipping local state.
     const upstream = await denyPreInfluencer({
       inviteCode: referral.inviteCode,
       email: referral.preUser?.email,
       reason,
     });
     if (!upstream) {
-      console.warn("[denyReferralInvite] upstream returned non-2xx", {
-        referralId: referral.id,
+      return res.status(502).json({
+        error: "Failed to reach upstream service; deny not applied.",
       });
     }
 
@@ -841,6 +840,26 @@ export const reassignReferralInvite = async (
       return res.status(loaded.error.code).json({ error: loaded.error.message });
     }
     const { referral } = loaded;
+
+    // Reassignment is an AM-level action — a plain promoter inviter must not
+    // be able to change commission ownership on their own referrals.
+    if (
+      user.role !== UserRole.ADMIN &&
+      user.userType !== UserType.ACCOUNT_MANAGER
+    ) {
+      return res.status(403).json({
+        error: "Access denied: only account managers or admins can reassign referrals",
+      });
+    }
+
+    // Reassignment only makes sense for pending referrals that haven't been
+    // accepted yet. Once a referred user has signed up, commission attribution
+    // is already in motion and ownership changes are disallowed.
+    if (referral.status !== "PENDING" || referral.referredUser !== null) {
+      return res.status(400).json({
+        error: "Only pending referrals without an accepted invitee can be reassigned",
+      });
+    }
 
     // The new referrer must be an account manager — reassignment moves the
     // promoter between AMs, it's not a generic user swap.
@@ -987,6 +1006,17 @@ export const assignReferralChatters = async (
       return res.status(loaded.error.code).json({ error: loaded.error.message });
     }
     const { referral } = loaded;
+
+    // Assigning chatters links chatter groups to promoter accounts and affects
+    // operations — restrict to account managers and admins only.
+    if (
+      user.role !== UserRole.ADMIN &&
+      user.userType !== UserType.ACCOUNT_MANAGER
+    ) {
+      return res.status(403).json({
+        error: "Access denied: only account managers or admins can assign chatter groups",
+      });
+    }
 
     // Assigning chatters only makes sense once the invitee has signed up —
     // otherwise there's no User row to link the group to.
