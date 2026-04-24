@@ -1734,7 +1734,7 @@ const CardActions = ({
             onClick={() => onReassign(referral)}
             disabled={busy}
           >
-            ReAssign
+            Reassign
           </SecondaryButton>
         </div>
         {/* Disabled while we wait for the invitee to finish onboarding.
