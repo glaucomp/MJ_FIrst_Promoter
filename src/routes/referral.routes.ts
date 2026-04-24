@@ -59,6 +59,38 @@ router.delete(
   referralController.deleteReferralInvite,
 );
 
+// ─── Lifecycle action endpoints (My Promoters card buttons) ───────────────
+// Deny a pending referral (soft-reject → status CANCELLED + upstream notify).
+router.post(
+  "/:id/deny",
+  authenticate,
+  referralController.denyReferralInvite,
+);
+
+// Reassign the referring account manager for a referral.
+router.post(
+  "/:id/reassign",
+  authenticate,
+  [body("newReferrerId").trim().notEmpty()],
+  referralController.reassignReferralInvite,
+);
+
+// Request TeaseMe to start building the landing page for this invite.
+router.post(
+  "/:id/order-landing-page",
+  authenticate,
+  referralController.orderReferralLandingPage,
+);
+
+// Assign a chatter group to the (now registered) promoter attached to this
+// referral and notify TeaseMe.
+router.post(
+  "/:id/assign-chatters",
+  authenticate,
+  [body("chatterGroupId").trim().notEmpty()],
+  referralController.assignReferralChatters,
+);
+
 // Get referral details
 router.get("/:id", authenticate, referralController.getReferralById);
 

@@ -8,8 +8,15 @@ const TEASEME_API_URL = (process.env.TEASEME_API_URL || 'https://api.teaseme.liv
 // referral's email + inviteCode tells us which onboarding step the invitee is
 // on inside TeaseMe so the My Promoters list can render a "Step N" chip while
 // the user hasn't yet registered on our side.
+//
+// Upstream contract (POST JSON):
+//   POST {TEASEME_STATUS_URL}
+//   Headers: { "Content-Type": "application/json", "X-Internal-Token": <MJFP_TOKEN> }
+//   Body:    { "invite_code": "...", "new_user_email": "..." }
+//   200:     { ok, exists, pre_influencer_id, username, survey_step, status }
 const TEASEME_STATUS_URL = (
-  process.env.TEASEME_STATUS_URL || 'https://tmapi.mxjprod.work/auth/user-status'
+  process.env.TEASEME_STATUS_URL
+    || 'https://tmapi.mxjprod.work/mjpromoter/pre-influencers/step-progress'
 ).replace(/\/$/, '');
 const TEASEME_STATUS_TIMEOUT_MS = 3_000;
 
@@ -17,14 +24,15 @@ export interface TeasemePreUserStatus {
   step: number;
   active: boolean;
   teasemeUserId: string | null;
+  username: string | null;
+  status: string | null;
 }
 
 /**
  * Look up a pre-registered user's TeaseMe onboarding status. At least one of
- * `email` / `inviteCode` must be provided — TeaseMe matches on `inviteCode`
- * first (authoritative, unique) and falls back to `email`. Returns `null` on
- * 404 / non-2xx / timeout / network error so callers can keep the last-known
- * state rather than propagating upstream outages to the UI.
+ * `email` / `inviteCode` must be provided. Returns `null` on 404 / non-2xx /
+ * timeout / network error / `exists: false` so callers can keep the
+ * last-known state rather than propagating upstream outages to the UI.
  */
 export const fetchTeasemePreUserStatus = async (
   params: { email?: string; inviteCode?: string },
@@ -44,18 +52,20 @@ export const fetchTeasemePreUserStatus = async (
     return null;
   }
 
-  const url = new URL(TEASEME_STATUS_URL);
-  if (email) url.searchParams.set('email', email);
-  if (inviteCode) url.searchParams.set('inviteCode', inviteCode);
+  const payload: Record<string, string> = {};
+  if (inviteCode) payload.invite_code = inviteCode;
+  if (email) payload.new_user_email = email;
 
   let res: Response;
   try {
-    res = await fetch(url.toString(), {
-      method: 'GET',
+    res = await fetch(TEASEME_STATUS_URL, {
+      method: 'POST',
       headers: {
+        'Content-Type': 'application/json',
         Accept: 'application/json',
         'X-Internal-Token': token,
       },
+      body: JSON.stringify(payload),
       signal: AbortSignal.timeout(TEASEME_STATUS_TIMEOUT_MS),
     });
   } catch {
@@ -73,17 +83,182 @@ export const fetchTeasemePreUserStatus = async (
   if (!body || typeof body !== 'object') return null;
 
   const raw = body as Record<string, unknown>;
-  const step = typeof raw.step === 'number' ? raw.step : Number(raw.step);
-  if (!Number.isFinite(step)) return null;
+
+  // Upstream signals "no record" via `ok: false` or `exists: false` instead
+  // of a 404 — treat both as a miss so we don't overwrite cached state.
+  if (raw.ok === false) return null;
+  if (raw.exists === false) return null;
+
+  const surveyStep =
+    typeof raw.survey_step === 'number'
+      ? raw.survey_step
+      : Number(raw.survey_step);
+  if (!Number.isFinite(surveyStep)) return null;
+
+  const statusStr =
+    typeof raw.status === 'string' && raw.status ? raw.status : null;
+
+  const preInfluencerId = raw.pre_influencer_id;
+  const teasemeUserId =
+    typeof preInfluencerId === 'string' && preInfluencerId
+      ? preInfluencerId
+      : typeof preInfluencerId === 'number' && Number.isFinite(preInfluencerId)
+        ? String(preInfluencerId)
+        : null;
 
   return {
-    step: Math.max(0, Math.trunc(step)),
-    active: Boolean(raw.active),
-    teasemeUserId:
-      typeof raw.teasemeUserId === 'string' && raw.teasemeUserId
-        ? raw.teasemeUserId
-        : null,
+    step: Math.max(0, Math.trunc(surveyStep)),
+    // Upstream uses `status: "pending" | "active" | ...`. Anything that is
+    // not explicitly "pending" (and exists) counts as active for UI badges.
+    active: statusStr !== null && statusStr !== 'pending',
+    teasemeUserId,
+    username:
+      typeof raw.username === 'string' && raw.username ? raw.username : null,
+    status: statusStr,
   };
+};
+
+// ─── Lifecycle action helpers (My Promoters card buttons) ───────────────────
+//
+// Each helper below POSTs JSON to a TeaseMe "pre-influencer" endpoint. All four
+// share the same transport shape as `/step-progress`:
+//   - `X-Internal-Token` header = MJFP_TOKEN
+//   - `Content-Type: application/json` body
+//   - non-2xx -> we return `null` instead of throwing, so a UI toast can be
+//     shown without killing the caller.
+//
+// Path suffixes are our current best guess. The TeaseMe team is expected to
+// confirm / rename these; override via env vars when that happens instead of
+// patching the hardcoded defaults.
+const TEASEME_DENY_URL = (
+  process.env.TEASEME_DENY_URL
+    || 'https://tmapi.mxjprod.work/mjpromoter/pre-influencers/deny'
+).replace(/\/$/, '');
+const TEASEME_REASSIGN_URL = (
+  process.env.TEASEME_REASSIGN_URL
+    || 'https://tmapi.mxjprod.work/mjpromoter/pre-influencers/reassign'
+).replace(/\/$/, '');
+const TEASEME_ORDER_LP_URL = (
+  process.env.TEASEME_ORDER_LP_URL
+    || 'https://tmapi.mxjprod.work/mjpromoter/pre-influencers/order-landing-page'
+).replace(/\/$/, '');
+const TEASEME_ASSIGN_CHATTERS_URL = (
+  process.env.TEASEME_ASSIGN_CHATTERS_URL
+    || 'https://tmapi.mxjprod.work/mjpromoter/pre-influencers/assign-chatters'
+).replace(/\/$/, '');
+
+export interface TeasemeActionResult {
+  ok: boolean;
+  status?: string | null;
+  raw?: unknown;
+}
+
+const postToTeaseme = async (
+  url: string,
+  body: Record<string, unknown>,
+): Promise<TeasemeActionResult | null> => {
+  const token = process.env.MJFP_TOKEN;
+  if (!token) return null;
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'X-Internal-Token': token,
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(TEASEME_STATUS_TIMEOUT_MS),
+    });
+  } catch {
+    return null;
+  }
+  let parsed: unknown = null;
+  try {
+    parsed = await res.json();
+  } catch {
+    /* non-JSON response is still valid for 2xx; fall through */
+  }
+  if (!res.ok) return null;
+  const raw =
+    parsed && typeof parsed === 'object'
+      ? (parsed as Record<string, unknown>)
+      : {};
+  const upstreamOk =
+    typeof raw.ok === 'boolean' ? raw.ok : null;
+  if (upstreamOk === false) return null;
+  const statusStr =
+    typeof raw.status === 'string' && raw.status ? raw.status : null;
+  return { ok: true, status: statusStr, raw: parsed };
+};
+
+/** Deny a pending pre-influencer invite on TeaseMe's side. */
+export const denyPreInfluencer = async (params: {
+  inviteCode: string;
+  email?: string;
+  reason?: string;
+}): Promise<TeasemeActionResult | null> => {
+  if (!params.inviteCode) {
+    throw new Error('denyPreInfluencer requires inviteCode');
+  }
+  const body: Record<string, unknown> = { invite_code: params.inviteCode };
+  if (params.email) body.new_user_email = params.email;
+  if (params.reason) body.reason = params.reason;
+  return postToTeaseme(TEASEME_DENY_URL, body);
+};
+
+/** Reassign the referring account manager for a pre-influencer. */
+export const reassignPreInfluencer = async (params: {
+  inviteCode: string;
+  email?: string;
+  newManagerEmail: string;
+}): Promise<TeasemeActionResult | null> => {
+  if (!params.inviteCode) {
+    throw new Error('reassignPreInfluencer requires inviteCode');
+  }
+  if (!params.newManagerEmail) {
+    throw new Error('reassignPreInfluencer requires newManagerEmail');
+  }
+  const body: Record<string, unknown> = {
+    invite_code: params.inviteCode,
+    new_manager_email: params.newManagerEmail,
+  };
+  if (params.email) body.new_user_email = params.email;
+  return postToTeaseme(TEASEME_REASSIGN_URL, body);
+};
+
+/** Request TeaseMe to start building the landing page for this invite. */
+export const orderLandingPageForPreInfluencer = async (params: {
+  inviteCode: string;
+  email?: string;
+}): Promise<TeasemeActionResult | null> => {
+  if (!params.inviteCode) {
+    throw new Error('orderLandingPageForPreInfluencer requires inviteCode');
+  }
+  const body: Record<string, unknown> = { invite_code: params.inviteCode };
+  if (params.email) body.new_user_email = params.email;
+  return postToTeaseme(TEASEME_ORDER_LP_URL, body);
+};
+
+/** Notify TeaseMe that a chatter group was assigned to the (now active) promoter. */
+export const notifyChattersAssigned = async (params: {
+  inviteCode: string;
+  email?: string;
+  chatterGroupId: string;
+}): Promise<TeasemeActionResult | null> => {
+  if (!params.inviteCode) {
+    throw new Error('notifyChattersAssigned requires inviteCode');
+  }
+  if (!params.chatterGroupId) {
+    throw new Error('notifyChattersAssigned requires chatterGroupId');
+  }
+  const body: Record<string, unknown> = {
+    invite_code: params.inviteCode,
+    chatter_group_id: params.chatterGroupId,
+  };
+  if (params.email) body.new_user_email = params.email;
+  return postToTeaseme(TEASEME_ASSIGN_CHATTERS_URL, body);
 };
 
 export interface TeaseMeSocialLink {

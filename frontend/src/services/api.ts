@@ -163,7 +163,7 @@ export interface Referral {
   id: string;
   inviteCode: string;
   level: number;
-  status: 'PENDING' | 'ACTIVE' | 'INACTIVE';
+  status: 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
   campaign: {
     id?: string;
     name: string;
@@ -206,6 +206,11 @@ export interface Referral {
   // and null for legacy rows that pre-date the lifecycle tracker.
   preUser?: {
     currentStep: number;
+    // Lifecycle label mirrored from TeaseMe's /step-progress response.
+    // Drives the 5-state chip on the My Promoters card. Expected values:
+    // "pending" | "order_lp" | "building" | "live" — but stored as an open
+    // string so upstream additions don't break the type.
+    status: string | null;
     lastCheckedAt: string | null;
     teasemeUserId: string | null;
   } | null;
@@ -353,6 +358,77 @@ export const modelsApi = {
       headers: getAuthHeaders(),
     });
     return handleResponse(response, 'Failed to delete invite');
+  },
+
+  // ── Lifecycle action endpoints (My Promoters card buttons) ────────────────
+
+  async denyReferralInvite(
+    referralId: string,
+    reason?: string,
+  ): Promise<{
+    success: true;
+    referral: { id: string; status: 'CANCELLED' };
+  }> {
+    const response = await fetch(`${API_URL}/referrals/${referralId}/deny`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(reason ? { reason } : {}),
+    });
+    return handleResponse(response, 'Failed to deny referral');
+  },
+
+  async reassignReferralInvite(
+    referralId: string,
+    newReferrerId: string,
+  ): Promise<{
+    success: true;
+    referral: { id: string; referrerId: string };
+    newReferrer: { id: string; email: string; firstName: string | null; lastName: string | null };
+  }> {
+    const response = await fetch(`${API_URL}/referrals/${referralId}/reassign`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ newReferrerId }),
+    });
+    return handleResponse(response, 'Failed to reassign referral');
+  },
+
+  async orderReferralLandingPage(referralId: string): Promise<{
+    success: true;
+    preUser: {
+      id: string;
+      currentStep: number;
+      status: string;
+      lastCheckedAt: string | null;
+      teasemeUserId: string | null;
+    };
+  }> {
+    const response = await fetch(
+      `${API_URL}/referrals/${referralId}/order-landing-page`,
+      {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      },
+    );
+    return handleResponse(response, 'Failed to order landing page');
+  },
+
+  async assignReferralChatters(
+    referralId: string,
+    chatterGroupId: string,
+  ): Promise<{
+    success: true;
+    chatterGroup: { id: string; name: string };
+  }> {
+    const response = await fetch(
+      `${API_URL}/referrals/${referralId}/assign-chatters`,
+      {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ chatterGroupId }),
+      },
+    );
+    return handleResponse(response, 'Failed to assign chatters');
   },
 
   async getInviteQuota(campaignId: string): Promise<{
