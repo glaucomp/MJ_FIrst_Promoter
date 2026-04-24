@@ -35,7 +35,9 @@ export const fetchTeasemePreUserStatus = async (
     throw new Error('fetchTeasemePreUserStatus requires email or inviteCode');
   }
 
-  const token = process.env.MJFP_TOKEN || process.env.VITE_MJFP_TOKEN;
+  // Use the server-only MJFP_TOKEN. Never fall back to VITE_-prefixed vars:
+  // Vite exposes those to the frontend bundle, which would leak the secret.
+  const token = process.env.MJFP_TOKEN;
   if (!token) {
     // Without the shared token the upstream will refuse every request — fail
     // open so the list still renders instead of looping on 401s.
