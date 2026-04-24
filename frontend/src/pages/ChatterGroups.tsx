@@ -733,7 +733,7 @@ export const ChatterGroups = () => {
                 {canManage && (
                   <button
                     onClick={() => setLinkingGroup(group)}
-                    className="text-tm-primary-color05 hover:text-tm-text-color01 text-base font-semibold border-1 border-tm-text-color12 py-1 px-4 rounded-xl transition-colors"
+                    className="text-tm-primary-color05 hover:text-tm-text-color01 text-base font-semibold border border-tm-text-color12 py-1 px-4 rounded-xl transition-colors"
                   >
                     {group.promoter ? 'Change' : 'Link'}
                   </button>
