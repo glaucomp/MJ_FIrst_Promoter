@@ -1244,11 +1244,13 @@ const OnboardingIconPill = ({
   className = "",
   onClick,
   title,
+  ariaLabel,
 }: {
   children: React.ReactNode;
   className?: string;
   onClick?: () => void;
   title?: string;
+  ariaLabel?: string;
 }) => {
   const base =
     "inline-flex items-center justify-center rounded-[100px] bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-white px-[10px] py-[4px]";
@@ -1258,6 +1260,7 @@ const OnboardingIconPill = ({
         type="button"
         onClick={onClick}
         title={title}
+        aria-label={ariaLabel ?? title}
         className={`${base} hover:bg-[#252525] transition-colors ${className}`}
       >
         {children}
@@ -1420,7 +1423,7 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
     }
     setBusyId(referral.id);
     try {
-      await modelsApi.denyReferralInvite(referral.id);
+      const result = await modelsApi.denyReferralInvite(referral.id);
       // Flip local status to CANCELLED so `deriveChipState` returns "denied"
       // and the row moves to the Denied filter. We keep it in the list rather
       // than removing it so the user can still see the audit trail and delete
@@ -1430,7 +1433,14 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
           r.id === referral.id ? { ...r, status: "CANCELLED" as const } : r,
         ),
       );
-      showToast("success", "Promoter denied");
+      if (result.upstreamNotified) {
+        showToast("success", "Promoter denied");
+      } else {
+        showToast(
+          "error",
+          "Promoter denied locally, but TeaseMe could not be notified. Please check upstream.",
+        );
+      }
     } catch (err) {
       showToast(
         "error",
@@ -1468,7 +1478,14 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
           .filter(Boolean)
           .join(" ")
           .trim() || result.newReferrer.email;
-      showToast("success", `Reassigned to ${name}`);
+      if (result.upstreamNotified) {
+        showToast("success", `Reassigned to ${name}`);
+      } else {
+        showToast(
+          "error",
+          `Reassigned to ${name} locally, but TeaseMe could not be notified. Please check upstream.`,
+        );
+      }
       setReassignFor(null);
     } catch (err) {
       showToast(
@@ -1666,19 +1683,15 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
                       {Math.min(step, ONBOARDING_STEPS.length)}/
                       {ONBOARDING_STEPS.length}
                     </span>
-                    {/* TODO(onboarding-open): replace the alert with a real
-                        new-tab open once TeaseMe confirms the URL shape.
+                    {/* Disabled until TeaseMe confirms the URL shape.
                         Likely target: `${TEASEME_WEB_URL}/onboarding?invite=${referral.inviteCode}`.
-                        Should become disabled when `referral.preUser` is
-                        null — no session exists until the invitee has
+                        Should become enabled when `referral.preUser` is
+                        non-null — no session exists until the invitee has
                         started onboarding. */}
                     <OnboardingIconPill
-                      title="Open onboarding session"
-                      onClick={() =>
-                        window.alert(
-                          `TODO: open TeaseMe onboarding for invite ${referral.inviteCode}`,
-                        )
-                      }
+                      title="Open onboarding session (coming soon)"
+                      ariaLabel="Open onboarding session (coming soon)"
+                      className="cursor-not-allowed opacity-50"
                     >
                       <OnboardingOpenIcon className="w-[14px] h-[14px]" />
                     </OnboardingIconPill>
@@ -1688,22 +1701,24 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
                   step={step}
                   dimmed={chipState === "expired"}
                 />
-                {/* TODO(onboarding-copy): replace the alert with a real
-                    clipboard copy via `navigator.clipboard.writeText`.
-                    Source value is `referral.inviteUrl` (already built on
-                    the backend for PENDING rows). Surface a short "Copied!"
-                    toast via the existing `showToast("success", …)` helper
-                    so the feedback matches the other card actions. */}
+                {/* Copy invite link — writes to clipboard and shows a toast. */}
                 <OnboardingIconPill
                   title="Copy invite link"
+                  ariaLabel="Copy invite link"
                   className="absolute bottom-[10px] right-[12px]"
-                  onClick={() =>
-                    window.alert(
-                      referral.inviteUrl
-                        ? `TODO: copy invite link\n\n${referral.inviteUrl}`
-                        : `TODO: copy invite link (none available for invite ${referral.inviteCode})`,
-                    )
-                  }
+                  onClick={async () => {
+                    const url = referral.inviteUrl;
+                    if (!url) {
+                      showToast("error", "No invite link available");
+                      return;
+                    }
+                    try {
+                      await navigator.clipboard.writeText(url);
+                      showToast("success", "Invite link copied!");
+                    } catch {
+                      showToast("error", "Failed to copy invite link");
+                    }
+                  }}
                 >
                   <OnboardingCopyIcon className="w-[14px] h-[14px]" />
                 </OnboardingIconPill>
