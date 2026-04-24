@@ -1115,7 +1115,7 @@ const deriveChipState = (r: Referral): ChipState => {
   // underlying preUser row still has an in-flight TeaseMe status.
   if (r.status === "CANCELLED") return "denied";
   if (r.isExpired) return "expired";
-  if (r.status === "ACTIVE") return "lp_live";
+  if (r.status === "ACTIVE" || r.status === "COMPLETED") return "lp_live";
   const upstream = r.preUser?.status;
   switch (upstream) {
     case "live":
