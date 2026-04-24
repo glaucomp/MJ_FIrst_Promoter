@@ -1438,7 +1438,7 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
       } else {
         showToast(
           "error",
-          "Promoter denied locally, but TeaseMe could not be notified. Please check upstream.",
+          "Promoter denied locally, but the upstream system could not be notified. Please verify the change was synced.",
         );
       }
     } catch (err) {
@@ -1483,7 +1483,7 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
       } else {
         showToast(
           "error",
-          `Reassigned to ${name} locally, but TeaseMe could not be notified. Please check upstream.`,
+          `Reassigned to ${name} locally, but the upstream system could not be notified. Please verify the change was synced.`,
         );
       }
       setReassignFor(null);
