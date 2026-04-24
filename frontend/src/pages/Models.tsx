@@ -1167,6 +1167,106 @@ const StatusChip = ({ state }: { state: ChipState }) => (
   </span>
 );
 
+// Card-level inline icons. Kept local to this file (not extracted to a shared
+// /icons folder) because they're tightly coupled to the Figma mockups for
+// this specific view — they're not part of a broader icon system. All three
+// paint in currentColor so they inherit their parent button's text color.
+const DenyIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden
+    {...props}
+  >
+    <circle cx="12" cy="12" r="9" />
+    <line x1="5.6" y1="5.6" x2="18.4" y2="18.4" />
+  </svg>
+);
+
+const ReassignIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden {...props}>
+    <path d="M9 11a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 2c-3.3 0-6 1.8-6 4v2h9.5a6 6 0 0 1 2.5-4.8A10 10 0 0 0 9 13Zm8 0a3 3 0 1 0-3-3 3 3 0 0 0 3 3Zm0 2a6 6 0 0 0-6 4v2h12v-2a6 6 0 0 0-6-4Z" />
+  </svg>
+);
+
+// "Open in new surface" glyph, exported from Figma and mirrored in
+// frontend/src/assets/iconOnboarding.svg. Lives at the top-right of the
+// Onboarding block to signal "open this promoter's TeaseMe session".
+const OnboardingOpenIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    viewBox="0 0 14 14"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    aria-hidden
+    {...props}
+  >
+    <path
+      d="M11 8.31379e-09C11.7956 8.31379e-09 12.5587 0.316071 13.1213 0.87868C13.6839 1.44129 14 2.20435 14 3V9C14 9.64374 13.7929 10.2704 13.4093 10.7874C13.0258 11.3044 12.4861 11.6843 11.87 11.871C11.6832 12.4867 11.3034 13.0261 10.7866 13.4094C10.2698 13.7928 9.64345 13.9998 9 14H4.5C3.30653 14 2.16193 13.5259 1.31802 12.682C0.474106 11.8381 8.31379e-09 10.6935 8.31379e-09 9.5V5C-4.78926e-05 4.35638 0.206895 3.72981 0.590266 3.21283C0.973636 2.69585 1.51311 2.31586 2.129 2.129C2.31586 1.51311 2.69585 0.973636 3.21283 0.590266C3.72981 0.206895 4.35638 -4.78926e-05 5 8.31379e-09H11ZM2 3.27C1.402 3.616 1 4.26 1 5V9.5C1 10.4283 1.36875 11.3185 2.02513 11.9749C2.6815 12.6313 3.57174 13 4.5 13H9C9.74 13 10.383 12.597 10.729 12H5C4.20435 12 3.44129 11.6839 2.87868 11.1213C2.31607 10.5587 2 9.79565 2 9V3.27ZM6.5 3C6.36739 3 6.24021 3.05268 6.14645 3.14645C6.05268 3.24021 6 3.36739 6 3.5C6 3.63261 6.05268 3.75979 6.14645 3.85355C6.24021 3.94732 6.36739 4 6.5 4H9.293L5.146 8.147C5.09958 8.19349 5.06277 8.24866 5.03767 8.30938C5.01257 8.37009 4.99968 8.43516 4.99972 8.50085C4.99977 8.56655 5.01275 8.6316 5.03794 8.69228C5.06312 8.75295 5.10001 8.80808 5.1465 8.8545C5.19299 8.90092 5.24816 8.93773 5.30888 8.96283C5.36959 8.98793 5.43466 9.00082 5.50035 9.00078C5.56605 9.00073 5.6311 8.98775 5.69177 8.96256C5.75245 8.93738 5.80758 8.90049 5.854 8.854L10 4.707V7.5C10 7.63261 10.0527 7.75979 10.1464 7.85355C10.2402 7.94732 10.3674 8 10.5 8C10.6326 8 10.7598 7.94732 10.8536 7.85355C10.9473 7.75979 11 7.63261 11 7.5V3.5C11 3.36739 10.9473 3.24021 10.8536 3.14645C10.7598 3.05268 10.6326 3 10.5 3H6.5Z"
+      fill="currentColor"
+    />
+  </svg>
+);
+
+// Copy/duplicate glyph — two overlapping rounded squares. Sits at the
+// bottom-right of the Onboarding block ("copy invite link"). If Figma
+// ships a dedicated export later, drop it into frontend/src/assets/
+// iconOnboardingCopy.svg and paste the <path> data here.
+const OnboardingCopyIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    viewBox="0 0 14 14"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    aria-hidden
+    {...props}
+  >
+    <path
+      d="M3.5 1.5h6a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-6a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2Zm0 1a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-6a1 1 0 0 0-1-1h-6Z"
+      fill="currentColor"
+    />
+    <path
+      d="M5.25 4.25h7a1.5 1.5 0 0 1 1.5 1.5v7a1.5 1.5 0 0 1-1.5 1.5h-7a1.5 1.5 0 0 1-1.5-1.5v-7a1.5 1.5 0 0 1 1.5-1.5Zm0 1a.5.5 0 0 0-.5.5v7a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 .5-.5v-7a.5.5 0 0 0-.5-.5h-7Z"
+      fill="currentColor"
+    />
+  </svg>
+);
+
+// Shared dark-pill wrapper for both onboarding glyphs — matches the
+// Deny/ReAssign button surface so the four controls feel like a set.
+// Renders as a <button> when `onClick` is provided (interactive) or as
+// a <span> when it's not (decorative), so callers don't pay for button
+// semantics they don't need.
+const OnboardingIconPill = ({
+  children,
+  className = "",
+  onClick,
+  title,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  onClick?: () => void;
+  title?: string;
+}) => {
+  const base =
+    "inline-flex items-center justify-center rounded-[100px] bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-white px-[10px] py-[4px]";
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        title={title}
+        className={`${base} hover:bg-[#252525] transition-colors ${className}`}
+      >
+        {children}
+      </button>
+    );
+  }
+  return <span className={`${base} ${className}`}>{children}</span>;
+};
+
 // The TeaseMe survey is 3 steps. `currentStep` advances monotonically as the
 // invitee finishes each one. Completed steps render struck-through to match
 // the Figma "done" state.
@@ -1556,20 +1656,57 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
               {/* Onboarding checklist — always shown so the user sees survey
                   progress even on `building` / `lp_live` (a gentle history
                   cue rather than an interactive checklist). */}
-              <div className="rounded-[6px] border border-[rgba(255,255,255,0.06)] bg-[rgba(0,0,0,0.2)] px-[14px] py-[12px]">
+              <div className="relative rounded-[6px] border border-[rgba(255,255,255,0.06)] bg-[rgba(0,0,0,0.2)] px-[14px] py-[12px]">
                 <div className="flex items-center justify-between mb-[8px]">
                   <span className="text-[11px] uppercase tracking-[0.08em] text-[#9e9e9e] font-bold">
                     Onboarding
                   </span>
-                  <span className="text-[11px] text-[#6e6e6e] font-mono">
-                    {Math.min(step, ONBOARDING_STEPS.length)}/
-                    {ONBOARDING_STEPS.length}
-                  </span>
+                  <div className="flex items-center gap-[8px]">
+                    <span className="text-[11px] font-mono text-[#6e6e6e]">
+                      {Math.min(step, ONBOARDING_STEPS.length)}/
+                      {ONBOARDING_STEPS.length}
+                    </span>
+                    {/* TODO(onboarding-open): replace the alert with a real
+                        new-tab open once TeaseMe confirms the URL shape.
+                        Likely target: `${TEASEME_WEB_URL}/onboarding?invite=${referral.inviteCode}`.
+                        Should become disabled when `referral.preUser` is
+                        null — no session exists until the invitee has
+                        started onboarding. */}
+                    <OnboardingIconPill
+                      title="Open onboarding session"
+                      onClick={() =>
+                        window.alert(
+                          `TODO: open TeaseMe onboarding for invite ${referral.inviteCode}`,
+                        )
+                      }
+                    >
+                      <OnboardingOpenIcon className="w-[14px] h-[14px]" />
+                    </OnboardingIconPill>
+                  </div>
                 </div>
                 <OnboardingChecklist
                   step={step}
                   dimmed={chipState === "expired"}
                 />
+                {/* TODO(onboarding-copy): replace the alert with a real
+                    clipboard copy via `navigator.clipboard.writeText`.
+                    Source value is `referral.inviteUrl` (already built on
+                    the backend for PENDING rows). Surface a short "Copied!"
+                    toast via the existing `showToast("success", …)` helper
+                    so the feedback matches the other card actions. */}
+                <OnboardingIconPill
+                  title="Copy invite link"
+                  className="absolute bottom-[10px] right-[12px]"
+                  onClick={() =>
+                    window.alert(
+                      referral.inviteUrl
+                        ? `TODO: copy invite link\n\n${referral.inviteUrl}`
+                        : `TODO: copy invite link (none available for invite ${referral.inviteCode})`,
+                    )
+                  }
+                >
+                  <OnboardingCopyIcon className="w-[14px] h-[14px]" />
+                </OnboardingIconPill>
               </div>
 
               {/* Action row — layout changes by chip state */}
@@ -1728,13 +1865,19 @@ const CardActions = ({
             disabled={busy}
             className="hover:text-[#ff2a2a] hover:border-[#cc0000]"
           >
-            {busy ? "…" : "Deny"}
+            <span className="inline-flex items-center justify-center gap-[6px]">
+              <DenyIcon className="w-[14px] h-[14px]" />
+              {busy ? "…" : "Deny"}
+            </span>
           </SecondaryButton>
           <SecondaryButton
             onClick={() => onReassign(referral)}
             disabled={busy}
           >
-            Reassign
+            <span className="inline-flex items-center justify-center gap-[6px]">
+              <ReassignIcon className="w-[14px] h-[14px]" />
+              ReAssign
+            </span>
           </SecondaryButton>
         </div>
         {/* Disabled while we wait for the invitee to finish onboarding.
