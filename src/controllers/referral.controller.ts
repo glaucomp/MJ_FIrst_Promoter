@@ -793,16 +793,22 @@ export const denyReferralInvite = async (req: AuthRequest, res: Response) => {
         .json({ error: "Only pending referrals can be denied" });
     }
 
-    // Fire upstream first; if TeaseMe rejects or is unreachable we return 502
-    // so the UI can surface the failure without flipping local state.
+    // Deny is a best-effort operation: the authoritative "this AM rejected
+    // the promoter" flag lives in OUR database (referral.status = CANCELLED),
+    // the TeaseMe notification is a courtesy so their onboarding UI can
+    // suppress further nudges. If upstream is unreachable (e.g. endpoint not
+    // yet deployed), we still flip local status and log the upstream miss
+    // rather than block the AM's workflow. order-landing-page stays strict
+    // because that one genuinely triggers upstream work.
     const upstream = await denyPreInfluencer({
       inviteCode: referral.inviteCode,
       email: referral.preUser?.email,
       reason,
     });
     if (!upstream) {
-      return res.status(502).json({
-        error: "Failed to reach upstream service; deny not applied.",
+      console.warn("[denyReferralInvite] upstream deny failed — flipping local status only", {
+        referralId: referral.id,
+        inviteCode: referral.inviteCode,
       });
     }
 
@@ -814,7 +820,11 @@ export const denyReferralInvite = async (req: AuthRequest, res: Response) => {
       select: { id: true, status: true },
     });
 
-    return res.json({ success: true, referral: updated });
+    return res.json({
+      success: true,
+      referral: updated,
+      upstreamNotified: upstream !== null,
+    });
   } catch (error) {
     console.error("Deny referral invite error:", error);
     return res.status(500).json({ error: "Failed to deny referral" });
@@ -871,17 +881,19 @@ export const reassignReferralInvite = async (
       return res.status(404).json({ error: "New account manager not found" });
     }
 
+    // Reassign is best-effort upstream: ownership attribution is ours
+    // (referral.referrerId + metadata.accountManagerEmail), TeaseMe only
+    // needs to be told so its onboarding emails reference the new AM. If
+    // upstream is unreachable we still flip local ownership and log.
     const upstream = await reassignPreInfluencer({
       inviteCode: referral.inviteCode,
       email: referral.preUser?.email,
       newManagerEmail: newReferrer.email,
     });
     if (!upstream) {
-      console.warn("[reassignReferralInvite] upstream returned non-2xx", {
+      console.warn("[reassignReferralInvite] upstream reassign failed — flipping local ownership only", {
         referralId: referral.id,
-      });
-      return res.status(502).json({
-        error: "Failed to reassign referral in upstream service",
+        inviteCode: referral.inviteCode,
       });
     }
 
@@ -907,6 +919,7 @@ export const reassignReferralInvite = async (
       success: true,
       referral: updated,
       newReferrer,
+      upstreamNotified: upstream !== null,
     });
   } catch (error) {
     console.error("Reassign referral invite error:", error);

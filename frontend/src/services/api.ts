@@ -368,6 +368,7 @@ export const modelsApi = {
   ): Promise<{
     success: true;
     referral: { id: string; status: 'CANCELLED' };
+    upstreamNotified: boolean;
   }> {
     const response = await fetch(`${API_URL}/referrals/${referralId}/deny`, {
       method: 'POST',
@@ -384,6 +385,7 @@ export const modelsApi = {
     success: true;
     referral: { id: string; referrerId: string };
     newReferrer: { id: string; email: string; firstName: string | null; lastName: string | null };
+    upstreamNotified: boolean;
   }> {
     const response = await fetch(`${API_URL}/referrals/${referralId}/reassign`, {
       method: 'POST',
