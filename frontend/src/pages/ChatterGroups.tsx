@@ -702,7 +702,7 @@ export const ChatterGroups = () => {
                     {canManage && (
                       <button
                         onClick={() => setManagingGroup(group)}
-                        className="bg-tm-neutral-color05 px-4 py-2 rounded-sm text-tm-text-color08 hover:text-tm-text-color10 text-base transition-colors rounded-lg"
+                        className="bg-tm-neutral-color05 px-4 py-2 text-tm-text-color08 hover:text-tm-text-color10 text-base transition-colors rounded-lg"
                       >
                         {group.members.length === 0 ? '+ Add members' : 'Manage'}
                       </button>
