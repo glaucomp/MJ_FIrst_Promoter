@@ -989,9 +989,7 @@ export const orderReferralLandingPage = async (
       data: {
         // Only overwrite status when upstream/poll returned a concrete value —
         // TeaseMe is authoritative and we must not fabricate a status.
-        ...(nextStatus !== null && nextStatus !== undefined
-          ? { status: nextStatus }
-          : {}),
+        ...(nextStatus != null ? { status: nextStatus } : {}),
         currentStep: nextStep,
         teasemeUserId: nextTeasemeId,
         lastCheckedAt: new Date(),
