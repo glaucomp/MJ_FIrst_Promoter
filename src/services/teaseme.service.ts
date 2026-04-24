@@ -8,8 +8,15 @@ const TEASEME_API_URL = (process.env.TEASEME_API_URL || 'https://api.teaseme.liv
 // referral's email + inviteCode tells us which onboarding step the invitee is
 // on inside TeaseMe so the My Promoters list can render a "Step N" chip while
 // the user hasn't yet registered on our side.
+//
+// Upstream contract (POST JSON):
+//   POST {TEASEME_STATUS_URL}
+//   Headers: { "Content-Type": "application/json", "X-Internal-Token": <MJFP_TOKEN> }
+//   Body:    { "invite_code": "...", "new_user_email": "..." }
+//   200:     { ok, exists, pre_influencer_id, username, survey_step, status }
 const TEASEME_STATUS_URL = (
-  process.env.TEASEME_STATUS_URL || 'https://tmapi.mxjprod.work/auth/user-status'
+  process.env.TEASEME_STATUS_URL
+    || 'https://tmapi.mxjprod.work/mjpromoter/pre-influencers/step-progress'
 ).replace(/\/$/, '');
 const TEASEME_STATUS_TIMEOUT_MS = 3_000;
 
@@ -17,14 +24,15 @@ export interface TeasemePreUserStatus {
   step: number;
   active: boolean;
   teasemeUserId: string | null;
+  username: string | null;
+  status: string | null;
 }
 
 /**
  * Look up a pre-registered user's TeaseMe onboarding status. At least one of
- * `email` / `inviteCode` must be provided — TeaseMe matches on `inviteCode`
- * first (authoritative, unique) and falls back to `email`. Returns `null` on
- * 404 / non-2xx / timeout / network error so callers can keep the last-known
- * state rather than propagating upstream outages to the UI.
+ * `email` / `inviteCode` must be provided. Returns `null` on 404 / non-2xx /
+ * timeout / network error / `exists: false` so callers can keep the
+ * last-known state rather than propagating upstream outages to the UI.
  */
 export const fetchTeasemePreUserStatus = async (
   params: { email?: string; inviteCode?: string },
@@ -44,18 +52,20 @@ export const fetchTeasemePreUserStatus = async (
     return null;
   }
 
-  const url = new URL(TEASEME_STATUS_URL);
-  if (email) url.searchParams.set('email', email);
-  if (inviteCode) url.searchParams.set('inviteCode', inviteCode);
+  const payload: Record<string, string> = {};
+  if (inviteCode) payload.invite_code = inviteCode;
+  if (email) payload.new_user_email = email;
 
   let res: Response;
   try {
-    res = await fetch(url.toString(), {
-      method: 'GET',
+    res = await fetch(TEASEME_STATUS_URL, {
+      method: 'POST',
       headers: {
+        'Content-Type': 'application/json',
         Accept: 'application/json',
         'X-Internal-Token': token,
       },
+      body: JSON.stringify(payload),
       signal: AbortSignal.timeout(TEASEME_STATUS_TIMEOUT_MS),
     });
   } catch {
@@ -73,16 +83,38 @@ export const fetchTeasemePreUserStatus = async (
   if (!body || typeof body !== 'object') return null;
 
   const raw = body as Record<string, unknown>;
-  const step = typeof raw.step === 'number' ? raw.step : Number(raw.step);
-  if (!Number.isFinite(step)) return null;
+
+  // Upstream signals "no record" via `ok: false` or `exists: false` instead
+  // of a 404 — treat both as a miss so we don't overwrite cached state.
+  if (raw.ok === false) return null;
+  if (raw.exists === false) return null;
+
+  const surveyStep =
+    typeof raw.survey_step === 'number'
+      ? raw.survey_step
+      : Number(raw.survey_step);
+  if (!Number.isFinite(surveyStep)) return null;
+
+  const statusStr =
+    typeof raw.status === 'string' && raw.status ? raw.status : null;
+
+  const preInfluencerId = raw.pre_influencer_id;
+  const teasemeUserId =
+    typeof preInfluencerId === 'string' && preInfluencerId
+      ? preInfluencerId
+      : typeof preInfluencerId === 'number' && Number.isFinite(preInfluencerId)
+        ? String(preInfluencerId)
+        : null;
 
   return {
-    step: Math.max(0, Math.trunc(step)),
-    active: Boolean(raw.active),
-    teasemeUserId:
-      typeof raw.teasemeUserId === 'string' && raw.teasemeUserId
-        ? raw.teasemeUserId
-        : null,
+    step: Math.max(0, Math.trunc(surveyStep)),
+    // Upstream uses `status: "pending" | "active" | ...`. Anything that is
+    // not explicitly "pending" (and exists) counts as active for UI badges.
+    active: statusStr !== null && statusStr !== 'pending',
+    teasemeUserId,
+    username:
+      typeof raw.username === 'string' && raw.username ? raw.username : null,
+    status: statusStr,
   };
 };
 
