@@ -118,6 +118,146 @@ export const fetchTeasemePreUserStatus = async (
   };
 };
 
+// ─── Lifecycle action helpers (My Promoters card buttons) ───────────────────
+//
+// Each helper below POSTs JSON to a TeaseMe "pre-influencer" endpoint. All four
+// share the same transport shape as `/step-progress`:
+//   - `X-Internal-Token` header = MJFP_TOKEN
+//   - `Content-Type: application/json` body
+//   - non-2xx -> we return `null` instead of throwing, so a UI toast can be
+//     shown without killing the caller.
+//
+// Path suffixes are our current best guess. The TeaseMe team is expected to
+// confirm / rename these; override via env vars when that happens instead of
+// patching the hardcoded defaults.
+const TEASEME_DENY_URL = (
+  process.env.TEASEME_DENY_URL
+    || 'https://tmapi.mxjprod.work/mjpromoter/pre-influencers/deny'
+).replace(/\/$/, '');
+const TEASEME_REASSIGN_URL = (
+  process.env.TEASEME_REASSIGN_URL
+    || 'https://tmapi.mxjprod.work/mjpromoter/pre-influencers/reassign'
+).replace(/\/$/, '');
+const TEASEME_ORDER_LP_URL = (
+  process.env.TEASEME_ORDER_LP_URL
+    || 'https://tmapi.mxjprod.work/mjpromoter/pre-influencers/order-landing-page'
+).replace(/\/$/, '');
+const TEASEME_ASSIGN_CHATTERS_URL = (
+  process.env.TEASEME_ASSIGN_CHATTERS_URL
+    || 'https://tmapi.mxjprod.work/mjpromoter/pre-influencers/assign-chatters'
+).replace(/\/$/, '');
+
+export interface TeasemeActionResult {
+  ok: boolean;
+  status?: string | null;
+  raw?: unknown;
+}
+
+const postToTeaseme = async (
+  url: string,
+  body: Record<string, unknown>,
+): Promise<TeasemeActionResult | null> => {
+  const token = process.env.MJFP_TOKEN;
+  if (!token) return null;
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'X-Internal-Token': token,
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(TEASEME_STATUS_TIMEOUT_MS),
+    });
+  } catch {
+    return null;
+  }
+  let parsed: unknown = null;
+  try {
+    parsed = await res.json();
+  } catch {
+    /* non-JSON response is still valid for 2xx; fall through */
+  }
+  if (!res.ok) return null;
+  const raw =
+    parsed && typeof parsed === 'object'
+      ? (parsed as Record<string, unknown>)
+      : {};
+  const statusStr =
+    typeof raw.status === 'string' && raw.status ? raw.status : null;
+  return { ok: true, status: statusStr, raw: parsed };
+};
+
+/** Deny a pending pre-influencer invite on TeaseMe's side. */
+export const denyPreInfluencer = async (params: {
+  inviteCode: string;
+  email?: string;
+  reason?: string;
+}): Promise<TeasemeActionResult | null> => {
+  if (!params.inviteCode) {
+    throw new Error('denyPreInfluencer requires inviteCode');
+  }
+  const body: Record<string, unknown> = { invite_code: params.inviteCode };
+  if (params.email) body.new_user_email = params.email;
+  if (params.reason) body.reason = params.reason;
+  return postToTeaseme(TEASEME_DENY_URL, body);
+};
+
+/** Reassign the referring account manager for a pre-influencer. */
+export const reassignPreInfluencer = async (params: {
+  inviteCode: string;
+  email?: string;
+  newManagerEmail: string;
+}): Promise<TeasemeActionResult | null> => {
+  if (!params.inviteCode) {
+    throw new Error('reassignPreInfluencer requires inviteCode');
+  }
+  if (!params.newManagerEmail) {
+    throw new Error('reassignPreInfluencer requires newManagerEmail');
+  }
+  const body: Record<string, unknown> = {
+    invite_code: params.inviteCode,
+    new_manager_email: params.newManagerEmail,
+  };
+  if (params.email) body.new_user_email = params.email;
+  return postToTeaseme(TEASEME_REASSIGN_URL, body);
+};
+
+/** Request TeaseMe to start building the landing page for this invite. */
+export const orderLandingPageForPreInfluencer = async (params: {
+  inviteCode: string;
+  email?: string;
+}): Promise<TeasemeActionResult | null> => {
+  if (!params.inviteCode) {
+    throw new Error('orderLandingPageForPreInfluencer requires inviteCode');
+  }
+  const body: Record<string, unknown> = { invite_code: params.inviteCode };
+  if (params.email) body.new_user_email = params.email;
+  return postToTeaseme(TEASEME_ORDER_LP_URL, body);
+};
+
+/** Notify TeaseMe that a chatter group was assigned to the (now active) promoter. */
+export const notifyChattersAssigned = async (params: {
+  inviteCode: string;
+  email?: string;
+  chatterGroupId: string;
+}): Promise<TeasemeActionResult | null> => {
+  if (!params.inviteCode) {
+    throw new Error('notifyChattersAssigned requires inviteCode');
+  }
+  if (!params.chatterGroupId) {
+    throw new Error('notifyChattersAssigned requires chatterGroupId');
+  }
+  const body: Record<string, unknown> = {
+    invite_code: params.inviteCode,
+    chatter_group_id: params.chatterGroupId,
+  };
+  if (params.email) body.new_user_email = params.email;
+  return postToTeaseme(TEASEME_ASSIGN_CHATTERS_URL, body);
+};
+
 export interface TeaseMeSocialLink {
   platform: string;
   url: string;
