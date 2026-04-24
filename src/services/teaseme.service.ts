@@ -185,6 +185,9 @@ const postToTeaseme = async (
     parsed && typeof parsed === 'object'
       ? (parsed as Record<string, unknown>)
       : {};
+  const upstreamOk =
+    typeof raw.ok === 'boolean' ? raw.ok : null;
+  if (upstreamOk === false) return null;
   const statusStr =
     typeof raw.status === 'string' && raw.status ? raw.status : null;
   return { ok: true, status: statusStr, raw: parsed };
