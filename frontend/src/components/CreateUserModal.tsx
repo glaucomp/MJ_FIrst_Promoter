@@ -69,19 +69,15 @@ export const CreateUserModal = ({
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [userType, setUserType] = useState<UserType>(types[0]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState<ApiUser | null>(null);
+  const [inviteEmailSent, setInviteEmailSent] = useState(true);
 
   const handleSubmit = async () => {
-    if (!email || !password) {
-      setError("Email and password are required");
-      return;
-    }
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
+    if (!email) {
+      setError("Email is required");
       return;
     }
 
@@ -90,34 +86,37 @@ export const CreateUserModal = ({
 
     try {
       let user: ApiUser;
+      let emailSent = true;
       if (userType === "chatter") {
         // Chatters have their own creation endpoint which also handles the
         // account-manager ownership stamp on the server.
-        const { chatter } = await chattersApi.create({
+        const result = await chattersApi.create({
           email,
-          password,
           firstName: firstName || undefined,
           lastName: lastName || undefined,
         });
         user = {
-          id: chatter.id,
-          email: chatter.email,
-          firstName: chatter.firstName ?? "",
-          lastName: chatter.lastName ?? "",
+          id: result.chatter.id,
+          email: result.chatter.email,
+          firstName: result.chatter.firstName ?? "",
+          lastName: result.chatter.lastName ?? "",
           role: "PROMOTER",
           userType: "CHATTER",
           isActive: true,
           createdAt: new Date().toISOString(),
         };
+        emailSent = result.inviteEmailSent ?? true;
       } else {
-        user = await modelsApi.createUser({
+        const result = await modelsApi.createUser({
           email,
-          password,
           firstName,
           lastName,
           userType,
         });
+        user = result.user;
+        emailSent = result.inviteEmailSent ?? true;
       }
+      setInviteEmailSent(emailSent);
       setSuccess(user);
       onCreated(user);
     } catch (err) {
@@ -131,10 +130,10 @@ export const CreateUserModal = ({
     setFirstName("");
     setLastName("");
     setEmail("");
-    setPassword("");
     setUserType(types[0]);
     setError("");
     setSuccess(null);
+    setInviteEmailSent(true);
     onClose();
   };
 
@@ -159,11 +158,22 @@ export const CreateUserModal = ({
 
           {success ? (
             <>
-              <div className="bg-[#006622] border border-[#00d948] rounded-[8px] px-[16px] py-[12px]">
-                <p className="text-[#28ff70] text-[14px] font-medium">
-                  User created successfully!
-                </p>
-              </div>
+              {inviteEmailSent ? (
+                <div className="bg-[#006622] border border-[#00d948] rounded-[8px] px-[16px] py-[12px]">
+                  <p className="text-[#28ff70] text-[14px] font-medium">
+                    Invite email sent to {success.email}. They can use the
+                    invite email to set their password and activate the
+                    account.
+                  </p>
+                </div>
+              ) : (
+                <div className="bg-[#4a2a00] border border-[#ff9800] rounded-[8px] px-[16px] py-[12px]">
+                  <p className="text-[#ffb74d] text-[14px] font-medium">
+                    User created, but the invite email could not be sent.
+                    Please ask an admin to re-send the invite.
+                  </p>
+                </div>
+              )}
 
               <div className="flex flex-col gap-[8px]">
                 <div className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[16px] py-[12px] flex flex-col gap-[4px]">
@@ -182,9 +192,9 @@ export const CreateUserModal = ({
                   onClick={() => {
                     setSuccess(null);
                     setEmail("");
-                    setPassword("");
                     setFirstName("");
                     setLastName("");
+                    setInviteEmailSent(true);
                   }}
                   className="flex-1 bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[16px] py-[12px] text-white text-[14px] font-bold hover:bg-[#252525] transition-all"
                 >
@@ -210,7 +220,7 @@ export const CreateUserModal = ({
                     type="text"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    placeholder="Sofia"
+                    autoComplete="off"
                     className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[14px] py-[11px] text-[15px] text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
                   />
                 </div>
@@ -222,7 +232,7 @@ export const CreateUserModal = ({
                     type="text"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
-                    placeholder="Martinez"
+                    autoComplete="off"
                     className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[14px] py-[11px] text-[15px] text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
                   />
                 </div>
@@ -237,23 +247,13 @@ export const CreateUserModal = ({
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="sofia@example.com"
+                  autoComplete="off"
                   className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[14px] py-[11px] text-[15px] text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
                 />
-              </div>
-
-              {/* Password */}
-              <div className="flex flex-col gap-[8px]">
-                <label className="text-[#9e9e9e] text-[12px] font-bold uppercase tracking-[0.2px]">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Min. 6 characters"
-                  className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[14px] py-[11px] text-[15px] text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
-                />
+                <p className="text-[#9e9e9e] text-[12px] leading-[1.4]">
+                  We'll send an invite email with a link for them to set their
+                  own password.
+                </p>
               </div>
 
               {/* User type */}
@@ -310,10 +310,10 @@ export const CreateUserModal = ({
 
               <button
                 onClick={handleSubmit}
-                disabled={isLoading || !email || !password}
+                disabled={isLoading || !email}
                 className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[24px] py-[14px] text-white text-[16px] font-bold leading-[1.4] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isLoading ? "Creating..." : "Create User"}
+                {isLoading ? "Creating..." : "Send Invite"}
               </button>
             </>
           )}

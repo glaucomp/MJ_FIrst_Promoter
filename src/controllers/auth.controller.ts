@@ -1,10 +1,18 @@
-import { PrismaClient, UserRole, UserType } from "@prisma/client";
+import { PasswordResetPurpose, PrismaClient, UserRole, UserType } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { Response } from "express";
 import { validationResult } from "express-validator";
 import jwt from "jsonwebtoken";
 import { AuthRequest } from "../middleware/auth.middleware";
+import { emailService } from "../services/email.service";
+import {
+  consumePasswordResetToken,
+  createPasswordResetToken,
+  invalidateUserTokens,
+  validatePasswordResetToken,
+} from "../services/password-reset.service";
 import { getUserTypeInfo } from "../services/user.service";
+import { buildSetPasswordUrl } from "../utils/frontend-url";
 
 const prisma = new PrismaClient();
 
@@ -88,6 +96,17 @@ export const register = async (req: AuthRequest, res: Response) => {
           referredUserId: user.id,
           status: "ACTIVE",
           acceptedAt: new Date(),
+        },
+      });
+
+      // Drop the TeaseMe lifecycle tracker — once the invitee registers on
+      // our side the Referral itself becomes the source of truth and the
+      // "Step N" chip should disappear. The OR covers the canonical link
+      // plus any orphan rows that share the email (e.g. rows seeded by a
+      // different inviter for the same mailbox).
+      await prisma.preUser.deleteMany({
+        where: {
+          OR: [{ referralId: referral.id }, { email: user.email }],
         },
       });
 
@@ -425,6 +444,158 @@ export const refreshToken = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error("Refresh token error:", error);
     res.status(500).json({ error: "Failed to refresh token" });
+  }
+};
+
+// POST /api/auth/forgot-password { email }
+// Always responds 200 regardless of whether the email matches a real user so
+// the endpoint cannot be used to enumerate accounts. When it does match an
+// active user we create a short-lived RESET token and email the link.
+export const forgotPassword = async (req: AuthRequest, res: Response) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    // express-validator's normalizeEmail() already lowercased; trim defensively.
+    const email = typeof req.body?.email === "string" ? req.body.email.trim() : "";
+
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true, email: true, firstName: true, isActive: true },
+    });
+
+    if (user?.isActive) {
+      try {
+        const { rawToken, expiresAt } = await createPasswordResetToken(
+          user.id,
+          PasswordResetPurpose.RESET,
+        );
+        const resetUrl = buildSetPasswordUrl(rawToken);
+        await emailService.sendPasswordResetEmail({
+          email: user.email,
+          firstName: user.firstName,
+          resetUrl,
+          expiresAt,
+        });
+      } catch (err) {
+        console.error("Forgot-password email error:", err);
+      }
+    }
+
+    res.json({
+      message: "If an account exists for that email, a reset link has been sent.",
+    });
+  } catch (error) {
+    console.error("Forgot password error:", error);
+    res.status(500).json({ error: "Failed to process request" });
+  }
+};
+
+// GET /api/auth/password-reset/:token/validate
+// Lets the FE render a friendly "Welcome <name>" or "Reset for <email>"
+// header before the user sets a password. Responds with `valid: false` for
+// any reason (missing/expired/consumed) to avoid leaking which.
+export const validateResetToken = async (req: AuthRequest, res: Response) => {
+  try {
+    const rawToken = req.params.token || "";
+    const info = await validatePasswordResetToken(rawToken);
+    if (!info) {
+      return res.json({ valid: false });
+    }
+    res.json({
+      valid: true,
+      email: info.email,
+      firstName: info.firstName,
+      purpose: info.purpose.toLowerCase(),
+    });
+  } catch (error) {
+    console.error("Validate reset token error:", error);
+    res.status(500).json({ error: "Failed to validate token" });
+  }
+};
+
+// POST /api/auth/password-reset { token, password }
+// Consumes the token, writes the new password, invalidates every other
+// outstanding token for the user, and returns a JWT so the FE can drop the
+// user straight into their dashboard without a second login step.
+export const resetPassword = async (req: AuthRequest, res: Response) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const rawToken: string = req.body.token;
+    const password: string = req.body.password;
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const consumed = await consumePasswordResetToken(rawToken);
+    if (!consumed) {
+      return null;
+    }
+
+    const existing = await prisma.user.findUnique({
+      where: { id: consumed.userId },
+      select: { isActive: true },
+    });
+    if (!existing) {
+      return null;
+    }
+
+    // A plain RESET token must not silently re-enable a user who was
+    // disabled after the token was issued. Treat this as an invalid link
+    // rather than leaking account status by 403ing.
+    const isInvite = consumed.purpose === PasswordResetPurpose.INVITE;
+    if (!isInvite && !existing.isActive) {
+      return null;
+    }
+
+    const user = await prisma.user.update({
+      where: { id: consumed.userId },
+      data: {
+        password: hashedPassword,
+        // Invite flow doubles as activation — ensure the user can log in
+        // even if the row was created with `isActive: false`. RESET leaves
+        // `isActive` untouched so concurrent deactivations aren't reversed.
+        ...(isInvite ? { isActive: true } : {}),
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        userType: true,
+        isActive: true,
+        createdAt: true,
+      },
+    });
+
+    // Kill every other outstanding token so an unused invite email from the
+    // same mailbox can't be replayed to take over the account later.
+    await invalidateUserTokens(user.id);
+
+    const result = { consumed, user };
+
+    if (!result) {
+      return res
+        .status(400)
+        .json({ error: "This link is no longer valid. Please request a new one." });
+    }
+
+    const token = generateToken(result.user.id, result.user.email, result.user.role);
+
+    res.json({
+      user: result.user,
+      token,
+      purpose: result.consumed.purpose.toLowerCase(),
+    });
+  } catch (error) {
+    console.error("Reset password error:", error);
+    res.status(500).json({ error: "Failed to reset password" });
   }
 };
 

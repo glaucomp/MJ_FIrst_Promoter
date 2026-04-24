@@ -31,6 +31,11 @@ enum ReferralStatus {
   CANCELLED
 }
 
+enum PasswordResetPurpose {
+  INVITE
+  RESET
+}
+
 // API Key model for external integrations
 model ApiKey {
   id          String   @id @default(cuid())
@@ -111,6 +116,7 @@ model User {
   chatterGroupMemberships ChatterGroupMember[]
   createdChatterGroups  ChatterGroup[]     @relation("ChatterGroupCreator")
   socialLinks           SocialLink[]
+  passwordResetTokens   PasswordResetToken[]
 
   @@index([email])
   @@index([username])
@@ -119,6 +125,25 @@ model User {
   @@index([createdById])
   @@index([accountManagerId])
   @@map("users")
+}
+
+// Short-lived one-time tokens for the password invite / reset flow.
+// We only ever store the sha256 of the raw token — the raw value lives
+// exclusively in the email we send. `purpose` distinguishes an admin/AM
+// invite (first-time password setup) from a self-service forgot-password
+// flow so the UI can render the right copy.
+model PasswordResetToken {
+  id         String               @id @default(cuid())
+  userId     String
+  user       User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String               @unique
+  purpose    PasswordResetPurpose @default(INVITE)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime             @default(now())
+
+  @@index([userId])
+  @@map("password_reset_tokens")
 }
 
 // Campaign table - promotional campaigns with commission rates
@@ -187,6 +212,7 @@ model Referral {
   clicks            ClickTracking[]
   customers         Customer[]
   transactions      Transaction[]
+  preUser           PreUser?
 
   @@index([inviteCode])
   @@index([campaignId])
@@ -194,6 +220,31 @@ model Referral {
   @@index([referredUserId])
   @@index([status])
   @@map("referrals")
+}
+
+// PreUser — TeaseMe onboarding state for a referral invite that hasn't yet
+// registered in our own system. Seeded alongside Referral in `createReferralInvite`
+// and polled against TeaseMe's `user-status` endpoint to track lifecycle
+// progress (Step 1 → Step N). Deleted when the invitee hits our `/api/auth/register`
+// (they become a real User) or when the parent Referral is hard-deleted
+// (ON DELETE CASCADE). Never mutates Referral.status — that transition is
+// still owned by the register handler.
+model PreUser {
+  id            String    @id @default(cuid())
+  email         String
+  referralId    String?   @unique
+  inviteCode    String?   @unique
+  teasemeUserId String?
+  currentStep   Int       @default(0)
+  stepHistory   Json?
+  lastCheckedAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  referral Referral? @relation(fields: [referralId], references: [id], onDelete: Cascade)
+
+  @@index([email])
+  @@map("pre_users")
 }
 
 // TrackingLink table - unique URLs for each user/campaign combination

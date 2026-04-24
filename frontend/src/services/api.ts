@@ -47,6 +47,61 @@ export const authApi = {
     const data = await response.json();
     return data.user;
   },
+
+  /**
+   * Ask the server to send a password-reset email. Always resolves to the
+   * same generic message regardless of whether the email matches a real
+   * account, so the UI can't be used to enumerate users.
+   */
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    const response = await fetch(`${API_URL}/auth/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Failed to send reset email');
+    }
+    return response.json();
+  },
+
+  /**
+   * Check a raw invite / reset token without consuming it, so the Set
+   * Password page can render the right greeting (or an "expired" state).
+   */
+  async validateResetToken(token: string): Promise<{
+    valid: boolean;
+    email?: string;
+    firstName?: string | null;
+    purpose?: 'invite' | 'reset';
+  }> {
+    const response = await fetch(
+      `${API_URL}/auth/password-reset/${encodeURIComponent(token)}/validate`,
+    );
+    if (!response.ok) {
+      return { valid: false };
+    }
+    return response.json();
+  },
+
+  /**
+   * Consume a token and set a new password. On success the server returns
+   * a JWT so the FE can drop the user straight into their dashboard
+   * without a second login hop.
+   */
+  async resetPassword(token: string, password: string): Promise<LoginResponse & { purpose: 'invite' | 'reset' }> {
+    const response = await fetch(`${API_URL}/auth/password-reset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, password }),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Failed to reset password');
+    }
+    return response.json();
+  },
 };
 
 
@@ -94,6 +149,16 @@ export interface ReferralCommission {
   userId: string;
 }
 
+export interface ReferralMetadata {
+  accountManagerEmail?: string | null;
+  inviterEmail?: string | null;
+  inviteeEmail?: string | null;
+  inviteCode?: string | null;
+  emailSentAt?: string | null;
+  expiresAt?: string | null;
+  resendCount?: number;
+}
+
 export interface Referral {
   id: string;
   inviteCode: string;
@@ -128,6 +193,22 @@ export interface Referral {
     commissions?: ReferralCommission[];
   }>;
   createdAt: string;
+  // Populated by getMyReferrals — invitee/inviter/AM emails + expiry. May be
+  // empty ({}) for legacy rows created before the email-required flow.
+  metadata?: ReferralMetadata;
+  // True when status === PENDING and now > (metadata.expiresAt || createdAt+24h).
+  isExpired?: boolean;
+  // The campaign tracking URL with all 4 referral query params appended.
+  // Null for accepted rows or legacy rows missing inviteeEmail.
+  inviteUrl?: string | null;
+  // TeaseMe onboarding snapshot for pending invites. Null once the invitee
+  // has registered on our side (the backend deletes the PreUser row then),
+  // and null for legacy rows that pre-date the lifecycle tracker.
+  preUser?: {
+    currentStep: number;
+    lastCheckedAt: string | null;
+    teasemeUserId: string | null;
+  } | null;
 }
 
 export interface TrackingLink {
@@ -238,10 +319,11 @@ export const modelsApi = {
     return data.referrals;
   },
 
-  async createReferralInvite(campaignId: string, email?: string): Promise<{
+  async createReferralInvite(campaignId: string, email: string): Promise<{
     inviteUrl: string;
     inviteCode: string;
     referral: Referral;
+    emailSent?: boolean;
   }> {
     const response = await fetch(`${API_URL}/referrals/create`, {
       method: 'POST',
@@ -249,6 +331,28 @@ export const modelsApi = {
       body: JSON.stringify({ campaignId, email }),
     });
     return handleResponse(response, 'Failed to create invite');
+  },
+
+  async resendReferralInvite(referralId: string): Promise<{
+    emailSent: boolean;
+    inviteUrl: string;
+    inviteeEmail: string;
+    expiresAt: string;
+    resendCount: number;
+  }> {
+    const response = await fetch(`${API_URL}/referrals/${referralId}/resend`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response, 'Failed to resend invite');
+  },
+
+  async deleteReferralInvite(referralId: string): Promise<{ success: true; id: string }> {
+    const response = await fetch(`${API_URL}/referrals/${referralId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response, 'Failed to delete invite');
   },
 
   async getInviteQuota(campaignId: string): Promise<{
@@ -330,11 +434,10 @@ export const modelsApi = {
 
   async createUser(data: {
     email: string;
-    password: string;
     firstName: string;
     lastName: string;
     userType: 'account_manager' | 'team_manager' | 'promoter' | 'payer';
-  }): Promise<ApiUser> {
+  }): Promise<{ user: ApiUser; inviteEmailSent: boolean }> {
     const response = await fetch(`${API_URL}/users/create`, {
       method: 'POST',
       headers: getAuthHeaders(),
@@ -344,7 +447,7 @@ export const modelsApi = {
       }),
     });
     const result = await handleResponse(response, 'Failed to create user');
-    return result.user;
+    return { user: result.user, inviteEmailSent: result.inviteEmailSent ?? false };
   },
 
   async createTrackingLink(campaignId: string): Promise<TrackingLink> {
@@ -691,13 +794,14 @@ export const chattersApi = {
     return handleResponse(response, 'Failed to get chatter');
   },
 
-  async create(data: { email: string; password: string; firstName?: string; lastName?: string }): Promise<{ chatter: import('../types').Chatter }> {
+  async create(data: { email: string; firstName?: string; lastName?: string }): Promise<{ chatter: import('../types').Chatter; inviteEmailSent: boolean }> {
     const response = await fetch(`${API_URL}/chatters`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify(data),
     });
-    return handleResponse(response, 'Failed to create chatter');
+    const result = await handleResponse(response, 'Failed to create chatter');
+    return { chatter: result.chatter, inviteEmailSent: result.inviteEmailSent ?? false };
   },
 
   async delete(id: string): Promise<{ message: string }> {

@@ -22,7 +22,55 @@ interface WelcomeEmailData {
   loginUrl: string;
 }
 
+interface SetPasswordEmailData {
+  email: string;
+  firstName?: string | null;
+  setupUrl: string;
+  invitedByName?: string | null;
+  expiresAt: Date;
+}
+
+interface PasswordResetEmailData {
+  email: string;
+  firstName?: string | null;
+  resetUrl: string;
+  expiresAt: Date;
+}
+
+interface ReferralInviteEmailData {
+  inviteeEmail: string;
+  inviterName: string;
+  campaignName: string;
+  acceptUrl: string;
+}
+
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+const formatExpiry = (expiresAt: Date) => {
+  const hours = Math.max(
+    1,
+    Math.round((expiresAt.getTime() - Date.now()) / (60 * 60 * 1000)),
+  );
+  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'}`;
+  const days = Math.round(hours / 24);
+  return `${days} day${days === 1 ? '' : 's'}`;
+};
+
+const BRAND_PRIMARY = '#ff0f5f';
+const BRAND_PRIMARY_DARK = '#cc0047';
+
 export class EmailService {
+  /**
+   * @deprecated Leaks the plaintext password in the email body. New users
+   * are onboarded via `sendSetPasswordEmail` + the /set-password token flow.
+   * Retained for one release in case any legacy caller still imports it.
+   */
   async sendPromoterWelcomeEmail(data: WelcomeEmailData): Promise<boolean> {
     const { email, username, password, firstName, ref_id, loginUrl } = data;
     const name = firstName || username;
@@ -153,6 +201,158 @@ Next Steps:
     `.trim();
 
     return this.sendEmail(email, subject, bodyHtml, bodyText);
+  }
+
+  async sendSetPasswordEmail(data: SetPasswordEmailData): Promise<boolean> {
+    const { email, firstName, setupUrl, invitedByName, expiresAt } = data;
+    const displayName = firstName?.trim() || email.split('@')[0];
+    const expiryText = formatExpiry(expiresAt);
+    const trimmedInviter = invitedByName?.trim();
+    const inviter = trimmedInviter
+      ? `${trimmedInviter} has invited you to `
+      : 'You have been invited to ';
+
+    const subject = 'Set up your TeaseMe HQ account';
+    const bodyHtml = this.renderActionTemplate({
+      heading: `Welcome, ${displayName}!`,
+      intro: `${inviter}join the TeaseMe HQ platform. Click the button below to create your password and activate your account.`,
+      buttonLabel: 'Set My Password',
+      buttonUrl: setupUrl,
+      footerNote: `For security, this invite link expires in ${expiryText}. If it expires, ask whoever invited you to send a new one.`,
+    });
+
+    const bodyText = `Welcome, ${displayName}!
+
+${inviter}join the TeaseMe HQ platform.
+
+Click the link below to set your password and activate your account:
+${setupUrl}
+
+This invite link expires in ${expiryText}.
+
+If you weren't expecting this invite, you can safely ignore this email.`;
+
+    return this.sendEmail(email, subject, bodyHtml, bodyText);
+  }
+
+  async sendPasswordResetEmail(data: PasswordResetEmailData): Promise<boolean> {
+    const { email, firstName, resetUrl, expiresAt } = data;
+    const displayName = firstName?.trim() || email.split('@')[0];
+    const expiryText = formatExpiry(expiresAt);
+
+    const subject = 'Reset your TeaseMe HQ password';
+    const bodyHtml = this.renderActionTemplate({
+      heading: `Hi ${displayName},`,
+      intro:
+        'We received a request to reset the password on your TeaseMe HQ account. Click the button below to choose a new one.',
+      buttonLabel: 'Reset Password',
+      buttonUrl: resetUrl,
+      footerNote: `This link expires in ${expiryText}. If you didn't request a reset, you can safely ignore this email — your password will stay the same.`,
+    });
+
+    const bodyText = `Hi ${displayName},
+
+We received a request to reset the password on your TeaseMe HQ account.
+
+Use the link below to choose a new password:
+${resetUrl}
+
+This link expires in ${expiryText}. If you didn't request a reset, you can ignore this email.`;
+
+    return this.sendEmail(email, subject, bodyHtml, bodyText);
+  }
+
+  async sendReferralInviteEmail(data: ReferralInviteEmailData): Promise<boolean> {
+    const { inviteeEmail, inviterName, campaignName, acceptUrl } = data;
+    const safeInviter = inviterName?.trim() || 'A promoter';
+
+    const subject = `${safeInviter} invited you to join ${campaignName}`;
+    const bodyHtml = this.renderActionTemplate({
+      heading: `You're invited to ${campaignName}`,
+      intro: `${safeInviter} sent you a referral invite. Click the button below to accept and get started.`,
+      buttonLabel: 'Accept Invite',
+      buttonUrl: acceptUrl,
+      footerNote:
+        'This invite link is single-use. If you weren\u2019t expecting this email, you can safely ignore it.',
+    });
+
+    const bodyText = `You're invited to ${campaignName}
+
+${safeInviter} sent you a referral invite.
+
+Click the link below to accept and get started:
+${acceptUrl}
+
+This invite link is single-use. If you weren't expecting this email, you can safely ignore it.`;
+
+    return this.sendEmail(inviteeEmail, subject, bodyHtml, bodyText);
+  }
+
+  private renderActionTemplate({
+    heading,
+    intro,
+    buttonLabel,
+    buttonUrl,
+    footerNote,
+  }: {
+    heading: string;
+    intro: string;
+    buttonLabel: string;
+    buttonUrl: string;
+    footerNote: string;
+  }): string {
+    const currentYear = new Date().getFullYear();
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>TeaseMe HQ</title>
+</head>
+<body style="background:#0f1012;padding:0;margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0f1012;padding:40px 0;">
+    <tr>
+      <td align="center">
+        <table width="540" cellpadding="0" cellspacing="0" border="0" style="background:#1a1a1a;border:1px solid rgba(255,255,255,0.06);border-radius:16px;overflow:hidden;">
+          <tr>
+            <td align="center" style="padding:36px 32px 16px 32px;">
+              <div style="display:inline-block;padding:8px 16px;border:1px solid ${BRAND_PRIMARY};border-radius:999px;color:${BRAND_PRIMARY};font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">TeaseMe HQ</div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:8px 40px 0 40px;">
+              <h1 style="font-size:26px;line-height:1.3;color:#ffffff;margin:0 0 16px 0;font-weight:700;">${escapeHtml(heading)}</h1>
+              <p style="font-size:15px;line-height:1.6;color:#c7c7c7;margin:0 0 28px 0;">${escapeHtml(intro)}</p>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:0 40px 28px 40px;">
+              <a href="${buttonUrl}" style="display:inline-block;background:linear-gradient(180deg,${BRAND_PRIMARY} 0%,${BRAND_PRIMARY_DARK} 100%);color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;">${escapeHtml(buttonLabel)}</a>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 40px 12px 40px;">
+              <p style="font-size:12px;line-height:1.6;color:#7a7a7a;margin:0 0 8px 0;">If the button doesn't work, copy and paste this link into your browser:</p>
+              <p style="font-size:12px;line-height:1.6;color:${BRAND_PRIMARY};word-break:break-all;margin:0;">
+                <a href="${buttonUrl}" style="color:${BRAND_PRIMARY};text-decoration:underline;">${escapeHtml(buttonUrl)}</a>
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:20px 40px 32px 40px;border-top:1px solid rgba(255,255,255,0.06);">
+              <p style="font-size:12px;line-height:1.6;color:#7a7a7a;margin:0;">${escapeHtml(footerNote)}</p>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="background:#0f1012;padding:16px;">
+              <p style="font-size:11px;color:#555555;margin:0;">© ${currentYear} TeaseMe HQ. All rights reserved.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
   }
 
   private async sendEmail(

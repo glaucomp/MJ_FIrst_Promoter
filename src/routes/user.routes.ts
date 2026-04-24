@@ -5,6 +5,7 @@ import { authenticate, authorize } from '../middleware/auth.middleware';
 import { createPromoter } from '../controllers/promoter.api.controller';
 import { syncTeaseMeForUser } from '../controllers/teaseme.controller';
 import { UserRole } from '@prisma/client';
+import { PASSWORD_MIN_LENGTH, PASSWORD_TOO_SHORT_MESSAGE } from '../utils/password-policy';
 
 const router = Router();
 
@@ -23,7 +24,7 @@ router.post(
   authorize(UserRole.ADMIN),
   [
     body('email').isEmail().normalizeEmail(),
-    body('password').isLength({ min: 6 }),
+    body('password').isLength({ min: PASSWORD_MIN_LENGTH }).withMessage(PASSWORD_TOO_SHORT_MESSAGE),
     body('firstName').optional().trim(),
     body('lastName').optional().trim()
   ],
