@@ -941,8 +941,13 @@ export const orderReferralLandingPage = async (
     }
 
     // Only act on referrals that are still in progress (PENDING or ACTIVE).
-    // A CANCELLED/EXPIRED referral should not trigger new upstream work.
-    if (referral.status === "CANCELLED" || referral.status === "EXPIRED") {
+    // CANCELLED referrals, or PENDING ones whose invite has already lapsed,
+    // should not trigger new upstream work. Note: ReferralStatus has no
+    // "EXPIRED" variant — expiry is derived from `expiresAt` at read time.
+    const isExpired =
+      referral.status === "PENDING" &&
+      referral.expiresAt.getTime() < Date.now();
+    if (referral.status === "CANCELLED" || isExpired) {
       return res.status(400).json({
         error:
           "A landing page can only be ordered for active or pending referrals",
