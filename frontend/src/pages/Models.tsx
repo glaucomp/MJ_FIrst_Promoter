@@ -1169,7 +1169,7 @@ const StatusChip = ({ state }: { state: ChipState }) => (
 
 // Card-level inline icons. Kept local to this file (not extracted to a shared
 // /icons folder) because they're tightly coupled to the Figma mockups for
-// this specific view — they're not part of a broader icon system. All three
+// this specific view — they're not part of a broader icon system. These icons
 // paint in currentColor so they inherit their parent button's text color.
 const DenyIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
