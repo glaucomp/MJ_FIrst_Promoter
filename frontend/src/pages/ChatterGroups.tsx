@@ -642,7 +642,7 @@ export const ChatterGroups = () => {
                   <div className="flex flex-col gap-[8px] min-w-0">
                     <h3 className="text-white text-2xl truncate">{group.name}</h3>
                     {group.tag && (
-                      <span className="self-start px-[10px] py-[3px] rounded-[100px] text-[12px] font-semibold text-tm-primary-color05 border-1 border-tm-primary-color05 bg-tm-primary-color12">
+                      <span className="self-start px-[10px] py-[3px] rounded-[100px] text-[12px] font-semibold text-tm-primary-color05 border border-tm-primary-color05 bg-tm-primary-color12">
                         {group.tag}
                       </span>
                     )}
