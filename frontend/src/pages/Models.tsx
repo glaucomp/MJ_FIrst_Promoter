@@ -10,12 +10,14 @@ import { CreateUserModal } from "../components/CreateUserModal";
 import { InviteModal } from "../components/InviteModal";
 import { useAuth } from "../contexts/AuthContext";
 import {
+  chatterGroupsApi,
   modelsApi,
   usersApi,
   type AccountManagerSummary,
   type ApiUser,
   type Referral,
 } from "../services/api";
+import type { ChatterGroup } from "../types";
 
 const formatManagerName = (m: {
   firstName: string | null;
@@ -1080,17 +1082,147 @@ whitespace-nowrap"
   );
 };
 
-// ── Shared Referral List component ────────────────────────────────────────────
+// ── My Promoters card grid ────────────────────────────────────────────────
+//
+// Six lifecycle states drive this view, in order of precedence:
+//   denied   → referral.status === "CANCELLED" (explicit AM rejection)
+//   expired  → local (metadata.expiresAt past / isExpired flag)
+//   waiting  → preUser.status === "pending" (or missing)
+//   order_lp → preUser.status === "order_lp"
+//   building → preUser.status === "building"
+//   lp_live  → preUser.status === "live" OR referral.status === "ACTIVE"
+//
+// `preUser.status` is mirrored from TeaseMe's /mjpromoter/pre-influencers/
+// step-progress response — never invented locally. The UI only TRIGGERS
+// transitions (via the card action buttons) and re-polls to observe them.
+//
+// `denied` is *explicit* (someone clicked Deny → CANCELLED), while `expired`
+// is *passive* (the 24h invite window lapsed). Both share the Expired filter
+// pill because from a user POV they're both "dead invites you might want
+// to clean up or re-send", but the chip and action row differ.
+
+type ChipState =
+  | "denied"
+  | "expired"
+  | "waiting"
+  | "order_lp"
+  | "building"
+  | "lp_live";
+
+const deriveChipState = (r: Referral): ChipState => {
+  // Explicit deny beats everything else — once an AM has said no, we don't
+  // want the UI to keep nagging them with "Order LP" etc even if the
+  // underlying preUser row still has an in-flight TeaseMe status.
+  if (r.status === "CANCELLED") return "denied";
+  if (r.isExpired) return "expired";
+  if (r.status === "ACTIVE" || r.status === "COMPLETED") return "lp_live";
+  const upstream = r.preUser?.status;
+  switch (upstream) {
+    case "live":
+      return "lp_live";
+    case "building":
+      return "building";
+    case "order_lp":
+      return "order_lp";
+    case "pending":
+    default:
+      return "waiting";
+  }
+};
+
+const CHIP_LABEL: Record<ChipState, string> = {
+  denied: "Denied",
+  expired: "Expired",
+  waiting: "Waiting",
+  order_lp: "Order LP",
+  building: "Building",
+  lp_live: "LP Live",
+};
+
+// Tailwind class sets extracted once so hover states and DOM stay lean.
+// Colors follow the Figma reference: warm accent on Waiting, outlined
+// mint/pink on Order LP / Building, filled green on LP Live, red on
+// Expired, and muted gray-red on Denied (to signal "explicit finality"
+// without competing visually with the louder Expired red).
+const CHIP_CLASS: Record<ChipState, string> = {
+  denied:
+    "bg-[rgba(110,110,110,0.15)] border-[#6e6e6e] text-[#b3b3b3]",
+  expired:
+    "bg-[rgba(255,42,42,0.12)] border-[#cc0000] text-[#ff2a2a]",
+  waiting:
+    "bg-[rgba(255,170,0,0.15)] border-[#cc8800] text-[#ffaa00]",
+  order_lp:
+    "bg-[rgba(40,255,112,0.06)] border-[#28ff70] text-[#28ff70]",
+  building:
+    "bg-[rgba(255,79,143,0.08)] border-[#ff4f8f] text-[#ff4f8f]",
+  lp_live:
+    "bg-tm-success-color12 border-[#00d948] text-[#28ff70]",
+};
+
+const StatusChip = ({ state }: { state: ChipState }) => (
+  <span
+    className={`inline-flex items-center px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border ${CHIP_CLASS[state]}`}
+  >
+    {CHIP_LABEL[state]}
+  </span>
+);
+
+// The TeaseMe survey is 3 steps. `currentStep` advances monotonically as the
+// invitee finishes each one. Completed steps render struck-through to match
+// the Figma "done" state.
+const ONBOARDING_STEPS: { idx: number; label: string }[] = [
+  { idx: 1, label: "Email & Name" },
+  { idx: 2, label: "Photo & Voice" },
+  { idx: 3, label: "Assets" },
+];
+
+const OnboardingChecklist = ({
+  step,
+  dimmed,
+}: {
+  step: number;
+  dimmed?: boolean;
+}) => (
+  <ul
+    className={`flex flex-col gap-[6px] text-[13px] ${
+      dimmed ? "opacity-60" : ""
+    }`}
+  >
+    {ONBOARDING_STEPS.map(({ idx, label }) => {
+      const done = step >= idx;
+      return (
+        <li
+          key={idx}
+          className={`flex items-center gap-[8px] ${
+            done
+              ? "text-[#6e6e6e] line-through"
+              : "text-white"
+          }`}
+        >
+          <span className="text-[#6e6e6e] font-mono text-[12px] w-[20px]">
+            {String(idx).padStart(2, "0")}
+          </span>
+          <span className="font-semibold">{label}</span>
+        </li>
+      );
+    })}
+  </ul>
+);
+
 type ReferralListProps = {
   referrals: Referral[];
   setReferrals?: React.Dispatch<React.SetStateAction<Referral[]>>;
 };
 
-type ReferralFilter = "all" | "pending" | "active" | "expired";
+type ReferralFilter =
+  | "all"
+  | "pending"
+  | "active"
+  | "expired"
+  | "denied";
 
 const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [toast, setToast] = useState<
     { kind: "success" | "error"; text: string } | null
   >(null);
@@ -1098,18 +1230,34 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
   // isn't expired" — expired rows are only visible when the user clicks the
   // Expired pill explicitly.
   const [filter, setFilter] = useState<ReferralFilter>("all");
+  // Reassign / Assign-Chatters modals share this opaque "in-flight referral".
+  // Keeping them as siblings rather than nested avoids re-rendering the whole
+  // grid when either opens/closes.
+  const [reassignFor, setReassignFor] = useState<Referral | null>(null);
+  const [assignChattersFor, setAssignChattersFor] = useState<Referral | null>(
+    null,
+  );
+
+  // Expired and Denied are separate filter pills: expired is a passive
+  // lifecycle event (invite window lapsed), denied is an explicit AM
+  // rejection. Both are still hidden from the "All" tab so they don't
+  // clutter the default view.
+  const isDenied = (r: Referral) => r.status === "CANCELLED";
+  const isExpiredOnly = (r: Referral) => r.isExpired && !isDenied(r);
 
   const counts = useMemo(() => {
-    const expired = referrals.filter((r) => r.isExpired).length;
+    const expired = referrals.filter(isExpiredOnly).length;
+    const denied = referrals.filter(isDenied).length;
     const pending = referrals.filter(
       (r) => r.status === "PENDING" && !r.isExpired,
     ).length;
     const active = referrals.filter((r) => r.status === "ACTIVE").length;
     return {
-      all: referrals.length - expired,
+      all: referrals.length - expired - denied,
       pending,
       active,
       expired,
+      denied,
     };
   }, [referrals]);
 
@@ -1122,10 +1270,12 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
       case "active":
         return referrals.filter((r) => r.status === "ACTIVE");
       case "expired":
-        return referrals.filter((r) => r.isExpired);
+        return referrals.filter(isExpiredOnly);
+      case "denied":
+        return referrals.filter(isDenied);
       case "all":
       default:
-        return referrals.filter((r) => !r.isExpired);
+        return referrals.filter((r) => !r.isExpired && !isDenied(r));
     }
   }, [referrals, filter]);
 
@@ -1134,29 +1284,16 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
     window.setTimeout(() => setToast(null), 3000);
   };
 
-  const handleCopy = async (referral: Referral) => {
-    const url = referral.inviteUrl;
-    if (!url) {
-      showToast("error", "No link available for this invite");
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopiedId(referral.id);
-      window.setTimeout(
-        () => setCopiedId((cur) => (cur === referral.id ? null : cur)),
-        1500,
-      );
-    } catch {
-      showToast("error", "Failed to copy link");
-    }
-  };
-
   const handleDelete = async (referral: Referral) => {
     const label =
       referral.metadata?.inviteeEmail ??
       `invite code ${referral.inviteCode}`;
-    if (!window.confirm(`Delete pending invite for ${label}? This cannot be undone.`)) {
+    const noun = referral.status === "CANCELLED" ? "denied" : "expired";
+    if (
+      !window.confirm(
+        `Delete ${noun} invite for ${label}? This cannot be undone.`,
+      )
+    ) {
       return;
     }
     setBusyId(referral.id);
@@ -1174,38 +1311,126 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
     }
   };
 
-  const handleResend = async (referral: Referral) => {
+  const handleDeny = async (referral: Referral) => {
+    const label =
+      referral.metadata?.inviteeEmail ??
+      `invite code ${referral.inviteCode}`;
+    if (!window.confirm(`Deny ${label}? The promoter will be marked as denied.`)) {
+      return;
+    }
     setBusyId(referral.id);
     try {
-      const result = await modelsApi.resendReferralInvite(referral.id);
+      await modelsApi.denyReferralInvite(referral.id);
+      // Flip local status to CANCELLED so `deriveChipState` returns "denied"
+      // and the row moves to the Denied filter. We keep it in the list rather
+      // than removing it so the user can still see the audit trail and delete
+      // it explicitly.
+      setReferrals?.((prev) =>
+        prev.map((r) =>
+          r.id === referral.id ? { ...r, status: "CANCELLED" as const } : r,
+        ),
+      );
+      showToast("success", "Promoter denied");
+    } catch (err) {
+      showToast(
+        "error",
+        err instanceof Error ? err.message : "Failed to deny promoter",
+      );
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleReassignSubmit = async (newReferrerId: string) => {
+    const referral = reassignFor;
+    if (!referral) return;
+    setBusyId(referral.id);
+    try {
+      const result = await modelsApi.reassignReferralInvite(
+        referral.id,
+        newReferrerId,
+      );
       setReferrals?.((prev) =>
         prev.map((r) =>
           r.id === referral.id
             ? {
                 ...r,
-                isExpired: false,
-                inviteUrl: result.inviteUrl,
                 metadata: {
                   ...(r.metadata ?? {}),
-                  inviteeEmail: result.inviteeEmail,
-                  expiresAt: result.expiresAt,
-                  resendCount: result.resendCount,
-                  emailSentAt: new Date().toISOString(),
+                  accountManagerEmail: result.newReferrer.email,
                 },
               }
             : r,
         ),
       );
-      showToast(
-        result.emailSent ? "success" : "error",
-        result.emailSent
-          ? `Invite email resent to ${result.inviteeEmail}`
-          : "Email delivery failed \u2014 share the link manually",
-      );
+      const name =
+        [result.newReferrer.firstName, result.newReferrer.lastName]
+          .filter(Boolean)
+          .join(" ")
+          .trim() || result.newReferrer.email;
+      showToast("success", `Reassigned to ${name}`);
+      setReassignFor(null);
     } catch (err) {
       showToast(
         "error",
-        err instanceof Error ? err.message : "Failed to resend invite",
+        err instanceof Error ? err.message : "Failed to reassign promoter",
+      );
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleOrderLandingPage = async (referral: Referral) => {
+    setBusyId(referral.id);
+    try {
+      const result = await modelsApi.orderReferralLandingPage(referral.id);
+      setReferrals?.((prev) =>
+        prev.map((r) =>
+          r.id === referral.id
+            ? {
+                ...r,
+                preUser: {
+                  ...(r.preUser ?? {
+                    currentStep: 0,
+                    status: null,
+                    lastCheckedAt: null,
+                    teasemeUserId: null,
+                  }),
+                  currentStep: result.preUser.currentStep,
+                  status: result.preUser.status,
+                  lastCheckedAt: result.preUser.lastCheckedAt,
+                  teasemeUserId: result.preUser.teasemeUserId,
+                },
+              }
+            : r,
+        ),
+      );
+      showToast("success", "Landing page build requested");
+    } catch (err) {
+      showToast(
+        "error",
+        err instanceof Error ? err.message : "Failed to order landing page",
+      );
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleAssignChattersSubmit = async (chatterGroupId: string) => {
+    const referral = assignChattersFor;
+    if (!referral) return;
+    setBusyId(referral.id);
+    try {
+      const result = await modelsApi.assignReferralChatters(
+        referral.id,
+        chatterGroupId,
+      );
+      showToast("success", `Chatters assigned: ${result.chatterGroup.name}`);
+      setAssignChattersFor(null);
+    } catch (err) {
+      showToast(
+        "error",
+        err instanceof Error ? err.message : "Failed to assign chatters",
       );
     } finally {
       setBusyId(null);
@@ -1227,6 +1452,7 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
     { id: "pending", label: "Pending", count: counts.pending },
     { id: "active", label: "Active", count: counts.active },
     { id: "expired", label: "Expired", count: counts.expired },
+    { id: "denied", label: "Denied", count: counts.denied },
   ];
 
   return (
@@ -1269,136 +1495,532 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
         <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] text-center">
           <p className="text-[#9e9e9e] text-[14px]">
             No {filter === "all" ? "active or pending" : filter} referrals
-            {filter === "all" && counts.expired > 0
-              ? ` — ${counts.expired} expired hidden`
+            {filter === "all" && (counts.expired > 0 || counts.denied > 0)
+              ? ` — ${[
+                  counts.expired > 0 ? `${counts.expired} expired` : null,
+                  counts.denied > 0 ? `${counts.denied} denied` : null,
+                ]
+                  .filter(Boolean)
+                  .join(", ")} hidden`
               : ""}
             .
           </p>
         </div>
       )}
 
-      {visibleReferrals.map((referral) => {
-        const isPending = referral.status === "PENDING" && !referral.referredUser;
-        const isExpired = Boolean(referral.isExpired);
-        const inviteeEmail = referral.metadata?.inviteeEmail ?? null;
-        const canCopy = Boolean(referral.inviteUrl);
-        const effectiveStatus = isExpired ? "EXPIRED" : referral.status;
-
-        const badgeClass =
-          effectiveStatus === "ACTIVE"
-            ? "bg-tm-success-color12 border-[#00d948] text-[#28ff70]"
-            : effectiveStatus === "PENDING"
-              ? "bg-[#664400] border-[#cc8800] text-[#ffaa00]"
-              : effectiveStatus === "EXPIRED"
-                ? "bg-tm-danger-color12 border-[#cc0000] text-[#ff2a2a]"
-                : effectiveStatus === "INACTIVE"
-                  ? "bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]"
-                  : "bg-tm-danger-color12 border-[#cc0000] text-[#ff2a2a]";
-
-        let pendingLabel = "Pending — not yet accepted";
-        if (isExpired) pendingLabel = "Expired — resend to restart the 24h window";
-
-        return (
-          <div
-            key={referral.id}
-            className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[16px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)]"
-          >
-            <div className="flex items-center justify-between gap-[16px]">
-              <div className="flex flex-col gap-[8px] flex-1 min-w-0">
-                {referral.referredUser ? (
-                  <>
-                    <p className="text-white text-[18px] font-semibold">
-                      {referral.referredUser.firstName}{" "}
-                      {referral.referredUser.lastName}
-                    </p>
-                    <p className="text-[#9e9e9e] text-[14px]">
-                      {referral.referredUser.email}
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-white text-[18px] font-semibold truncate">
-                      Invitee:{" "}
-                      {inviteeEmail ?? (
-                        <span className="font-mono text-[14px] text-[#9e9e9e]">
-                          (no email · {referral.inviteCode})
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-[#9e9e9e] text-[14px]">{pendingLabel}</p>
-                  </>
-                )}
-                <div className="flex items-center gap-[8px] flex-wrap">
-                  <span
-                    className={`px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border ${badgeClass}`}
-                  >
-                    {effectiveStatus}
+      <div className="grid gap-[16px] lg:grid-cols-2 grid-cols-1">
+        {visibleReferrals.map((referral) => {
+          const chipState = deriveChipState(referral);
+          const inviteeEmail =
+            referral.referredUser?.email ??
+            referral.metadata?.inviteeEmail ??
+            null;
+          const displayName = referral.referredUser
+            ? [referral.referredUser.firstName, referral.referredUser.lastName]
+                .filter(Boolean)
+                .join(" ")
+                .trim() || referral.referredUser.email
+            : inviteeEmail ?? `Invite · ${referral.inviteCode}`;
+          const isBusy = busyId === referral.id;
+          const step = referral.preUser?.currentStep ?? 0;
+          return (
+            <div
+              key={referral.id}
+              className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[16px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-[14px]"
+            >
+              {/* Header: chip on the left, LEVEL N on the right */}
+              <div className="flex items-center justify-between gap-[12px]">
+                <StatusChip state={chipState} />
+                <div className="flex items-center gap-[6px] text-[#9e9e9e]">
+                  <span className="text-[11px] uppercase tracking-[0.08em] font-bold">
+                    Level
                   </span>
-                  <span className="text-[#9e9e9e] text-[12px]">
-                    {referral.campaign.name}
-                  </span>
-                  {referral.metadata?.resendCount ? (
-                    <span className="text-[#9e9e9e] text-[12px]">
-                      · resent {referral.metadata.resendCount}×
-                    </span>
-                  ) : null}
-                  {referral.preUser ? (
-                    <span
-                      className="px-[8px] py-[2px] rounded-[100px] text-[11px] font-medium border border-[rgba(255,255,255,0.1)] bg-[#1a1a1a] text-[#9e9e9e]"
-                      title={
-                        referral.preUser.lastCheckedAt
-                          ? `Last checked ${new Date(referral.preUser.lastCheckedAt).toLocaleString()}`
-                          : "Not polled yet"
-                      }
-                    >
-                      {referral.preUser.currentStep > 0
-                        ? `Step ${referral.preUser.currentStep}`
-                        : "Not started"}
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-[12px] flex-shrink-0">
-                {isPending && (
-                  <div className="flex items-center gap-[8px]">
-                    <button
-                      onClick={() => handleCopy(referral)}
-                      disabled={!canCopy}
-                      className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[6px] px-[12px] py-[6px] text-white text-[12px] font-bold hover:bg-[#252525] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {copiedId === referral.id ? "Copied!" : "Copy Link"}
-                    </button>
-                    <button
-                      onClick={() => handleResend(referral)}
-                      disabled={busyId === referral.id}
-                      className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[6px] px-[12px] py-[6px] text-white text-[12px] font-bold hover:from-[#ff1f69] hover:to-[#d10050] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                    >
-                      {busyId === referral.id ? "Sending..." : "Resend"}
-                    </button>
-                    <button
-                      onClick={() => handleDelete(referral)}
-                      disabled={busyId === referral.id}
-                      title="Delete invite"
-                      aria-label="Delete invite"
-                      className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[6px] px-[10px] py-[6px] text-[#9e9e9e] text-[14px] font-bold hover:text-[#ff2a2a] hover:border-[#cc0000] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    >
-                      &#x2715;
-                    </button>
-                  </div>
-                )}
-
-                <div className="text-right flex flex-col gap-[4px]">
-                  <p className="text-[#9e9e9e] text-[12px] uppercase">Level</p>
-                  <p className="text-white text-[20px] font-bold">
+                  <span className="text-white text-[16px] font-bold">
                     {referral.level}
-                  </p>
+                  </span>
                 </div>
               </div>
+
+              {/* Body: name + campaign */}
+              <div className="flex flex-col gap-[4px] min-w-0">
+                <p className="text-white text-[18px] font-semibold truncate">
+                  {displayName}
+                </p>
+                <p className="text-[#9e9e9e] text-[13px] truncate">
+                  {inviteeEmail && inviteeEmail !== displayName
+                    ? `${inviteeEmail} · ${referral.campaign.name}`
+                    : referral.campaign.name}
+                </p>
+              </div>
+
+              {/* Onboarding checklist — always shown so the user sees survey
+                  progress even on `building` / `lp_live` (a gentle history
+                  cue rather than an interactive checklist). */}
+              <div className="rounded-[6px] border border-[rgba(255,255,255,0.06)] bg-[rgba(0,0,0,0.2)] px-[14px] py-[12px]">
+                <div className="flex items-center justify-between mb-[8px]">
+                  <span className="text-[11px] uppercase tracking-[0.08em] text-[#9e9e9e] font-bold">
+                    Onboarding
+                  </span>
+                  <span className="text-[11px] text-[#6e6e6e] font-mono">
+                    {Math.min(step, ONBOARDING_STEPS.length)}/
+                    {ONBOARDING_STEPS.length}
+                  </span>
+                </div>
+                <OnboardingChecklist
+                  step={step}
+                  dimmed={chipState === "expired"}
+                />
+              </div>
+
+              {/* Action row — layout changes by chip state */}
+              <CardActions
+                state={chipState}
+                referral={referral}
+                busy={isBusy}
+                onDelete={handleDelete}
+                onDeny={handleDeny}
+                onReassign={(r) => setReassignFor(r)}
+                onOrderLandingPage={handleOrderLandingPage}
+                onAssignChatters={(r) => setAssignChattersFor(r)}
+              />
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
+
+      {reassignFor && (
+        <ReassignModal
+          referral={reassignFor}
+          busy={busyId === reassignFor.id}
+          onClose={() => setReassignFor(null)}
+          onSubmit={handleReassignSubmit}
+        />
+      )}
+      {assignChattersFor && (
+        <AssignChattersModal
+          referral={assignChattersFor}
+          busy={busyId === assignChattersFor.id}
+          onClose={() => setAssignChattersFor(null)}
+          onSubmit={handleAssignChattersSubmit}
+        />
+      )}
     </div>
+  );
+};
+
+// ── Card action button row ────────────────────────────────────────────────
+//
+// The action row's layout is a pure function of the chip state:
+//   expired  → message + Delete (dead invite, cleanup only)
+//   denied   → message + Delete (dead invite, cleanup only)
+//   waiting  → [Deny][ReAssign]  +  disabled "Order Landing Page"
+//   order_lp → full-width green "Order Landing Page"
+//   building → no CTA, grayed "Building landing page…" placeholder
+//   lp_live  → full-width pink "Assign Chatters"
+
+type CardActionsProps = {
+  state: ChipState;
+  referral: Referral;
+  busy: boolean;
+  onDelete: (r: Referral) => void;
+  onDeny: (r: Referral) => void;
+  onReassign: (r: Referral) => void;
+  onOrderLandingPage: (r: Referral) => void;
+  onAssignChatters: (r: Referral) => void;
+};
+
+const SecondaryButton = ({
+  onClick,
+  disabled,
+  children,
+  className = "",
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+  className?: string;
+}) => (
+  <button
+    onClick={onClick}
+    disabled={disabled}
+    className={`flex-1 bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[6px] px-[12px] py-[10px] text-white text-[13px] font-bold hover:bg-[#252525] disabled:opacity-40 disabled:cursor-not-allowed transition-colors ${className}`}
+  >
+    {children}
+  </button>
+);
+
+const GreenCta = ({
+  onClick,
+  disabled,
+  children,
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+}) => (
+  <button
+    onClick={onClick}
+    disabled={disabled}
+    className="w-full bg-linear-to-b from-[#28ff70] to-[#00aa3c] rounded-[6px] px-[14px] py-[10px] text-black text-[13px] font-bold hover:from-[#3aff82] hover:to-[#00bc43] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+  >
+    {children}
+  </button>
+);
+
+const PinkCta = ({
+  onClick,
+  disabled,
+  children,
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+}) => (
+  <button
+    onClick={onClick}
+    disabled={disabled}
+    className="w-full bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[6px] px-[14px] py-[10px] text-white text-[13px] font-bold hover:from-[#ff1f69] hover:to-[#d10050] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+  >
+    {children}
+  </button>
+);
+
+const CardActions = ({
+  state,
+  referral,
+  busy,
+  onDelete,
+  onDeny,
+  onReassign,
+  onOrderLandingPage,
+  onAssignChatters,
+}: CardActionsProps) => {
+  // Expired and Denied share the same "dead row" UX: the invite is over,
+  // the only useful action is to clean it up. We used to offer Resend for
+  // expired rows, but the underlying TeaseMe preUser is effectively stale
+  // at that point — creating a fresh invite is clearer than silently
+  // re-extending a dead one. One action row covers both states.
+  if (state === "expired" || state === "denied") {
+    const message =
+      state === "expired"
+        ? "This invite has expired."
+        : "This invite has been denied.";
+    return (
+      <div className="flex items-center justify-between gap-[8px]">
+        <span className="text-[#9e9e9e] text-[13px]">{message}</span>
+        <button
+          onClick={() => onDelete(referral)}
+          disabled={busy}
+          className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[6px] px-[14px] py-[8px] text-[#9e9e9e] text-[13px] font-bold hover:text-[#ff2a2a] hover:border-[#cc0000] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        >
+          Delete
+        </button>
+      </div>
+    );
+  }
+
+  if (state === "waiting") {
+    return (
+      <div className="flex flex-col gap-[8px]">
+        <div className="flex items-center gap-[8px]">
+          <SecondaryButton
+            onClick={() => onDeny(referral)}
+            disabled={busy}
+            className="hover:text-[#ff2a2a] hover:border-[#cc0000]"
+          >
+            {busy ? "…" : "Deny"}
+          </SecondaryButton>
+          <SecondaryButton
+            onClick={() => onReassign(referral)}
+            disabled={busy}
+          >
+            Reassign
+          </SecondaryButton>
+        </div>
+        {/* Disabled while we wait for the invitee to finish onboarding.
+            Tooltip explains why so it doesn't look like a dead button. */}
+        <button
+          disabled
+          title="Waiting for the promoter to finish onboarding before a landing page can be ordered."
+          className="w-full rounded-[6px] px-[14px] py-[10px] text-[13px] font-bold border border-[#28ff70] text-[#28ff70] opacity-40 cursor-not-allowed"
+        >
+          Order Landing Page
+        </button>
+      </div>
+    );
+  }
+
+  if (state === "order_lp") {
+    return (
+      <GreenCta
+        onClick={() => onOrderLandingPage(referral)}
+        disabled={busy}
+      >
+        {busy ? "Requesting…" : "Order Landing Page"}
+      </GreenCta>
+    );
+  }
+
+  if (state === "building") {
+    return (
+      <div className="flex items-center gap-[8px] w-full rounded-[6px] border border-dashed border-[rgba(255,79,143,0.4)] bg-[rgba(255,79,143,0.04)] px-[14px] py-[10px] text-[#ff4f8f] text-[13px] font-semibold">
+        <span
+          aria-hidden
+          className="h-[10px] w-[10px] rounded-full bg-[#ff4f8f] animate-pulse"
+        />
+        Building landing page…
+      </div>
+    );
+  }
+
+  // lp_live
+  return (
+    <PinkCta onClick={() => onAssignChatters(referral)} disabled={busy}>
+      {busy ? "Assigning…" : "Assign Chatters"}
+    </PinkCta>
+  );
+};
+
+// ── Reassign modal ────────────────────────────────────────────────────────
+
+const ModalShell = ({
+  title,
+  subtitle,
+  onClose,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) => (
+  <div
+    className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-[16px]"
+    onClick={onClose}
+  >
+    <div
+      onClick={(e) => e.stopPropagation()}
+      className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[10px] w-full max-w-[440px] p-[20px] flex flex-col gap-[16px]"
+    >
+      <div className="flex items-start justify-between gap-[12px]">
+        <div className="flex flex-col gap-[2px] min-w-0">
+          <h3 className="text-white text-[18px] font-bold">{title}</h3>
+          {subtitle ? (
+            <p className="text-[#9e9e9e] text-[13px] truncate">{subtitle}</p>
+          ) : null}
+        </div>
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          className="text-[#9e9e9e] hover:text-white text-[20px] leading-none px-[6px]"
+        >
+          &#x2715;
+        </button>
+      </div>
+      {children}
+    </div>
+  </div>
+);
+
+const ReassignModal = ({
+  referral,
+  busy,
+  onClose,
+  onSubmit,
+}: {
+  referral: Referral;
+  busy: boolean;
+  onClose: () => void;
+  onSubmit: (newReferrerId: string) => void;
+}) => {
+  const [managers, setManagers] = useState<AccountManagerSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string>("");
+
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    usersApi
+      .listAccountManagers()
+      .then((list) => {
+        if (!alive) return;
+        setManagers(list);
+        setError(null);
+      })
+      .catch((err: unknown) => {
+        if (!alive) return;
+        setError(
+          err instanceof Error ? err.message : "Failed to load account managers",
+        );
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const subject =
+    referral.referredUser?.email ??
+    referral.metadata?.inviteeEmail ??
+    referral.inviteCode;
+
+  return (
+    <ModalShell
+      title="Reassign promoter"
+      subtitle={`Move ${subject} to a different account manager`}
+      onClose={onClose}
+    >
+      {loading ? (
+        <p className="text-[#9e9e9e] text-[14px]">Loading account managers…</p>
+      ) : error ? (
+        <p className="text-[#ff2a2a] text-[14px]">{error}</p>
+      ) : managers.length === 0 ? (
+        <p className="text-[#9e9e9e] text-[14px]">
+          No account managers available to reassign to.
+        </p>
+      ) : (
+        <label className="flex flex-col gap-[6px]">
+          <span className="text-[12px] uppercase tracking-[0.08em] text-[#9e9e9e] font-bold">
+            New account manager
+          </span>
+          <select
+            value={selectedId}
+            onChange={(e) => setSelectedId(e.target.value)}
+            className="bg-[#0f0f0f] border border-[rgba(255,255,255,0.1)] rounded-[6px] px-[12px] py-[10px] text-white text-[14px] focus:outline-none focus:border-[#ff0f5f]"
+          >
+            <option value="" disabled>
+              Select…
+            </option>
+            {managers.map((m) => (
+              <option key={m.id} value={m.id}>
+                {formatManagerName(m)}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      <div className="flex justify-end gap-[8px] pt-[4px]">
+        <button
+          onClick={onClose}
+          disabled={busy}
+          className="px-[14px] py-[8px] rounded-[6px] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] text-[13px] font-bold hover:text-white"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={() => selectedId && onSubmit(selectedId)}
+          disabled={busy || !selectedId}
+          className="px-[14px] py-[8px] rounded-[6px] bg-linear-to-b from-[#ff0f5f] to-[#cc0047] text-white text-[13px] font-bold hover:from-[#ff1f69] hover:to-[#d10050] disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {busy ? "Reassigning…" : "Reassign"}
+        </button>
+      </div>
+    </ModalShell>
+  );
+};
+
+// ── Assign Chatters modal ─────────────────────────────────────────────────
+
+const AssignChattersModal = ({
+  referral,
+  busy,
+  onClose,
+  onSubmit,
+}: {
+  referral: Referral;
+  busy: boolean;
+  onClose: () => void;
+  onSubmit: (chatterGroupId: string) => void;
+}) => {
+  const [groups, setGroups] = useState<ChatterGroup[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string>("");
+
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    chatterGroupsApi
+      .list()
+      .then(({ groups }) => {
+        if (!alive) return;
+        setGroups(groups);
+        setError(null);
+      })
+      .catch((err: unknown) => {
+        if (!alive) return;
+        setError(
+          err instanceof Error ? err.message : "Failed to load chatter groups",
+        );
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const subject =
+    referral.referredUser?.email ??
+    referral.metadata?.inviteeEmail ??
+    referral.inviteCode;
+
+  return (
+    <ModalShell
+      title="Assign chatters"
+      subtitle={`Link a chatter group to ${subject}`}
+      onClose={onClose}
+    >
+      {loading ? (
+        <p className="text-[#9e9e9e] text-[14px]">Loading chatter groups…</p>
+      ) : error ? (
+        <p className="text-[#ff2a2a] text-[14px]">{error}</p>
+      ) : groups.length === 0 ? (
+        <p className="text-[#9e9e9e] text-[14px]">
+          No chatter groups yet. Create one on the Chatters page first.
+        </p>
+      ) : (
+        <label className="flex flex-col gap-[6px]">
+          <span className="text-[12px] uppercase tracking-[0.08em] text-[#9e9e9e] font-bold">
+            Chatter group
+          </span>
+          <select
+            value={selectedId}
+            onChange={(e) => setSelectedId(e.target.value)}
+            className="bg-[#0f0f0f] border border-[rgba(255,255,255,0.1)] rounded-[6px] px-[12px] py-[10px] text-white text-[14px] focus:outline-none focus:border-[#ff0f5f]"
+          >
+            <option value="" disabled>
+              Select…
+            </option>
+            {groups.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.name}
+                {g.tag ? ` · ${g.tag}` : ""} ({g.commissionPercentage}%)
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      <div className="flex justify-end gap-[8px] pt-[4px]">
+        <button
+          onClick={onClose}
+          disabled={busy}
+          className="px-[14px] py-[8px] rounded-[6px] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] text-[13px] font-bold hover:text-white"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={() => selectedId && onSubmit(selectedId)}
+          disabled={busy || !selectedId}
+          className="px-[14px] py-[8px] rounded-[6px] bg-linear-to-b from-[#ff0f5f] to-[#cc0047] text-white text-[13px] font-bold hover:from-[#ff1f69] hover:to-[#d10050] disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {busy ? "Assigning…" : "Assign"}
+        </button>
+      </div>
+    </ModalShell>
   );
 };

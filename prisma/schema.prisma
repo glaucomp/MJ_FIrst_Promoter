@@ -236,6 +236,11 @@ model PreUser {
   inviteCode    String?   @unique
   teasemeUserId String?
   currentStep   Int       @default(0)
+  // Lifecycle status mirrored from TeaseMe's /step-progress response.
+  // Values observed so far: "pending". Expected lifecycle on their side is
+  // pending -> order_lp -> building -> live. Stored as a free-form string
+  // (not an enum) so upstream additions don't require a migration here.
+  status        String    @default("pending")
   stepHistory   Json?
   lastCheckedAt DateTime?
   createdAt     DateTime  @default(now())

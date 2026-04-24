@@ -5,7 +5,13 @@ import { nanoid } from "nanoid";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { emailService } from "../services/email.service";
 import { getPresignedUrl } from "../services/s3.service";
-import { fetchTeasemePreUserStatus } from "../services/teaseme.service";
+import {
+  denyPreInfluencer,
+  fetchTeasemePreUserStatus,
+  notifyChattersAssigned,
+  orderLandingPageForPreInfluencer,
+  reassignPreInfluencer,
+} from "../services/teaseme.service";
 
 const prisma = new PrismaClient();
 
@@ -48,6 +54,7 @@ type PreUserRow = {
   email: string;
   inviteCode: string | null;
   currentStep: number;
+  status: string;
   lastCheckedAt: Date | null;
   stepHistory: Prisma.JsonValue | null;
   teasemeUserId: string | null;
@@ -103,6 +110,7 @@ const refreshPreUserSteps = async (
                 email: true,
                 inviteCode: true,
                 currentStep: true,
+                status: true,
                 lastCheckedAt: true,
                 stepHistory: true,
                 teasemeUserId: true,
@@ -125,6 +133,10 @@ const refreshPreUserSteps = async (
             where: { id: pre.id },
             data: {
               currentStep: status.step,
+              // Mirror TeaseMe's lifecycle string into our own column so the
+              // list endpoint can emit it without a second upstream call. If
+              // upstream omits `status` we keep the last known value.
+              status: status.status ?? pre.status,
               teasemeUserId: status.teasemeUserId ?? pre.teasemeUserId,
               lastCheckedAt: nextCheckedAt,
               stepHistory: nextHistory as unknown as Prisma.InputJsonValue,
@@ -134,6 +146,7 @@ const refreshPreUserSteps = async (
               email: true,
               inviteCode: true,
               currentStep: true,
+              status: true,
               lastCheckedAt: true,
               stepHistory: true,
               teasemeUserId: true,
@@ -690,14 +703,17 @@ export const deleteReferralInvite = async (
     }
 
     // Refuse to delete anything that has downstream state attached. Pending
-    // invites (no referred user, no children) are safe to hard-delete; once
-    // a user has signed up via the code we must keep the row for commission
-    // attribution + auditing. Admins hit the same guard — if this ever needs
-    // to be overridden, do it from the DB, not through this endpoint.
-    if (referral.referredUserId || referral.status !== "PENDING") {
+    // and explicitly-denied (CANCELLED) invites are both safe to hard-delete
+    // because neither has a referredUser attached — pending hasn't accepted
+    // yet, denied was rejected before acceptance. Once a user has signed up
+    // via the code we must keep the row for commission attribution + audit,
+    // so ACTIVE / COMPLETED stay off-limits. Admins hit the same guard — if
+    // this ever needs overriding, do it from the DB, not through this route.
+    const deletableStatuses = new Set(["PENDING", "CANCELLED"]);
+    if (referral.referredUserId || !deletableStatuses.has(referral.status)) {
       return res.status(400).json({
         error:
-          "Only pending invites can be deleted. This referral has already been accepted.",
+          "Only pending or denied invites can be deleted. This referral has already been accepted.",
       });
     }
     if (referral._count.childReferrals > 0) {
@@ -713,6 +729,402 @@ export const deleteReferralInvite = async (
   } catch (error) {
     console.error("Delete referral invite error:", error);
     return res.status(500).json({ error: "Failed to delete invite" });
+  }
+};
+
+// ─── Lifecycle action endpoints (My Promoters card buttons) ─────────────────
+//
+// These four endpoints drive the state transitions the UI renders as chips:
+// Waiting → Order LP → Building → LP Live (plus a Deny short-circuit). In all
+// four, TeaseMe owns the authoritative `preUser.status` — we proxy the click
+// upstream, then either repoll `/step-progress` to pick up the new status or
+// rely on TeaseMe's own response to include it. Upstream failures return a
+// non-2xx so the UI can toast without losing local state.
+
+// Shared lookup that loads a referral + its preUser + permission-checks the
+// caller. Only the original inviter (referrer) or an admin can act on these
+// endpoints, matching the rule used by resend/delete.
+const loadReferralForAction = async (
+  id: string,
+  user: NonNullable<AuthRequest["user"]>,
+) => {
+  const referral = await prisma.referral.findUnique({
+    where: { id },
+    include: {
+      preUser: {
+        select: {
+          id: true,
+          email: true,
+          inviteCode: true,
+          currentStep: true,
+          status: true,
+          lastCheckedAt: true,
+          stepHistory: true,
+          teasemeUserId: true,
+        },
+      },
+      referredUser: {
+        select: { id: true, email: true },
+      },
+    },
+  });
+  if (!referral) return { error: { code: 404, message: "Referral not found" } };
+  if (user.role !== UserRole.ADMIN && referral.referrerId !== user.id) {
+    return { error: { code: 403, message: "Access denied" } };
+  }
+  return { referral };
+};
+
+export const denyReferralInvite = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const user = req.user!;
+    const { reason } = (req.body ?? {}) as { reason?: string };
+
+    const loaded = await loadReferralForAction(id, user);
+    if (loaded.error) {
+      return res.status(loaded.error.code).json({ error: loaded.error.message });
+    }
+    const { referral } = loaded;
+
+    if (referral.status !== "PENDING") {
+      return res
+        .status(400)
+        .json({ error: "Only pending referrals can be denied" });
+    }
+
+    // Fire upstream first; if TeaseMe rejects or is unreachable we return 502
+    // so the UI can surface the failure without flipping local state.
+    const upstream = await denyPreInfluencer({
+      inviteCode: referral.inviteCode,
+      email: referral.preUser?.email,
+      reason,
+    });
+    if (!upstream) {
+      return res.status(502).json({
+        error: "Failed to reach upstream service; deny not applied.",
+      });
+    }
+
+    // Schema's ReferralStatus enum is PENDING|ACTIVE|COMPLETED|CANCELLED.
+    // "Deny" maps to CANCELLED — we don't keep a separate soft-delete state.
+    const updated = await prisma.referral.update({
+      where: { id: referral.id },
+      data: { status: "CANCELLED" },
+      select: { id: true, status: true },
+    });
+
+    return res.json({ success: true, referral: updated });
+  } catch (error) {
+    console.error("Deny referral invite error:", error);
+    return res.status(500).json({ error: "Failed to deny referral" });
+  }
+};
+
+export const reassignReferralInvite = async (
+  req: AuthRequest,
+  res: Response,
+) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { id } = req.params;
+    const user = req.user!;
+    const { newReferrerId } = req.body as { newReferrerId: string };
+
+    const loaded = await loadReferralForAction(id, user);
+    if (loaded.error) {
+      return res.status(loaded.error.code).json({ error: loaded.error.message });
+    }
+    const { referral } = loaded;
+
+    // Reassignment is an AM-level action — a plain promoter inviter must not
+    // be able to change commission ownership on their own referrals.
+    if (
+      user.role !== UserRole.ADMIN &&
+      user.userType !== UserType.ACCOUNT_MANAGER
+    ) {
+      return res.status(403).json({
+        error: "Access denied: only account managers or admins can reassign referrals",
+      });
+    }
+
+    // Reassignment only makes sense for pending referrals that haven't been
+    // accepted yet. Once a referred user has signed up, commission attribution
+    // is already in motion and ownership changes are disallowed.
+    if (referral.status !== "PENDING" || referral.referredUser !== null) {
+      return res.status(400).json({
+        error: "Only pending referrals without an accepted invitee can be reassigned",
+      });
+    }
+
+    // The new referrer must be an account manager — reassignment moves the
+    // promoter between AMs, it's not a generic user swap.
+    const newReferrer = await prisma.user.findFirst({
+      where: { id: newReferrerId, userType: UserType.ACCOUNT_MANAGER },
+      select: { id: true, email: true, firstName: true, lastName: true },
+    });
+    if (!newReferrer) {
+      return res.status(404).json({ error: "New account manager not found" });
+    }
+
+    const upstream = await reassignPreInfluencer({
+      inviteCode: referral.inviteCode,
+      email: referral.preUser?.email,
+      newManagerEmail: newReferrer.email,
+    });
+    if (!upstream) {
+      console.warn("[reassignReferralInvite] upstream returned non-2xx", {
+        referralId: referral.id,
+      });
+      return res.status(502).json({
+        error: "Failed to reassign referral in upstream service",
+      });
+    }
+
+    const metadata = readReferralMetadata(referral.metadata);
+    const nextMetadata = {
+      ...metadata,
+      accountManagerEmail: newReferrer.email,
+    } satisfies Prisma.InputJsonValue;
+
+    const updated = await prisma.referral.update({
+      where: { id: referral.id },
+      data: {
+        referrerId: newReferrer.id,
+        metadata: nextMetadata,
+      },
+      select: {
+        id: true,
+        referrerId: true,
+      },
+    });
+
+    return res.json({
+      success: true,
+      referral: updated,
+      newReferrer,
+    });
+  } catch (error) {
+    console.error("Reassign referral invite error:", error);
+    return res.status(500).json({ error: "Failed to reassign referral" });
+  }
+};
+
+export const orderReferralLandingPage = async (
+  req: AuthRequest,
+  res: Response,
+) => {
+  try {
+    const { id } = req.params;
+    const user = req.user!;
+
+    const loaded = await loadReferralForAction(id, user);
+    if (loaded.error) {
+      return res.status(loaded.error.code).json({ error: loaded.error.message });
+    }
+    const { referral } = loaded;
+
+    // Ordering a landing page is an AM-level action — restrict to account
+    // managers and admins only.
+    if (
+      user.role !== UserRole.ADMIN &&
+      user.userType !== UserType.ACCOUNT_MANAGER
+    ) {
+      return res.status(403).json({
+        error:
+          "Access denied: only account managers or admins can order landing pages",
+      });
+    }
+
+    // Only act on referrals that are still in progress (PENDING or ACTIVE).
+    // CANCELLED referrals, or PENDING ones whose invite window lapsed, should
+    // not trigger new upstream work. Note: ReferralStatus has no "EXPIRED"
+    // variant — expiry is derived at read time via computeIsExpired().
+    const isExpired = computeIsExpired(
+      referral.status,
+      referral.createdAt,
+      readReferralMetadata(referral.metadata),
+    );
+    if (referral.status === "CANCELLED" || isExpired) {
+      return res.status(400).json({
+        error:
+          "A landing page can only be ordered for active or pending referrals",
+      });
+    }
+
+    if (!referral.preUser) {
+      return res.status(400).json({
+        error:
+          "This invite has no TeaseMe pre-influencer attached yet — the user hasn't started onboarding.",
+      });
+    }
+
+    const upstream = await orderLandingPageForPreInfluencer({
+      inviteCode: referral.inviteCode,
+      email: referral.preUser.email,
+    });
+    if (!upstream) {
+      return res.status(502).json({
+        error:
+          "TeaseMe couldn't start the landing-page build right now. Please try again in a moment.",
+      });
+    }
+
+    // Upstream may return the new `status` directly. If not, re-poll to get
+    // the authoritative value instead of guessing.
+    let nextStatus = upstream.status ?? null;
+    let nextStep = referral.preUser.currentStep;
+    let nextTeasemeId = referral.preUser.teasemeUserId;
+    if (!nextStatus) {
+      const polled = await fetchTeasemePreUserStatus({
+        email: referral.preUser.email,
+        inviteCode: referral.inviteCode,
+      });
+      if (polled) {
+        nextStatus = polled.status ?? nextStatus;
+        nextStep = polled.step;
+        nextTeasemeId = polled.teasemeUserId ?? nextTeasemeId;
+      }
+    }
+
+    const updatedPreUser = await prisma.preUser.update({
+      where: { id: referral.preUser.id },
+      data: {
+        // Only overwrite status when upstream/poll returned a concrete value —
+        // TeaseMe is authoritative and we must not fabricate a status.
+        ...(nextStatus != null ? { status: nextStatus } : {}),
+        currentStep: nextStep,
+        teasemeUserId: nextTeasemeId,
+        lastCheckedAt: new Date(),
+      },
+      select: {
+        id: true,
+        currentStep: true,
+        status: true,
+        lastCheckedAt: true,
+        teasemeUserId: true,
+      },
+    });
+
+    return res.json({ success: true, preUser: updatedPreUser });
+  } catch (error) {
+    console.error("Order landing page error:", error);
+    return res.status(500).json({ error: "Failed to order landing page" });
+  }
+};
+
+export const assignReferralChatters = async (
+  req: AuthRequest,
+  res: Response,
+) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { id } = req.params;
+    const user = req.user!;
+    const { chatterGroupId } = req.body as { chatterGroupId: string };
+
+    const loaded = await loadReferralForAction(id, user);
+    if (loaded.error) {
+      return res.status(loaded.error.code).json({ error: loaded.error.message });
+    }
+    const { referral } = loaded;
+
+    // Assigning chatters links chatter groups to promoter accounts and affects
+    // operations — restrict to account managers and admins only.
+    if (
+      user.role !== UserRole.ADMIN &&
+      user.userType !== UserType.ACCOUNT_MANAGER
+    ) {
+      return res.status(403).json({
+        error: "Access denied: only account managers or admins can assign chatter groups",
+      });
+    }
+
+    // Assigning chatters only makes sense once the invitee has signed up —
+    // otherwise there's no User row to link the group to.
+    //
+    // Pin the narrowed referredUser into a local const so TypeScript keeps
+    // the non-null narrowing across the async transaction callback below
+    // (control-flow narrowing on property access is lost across awaits).
+    const referredUser = referral.referredUser;
+    if (!referredUser) {
+      return res.status(400).json({
+        error:
+          "Chatters can only be assigned after the promoter has registered on the platform.",
+      });
+    }
+
+    const chatterGroup = await prisma.chatterGroup.findUnique({
+      where: { id: chatterGroupId },
+      select: { id: true, name: true },
+    });
+    if (!chatterGroup) {
+      return res.status(404).json({ error: "Chatter group not found" });
+    }
+
+    try {
+      await prisma.$transaction(async (tx) => {
+        // If the group is already linked to a different promoter, unlink them
+        // first so the one-to-one relation on User.chatterGroupId stays valid.
+        const existingPromoter = await tx.user.findFirst({
+          where: { chatterGroupId: chatterGroup.id },
+          select: { id: true },
+        });
+
+        if (existingPromoter && existingPromoter.id !== referredUser.id) {
+          await tx.user.update({
+            where: { id: existingPromoter.id },
+            data: { chatterGroupId: null },
+          });
+        }
+
+        await tx.user.update({
+          where: { id: referredUser.id },
+          data: { chatterGroupId: chatterGroup.id },
+        });
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        return res.status(409).json({
+          error:
+            "Unable to assign chatter group because it is already assigned to another promoter.",
+        });
+      }
+
+      throw error;
+    }
+    // Best-effort upstream notification. Failure here doesn't roll back the
+    // local assignment — the chatter group is ours, not TeaseMe's, so once
+    // it's persisted the button action has already "worked" locally.
+    const upstream = await notifyChattersAssigned({
+      inviteCode: referral.inviteCode,
+      email: referredUser.email,
+      chatterGroupId: chatterGroup.id,
+    });
+    if (!upstream) {
+      console.warn("[assignReferralChatters] upstream notify returned non-2xx", {
+        referralId: referral.id,
+      });
+    }
+
+    return res.json({
+      success: true,
+      chatterGroup,
+    });
+  } catch (error) {
+    console.error("Assign chatters error:", error);
+    return res.status(500).json({ error: "Failed to assign chatter group" });
   }
 };
 
@@ -801,6 +1213,7 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
             email: true,
             inviteCode: true,
             currentStep: true,
+            status: true,
             lastCheckedAt: true,
             stepHistory: true,
             teasemeUserId: true,
