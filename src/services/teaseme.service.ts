@@ -1,8 +1,10 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-const TEASEME_API_URL = (process.env.TEASEME_API_URL || 'https://api.teaseme.live').replace(/\/$/, '');
+const TEASEME_API_URL = (
+  process.env.TEASEME_API_URL || "https://api.teaseme.live"
+).replace(/\/$/, "");
 
 // TeaseMe lifecycle lookup for the pre-user polling flow. Hitting this with a
 // referral's email + inviteCode tells us which onboarding step the invitee is
@@ -12,12 +14,12 @@ const TEASEME_API_URL = (process.env.TEASEME_API_URL || 'https://api.teaseme.liv
 // Upstream contract (POST JSON):
 //   POST {TEASEME_STATUS_URL}
 //   Headers: { "Content-Type": "application/json", "X-Internal-Token": <MJFP_TOKEN> }
-//   Body:    { "invite_code": "...", "new_user_email": "..." }
+//   Body:    { "invite_code": "...", "invitee_email": "..." }
 //   200:     { ok, exists, pre_influencer_id, username, survey_step, status }
 const TEASEME_STATUS_URL = (
-  process.env.TEASEME_STATUS_URL
-    || 'https://tmapi.mxjprod.work/mjpromoter/pre-influencers/step-progress'
-).replace(/\/$/, '');
+  process.env.TEASEME_STATUS_URL ||
+  "https://tmapi.mxjprod.work/mjpromoter/pre-influencers/step-progress"
+).replace(/\/$/, "");
 const TEASEME_STATUS_TIMEOUT_MS = 3_000;
 
 export interface TeasemePreUserStatus {
@@ -34,13 +36,14 @@ export interface TeasemePreUserStatus {
  * timeout / network error / `exists: false` so callers can keep the
  * last-known state rather than propagating upstream outages to the UI.
  */
-export const fetchTeasemePreUserStatus = async (
-  params: { email?: string; inviteCode?: string },
-): Promise<TeasemePreUserStatus | null> => {
-  const email = params.email?.trim() || '';
-  const inviteCode = params.inviteCode?.trim() || '';
+export const fetchTeasemePreUserStatus = async (params: {
+  email?: string;
+  inviteCode?: string;
+}): Promise<TeasemePreUserStatus | null> => {
+  const email = params.email?.trim() || "";
+  const inviteCode = params.inviteCode?.trim() || "";
   if (!email && !inviteCode) {
-    throw new Error('fetchTeasemePreUserStatus requires email or inviteCode');
+    throw new Error("fetchTeasemePreUserStatus requires email or inviteCode");
   }
 
   // Use the server-only MJFP_TOKEN. Never fall back to VITE_-prefixed vars:
@@ -54,16 +57,16 @@ export const fetchTeasemePreUserStatus = async (
 
   const payload: Record<string, string> = {};
   if (inviteCode) payload.invite_code = inviteCode;
-  if (email) payload.new_user_email = email;
+  if (email) payload.invitee_email = email;
 
   let res: Response;
   try {
     res = await fetch(TEASEME_STATUS_URL, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-        'X-Internal-Token': token,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "X-Internal-Token": token,
       },
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(TEASEME_STATUS_TIMEOUT_MS),
@@ -80,7 +83,7 @@ export const fetchTeasemePreUserStatus = async (
   } catch {
     return null;
   }
-  if (!body || typeof body !== 'object') return null;
+  if (!body || typeof body !== "object") return null;
 
   const raw = body as Record<string, unknown>;
 
@@ -90,19 +93,19 @@ export const fetchTeasemePreUserStatus = async (
   if (raw.exists === false) return null;
 
   const surveyStep =
-    typeof raw.survey_step === 'number'
+    typeof raw.survey_step === "number"
       ? raw.survey_step
       : Number(raw.survey_step);
   if (!Number.isFinite(surveyStep)) return null;
 
   const statusStr =
-    typeof raw.status === 'string' && raw.status ? raw.status : null;
+    typeof raw.status === "string" && raw.status ? raw.status : null;
 
   const preInfluencerId = raw.pre_influencer_id;
   const teasemeUserId =
-    typeof preInfluencerId === 'string' && preInfluencerId
+    typeof preInfluencerId === "string" && preInfluencerId
       ? preInfluencerId
-      : typeof preInfluencerId === 'number' && Number.isFinite(preInfluencerId)
+      : typeof preInfluencerId === "number" && Number.isFinite(preInfluencerId)
         ? String(preInfluencerId)
         : null;
 
@@ -110,10 +113,10 @@ export const fetchTeasemePreUserStatus = async (
     step: Math.max(0, Math.trunc(surveyStep)),
     // Upstream uses `status: "pending" | "active" | ...`. Anything that is
     // not explicitly "pending" (and exists) counts as active for UI badges.
-    active: statusStr !== null && statusStr !== 'pending',
+    active: statusStr !== null && statusStr !== "pending",
     teasemeUserId,
     username:
-      typeof raw.username === 'string' && raw.username ? raw.username : null,
+      typeof raw.username === "string" && raw.username ? raw.username : null,
     status: statusStr,
   };
 };
@@ -131,21 +134,21 @@ export const fetchTeasemePreUserStatus = async (
 // confirm / rename these; override via env vars when that happens instead of
 // patching the hardcoded defaults.
 const TEASEME_DENY_URL = (
-  process.env.TEASEME_DENY_URL
-    || 'https://tmapi.mxjprod.work/mjpromoter/pre-influencers/deny'
-).replace(/\/$/, '');
+  process.env.TEASEME_DENY_URL ||
+  "https://tmapi.mxjprod.work/mjpromoter/pre-influencers/deny"
+).replace(/\/$/, "");
 const TEASEME_REASSIGN_URL = (
-  process.env.TEASEME_REASSIGN_URL
-    || 'https://tmapi.mxjprod.work/mjpromoter/pre-influencers/reassign'
-).replace(/\/$/, '');
+  process.env.TEASEME_REASSIGN_URL ||
+  "https://tmapi.mxjprod.work/mjpromoter/pre-influencers/reassign"
+).replace(/\/$/, "");
 const TEASEME_ORDER_LP_URL = (
-  process.env.TEASEME_ORDER_LP_URL
-    || 'https://tmapi.mxjprod.work/mjpromoter/pre-influencers/order-landing-page'
-).replace(/\/$/, '');
+  process.env.TEASEME_ORDER_LP_URL ||
+  "https://tmapi.mxjprod.work/mjpromoter/pre-influencers/order-landing-page"
+).replace(/\/$/, "");
 const TEASEME_ASSIGN_CHATTERS_URL = (
-  process.env.TEASEME_ASSIGN_CHATTERS_URL
-    || 'https://tmapi.mxjprod.work/mjpromoter/pre-influencers/assign-chatters'
-).replace(/\/$/, '');
+  process.env.TEASEME_ASSIGN_CHATTERS_URL ||
+  "https://tmapi.mxjprod.work/mjpromoter/pre-influencers/assign-chatters"
+).replace(/\/$/, "");
 
 export interface TeasemeActionResult {
   ok: boolean;
@@ -162,11 +165,11 @@ const postToTeaseme = async (
   let res: Response;
   try {
     res = await fetch(url, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-        'X-Internal-Token': token,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "X-Internal-Token": token,
       },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(TEASEME_STATUS_TIMEOUT_MS),
@@ -182,14 +185,13 @@ const postToTeaseme = async (
   }
   if (!res.ok) return null;
   const raw =
-    parsed && typeof parsed === 'object'
+    parsed && typeof parsed === "object"
       ? (parsed as Record<string, unknown>)
       : {};
-  const upstreamOk =
-    typeof raw.ok === 'boolean' ? raw.ok : null;
+  const upstreamOk = typeof raw.ok === "boolean" ? raw.ok : null;
   if (upstreamOk === false) return null;
   const statusStr =
-    typeof raw.status === 'string' && raw.status ? raw.status : null;
+    typeof raw.status === "string" && raw.status ? raw.status : null;
   return { ok: true, status: statusStr, raw: parsed };
 };
 
@@ -200,10 +202,10 @@ export const denyPreInfluencer = async (params: {
   reason?: string;
 }): Promise<TeasemeActionResult | null> => {
   if (!params.inviteCode) {
-    throw new Error('denyPreInfluencer requires inviteCode');
+    throw new Error("denyPreInfluencer requires inviteCode");
   }
   const body: Record<string, unknown> = { invite_code: params.inviteCode };
-  if (params.email) body.new_user_email = params.email;
+  if (params.email) body.invitee_email = params.email;
   if (params.reason) body.reason = params.reason;
   return postToTeaseme(TEASEME_DENY_URL, body);
 };
@@ -215,16 +217,16 @@ export const reassignPreInfluencer = async (params: {
   newManagerEmail: string;
 }): Promise<TeasemeActionResult | null> => {
   if (!params.inviteCode) {
-    throw new Error('reassignPreInfluencer requires inviteCode');
+    throw new Error("reassignPreInfluencer requires inviteCode");
   }
   if (!params.newManagerEmail) {
-    throw new Error('reassignPreInfluencer requires newManagerEmail');
+    throw new Error("reassignPreInfluencer requires newManagerEmail");
   }
   const body: Record<string, unknown> = {
     invite_code: params.inviteCode,
     new_manager_email: params.newManagerEmail,
   };
-  if (params.email) body.new_user_email = params.email;
+  if (params.email) body.invitee_email = params.email;
   return postToTeaseme(TEASEME_REASSIGN_URL, body);
 };
 
@@ -234,10 +236,10 @@ export const orderLandingPageForPreInfluencer = async (params: {
   email?: string;
 }): Promise<TeasemeActionResult | null> => {
   if (!params.inviteCode) {
-    throw new Error('orderLandingPageForPreInfluencer requires inviteCode');
+    throw new Error("orderLandingPageForPreInfluencer requires inviteCode");
   }
   const body: Record<string, unknown> = { invite_code: params.inviteCode };
-  if (params.email) body.new_user_email = params.email;
+  if (params.email) body.invitee_email = params.email;
   return postToTeaseme(TEASEME_ORDER_LP_URL, body);
 };
 
@@ -248,16 +250,16 @@ export const notifyChattersAssigned = async (params: {
   chatterGroupId: string;
 }): Promise<TeasemeActionResult | null> => {
   if (!params.inviteCode) {
-    throw new Error('notifyChattersAssigned requires inviteCode');
+    throw new Error("notifyChattersAssigned requires inviteCode");
   }
   if (!params.chatterGroupId) {
-    throw new Error('notifyChattersAssigned requires chatterGroupId');
+    throw new Error("notifyChattersAssigned requires chatterGroupId");
   }
   const body: Record<string, unknown> = {
     invite_code: params.inviteCode,
     chatter_group_id: params.chatterGroupId,
   };
-  if (params.email) body.new_user_email = params.email;
+  if (params.email) body.invitee_email = params.email;
   return postToTeaseme(TEASEME_ASSIGN_CHATTERS_URL, body);
 };
 
@@ -285,9 +287,12 @@ export interface TeaseMeInfluencer {
  * otherwise fall back to the list nested under `bio_json`.
  */
 export const extractSocialLinks = (
-  influencer: TeaseMeInfluencer
+  influencer: TeaseMeInfluencer,
 ): TeaseMeSocialLink[] => {
-  if (Array.isArray(influencer.social_links) && influencer.social_links.length > 0) {
+  if (
+    Array.isArray(influencer.social_links) &&
+    influencer.social_links.length > 0
+  ) {
     return influencer.social_links;
   }
   const nested = influencer.bio_json?.social_links;
@@ -299,20 +304,20 @@ export class TeaseMeApiError extends Error {
   constructor(
     message: string,
     public readonly status?: number,
-    public readonly body?: unknown
+    public readonly body?: unknown,
   ) {
     super(message);
-    this.name = 'TeaseMeApiError';
+    this.name = "TeaseMeApiError";
   }
 }
 
 export class TeaseMeSyncValidationError extends Error {
   constructor(
     message: string,
-    public readonly status: 400 | 404
+    public readonly status: 400 | 404,
   ) {
     super(message);
-    this.name = 'TeaseMeSyncValidationError';
+    this.name = "TeaseMeSyncValidationError";
   }
 }
 
@@ -321,23 +326,23 @@ export class TeaseMeSyncValidationError extends Error {
  * Throws TeaseMeApiError on non-2xx responses or network failures.
  */
 export const fetchInfluencer = async (
-  usernameOrId: string
+  usernameOrId: string,
 ): Promise<TeaseMeInfluencer> => {
   if (!usernameOrId) {
-    throw new TeaseMeApiError('Missing username/id');
+    throw new TeaseMeApiError("Missing username/id");
   }
 
   const url = `${TEASEME_API_URL}/influencer/${encodeURIComponent(usernameOrId)}`;
   let res: Response;
   try {
     res = await fetch(url, {
-      method: 'GET',
-      headers: { Accept: 'application/json' },
+      method: "GET",
+      headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(10_000),
     });
   } catch (err) {
     throw new TeaseMeApiError(
-      `TeaseMe request failed: ${(err as Error).message}`
+      `TeaseMe request failed: ${(err as Error).message}`,
     );
   }
 
@@ -351,7 +356,7 @@ export const fetchInfluencer = async (
     throw new TeaseMeApiError(
       `TeaseMe API returned ${res.status} for ${usernameOrId}`,
       res.status,
-      body
+      body,
     );
   }
 
@@ -374,7 +379,7 @@ const normalizeSocialUrl = (rawUrl: string): string | null => {
   if (!trimmed) return null;
   try {
     const parsed = new URL(trimmed);
-    if (!['http:', 'https:'].includes(parsed.protocol)) return null;
+    if (!["http:", "https:"].includes(parsed.protocol)) return null;
     if (!parsed.hostname) return null;
     return parsed.toString();
   } catch {
@@ -384,26 +389,31 @@ const normalizeSocialUrl = (rawUrl: string): string | null => {
 
 // We only surface these four platforms in the UI — everything else returned by TeaseMe
 // is dropped during sync so the DB stays aligned with what we can render.
-const ALLOWED_SOCIAL_PLATFORMS = new Set(['bluesky', 'instagram', 'tiktok', 'onlyfans']);
+const ALLOWED_SOCIAL_PLATFORMS = new Set([
+  "bluesky",
+  "instagram",
+  "tiktok",
+  "onlyfans",
+]);
 
 // Map incoming platform aliases to our canonical keys.
 const normalizeSocialPlatform = (raw: string): string | null => {
   const key = String(raw).toLowerCase().trim();
   if (!key) return null;
   switch (key) {
-    case 'ig':
-    case 'insta':
-    case 'instagram':
-      return 'instagram';
-    case 'tt':
-    case 'tiktok':
-      return 'tiktok';
-    case 'bluesky':
-    case 'bsky':
-      return 'bluesky';
-    case 'of':
-    case 'onlyfans':
-      return 'onlyfans';
+    case "ig":
+    case "insta":
+    case "instagram":
+      return "instagram";
+    case "tt":
+    case "tiktok":
+      return "tiktok";
+    case "bluesky":
+    case "bsky":
+      return "bluesky";
+    case "of":
+    case "onlyfans":
+      return "onlyfans";
     default:
       return ALLOWED_SOCIAL_PLATFORMS.has(key) ? key : null;
   }
@@ -414,7 +424,7 @@ const normalizeSocialPlatform = (raw: string): string | null => {
  * Updates voiceId, S3 keys, teasemeSyncedAt and replaces the user's socialLinks.
  */
 export const syncUserFromTeaseMe = async (
-  userId: string
+  userId: string,
 ): Promise<SyncedUser> => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -424,7 +434,10 @@ export const syncUserFromTeaseMe = async (
     throw new TeaseMeSyncValidationError(`User ${userId} not found`, 404);
   }
   if (!user.username) {
-    throw new TeaseMeSyncValidationError(`User ${userId} has no username; cannot sync`, 400);
+    throw new TeaseMeSyncValidationError(
+      `User ${userId} has no username; cannot sync`,
+      400,
+    );
   }
 
   const influencer = await fetchInfluencer(user.username);
@@ -436,17 +449,24 @@ export const syncUserFromTeaseMe = async (
   const rejected: { reason: string; platform?: string; url?: string }[] = [];
   for (const link of rawLinks) {
     if (!link?.platform || !link?.url) {
-      rejected.push({ reason: 'missing platform or url', platform: link?.platform, url: link?.url });
+      rejected.push({
+        reason: "missing platform or url",
+        platform: link?.platform,
+        url: link?.url,
+      });
       continue;
     }
     const platform = normalizeSocialPlatform(link.platform);
     if (!platform) {
-      rejected.push({ reason: 'platform not in whitelist', platform: link.platform });
+      rejected.push({
+        reason: "platform not in whitelist",
+        platform: link.platform,
+      });
       continue;
     }
     const url = normalizeSocialUrl(String(link.url));
     if (!url) {
-      rejected.push({ reason: 'invalid url', platform, url: link.url });
+      rejected.push({ reason: "invalid url", platform, url: link.url });
       continue;
     }
     if (!byPlatform.has(platform)) byPlatform.set(platform, url);
@@ -454,7 +474,7 @@ export const syncUserFromTeaseMe = async (
 
   console.info(
     `[teaseme.sync] user=${user.username} raw=${rawLinks.length} kept=${byPlatform.size}` +
-      (rejected.length ? ` rejected=${JSON.stringify(rejected)}` : '')
+      (rejected.length ? ` rejected=${JSON.stringify(rejected)}` : ""),
   );
 
   const updated = await prisma.$transaction(async (tx) => {
@@ -482,7 +502,7 @@ export const syncUserFromTeaseMe = async (
     }
     console.info(
       `[teaseme.sync] user=${user.username} deleted=${deleted.count} inserted=${insertedCount} ` +
-        `platforms=[${Array.from(byPlatform.keys()).join(',')}]`
+        `platforms=[${Array.from(byPlatform.keys()).join(",")}]`,
     );
 
     return tx.user.findUniqueOrThrow({
@@ -496,7 +516,7 @@ export const syncUserFromTeaseMe = async (
         teasemeSyncedAt: true,
         socialLinks: {
           select: { platform: true, url: true },
-          orderBy: { platform: 'asc' },
+          orderBy: { platform: "asc" },
         },
       },
     });
