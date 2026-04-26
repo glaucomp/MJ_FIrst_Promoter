@@ -16,10 +16,14 @@ import { buildSetPasswordUrl } from "../utils/frontend-url";
 
 const prisma = new PrismaClient();
 
-const generateToken = (userId: string, email: string, role: UserRole) => {
-  const secret =
-    process.env.JWT_SECRET || "default_secret_change_in_production";
-  return jwt.sign({ id: userId, email, role }, secret, { expiresIn: "7d" });
+const generateToken = (userId: string, email: string, role: UserRole) =>
+  jwt.sign({ id: userId, email, role }, process.env.JWT_SECRET!, { expiresIn: "7d" });
+
+const TOKEN_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'strict' as const,
+  maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 
 export const register = async (req: AuthRequest, res: Response) => {
@@ -328,10 +332,10 @@ export const register = async (req: AuthRequest, res: Response) => {
     }
 
     const token = generateToken(user.id, user.email, user.role);
+    res.cookie('auth_token', token, TOKEN_COOKIE_OPTIONS);
 
     res.status(201).json({
       user,
-      token,
       message: inviteCode
         ? "Registration successful with referral"
         : "Registration successful",
@@ -379,13 +383,11 @@ export const login = async (req: AuthRequest, res: Response) => {
     }
 
     const token = generateToken(user.id, user.email, user.role);
+    res.cookie('auth_token', token, TOKEN_COOKIE_OPTIONS);
 
     const { password: _, ...userWithoutPassword } = user;
 
-    res.json({
-      user: userWithoutPassword,
-      token,
-    });
+    res.json({ user: userWithoutPassword });
   } catch (error) {
     console.error("Login error:", error);
     res.status(500).json({ error: "Login failed" });
@@ -439,8 +441,9 @@ export const refreshToken = async (req: AuthRequest, res: Response) => {
     }
 
     const token = generateToken(req.user.id, req.user.email, req.user.role);
+    res.cookie('auth_token', token, TOKEN_COOKIE_OPTIONS);
 
-    res.json({ token });
+    res.json({ success: true });
   } catch (error) {
     console.error("Refresh token error:", error);
     res.status(500).json({ error: "Failed to refresh token" });
@@ -587,16 +590,21 @@ export const resetPassword = async (req: AuthRequest, res: Response) => {
     }
 
     const token = generateToken(result.user.id, result.user.email, result.user.role);
+    res.cookie('auth_token', token, TOKEN_COOKIE_OPTIONS);
 
     res.json({
       user: result.user,
-      token,
       purpose: result.consumed.purpose.toLowerCase(),
     });
   } catch (error) {
     console.error("Reset password error:", error);
     res.status(500).json({ error: "Failed to reset password" });
   }
+};
+
+export const logout = (_req: AuthRequest, res: Response) => {
+  res.clearCookie('auth_token', { httpOnly: true, sameSite: 'strict' });
+  res.json({ success: true });
 };
 
 export const getUserType = async (req: AuthRequest, res: Response) => {

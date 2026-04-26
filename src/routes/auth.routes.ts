@@ -74,6 +74,9 @@ router.post(
 // Get current user profile
 router.get('/me', authenticate, authController.getCurrentUser);
 
+// Logout (clears httpOnly cookie)
+router.post('/logout', authenticate, authController.logout);
+
 // Get user type (account manager, promoter, or both)
 router.get('/user-type', authenticate, authController.getUserType);
 

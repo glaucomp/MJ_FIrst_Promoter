@@ -19,14 +19,14 @@ export const authenticate = async (
   next: NextFunction
 ) => {
   try {
-    const authHeader = req.headers.authorization;
+    const token = req.cookies?.auth_token
+      ?? req.headers.authorization?.replace(/^Bearer /, '');
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!token) {
       return res.status(401).json({ error: 'No token provided' });
     }
 
-    const token = authHeader.substring(7);
-    const secret = process.env.JWT_SECRET || 'default_secret_change_in_production';
+    const secret = process.env.JWT_SECRET!;
 
     const decoded = jwt.verify(token, secret) as {
       id: string;
