@@ -42,7 +42,8 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
       // Server already scopes the list per-role: AMs receive the public
       // campaign linked from their hidden membership campaign, promoters /
       // team managers receive `visibleToPromoters: true` campaigns, admins
-      // receive everything. We only need to drop inactive rows here.
+      // receive everything. Here we drop inactive rows and keep only
+      // campaigns marked `visibleToPromoters`.
       const filteredCampaigns = data.filter(
         (c) => c.isActive && c.visibleToPromoters,
       );
