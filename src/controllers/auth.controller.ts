@@ -561,8 +561,6 @@ export const resetPassword = async (req: AuthRequest, res: Response) => {
     const rawToken: string = req.body.token;
     const password: string = req.body.password;
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-
     // We respond with the same generic "link no longer valid" message for
     // every token-not-usable reason (missing/expired/already consumed,
     // user vanished, user deactivated after a RESET was issued). This
@@ -576,6 +574,9 @@ export const resetPassword = async (req: AuthRequest, res: Response) => {
           error: "This link is no longer valid. Please request a new one.",
         });
 
+    // Validate and consume the token before doing any expensive work — this
+    // prevents CPU-burn attacks that submit many requests with invalid tokens
+    // and rely on bcrypt being called unconditionally.
     const consumed = await consumePasswordResetToken(rawToken);
     if (!consumed) {
       return invalidLinkResponse();
@@ -596,6 +597,9 @@ export const resetPassword = async (req: AuthRequest, res: Response) => {
     if (!isInvite && !existing.isActive) {
       return invalidLinkResponse();
     }
+
+    // Hash the password only after we know the token is valid and usable.
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await prisma.user.update({
       where: { id: consumed.userId },
