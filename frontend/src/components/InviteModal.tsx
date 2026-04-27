@@ -39,7 +39,13 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
   const loadCampaigns = async () => {
     try {
       const data = await modelsApi.getCampaigns();
-      const filteredCampaigns = data.filter(c => c.isActive && c.visibleToPromoters);
+      // Server already scopes the list per-role: AMs receive the public
+      // campaign linked from their hidden membership campaign, promoters /
+      // team managers receive `visibleToPromoters: true` campaigns, admins
+      // receive everything. We only need to drop inactive rows here.
+      const filteredCampaigns = data.filter(
+        (c) => c.isActive && c.visibleToPromoters,
+      );
       setCampaigns(filteredCampaigns);
       if (filteredCampaigns.length > 0) {
         setSelectedCampaignId(filteredCampaigns[0].id);

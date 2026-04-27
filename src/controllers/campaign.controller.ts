@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { PrismaClient, UserRole } from '@prisma/client';
+import { PrismaClient, UserRole, UserType } from '@prisma/client';
 import { validationResult } from 'express-validator';
 import { AuthRequest } from '../middleware/auth.middleware';
 
@@ -82,24 +82,57 @@ export const getAllCampaigns = async (req: AuthRequest, res: Response) => {
         },
         orderBy: { createdAt: 'desc' }
       });
-    } else {
-      // Check if user is an account manager (directly invited by admin)
-      // Account managers can see all campaigns including hidden ones
-      const isAccountManager = await prisma.referral.findFirst({
+    } else if (user.userType === UserType.ACCOUNT_MANAGER) {
+      // Account managers operate on their hidden membership campaign (where
+      // an admin invited them) but they invite promoters onto the PUBLIC
+      // campaign that is configured as `linkedCampaignId` on that membership
+      // row. So the picker must surface those linked public campaigns only —
+      // not the hidden membership campaign itself, and not unrelated public
+      // campaigns.
+      const amMemberships = await prisma.referral.findMany({
         where: {
-          referredUserId: user.id, // User was invited
-          referrer: { role: UserRole.ADMIN }, // By an admin
-          status: 'ACTIVE'
+          referredUserId: user.id,
+          status: 'ACTIVE',
+        },
+        select: {
+          campaign: {
+            select: { linkedCampaignId: true },
+          },
         },
       });
+      const linkedCampaignIds = Array.from(
+        new Set(
+          amMemberships
+            .map((r) => r.campaign?.linkedCampaignId)
+            .filter((id): id is string => Boolean(id)),
+        ),
+      );
 
-      // Promoters see active campaigns
-      // Account managers see ALL active campaigns
-      // Regular influencers only see campaigns where visibleToPromoters: true
       campaigns = await prisma.campaign.findMany({
         where: {
           isActive: true,
-          ...(isAccountManager ? {} : { visibleToPromoters: true })
+          visibleToPromoters: true,
+          id: {
+            in: linkedCampaignIds.length > 0 ? linkedCampaignIds : ['__none__'],
+          },
+        },
+        include: {
+          linkedCampaign: {
+            select: { id: true, name: true, visibleToPromoters: true }
+          },
+          _count: {
+            select: { referrals: true, commissions: true }
+          }
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+    } else {
+      // Promoters / team managers only see campaigns flagged
+      // visibleToPromoters: true.
+      campaigns = await prisma.campaign.findMany({
+        where: {
+          isActive: true,
+          visibleToPromoters: true,
         },
         include: {
           linkedCampaign: {

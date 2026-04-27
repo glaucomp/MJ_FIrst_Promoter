@@ -311,6 +311,30 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    // Account managers always invite onto the PUBLIC campaign that is
+    // `linkedCampaignId` on one of their hidden membership campaigns (the
+    // campaign an admin invited the AM into). They must not invite directly
+    // onto the hidden membership campaign, nor onto an unrelated public
+    // campaign — both would either pay the wrong commission tier or attribute
+    // the referral to the wrong AM. Admins are exempt from this rule.
+    if (isAmCaller && !isAdminCaller) {
+      const amMembership = await prisma.referral.findFirst({
+        where: {
+          referredUserId: user.id,
+          status: "ACTIVE",
+          campaign: { linkedCampaignId: campaign.id },
+        },
+        select: { id: true },
+      });
+      if (!amMembership) {
+        return res.status(403).json({
+          error: "Access denied",
+          message:
+            "Account managers can only invite under the public campaign linked to their assigned campaign.",
+        });
+      }
+    }
+
     // Check monthly invite limit (Admins and Account Managers are exempt)
     if (
       campaign.maxInvitesPerMonth &&
