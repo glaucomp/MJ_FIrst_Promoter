@@ -322,7 +322,10 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
         where: {
           referredUserId: user.id,
           status: "ACTIVE",
-          campaign: { linkedCampaignId: campaign.id },
+          campaign: {
+            linkedCampaignId: campaign.id,
+            visibleToPromoters: false,
+          },
         },
         select: { id: true },
       });
