@@ -554,6 +554,42 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
     //                          PATCH /api/users/:id/account-manager flow.
     const accountManagerId = callerIsAm ? caller.id : null;
 
+    // For account managers created by admin: validate and look up the hidden
+    // membership campaign BEFORE creating the user so that an invalid
+    // `campaignId` returns 400 without leaving a "ghost" user row.
+    // The admin can pick the hidden membership campaign explicitly via
+    // `campaignId` on the request body; that's the new path and how the
+    // FE wires the "Account Manager → Campaign" picker on the create
+    // user modal. If they don't, we fall back to the historical
+    // auto-pick (first hidden campaign with a `linkedCampaignId`, then
+    // any hidden campaign) so older API callers keep working.
+    let adminCampaign = null as Awaited<ReturnType<typeof prisma.campaign.findFirst>>;
+    if (callerIsAdmin && resolvedType === UserType.ACCOUNT_MANAGER) {
+      if (campaignId) {
+        adminCampaign = await prisma.campaign.findUnique({
+          where: { id: campaignId },
+        });
+        if (!adminCampaign || !adminCampaign.isActive || adminCampaign.visibleToPromoters) {
+          return res.status(400).json({
+            error:
+              'Selected campaign is not a valid hidden Account Manager campaign',
+          });
+        }
+      }
+      adminCampaign ??= await prisma.campaign.findFirst({
+        where: {
+          isActive: true,
+          visibleToPromoters: false,
+          linkedCampaignId: { not: null },
+        },
+        orderBy: { id: 'asc' },
+      });
+      adminCampaign ??= await prisma.campaign.findFirst({
+        where: { isActive: true, visibleToPromoters: false },
+        orderBy: { id: 'asc' },
+      });
+    }
+
     const newUser = await prisma.user.create({
       data: {
         email,
@@ -586,40 +622,6 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
     // referral.controller.ts gates hidden campaigns on userType only, so we
     // don't need per-campaign referrals here.
     if (callerIsAdmin && resolvedType === UserType.ACCOUNT_MANAGER) {
-      // The admin can pick the hidden membership campaign explicitly via
-      // `campaignId` on the request body; that's the new path and how the
-      // FE wires the "Account Manager → Campaign" picker on the create
-      // user modal. If they don't, we fall back to the historical
-      // auto-pick (first hidden campaign with a `linkedCampaignId`, then
-      // any hidden campaign) so older API callers keep working.
-      let adminCampaign = null as Awaited<ReturnType<typeof prisma.campaign.findFirst>>;
-      if (campaignId) {
-        adminCampaign = await prisma.campaign.findFirst({
-          where: {
-            id: campaignId,
-            isActive: true,
-            visibleToPromoters: false,
-          },
-        });
-        if (!adminCampaign) {
-          return res.status(400).json({
-            error:
-              'Selected campaign is not a valid hidden Account Manager campaign',
-          });
-        }
-      }
-      adminCampaign ??= await prisma.campaign.findFirst({
-        where: {
-          isActive: true,
-          visibleToPromoters: false,
-          linkedCampaignId: { not: null },
-        },
-        orderBy: { id: 'asc' },
-      });
-      adminCampaign ??= await prisma.campaign.findFirst({
-        where: { isActive: true, visibleToPromoters: false },
-        orderBy: { id: 'asc' },
-      });
       if (adminCampaign && !adminCampaign.linkedCampaignId) {
         const publicCampaigns = await prisma.campaign.findMany({
           where: { isActive: true, visibleToPromoters: true },
