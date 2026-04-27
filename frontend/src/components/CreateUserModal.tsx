@@ -1,5 +1,10 @@
-import { useMemo, useState } from "react";
-import { chattersApi, modelsApi, type ApiUser } from "../services/api";
+import { useEffect, useMemo, useState } from "react";
+import {
+  chattersApi,
+  modelsApi,
+  type ApiUser,
+  type Campaign,
+} from "../services/api";
 
 type UserType =
   | "account_manager"
@@ -75,9 +80,65 @@ export const CreateUserModal = ({
   const [success, setSuccess] = useState<ApiUser | null>(null);
   const [inviteEmailSent, setInviteEmailSent] = useState(true);
 
+  // Account-manager-specific: which hidden AM membership campaign the new
+  // AM will be enrolled in. The campaign's `linkedCampaignId` is what
+  // surfaces in the AM's invite picker once they log in, so picking it
+  // here is what makes "if the AM invites, they have the campaign already"
+  // work end-to-end.
+  const [amCampaigns, setAmCampaigns] = useState<Campaign[]>([]);
+  const [campaignId, setCampaignId] = useState<string>("");
+  const [campaignsLoading, setCampaignsLoading] = useState(false);
+  const [campaignsError, setCampaignsError] = useState("");
+
+  const isAccountManager = userType === "account_manager";
+
+  useEffect(() => {
+    if (!isOpen || !isAccountManager || amCampaigns.length > 0) return;
+    let cancelled = false;
+    setCampaignsLoading(true);
+    setCampaignsError("");
+    modelsApi
+      .getAllCampaigns()
+      .then((all) => {
+        if (cancelled) return;
+        const hidden = all.filter(
+          (c) => c.isActive && !c.visibleToPromoters,
+        );
+        setAmCampaigns(hidden);
+        if (hidden.length > 0 && !campaignId) {
+          setCampaignId(hidden[0].id);
+        }
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        const errorMessage =
+          err instanceof Error && err.message === "SESSION_EXPIRED"
+            ? "Your session has expired. Please sign in again."
+            : err instanceof Error
+              ? err.message
+              : "Failed to load campaigns";
+        setCampaignsError(errorMessage);
+      })
+      .finally(() => {
+        if (!cancelled) setCampaignsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, isAccountManager, amCampaigns.length, campaignId]);
+
+  const selectedAmCampaign = useMemo(
+    () => amCampaigns.find((c) => c.id === campaignId) ?? null,
+    [amCampaigns, campaignId],
+  );
+
   const handleSubmit = async () => {
     if (!email) {
       setError("Email is required");
+      return;
+    }
+    if (isAccountManager && !campaignId) {
+      setError("Please select a campaign for this account manager");
       return;
     }
 
@@ -112,6 +173,7 @@ export const CreateUserModal = ({
           firstName,
           lastName,
           userType,
+          ...(isAccountManager && campaignId ? { campaignId } : {}),
         });
         user = result.user;
         emailSent = result.inviteEmailSent ?? true;
@@ -131,6 +193,7 @@ export const CreateUserModal = ({
     setLastName("");
     setEmail("");
     setUserType(types[0]);
+    setCampaignId("");
     setError("");
     setSuccess(null);
     setInviteEmailSent(true);
@@ -194,6 +257,7 @@ export const CreateUserModal = ({
                     setEmail("");
                     setFirstName("");
                     setLastName("");
+                    setCampaignId("");
                     setInviteEmailSent(true);
                   }}
                   className="flex-1 bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[16px] py-[12px] text-white text-[14px] font-bold hover:bg-[#252525] transition-all"
@@ -300,6 +364,71 @@ export const CreateUserModal = ({
                 </div>
               </div>
 
+              {/* Campaign picker — only for Account Managers. The chosen
+                  hidden AM campaign is what attaches the new AM to a public
+                  campaign via its `linkedCampaignId`, so they can invite
+                  promoters straight after activation. */}
+              {isAccountManager && (
+                <div className="flex flex-col gap-[8px]">
+                  <label className="text-[#9e9e9e] text-[12px] font-bold uppercase tracking-[0.2px]">
+                    Campaign
+                  </label>
+                  {campaignsLoading && (
+                    <p className="text-[#9e9e9e] text-[14px]">
+                      Loading campaigns…
+                    </p>
+                  )}
+                  {!campaignsLoading && amCampaigns.length === 0 && (
+                    <p className="text-[#ffcc33] text-[13px] leading-[1.4]">
+                      No hidden Account Manager campaigns exist yet. Create
+                      one on the Campaigns page (toggle "Visible to
+                      Promoters" off and link it to a public campaign), then
+                      come back here.
+                    </p>
+                  )}
+                  {!campaignsLoading && amCampaigns.length > 0 && (
+                    <>
+                      <select
+                        value={campaignId}
+                        onChange={(e) => setCampaignId(e.target.value)}
+                        className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[14px] py-[11px] text-[15px] text-white focus:outline-none focus:border-[#ff0f5f]"
+                      >
+                        <option value="">— Select a campaign —</option>
+                        {amCampaigns.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                            {c.linkedCampaign
+                              ? ` → invites into ${c.linkedCampaign.name}`
+                              : " (not linked)"}
+                          </option>
+                        ))}
+                      </select>
+                      {selectedAmCampaign && !selectedAmCampaign.linkedCampaign && (
+                        <p className="text-[#ffcc33] text-[12px] leading-[1.4]">
+                          This campaign isn't linked to a public campaign
+                          yet, so the new AM won't see anything to invite
+                          into. Set the linked campaign on the Campaigns
+                          page first.
+                        </p>
+                      )}
+                      {selectedAmCampaign?.linkedCampaign && (
+                        <p className="text-[#9e9e9e] text-[12px] leading-[1.4]">
+                          The new AM will be able to invite promoters into{" "}
+                          <span className="text-white font-medium">
+                            {selectedAmCampaign.linkedCampaign.name}
+                          </span>.
+                        </p>
+                      )}
+                    </>
+                  )}
+                  {campaignsError && (
+                    <p className="text-[#ff2a2a] text-[12px] leading-[1.4]">
+                      {campaignsError}
+                    </p>
+                  )}
+                </div>
+              )}
+
               {error && (
                 <div className="bg-[#660000] border border-[#cc0000] rounded-[8px] px-[16px] py-[12px]">
                   <p className="text-[#ff2a2a] text-[14px] font-medium">
@@ -310,7 +439,11 @@ export const CreateUserModal = ({
 
               <button
                 onClick={handleSubmit}
-                disabled={isLoading || !email}
+                disabled={
+                  isLoading ||
+                  !email ||
+                  (isAccountManager && !campaignId)
+                }
                 className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[24px] py-[14px] text-white text-[16px] font-bold leading-[1.4] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? "Creating..." : "Send Invite"}

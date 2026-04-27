@@ -123,6 +123,14 @@ export interface Campaign {
   visibleToPromoters: boolean;
   maxInvitesPerMonth: number | null;
   linkedCampaignId: string | null;
+  /** Populated by the backend on admin / AM-scoped campaign reads so the
+   *  UI can show "this hidden AM campaign invites into <name>" without an
+   *  extra round-trip. May be missing on endpoints that don't include it. */
+  linkedCampaign?: {
+    id: string;
+    name: string;
+    visibleToPromoters: boolean;
+  } | null;
   createdAt: string;
   _count?: {
     referrals: number;
@@ -142,6 +150,11 @@ export interface CampaignInput {
   autoApprove?: boolean;
   visibleToPromoters?: boolean;
   maxInvitesPerMonth?: number | null;
+  /** Primarily used for hidden (AM membership) campaigns: the public
+   *  campaign that AMs enrolled here will invite promoters into.
+   *  Current API behavior may still persist this value for visible
+   *  campaigns, so omit it or send `null` unless you intend to link. */
+  linkedCampaignId?: string | null;
 }
 
 export interface ReferralCommission {
@@ -216,6 +229,15 @@ export interface Referral {
     status: string | null;
     lastCheckedAt: string | null;
     teasemeUserId: string | null;
+    // In-flight onboarding session URL, mirrored from TeaseMe's
+    // /step-progress response. Used by the top "Open" pill on the Models
+    // card while chip = waiting/order_lp/building. Null until upstream
+    // populates.
+    surveyLink: string | null;
+    // Live landing-page URL, mirrored from TeaseMe's /step-progress
+    // response. Used by the top "Open" pill once chip = lp_live. Null
+    // until upstream populates (i.e. until the LP build finishes).
+    assetLink: string | null;
   } | null;
 }
 
@@ -512,6 +534,9 @@ export const modelsApi = {
     firstName: string;
     lastName: string;
     userType: 'account_manager' | 'team_manager' | 'promoter' | 'payer';
+    /** Required when userType is 'account_manager'. The hidden AM campaign
+     *  the new account manager will be enrolled in. */
+    campaignId?: string;
   }): Promise<{ user: ApiUser; inviteEmailSent: boolean }> {
     const response = await apiFetch(`${API_URL}/users/create`, {
       method: 'POST',

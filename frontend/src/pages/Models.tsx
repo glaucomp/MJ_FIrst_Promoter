@@ -1234,6 +1234,27 @@ const OnboardingCopyIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+// Allowed hostnames for TeaseMe-provided URLs. Only these origins are
+// permitted to be opened via the "Open" pill to guard against open-redirect
+// or injected javascript: / data: payloads from the upstream API response.
+const TEASEME_APEX = "teaseme.live";
+
+/** Returns true iff `url` is a safe https URL pointing at a TeaseMe host. */
+function isSafeTeaseUrl(url: string | null | undefined): url is string {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname;
+    // Accept the apex domain and direct subdomains only (e.g. onboarding.teaseme.live).
+    // The subdomain check uses a dot-prefix so 'evil-teaseme.live' never matches.
+    const isTeasemeHost =
+      host === TEASEME_APEX || host.endsWith(`.${TEASEME_APEX}`);
+    return parsed.protocol === "https:" && isTeasemeHost;
+  } catch {
+    return false;
+  }
+}
+
 // Shared dark-pill wrapper for both onboarding glyphs — matches the
 // Deny/ReAssign button surface so the four controls feel like a set.
 // Renders as a <button> when `onClick` is provided (interactive) or as
@@ -1267,7 +1288,15 @@ const OnboardingIconPill = ({
       </button>
     );
   }
-  return <span className={`${base} ${className}`}>{children}</span>;
+  return (
+    <span
+      className={`${base} ${className}`}
+      title={title}
+      aria-label={ariaLabel ?? title}
+    >
+      {children}
+    </span>
+  );
 };
 
 // The TeaseMe survey is 3 steps. `currentStep` advances monotonically as the
@@ -1512,6 +1541,8 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
                     status: null,
                     lastCheckedAt: null,
                     teasemeUserId: null,
+                    surveyLink: null,
+                    assetLink: null,
                   }),
                   currentStep: result.preUser.currentStep,
                   status: result.preUser.status,
@@ -1628,6 +1659,36 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
       <div className="grid gap-[16px] lg:grid-cols-2 grid-cols-1">
         {visibleReferrals.map((referral) => {
           const chipState = deriveChipState(referral);
+          // The top "Open" pill follows the lifecycle: while the invitee is
+          // mid-survey we point at the in-flight onboarding session
+          // (surveyLink); once the LP is live we point at the built page
+          // (assetLink). Either may still be null upstream — in that case
+          // we keep the pill visible-but-disabled with a tooltip that says
+          // why, rather than hiding it (the slot is part of the card layout).
+          const isOnboardingState =
+            chipState === "waiting" ||
+            chipState === "order_lp" ||
+            chipState === "building";
+          const isTerminalState =
+            chipState === "denied" || chipState === "expired";
+          const rawOpenUrl =
+            chipState === "lp_live"
+              ? referral.preUser?.assetLink ?? null
+              : isOnboardingState
+                ? referral.preUser?.surveyLink ?? null
+                : null;
+          // Only allow safe https URLs on teaseme.live — reject anything with
+          // a dangerous scheme (javascript:, data:) or an unexpected host.
+          const openUrl = isSafeTeaseUrl(rawOpenUrl) ? rawOpenUrl : null;
+          const openTooltip = openUrl
+            ? chipState === "lp_live"
+              ? "Open landing page"
+              : "Open onboarding session"
+            : chipState === "lp_live"
+              ? "Landing page URL not available yet"
+              : isTerminalState
+                ? "Onboarding session no longer available"
+                : "Onboarding session not started yet";
           const inviteeEmail =
             referral.referredUser?.email ??
             referral.metadata?.inviteeEmail ??
@@ -1683,15 +1744,26 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
                       {Math.min(step, ONBOARDING_STEPS.length)}/
                       {ONBOARDING_STEPS.length}
                     </span>
-                    {/* Disabled until TeaseMe confirms the URL shape.
-                        Likely target: `${TEASEME_WEB_URL}/onboarding?invite=${referral.inviteCode}`.
-                        Should become enabled when `referral.preUser` is
-                        non-null — no session exists until the invitee has
-                        started onboarding. */}
+                    {/* Opens the appropriate TeaseMe URL in a new tab:
+                        surveyLink while onboarding is in flight, assetLink
+                        once the LP is live. When the relevant link is null
+                        upstream, OnboardingIconPill renders as a non-
+                        interactive <span> (no onClick) so the pill stays
+                        visible-but-inert with a tooltip. */}
                     <OnboardingIconPill
-                      title="Open onboarding session (coming soon)"
-                      ariaLabel="Open onboarding session (coming soon)"
-                      className="cursor-not-allowed opacity-50"
+                      title={openTooltip}
+                      ariaLabel={openTooltip}
+                      className={openUrl ? "" : "cursor-not-allowed opacity-50"}
+                      onClick={
+                        openUrl
+                          ? () =>
+                              window.open(
+                                openUrl,
+                                "_blank",
+                                "noopener,noreferrer",
+                              )
+                          : undefined
+                      }
                     >
                       <OnboardingOpenIcon className="w-[14px] h-[14px]" />
                     </OnboardingIconPill>

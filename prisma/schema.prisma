@@ -241,6 +241,12 @@ model PreUser {
   // pending -> order_lp -> building -> live. Stored as a free-form string
   // (not an enum) so upstream additions don't require a migration here.
   status        String    @default("pending")
+  // Onboarding session URL returned by TeaseMe's /step-progress response.
+  // Used to open the in-flight invitee session (chip = waiting/order_lp/building).
+  surveyLink    String?
+  // Live landing-page URL returned by TeaseMe once the LP is built.
+  // Used in lp_live state instead of surveyLink.
+  assetLink     String?
   stepHistory   Json?
   lastCheckedAt DateTime?
   createdAt     DateTime  @default(now())

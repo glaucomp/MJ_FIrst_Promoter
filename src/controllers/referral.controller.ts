@@ -58,6 +58,8 @@ type PreUserRow = {
   lastCheckedAt: Date | null;
   stepHistory: Prisma.JsonValue | null;
   teasemeUserId: string | null;
+  surveyLink: string | null;
+  assetLink: string | null;
 };
 
 type ReferralRowWithPreUser = { preUser: PreUserRow | null };
@@ -114,6 +116,8 @@ const refreshPreUserSteps = async (
                 lastCheckedAt: true,
                 stepHistory: true,
                 teasemeUserId: true,
+                surveyLink: true,
+                assetLink: true,
               },
             });
             row.preUser = updated;
@@ -138,6 +142,11 @@ const refreshPreUserSteps = async (
               // upstream omits `status` we keep the last known value.
               status: status.status ?? pre.status,
               teasemeUserId: status.teasemeUserId ?? pre.teasemeUserId,
+              // Never null out a previously-known link just because a later
+              // poll omits it — TeaseMe populates surveyLink first, then
+              // assetLink later in the lifecycle.
+              surveyLink: status.surveyLink ?? pre.surveyLink,
+              assetLink: status.assetLink ?? pre.assetLink,
               lastCheckedAt: nextCheckedAt,
               stepHistory: nextHistory as unknown as Prisma.InputJsonValue,
             },
@@ -150,6 +159,8 @@ const refreshPreUserSteps = async (
               lastCheckedAt: true,
               stepHistory: true,
               teasemeUserId: true,
+              surveyLink: true,
+              assetLink: true,
             },
           });
           row.preUser = updated;
@@ -1261,6 +1272,8 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
             lastCheckedAt: true,
             stepHistory: true,
             teasemeUserId: true,
+            surveyLink: true,
+            assetLink: true,
           },
         },
         referredUser: {
