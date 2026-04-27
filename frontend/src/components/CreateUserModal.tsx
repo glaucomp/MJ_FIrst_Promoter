@@ -111,9 +111,13 @@ export const CreateUserModal = ({
       })
       .catch((err: unknown) => {
         if (cancelled) return;
-        setCampaignsError(
-          err instanceof Error ? err.message : "Failed to load campaigns",
-        );
+        const errorMessage =
+          err instanceof Error && err.message === "SESSION_EXPIRED"
+            ? "Your session has expired. Please sign in again."
+            : err instanceof Error
+              ? err.message
+              : "Failed to load campaigns";
+        setCampaignsError(errorMessage);
       })
       .finally(() => {
         if (!cancelled) setCampaignsLoading(false);
