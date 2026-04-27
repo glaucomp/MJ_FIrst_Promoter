@@ -93,6 +93,12 @@ export const getAllCampaigns = async (req: AuthRequest, res: Response) => {
         where: {
           referredUserId: user.id,
           status: 'ACTIVE',
+          campaign: {
+            visibleToPromoters: false,
+          },
+          referrer: {
+            role: UserRole.ADMIN,
+          },
         },
         select: {
           campaign: {
