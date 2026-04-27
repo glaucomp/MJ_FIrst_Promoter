@@ -1636,17 +1636,27 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
           // (assetLink). Either may still be null upstream — in that case
           // we keep the pill visible-but-disabled with a tooltip that says
           // why, rather than hiding it (the slot is part of the card layout).
+          const isOnboardingState =
+            chipState === "waiting" ||
+            chipState === "order_lp" ||
+            chipState === "building";
+          const isTerminalState =
+            chipState === "denied" || chipState === "expired";
           const openUrl =
             chipState === "lp_live"
               ? referral.preUser?.assetLink ?? null
-              : referral.preUser?.surveyLink ?? null;
+              : isOnboardingState
+                ? referral.preUser?.surveyLink ?? null
+                : null;
           const openTooltip = openUrl
             ? chipState === "lp_live"
               ? "Open landing page"
               : "Open onboarding session"
             : chipState === "lp_live"
               ? "Landing page URL not available yet"
-              : "Onboarding session not started yet";
+              : isTerminalState
+                ? "Onboarding session no longer available"
+                : "Onboarding session not started yet";
           const inviteeEmail =
             referral.referredUser?.email ??
             referral.metadata?.inviteeEmail ??
