@@ -7,7 +7,7 @@ interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<User>;
   loginWithToken: (token: string | undefined, apiUser: unknown) => User;
-  logout: () => void;
+  logout: () => Promise<void>;
   switchRole: (role: UserRole) => void;
   updateUser: (patch: Partial<User>) => void;
   isLoading: boolean;
@@ -68,8 +68,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return mappedUser;
   };
 
-  const logout = () => {
-    authApi.logout().catch(() => {});
+  const logout = async () => {
+    await authApi.logout();
     setUser(null);
   };
 
