@@ -150,24 +150,28 @@ export const getAllCampaigns = async (req: AuthRequest, res: Response) => {
         ),
       );
 
-      campaigns = await prisma.campaign.findMany({
-        where: {
-          isActive: true,
-          visibleToPromoters: true,
-          id: {
-            in: linkedCampaignIds.length > 0 ? linkedCampaignIds : ['__none__'],
+      if (linkedCampaignIds.length === 0) {
+        campaigns = [];
+      } else {
+        campaigns = await prisma.campaign.findMany({
+          where: {
+            isActive: true,
+            visibleToPromoters: true,
+            id: {
+              in: linkedCampaignIds,
+            },
           },
-        },
-        include: {
-          linkedCampaign: {
-            select: { id: true, name: true, visibleToPromoters: true }
+          include: {
+            linkedCampaign: {
+              select: { id: true, name: true, visibleToPromoters: true }
+            },
+            _count: {
+              select: { referrals: true, commissions: true }
+            }
           },
-          _count: {
-            select: { referrals: true, commissions: true }
-          }
-        },
-        orderBy: { createdAt: 'desc' }
-      });
+          orderBy: { createdAt: 'desc' }
+        });
+      }
     } else {
       // Promoters / team managers only see campaigns flagged
       // visibleToPromoters: true.
