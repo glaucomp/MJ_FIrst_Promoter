@@ -493,11 +493,12 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ error: 'Insufficient permissions' });
     }
 
-    const { email, firstName, lastName, userType } = req.body as {
+    const { email, firstName, lastName, userType, campaignId } = req.body as {
       email?: string;
       firstName?: string;
       lastName?: string;
       userType?: string;
+      campaignId?: string;
     };
 
     if (!email) {
@@ -585,14 +586,29 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
     // referral.controller.ts gates hidden campaigns on userType only, so we
     // don't need per-campaign referrals here.
     if (callerIsAdmin && resolvedType === UserType.ACCOUNT_MANAGER) {
-      // Prefer a hidden membership campaign that already has a
-      // linkedCampaignId configured — that link is what surfaces in the
-      // AM's invite picker (campaign.controller.ts → getAllCampaigns).
-      // If the only available hidden campaign is unlinked, back-fill the
-      // link to the single active public campaign when there is exactly
-      // one (zero or several = ambiguous, so we leave it for the admin to
-      // configure explicitly via the Campaigns admin UI).
-      let adminCampaign = await prisma.campaign.findFirst({
+      // The admin can pick the hidden membership campaign explicitly via
+      // `campaignId` on the request body; that's the new path and how the
+      // FE wires the "Account Manager → Campaign" picker on the create
+      // user modal. If they don't, we fall back to the historical
+      // auto-pick (first hidden campaign with a `linkedCampaignId`, then
+      // any hidden campaign) so older API callers keep working.
+      let adminCampaign = null as Awaited<ReturnType<typeof prisma.campaign.findFirst>>;
+      if (campaignId) {
+        adminCampaign = await prisma.campaign.findFirst({
+          where: {
+            id: campaignId,
+            isActive: true,
+            visibleToPromoters: false,
+          },
+        });
+        if (!adminCampaign) {
+          return res.status(400).json({
+            error:
+              'Selected campaign is not a valid hidden Account Manager campaign',
+          });
+        }
+      }
+      adminCampaign ??= await prisma.campaign.findFirst({
         where: {
           isActive: true,
           visibleToPromoters: false,
@@ -600,12 +616,10 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
         },
         orderBy: { id: 'asc' },
       });
-      if (!adminCampaign) {
-        adminCampaign = await prisma.campaign.findFirst({
-          where: { isActive: true, visibleToPromoters: false },
-          orderBy: { id: 'asc' },
-        });
-      }
+      adminCampaign ??= await prisma.campaign.findFirst({
+        where: { isActive: true, visibleToPromoters: false },
+        orderBy: { id: 'asc' },
+      });
       if (adminCampaign && !adminCampaign.linkedCampaignId) {
         const publicCampaigns = await prisma.campaign.findMany({
           where: { isActive: true, visibleToPromoters: true },

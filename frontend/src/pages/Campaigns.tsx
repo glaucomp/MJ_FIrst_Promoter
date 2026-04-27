@@ -14,6 +14,7 @@ const EMPTY_FORM: CampaignInput = {
   autoApprove: true,
   visibleToPromoters: true,
   maxInvitesPerMonth: null,
+  linkedCampaignId: null,
 };
 
 export const Campaigns = () => {
@@ -78,6 +79,7 @@ export const Campaigns = () => {
       autoApprove: c.autoApprove,
       visibleToPromoters: c.visibleToPromoters,
       maxInvitesPerMonth: c.maxInvitesPerMonth,
+      linkedCampaignId: c.linkedCampaignId ?? null,
     });
     setFormError("");
     setIsModalOpen(true);
@@ -103,6 +105,13 @@ export const Campaigns = () => {
       const payload = {
         ...form,
         maxInvitesPerMonth: form.maxInvitesPerMonth ?? null,
+        // `linkedCampaignId` only makes sense on hidden AM campaigns. If
+        // the admin flipped a campaign to Public, clear the link so we
+        // never persist a dangling reference that would silently confuse
+        // the AM invite logic.
+        linkedCampaignId: form.visibleToPromoters
+          ? null
+          : (form.linkedCampaignId || null),
       };
       if (editingCampaign) {
         const updated = await modelsApi.updateCampaign(
@@ -235,6 +244,25 @@ export const Campaigns = () => {
                     >
                       {c.visibleToPromoters ? "Public" : "Hidden"}
                     </span>
+
+                    {/* Link status — only on hidden AM campaigns. Surfaces
+                        misconfigured campaigns directly on the list. */}
+                    {!c.visibleToPromoters && c.linkedCampaign && (
+                      <span
+                        title={`Linked to ${c.linkedCampaign.name}`}
+                        className="px-[12px] py-[6px] rounded-[100px] text-xs font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e] max-w-[220px] truncate"
+                      >
+                        Linked → {c.linkedCampaign.name}
+                      </span>
+                    )}
+                    {!c.visibleToPromoters && !c.linkedCampaign && (
+                      <span
+                        title="No public campaign linked. AMs enrolled here can't invite anyone."
+                        className="px-[12px] py-[6px] rounded-[100px] text-xs font-bold border bg-[#332200] border-[#cc9900] text-[#ffcc33]"
+                      >
+                        Not linked
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -517,6 +545,10 @@ export const Campaigns = () => {
                       ...f,
                       visibleToPromoters: v,
                       ...(!v && { recurringRate: null }),
+                      // Going public clears any stale link; going hidden
+                      // leaves the existing one (or null) for the admin to
+                      // pick below.
+                      ...(v && { linkedCampaignId: null }),
                     }))
                   }
                 />
@@ -526,6 +558,43 @@ export const Campaigns = () => {
                   onChange={(v) => setForm((f) => ({ ...f, autoApprove: v }))}
                 />
               </div>
+
+              {/* Linked Public Campaign — only relevant for hidden (AM
+                  membership) campaigns. The picked campaign is what new
+                  AMs enrolled here will invite promoters into. */}
+              {form.visibleToPromoters === false && (
+                <Field label="Linked Public Campaign">
+                  <select
+                    value={form.linkedCampaignId ?? ""}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        linkedCampaignId: e.target.value || null,
+                      }))
+                    }
+                    className={inputCls}
+                  >
+                    <option value="">— None —</option>
+                    {campaigns
+                      .filter(
+                        (c) =>
+                          c.visibleToPromoters &&
+                          c.isActive &&
+                          c.id !== editingCampaign?.id,
+                      )
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                  </select>
+                  <p className="text-tm-text-color10 text-xs mt-1.5 leading-[1.4]">
+                    Account managers enrolled in this hidden campaign will
+                    invite promoters into the selected public campaign.
+                    Leave as "None" only if no AMs use this campaign yet.
+                  </p>
+                </Field>
+              )}
 
               {formError && (
                 <div className="bg-tm-danger-color12 border border-[#cc0000] rounded-[8px] px-[14px] py-[10px]">

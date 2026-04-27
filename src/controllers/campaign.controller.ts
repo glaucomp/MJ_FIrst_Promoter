@@ -50,6 +50,12 @@ export const createCampaign = async (req: AuthRequest, res: Response) => {
       include: {
         createdBy: {
           select: { id: true, email: true, firstName: true, lastName: true }
+        },
+        linkedCampaign: {
+          select: { id: true, name: true, visibleToPromoters: true }
+        },
+        _count: {
+          select: { referrals: true, commissions: true }
         }
       }
     });
@@ -317,6 +323,12 @@ export const updateCampaign = async (req: AuthRequest, res: Response) => {
       include: {
         createdBy: {
           select: { id: true, email: true, firstName: true, lastName: true }
+        },
+        linkedCampaign: {
+          select: { id: true, name: true, visibleToPromoters: true }
+        },
+        _count: {
+          select: { referrals: true, commissions: true }
         }
       }
     });

@@ -123,6 +123,14 @@ export interface Campaign {
   visibleToPromoters: boolean;
   maxInvitesPerMonth: number | null;
   linkedCampaignId: string | null;
+  /** Populated by the backend on admin / AM-scoped campaign reads so the
+   *  UI can show "this hidden AM campaign invites into <name>" without an
+   *  extra round-trip. May be missing on endpoints that don't include it. */
+  linkedCampaign?: {
+    id: string;
+    name: string;
+    visibleToPromoters: boolean;
+  } | null;
   createdAt: string;
   _count?: {
     referrals: number;
@@ -142,6 +150,10 @@ export interface CampaignInput {
   autoApprove?: boolean;
   visibleToPromoters?: boolean;
   maxInvitesPerMonth?: number | null;
+  /** Only meaningful for hidden (AM membership) campaigns: the public
+   *  campaign that AMs enrolled here will invite promoters into. The
+   *  backend ignores it (or accepts `null`) for visible campaigns. */
+  linkedCampaignId?: string | null;
 }
 
 export interface ReferralCommission {
@@ -512,6 +524,9 @@ export const modelsApi = {
     firstName: string;
     lastName: string;
     userType: 'account_manager' | 'team_manager' | 'promoter' | 'payer';
+    /** Required when userType is 'account_manager'. The hidden AM campaign
+     *  the new account manager will be enrolled in. */
+    campaignId?: string;
   }): Promise<{ user: ApiUser; inviteEmailSent: boolean }> {
     const response = await apiFetch(`${API_URL}/users/create`, {
       method: 'POST',
