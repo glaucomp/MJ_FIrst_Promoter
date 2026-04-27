@@ -229,6 +229,15 @@ export interface Referral {
     status: string | null;
     lastCheckedAt: string | null;
     teasemeUserId: string | null;
+    // In-flight onboarding session URL, mirrored from TeaseMe's
+    // /step-progress response. Used by the top "Open" pill on the Models
+    // card while chip = waiting/order_lp/building. Null until upstream
+    // populates.
+    surveyLink: string | null;
+    // Live landing-page URL, mirrored from TeaseMe's /step-progress
+    // response. Used by the top "Open" pill once chip = lp_live. Null
+    // until upstream populates (i.e. until the LP build finishes).
+    assetLink: string | null;
   } | null;
 }
 

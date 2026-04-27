@@ -15,7 +15,11 @@ const TEASEME_API_URL = (
 //   POST {TEASEME_STATUS_URL}
 //   Headers: { "Content-Type": "application/json", "X-Internal-Token": <MJFP_TOKEN> }
 //   Body:    { "invite_code": "...", "invitee_email": "..." }
-//   200:     { ok, exists, pre_influencer_id, username, survey_step, status }
+//   200:     { ok, exists, pre_influencer_id, username, survey_step, status,
+//              survey_link, asset_link }
+//   `survey_link` is the in-flight onboarding session URL (populated while the
+//   invitee is mid-survey). `asset_link` is the live landing-page URL
+//   (populated once TeaseMe finishes building the LP). Either may be null.
 const TEASEME_STATUS_URL = (
   process.env.TEASEME_STATUS_URL ||
   "https://tmapi.mxjprod.work/mjpromoter/pre-influencers/step-progress"
@@ -28,6 +32,10 @@ export interface TeasemePreUserStatus {
   teasemeUserId: string | null;
   username: string | null;
   status: string | null;
+  // In-flight onboarding session URL (null until the invitee has started).
+  surveyLink: string | null;
+  // Live landing-page URL (null until TeaseMe finishes building it).
+  assetLink: string | null;
 }
 
 /**
@@ -101,6 +109,17 @@ export const fetchTeasemePreUserStatus = async (params: {
   const statusStr =
     typeof raw.status === "string" && raw.status ? raw.status : null;
 
+  // Only accept non-empty strings; treat anything else (null, "", number, etc)
+  // as "not provided" so callers can preserve the last-known value.
+  const surveyLink =
+    typeof raw.survey_link === "string" && raw.survey_link
+      ? raw.survey_link
+      : null;
+  const assetLink =
+    typeof raw.asset_link === "string" && raw.asset_link
+      ? raw.asset_link
+      : null;
+
   const preInfluencerId = raw.pre_influencer_id;
   const teasemeUserId =
     typeof preInfluencerId === "string" && preInfluencerId
@@ -118,6 +137,8 @@ export const fetchTeasemePreUserStatus = async (params: {
     username:
       typeof raw.username === "string" && raw.username ? raw.username : null,
     status: statusStr,
+    surveyLink,
+    assetLink,
   };
 };
 
