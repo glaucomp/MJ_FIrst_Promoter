@@ -603,7 +603,7 @@ export const resetPassword = async (req: AuthRequest, res: Response) => {
 };
 
 export const logout = (_req: AuthRequest, res: Response) => {
-  res.clearCookie('auth_token', { httpOnly: true, sameSite: 'strict' });
+  res.clearCookie('auth_token', TOKEN_COOKIE_OPTIONS);
   res.json({ success: true });
 };
 
