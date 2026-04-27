@@ -613,10 +613,21 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
           take: 2,
         });
         if (publicCampaigns.length === 1) {
-          adminCampaign = await prisma.campaign.update({
-            where: { id: adminCampaign.id },
+          const updateResult = await prisma.campaign.updateMany({
+            where: {
+              id: adminCampaign.id,
+              isActive: true,
+              visibleToPromoters: false,
+              linkedCampaignId: null,
+            },
             data: { linkedCampaignId: publicCampaigns[0].id },
           });
+          if (updateResult.count === 1) {
+            adminCampaign = {
+              ...adminCampaign,
+              linkedCampaignId: publicCampaigns[0].id,
+            };
+          }
         }
       }
       if (adminCampaign) {
