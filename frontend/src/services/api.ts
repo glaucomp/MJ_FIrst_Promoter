@@ -150,9 +150,10 @@ export interface CampaignInput {
   autoApprove?: boolean;
   visibleToPromoters?: boolean;
   maxInvitesPerMonth?: number | null;
-  /** Only meaningful for hidden (AM membership) campaigns: the public
-   *  campaign that AMs enrolled here will invite promoters into. The
-   *  backend ignores it (or accepts `null`) for visible campaigns. */
+  /** Primarily used for hidden (AM membership) campaigns: the public
+   *  campaign that AMs enrolled here will invite promoters into.
+   *  Current API behavior may still persist this value for visible
+   *  campaigns, so omit it or send `null` unless you intend to link. */
   linkedCampaignId?: string | null;
 }
 
