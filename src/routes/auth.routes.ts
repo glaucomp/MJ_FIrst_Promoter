@@ -74,6 +74,11 @@ router.post(
 // Get current user profile
 router.get('/me', authenticate, authController.getCurrentUser);
 
+// Logout (clears httpOnly cookie) should remain callable even if the
+// existing auth cookie/token is invalid or expired, so clearing the cookie is
+// always possible.
+router.post('/logout', authController.logout);
+
 // Get user type (account manager, promoter, or both)
 router.get('/user-type', authenticate, authController.getUserType);
 

@@ -1,6 +1,9 @@
 import type { DashboardStats, InvitedUser, ChartData } from '../types';
 
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5555/api';
+const API_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+
+const apiFetch = (url: string, init?: RequestInit) =>
+  fetch(url, { credentials: 'include', ...init });
 
 export interface LoginResponse {
   user: {
@@ -12,12 +15,12 @@ export interface LoginResponse {
     userType: string;
     isActive: boolean;
   };
-  token: string;
+  token?: string; // Deprecated: server now sets httpOnly cookie
 }
 
 export const authApi = {
   async login(email: string, password: string): Promise<LoginResponse> {
-    const response = await fetch(`${API_URL}/auth/login`, {
+    const response = await apiFetch(`${API_URL}/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -33,12 +36,8 @@ export const authApi = {
     return response.json();
   },
 
-  async getCurrentUser(token: string): Promise<LoginResponse['user']> {
-    const response = await fetch(`${API_URL}/auth/me`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    });
+  async getCurrentUser(): Promise<LoginResponse['user']> {
+    const response = await apiFetch(`${API_URL}/auth/me`);
 
     if (!response.ok) {
       throw new Error('Failed to get user information');
@@ -48,13 +47,17 @@ export const authApi = {
     return data.user;
   },
 
+  async logout(): Promise<void> {
+    await apiFetch(`${API_URL}/auth/logout`, { method: 'POST' });
+  },
+
   /**
    * Ask the server to send a password-reset email. Always resolves to the
    * same generic message regardless of whether the email matches a real
    * account, so the UI can't be used to enumerate users.
    */
   async forgotPassword(email: string): Promise<{ message: string }> {
-    const response = await fetch(`${API_URL}/auth/forgot-password`, {
+    const response = await apiFetch(`${API_URL}/auth/forgot-password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email }),
@@ -76,7 +79,7 @@ export const authApi = {
     firstName?: string | null;
     purpose?: 'invite' | 'reset';
   }> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_URL}/auth/password-reset/${encodeURIComponent(token)}/validate`,
     );
     if (!response.ok) {
@@ -91,7 +94,7 @@ export const authApi = {
    * without a second login hop.
    */
   async resetPassword(token: string, password: string): Promise<LoginResponse & { purpose: 'invite' | 'reset' }> {
-    const response = await fetch(`${API_URL}/auth/password-reset`, {
+    const response = await apiFetch(`${API_URL}/auth/password-reset`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token, password }),
@@ -267,13 +270,7 @@ export interface ApiUser {
   };
 }
 
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('auth_token');
-  return {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`,
-  };
-};
+const getAuthHeaders = () => ({ 'Content-Type': 'application/json' });
 
 const handleResponse = async (response: Response, fallbackMessage: string) => {
   if (response.status === 401) {
@@ -293,7 +290,7 @@ export const modelsApi = {
     if (options?.userType) params.set('userType', options.userType);
     if (options?.search) params.set('search', options.search);
     const qs = params.toString();
-    const response = await fetch(`${API_URL}/users${qs ? `?${qs}` : ''}`, {
+    const response = await apiFetch(`${API_URL}/users${qs ? `?${qs}` : ''}`, {
       headers: getAuthHeaders(),
     });
     const data = await handleResponse(response, 'Failed to fetch users');
@@ -301,7 +298,7 @@ export const modelsApi = {
   },
 
   async getPromoters(): Promise<ApiUser[]> {
-    const response = await fetch(`${API_URL}/users/promoters`, {
+    const response = await apiFetch(`${API_URL}/users/promoters`, {
       headers: getAuthHeaders(),
     });
     const data = await handleResponse(response, 'Failed to fetch promoters');
@@ -309,7 +306,7 @@ export const modelsApi = {
   },
 
   async getCampaigns(): Promise<Campaign[]> {
-    const response = await fetch(`${API_URL}/campaigns`, {
+    const response = await apiFetch(`${API_URL}/campaigns`, {
       headers: getAuthHeaders(),
     });
     const data = await handleResponse(response, 'Failed to fetch campaigns');
@@ -317,7 +314,7 @@ export const modelsApi = {
   },
 
   async getMyReferrals(): Promise<Referral[]> {
-    const response = await fetch(`${API_URL}/referrals/my-referrals`, {
+    const response = await apiFetch(`${API_URL}/referrals/my-referrals`, {
       headers: getAuthHeaders(),
     });
     const data = await handleResponse(response, 'Failed to fetch referrals');
@@ -330,7 +327,7 @@ export const modelsApi = {
     referral: Referral;
     emailSent?: boolean;
   }> {
-    const response = await fetch(`${API_URL}/referrals/create`, {
+    const response = await apiFetch(`${API_URL}/referrals/create`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ campaignId, email }),
@@ -345,7 +342,7 @@ export const modelsApi = {
     expiresAt: string;
     resendCount: number;
   }> {
-    const response = await fetch(`${API_URL}/referrals/${referralId}/resend`, {
+    const response = await apiFetch(`${API_URL}/referrals/${referralId}/resend`, {
       method: 'POST',
       headers: getAuthHeaders(),
     });
@@ -353,7 +350,7 @@ export const modelsApi = {
   },
 
   async deleteReferralInvite(referralId: string): Promise<{ success: true; id: string }> {
-    const response = await fetch(`${API_URL}/referrals/${referralId}`, {
+    const response = await apiFetch(`${API_URL}/referrals/${referralId}`, {
       method: 'DELETE',
       headers: getAuthHeaders(),
     });
@@ -370,7 +367,7 @@ export const modelsApi = {
     referral: { id: string; status: 'CANCELLED' };
     upstreamNotified: boolean;
   }> {
-    const response = await fetch(`${API_URL}/referrals/${referralId}/deny`, {
+    const response = await apiFetch(`${API_URL}/referrals/${referralId}/deny`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify(reason ? { reason } : {}),
@@ -387,7 +384,7 @@ export const modelsApi = {
     newReferrer: { id: string; email: string; firstName: string | null; lastName: string | null };
     upstreamNotified: boolean;
   }> {
-    const response = await fetch(`${API_URL}/referrals/${referralId}/reassign`, {
+    const response = await apiFetch(`${API_URL}/referrals/${referralId}/reassign`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ newReferrerId }),
@@ -405,7 +402,7 @@ export const modelsApi = {
       teasemeUserId: string | null;
     };
   }> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_URL}/referrals/${referralId}/order-landing-page`,
       {
         method: 'POST',
@@ -422,7 +419,7 @@ export const modelsApi = {
     success: true;
     chatterGroup: { id: string; name: string };
   }> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_URL}/referrals/${referralId}/assign-chatters`,
       {
         method: 'POST',
@@ -438,7 +435,7 @@ export const modelsApi = {
     remaining: number;
     unlimited: boolean;
   }> {
-    const response = await fetch(`${API_URL}/referrals/quota/${campaignId}`, {
+    const response = await apiFetch(`${API_URL}/referrals/quota/${campaignId}`, {
       headers: getAuthHeaders(),
     });
     const data = await handleResponse(response, 'Failed to fetch quota');
@@ -446,7 +443,7 @@ export const modelsApi = {
   },
 
   async getMyTrackingLinks(): Promise<TrackingLink[]> {
-    const response = await fetch(`${API_URL}/referrals/tracking-links/me`, {
+    const response = await apiFetch(`${API_URL}/referrals/tracking-links/me`, {
       headers: getAuthHeaders(),
     });
     const data = await handleResponse(response, 'Failed to fetch tracking links');
@@ -454,7 +451,7 @@ export const modelsApi = {
   },
 
   async getAllCampaigns(): Promise<Campaign[]> {
-    const response = await fetch(`${API_URL}/campaigns`, {
+    const response = await apiFetch(`${API_URL}/campaigns`, {
       headers: getAuthHeaders(),
     });
     const data = await handleResponse(response, 'Failed to fetch campaigns');
@@ -462,7 +459,7 @@ export const modelsApi = {
   },
 
   async createCampaign(input: CampaignInput): Promise<Campaign> {
-    const response = await fetch(`${API_URL}/campaigns`, {
+    const response = await apiFetch(`${API_URL}/campaigns`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify(input),
@@ -472,7 +469,7 @@ export const modelsApi = {
   },
 
   async updateCampaign(id: string, input: Partial<CampaignInput & { isActive: boolean }>): Promise<Campaign> {
-    const response = await fetch(`${API_URL}/campaigns/${id}`, {
+    const response = await apiFetch(`${API_URL}/campaigns/${id}`, {
       method: 'PUT',
       headers: getAuthHeaders(),
       body: JSON.stringify(input),
@@ -482,7 +479,7 @@ export const modelsApi = {
   },
 
   async deleteCampaign(id: string): Promise<void> {
-    const response = await fetch(`${API_URL}/campaigns/${id}`, {
+    const response = await apiFetch(`${API_URL}/campaigns/${id}`, {
       method: 'DELETE',
       headers: getAuthHeaders(),
     });
@@ -490,7 +487,7 @@ export const modelsApi = {
   },
 
   async deleteUser(userId: string): Promise<void> {
-    const response = await fetch(`${API_URL}/users/${userId}`, {
+    const response = await apiFetch(`${API_URL}/users/${userId}`, {
       method: 'DELETE',
       headers: getAuthHeaders(),
     });
@@ -501,7 +498,7 @@ export const modelsApi = {
     userId: string,
     accountManagerId: string | null,
   ): Promise<ApiUser> {
-    const response = await fetch(`${API_URL}/users/${userId}/account-manager`, {
+    const response = await apiFetch(`${API_URL}/users/${userId}/account-manager`, {
       method: 'PATCH',
       headers: getAuthHeaders(),
       body: JSON.stringify({ accountManagerId }),
@@ -516,7 +513,7 @@ export const modelsApi = {
     lastName: string;
     userType: 'account_manager' | 'team_manager' | 'promoter' | 'payer';
   }): Promise<{ user: ApiUser; inviteEmailSent: boolean }> {
-    const response = await fetch(`${API_URL}/users/create`, {
+    const response = await apiFetch(`${API_URL}/users/create`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({
@@ -529,7 +526,7 @@ export const modelsApi = {
   },
 
   async createTrackingLink(campaignId: string): Promise<TrackingLink> {
-    const response = await fetch(`${API_URL}/referrals/tracking-link`, {
+    const response = await apiFetch(`${API_URL}/referrals/tracking-link`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ campaignId }),
@@ -551,7 +548,7 @@ export const modelsApi = {
     };
     message: string;
   }> {
-    const response = await fetch(`${API_URL}/users/${userId}/sync-teaseme`, {
+    const response = await apiFetch(`${API_URL}/users/${userId}/sync-teaseme`, {
       method: 'POST',
       headers: getAuthHeaders(),
     });
@@ -657,7 +654,7 @@ export interface Commission {
 
 export const commissionApi = {
   async getAll(): Promise<Commission[]> {
-    const response = await fetch(`${API_URL}/commissions`, {
+    const response = await apiFetch(`${API_URL}/commissions`, {
       headers: getAuthHeaders(),
     });
     const data = await handleResponse(response, 'Failed to fetch commissions');
@@ -665,7 +662,7 @@ export const commissionApi = {
   },
 
   async updateStatus(id: string, status: 'unpaid' | 'pending' | 'paid'): Promise<Commission> {
-    const response = await fetch(`${API_URL}/commissions/${id}`, {
+    const response = await apiFetch(`${API_URL}/commissions/${id}`, {
       method: 'PATCH',
       headers: getAuthHeaders(),
       body: JSON.stringify({ status }),
@@ -704,7 +701,7 @@ export const transactionApi = {
     if (params?.search) query.set('search', params.search);
     const qs = query.toString();
     const url = qs ? `${API_URL}/transactions?${qs}` : `${API_URL}/transactions`;
-    const response = await fetch(url, { headers: getAuthHeaders() });
+    const response = await apiFetch(url, { headers: getAuthHeaders() });
     return handleResponse(response, 'Failed to fetch transactions');
   },
 };
@@ -739,7 +736,7 @@ export interface WisePayoutResult {
 export const wiseApi = {
   /** Admin: get Wise profile info + balances */
   async getProfile(): Promise<{ profile: WiseProfile; profileId: number; balances: WiseBalance[] }> {
-    const response = await fetch(`${API_URL}/wise/profile`, {
+    const response = await apiFetch(`${API_URL}/wise/profile`, {
       headers: getAuthHeaders(),
     });
     return handleResponse(response, 'Failed to fetch Wise profile');
@@ -754,7 +751,7 @@ export const wiseApi = {
     wiseEmail?: string | null;
     wiseRecipientType?: string | null;
   }): Promise<{ user: { id: string; email: string; wiseRecipientId: string | null; wiseEmail: string | null; wiseRecipientType: string | null } }> {
-    const response = await fetch(`${API_URL}/wise/recipient`, {
+    const response = await apiFetch(`${API_URL}/wise/recipient`, {
       method: 'PUT',
       headers: getAuthHeaders(),
       body: JSON.stringify(data),
@@ -771,7 +768,7 @@ export const wiseApi = {
     user: { id: string; email: string; wiseRecipientId: string | null; wiseEmail: string | null; wiseRecipientType: string | null };
     message: string;
   }> {
-    const response = await fetch(`${API_URL}/wise/me/recipient`, {
+    const response = await apiFetch(`${API_URL}/wise/me/recipient`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ recipient }),
@@ -787,7 +784,7 @@ export const wiseApi = {
     wiseAccount: { id: number; type: string; accountHolderName: string };
     message: string;
   }> {
-    const response = await fetch(`${API_URL}/wise/recipients`, {
+    const response = await apiFetch(`${API_URL}/wise/recipients`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ userId, recipient }),
@@ -801,7 +798,7 @@ export const wiseApi = {
     transfer: WiseTransfer;
     message: string;
   }> {
-    const response = await fetch(`${API_URL}/wise/payout`, {
+    const response = await apiFetch(`${API_URL}/wise/payout`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ commissionId }),
@@ -815,7 +812,7 @@ export const wiseApi = {
     succeeded: number;
     failed: number;
   }> {
-    const response = await fetch(`${API_URL}/wise/payout/bulk`, {
+    const response = await apiFetch(`${API_URL}/wise/payout/bulk`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ commissionIds }),
@@ -825,7 +822,7 @@ export const wiseApi = {
 
   /** Admin: refresh transfer status for a commission */
   async getPayoutStatus(commissionId: string): Promise<{ transfer: WiseTransfer; commission: Commission }> {
-    const response = await fetch(`${API_URL}/wise/payout/${commissionId}`, {
+    const response = await apiFetch(`${API_URL}/wise/payout/${commissionId}`, {
       headers: getAuthHeaders(),
     });
     return handleResponse(response, 'Failed to get payout status');
@@ -850,7 +847,7 @@ export const usersApi = {
    * offer a "filter by account manager" dropdown.
    */
   async listAccountManagers(): Promise<AccountManagerSummary[]> {
-    const response = await fetch(`${API_URL}/users/role/account-managers`, {
+    const response = await apiFetch(`${API_URL}/users/role/account-managers`, {
       headers: getAuthHeaders(),
     });
     const data = await handleResponse(response, 'Failed to fetch account managers');
@@ -863,17 +860,17 @@ export const chattersApi = {
     const params = new URLSearchParams();
     if (options?.accountManagerId) params.set('accountManagerId', options.accountManagerId);
     const qs = params.toString();
-    const response = await fetch(`${API_URL}/chatters${qs ? `?${qs}` : ''}`, { headers: getAuthHeaders() });
+    const response = await apiFetch(`${API_URL}/chatters${qs ? `?${qs}` : ''}`, { headers: getAuthHeaders() });
     return handleResponse(response, 'Failed to list chatters');
   },
 
   async get(id: string): Promise<{ chatter: import('../types').Chatter }> {
-    const response = await fetch(`${API_URL}/chatters/${id}`, { headers: getAuthHeaders() });
+    const response = await apiFetch(`${API_URL}/chatters/${id}`, { headers: getAuthHeaders() });
     return handleResponse(response, 'Failed to get chatter');
   },
 
   async create(data: { email: string; firstName?: string; lastName?: string }): Promise<{ chatter: import('../types').Chatter; inviteEmailSent: boolean }> {
-    const response = await fetch(`${API_URL}/chatters`, {
+    const response = await apiFetch(`${API_URL}/chatters`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify(data),
@@ -883,7 +880,7 @@ export const chattersApi = {
   },
 
   async delete(id: string): Promise<{ message: string }> {
-    const response = await fetch(`${API_URL}/chatters/${id}`, {
+    const response = await apiFetch(`${API_URL}/chatters/${id}`, {
       method: 'DELETE',
       headers: getAuthHeaders(),
     });
@@ -891,7 +888,7 @@ export const chattersApi = {
   },
 
   async getMyGroups(): Promise<{ groups: ChatterMyGroup[] }> {
-    const response = await fetch(`${API_URL}/chatters/me/groups`, { headers: getAuthHeaders() });
+    const response = await apiFetch(`${API_URL}/chatters/me/groups`, { headers: getAuthHeaders() });
     return handleResponse(response, 'Failed to fetch my groups');
   },
 };
@@ -927,7 +924,7 @@ export interface ChatterMyGroup {
 
 export const elevenLabsApi = {
   async textToSpeech(text: string, voiceId?: string, mood?: string, moodDescription?: string, language?: string): Promise<Blob> {
-    const response = await fetch(`${API_URL}/elevenlabs/tts`, {
+    const response = await apiFetch(`${API_URL}/elevenlabs/tts`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ text, voiceId, mood, moodDescription, language }),
@@ -943,12 +940,9 @@ export const elevenLabsApi = {
     const formData = new FormData();
     formData.append('audio', audioBlob, 'recording.webm');
 
-    // Omit 'Content-Type' so the browser sets the multipart boundary automatically
-    const { 'Content-Type': _ct, ...authHeaders } = getAuthHeaders() as Record<string, string>;
-
-    const response = await fetch(`${API_URL}/elevenlabs/transcribe`, {
+    // No Content-Type header — browser sets multipart boundary automatically
+    const response = await apiFetch(`${API_URL}/elevenlabs/transcribe`, {
       method: 'POST',
-      headers: authHeaders,
       body: formData,
     });
     if (!response.ok) {
@@ -961,17 +955,17 @@ export const elevenLabsApi = {
 
 export const chatterGroupsApi = {
   async list(): Promise<{ groups: import('../types').ChatterGroup[] }> {
-    const response = await fetch(`${API_URL}/chatter-groups`, { headers: getAuthHeaders() });
+    const response = await apiFetch(`${API_URL}/chatter-groups`, { headers: getAuthHeaders() });
     return handleResponse(response, 'Failed to list chatter groups');
   },
 
   async get(id: string): Promise<{ group: import('../types').ChatterGroup }> {
-    const response = await fetch(`${API_URL}/chatter-groups/${id}`, { headers: getAuthHeaders() });
+    const response = await apiFetch(`${API_URL}/chatter-groups/${id}`, { headers: getAuthHeaders() });
     return handleResponse(response, 'Failed to get chatter group');
   },
 
   async create(data: { name: string; commissionPercentage: number; tag?: string | null }): Promise<{ group: import('../types').ChatterGroup }> {
-    const response = await fetch(`${API_URL}/chatter-groups`, {
+    const response = await apiFetch(`${API_URL}/chatter-groups`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify(data),
@@ -980,7 +974,7 @@ export const chatterGroupsApi = {
   },
 
   async update(id: string, data: { name?: string; commissionPercentage?: number; tag?: string | null }): Promise<{ group: import('../types').ChatterGroup }> {
-    const response = await fetch(`${API_URL}/chatter-groups/${id}`, {
+    const response = await apiFetch(`${API_URL}/chatter-groups/${id}`, {
       method: 'PUT',
       headers: getAuthHeaders(),
       body: JSON.stringify(data),
@@ -989,7 +983,7 @@ export const chatterGroupsApi = {
   },
 
   async delete(id: string): Promise<{ message: string }> {
-    const response = await fetch(`${API_URL}/chatter-groups/${id}`, {
+    const response = await apiFetch(`${API_URL}/chatter-groups/${id}`, {
       method: 'DELETE',
       headers: getAuthHeaders(),
     });
@@ -997,7 +991,7 @@ export const chatterGroupsApi = {
   },
 
   async addMember(groupId: string, chatterId: string): Promise<{ member: import('../types').ChatterGroupMember }> {
-    const response = await fetch(`${API_URL}/chatter-groups/${groupId}/members`, {
+    const response = await apiFetch(`${API_URL}/chatter-groups/${groupId}/members`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ chatterId }),
@@ -1006,7 +1000,7 @@ export const chatterGroupsApi = {
   },
 
   async removeMember(groupId: string, chatterId: string): Promise<{ message: string }> {
-    const response = await fetch(`${API_URL}/chatter-groups/${groupId}/members/${chatterId}`, {
+    const response = await apiFetch(`${API_URL}/chatter-groups/${groupId}/members/${chatterId}`, {
       method: 'DELETE',
       headers: getAuthHeaders(),
     });
@@ -1014,7 +1008,7 @@ export const chatterGroupsApi = {
   },
 
   async linkPromoter(groupId: string, promoterId: string): Promise<{ promoter: { id: string; email: string } }> {
-    const response = await fetch(`${API_URL}/chatter-groups/${groupId}/promoter`, {
+    const response = await apiFetch(`${API_URL}/chatter-groups/${groupId}/promoter`, {
       method: 'PUT',
       headers: getAuthHeaders(),
       body: JSON.stringify({ promoterId }),
@@ -1023,7 +1017,7 @@ export const chatterGroupsApi = {
   },
 
   async unlinkPromoter(groupId: string, promoterId: string): Promise<{ message: string }> {
-    const response = await fetch(`${API_URL}/chatter-groups/${groupId}/promoter/${promoterId}`, {
+    const response = await apiFetch(`${API_URL}/chatter-groups/${groupId}/promoter/${promoterId}`, {
       method: 'DELETE',
       headers: getAuthHeaders(),
     });

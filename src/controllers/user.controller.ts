@@ -585,9 +585,51 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
     // referral.controller.ts gates hidden campaigns on userType only, so we
     // don't need per-campaign referrals here.
     if (callerIsAdmin && resolvedType === UserType.ACCOUNT_MANAGER) {
-      const adminCampaign = await prisma.campaign.findFirst({
-        where: { isActive: true, visibleToPromoters: false },
+      // Prefer a hidden membership campaign that already has a
+      // linkedCampaignId configured — that link is what surfaces in the
+      // AM's invite picker (campaign.controller.ts → getAllCampaigns).
+      // If the only available hidden campaign is unlinked, back-fill the
+      // link to the single active public campaign when there is exactly
+      // one (zero or several = ambiguous, so we leave it for the admin to
+      // configure explicitly via the Campaigns admin UI).
+      let adminCampaign = await prisma.campaign.findFirst({
+        where: {
+          isActive: true,
+          visibleToPromoters: false,
+          linkedCampaignId: { not: null },
+        },
+        orderBy: { id: 'asc' },
       });
+      if (!adminCampaign) {
+        adminCampaign = await prisma.campaign.findFirst({
+          where: { isActive: true, visibleToPromoters: false },
+          orderBy: { id: 'asc' },
+        });
+      }
+      if (adminCampaign && !adminCampaign.linkedCampaignId) {
+        const publicCampaigns = await prisma.campaign.findMany({
+          where: { isActive: true, visibleToPromoters: true },
+          select: { id: true },
+          take: 2,
+        });
+        if (publicCampaigns.length === 1) {
+          const updateResult = await prisma.campaign.updateMany({
+            where: {
+              id: adminCampaign.id,
+              isActive: true,
+              visibleToPromoters: false,
+              linkedCampaignId: null,
+            },
+            data: { linkedCampaignId: publicCampaigns[0].id },
+          });
+          if (updateResult.count === 1) {
+            adminCampaign = {
+              ...adminCampaign,
+              linkedCampaignId: publicCampaigns[0].id,
+            };
+          }
+        }
+      }
       if (adminCampaign) {
         await prisma.referral.create({
           data: {
