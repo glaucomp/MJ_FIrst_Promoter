@@ -82,6 +82,7 @@ const getAccountManagerVisibleCampaigns = async (amUserId: string) => {
       referredUserId: amUserId,
       status: 'ACTIVE',
       campaign: {
+        isActive: true,
         visibleToPromoters: false,
       },
       referrer: {
