@@ -1,4 +1,9 @@
-import { PasswordResetPurpose, PrismaClient, UserRole, UserType } from "@prisma/client";
+import {
+  PasswordResetPurpose,
+  PrismaClient,
+  UserRole,
+  UserType,
+} from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { Response } from "express";
 import { validationResult } from "express-validator";
@@ -17,12 +22,14 @@ import { buildSetPasswordUrl } from "../utils/frontend-url";
 const prisma = new PrismaClient();
 
 const generateToken = (userId: string, email: string, role: UserRole) =>
-  jwt.sign({ id: userId, email, role }, process.env.JWT_SECRET!, { expiresIn: "7d" });
+  jwt.sign({ id: userId, email, role }, process.env.JWT_SECRET!, {
+    expiresIn: "7d",
+  });
 
 const TOKEN_COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'strict' as const,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "strict" as const,
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 
@@ -121,16 +128,16 @@ export const register = async (req: AuthRequest, res: Response) => {
         const referrerTracking = await prisma.referral.findFirst({
           where: {
             referrerId: referral.referrerId,
-            referredUserId: null,  // Customer tracking referral
-            status: 'ACTIVE'
-          }
+            referredUserId: null, // Customer tracking referral
+            status: "ACTIVE",
+          },
         });
 
         // Determine the appropriate campaign for the new promoter
         // Regular promoters (level 2+) should only get campaigns visible to promoters
         // They should NOT inherit hidden campaigns like "Account Manager"
         let assignedCampaignId = referral.campaignId;
-        
+
         // If the parent campaign is hidden from promoters, use the linked campaign
         if (!referral.campaign.visibleToPromoters) {
           // Check if there's a linked campaign configured
@@ -138,32 +145,38 @@ export const register = async (req: AuthRequest, res: Response) => {
             assignedCampaignId = referral.campaign.linkedCampaignId;
             const linkedCampaign = await prisma.campaign.findUnique({
               where: { id: referral.campaign.linkedCampaignId },
-              select: { name: true }
+              select: { name: true },
             });
-            console.log(`✅ Assigning new promoter ${user.email} to linked campaign: ${linkedCampaign?.name}`);
+            console.log(
+              `✅ Assigning new promoter ${user.email} to linked campaign: ${linkedCampaign?.name}`,
+            );
           } else {
             // Fallback: find any visible campaign
             const visibleCampaign = await prisma.campaign.findFirst({
               where: {
                 isActive: true,
-                visibleToPromoters: true
+                visibleToPromoters: true,
               },
-              orderBy: { createdAt: 'asc' }
+              orderBy: { createdAt: "asc" },
             });
-            
+
             if (visibleCampaign) {
               assignedCampaignId = visibleCampaign.id;
-              console.log(`⚠️ No linked campaign configured. Assigning new promoter ${user.email} to first visible campaign: ${visibleCampaign.name}`);
+              console.log(
+                `⚠️ No linked campaign configured. Assigning new promoter ${user.email} to first visible campaign: ${visibleCampaign.name}`,
+              );
             } else {
-              console.warn(`❌ No visible campaigns found for new promoter ${user.email}`);
+              console.warn(
+                `❌ No visible campaigns found for new promoter ${user.email}`,
+              );
               return; // Skip customer tracking creation if no visible campaign exists
             }
           }
         }
 
         // Generate a unique invite code for customer tracking
-        const { nanoid } = await import('nanoid');
-        const customerTrackingCode = `${user.email.split('@')[0]}_${nanoid(8)}`;
+        const { nanoid } = await import("nanoid");
+        const customerTrackingCode = `${user.email.split("@")[0]}_${nanoid(8)}`;
 
         // Create customer tracking referral for the new user with the appropriate campaign
         await prisma.referral.create({
@@ -171,17 +184,19 @@ export const register = async (req: AuthRequest, res: Response) => {
             inviteCode: customerTrackingCode,
             campaignId: assignedCampaignId,
             referrerId: user.id,
-            referredUserId: null,  // NULL means this is for tracking customers
-            parentReferralId: referrerTracking?.id || null,  // Link to referrer's tracking
-            status: 'ACTIVE',
+            referredUserId: null, // NULL means this is for tracking customers
+            parentReferralId: referrerTracking?.id || null, // Link to referrer's tracking
+            status: "ACTIVE",
             level: referral.level + 1,
-            acceptedAt: new Date()
-          }
+            acceptedAt: new Date(),
+          },
         });
 
-        console.log(`✅ Customer tracking referral created for ${user.email} (invite code: ${customerTrackingCode})`);
+        console.log(
+          `✅ Customer tracking referral created for ${user.email} (invite code: ${customerTrackingCode})`,
+        );
       } catch (error) {
-        console.error('❌ Failed to create customer tracking referral:', error);
+        console.error("❌ Failed to create customer tracking referral:", error);
         // Don't fail the registration if customer tracking creation fails
       }
     }
@@ -230,8 +245,8 @@ export const register = async (req: AuthRequest, res: Response) => {
                 where: {
                   referrerId: referrer.id,
                   referredUserId: null,
-                  status: 'ACTIVE'
-                }
+                  status: "ACTIVE",
+                },
               });
 
               // Ensure the campaign is suitable for regular promoters
@@ -241,38 +256,44 @@ export const register = async (req: AuthRequest, res: Response) => {
                 // Check if there's a linked campaign configured
                 const fullCampaign = await prisma.campaign.findUnique({
                   where: { id: campaign.id },
-                  select: { linkedCampaignId: true }
+                  select: { linkedCampaignId: true },
                 });
-                
+
                 if (fullCampaign?.linkedCampaignId) {
                   assignedCampaignId = fullCampaign.linkedCampaignId;
                   const linkedCampaign = await prisma.campaign.findUnique({
                     where: { id: fullCampaign.linkedCampaignId },
-                    select: { name: true }
+                    select: { name: true },
                   });
-                  console.log(`✅ Assigning new promoter ${user.email} to linked campaign: ${linkedCampaign?.name}`);
+                  console.log(
+                    `✅ Assigning new promoter ${user.email} to linked campaign: ${linkedCampaign?.name}`,
+                  );
                 } else {
                   // Fallback: find any visible campaign
                   const visibleCampaign = await prisma.campaign.findFirst({
                     where: {
                       isActive: true,
-                      visibleToPromoters: true
+                      visibleToPromoters: true,
                     },
-                    orderBy: { createdAt: 'asc' }
+                    orderBy: { createdAt: "asc" },
                   });
-                  
+
                   if (visibleCampaign) {
                     assignedCampaignId = visibleCampaign.id;
-                    console.log(`⚠️ No linked campaign configured. Assigning new promoter ${user.email} to first visible campaign: ${visibleCampaign.name}`);
+                    console.log(
+                      `⚠️ No linked campaign configured. Assigning new promoter ${user.email} to first visible campaign: ${visibleCampaign.name}`,
+                    );
                   } else {
-                    console.warn(`❌ No visible campaigns found for new promoter ${user.email}`);
+                    console.warn(
+                      `❌ No visible campaigns found for new promoter ${user.email}`,
+                    );
                     return; // Skip if no visible campaign exists
                   }
                 }
               }
 
-              const { nanoid } = await import('nanoid');
-              const customerTrackingCode = `${user.email.split('@')[0]}_${nanoid(8)}`;
+              const { nanoid } = await import("nanoid");
+              const customerTrackingCode = `${user.email.split("@")[0]}_${nanoid(8)}`;
 
               await prisma.referral.create({
                 data: {
@@ -281,15 +302,20 @@ export const register = async (req: AuthRequest, res: Response) => {
                   referrerId: user.id,
                   referredUserId: null,
                   parentReferralId: referrerTracking?.id || null,
-                  status: 'ACTIVE',
+                  status: "ACTIVE",
                   level: newReferral.level + 1,
-                  acceptedAt: new Date()
-                }
+                  acceptedAt: new Date(),
+                },
               });
 
-              console.log(`✅ Customer tracking referral created for ${user.email}`);
+              console.log(
+                `✅ Customer tracking referral created for ${user.email}`,
+              );
             } catch (error) {
-              console.error('❌ Failed to create customer tracking referral:', error);
+              console.error(
+                "❌ Failed to create customer tracking referral:",
+                error,
+              );
             }
           }
         } else {
@@ -332,7 +358,7 @@ export const register = async (req: AuthRequest, res: Response) => {
     }
 
     const token = generateToken(user.id, user.email, user.role);
-    res.cookie('auth_token', token, TOKEN_COOKIE_OPTIONS);
+    res.cookie("auth_token", token, TOKEN_COOKIE_OPTIONS);
 
     res.status(201).json({
       user,
@@ -383,7 +409,7 @@ export const login = async (req: AuthRequest, res: Response) => {
     }
 
     const token = generateToken(user.id, user.email, user.role);
-    res.cookie('auth_token', token, TOKEN_COOKIE_OPTIONS);
+    res.cookie("auth_token", token, TOKEN_COOKIE_OPTIONS);
 
     const { password: _, ...userWithoutPassword } = user;
 
@@ -424,9 +450,9 @@ export const getCurrentUser = async (req: AuthRequest, res: Response) => {
     // Get user type information
     const userTypeInfo = await getUserTypeInfo(req.user.id);
 
-    res.json({ 
+    res.json({
       user,
-      typeDetails: userTypeInfo
+      typeDetails: userTypeInfo,
     });
   } catch (error) {
     console.error("Get current user error:", error);
@@ -441,7 +467,7 @@ export const refreshToken = async (req: AuthRequest, res: Response) => {
     }
 
     const token = generateToken(req.user.id, req.user.email, req.user.role);
-    res.cookie('auth_token', token, TOKEN_COOKIE_OPTIONS);
+    res.cookie("auth_token", token, TOKEN_COOKIE_OPTIONS);
 
     res.json({ success: true });
   } catch (error) {
@@ -462,7 +488,8 @@ export const forgotPassword = async (req: AuthRequest, res: Response) => {
     }
 
     // express-validator's normalizeEmail() already lowercased; trim defensively.
-    const email = typeof req.body?.email === "string" ? req.body.email.trim() : "";
+    const email =
+      typeof req.body?.email === "string" ? req.body.email.trim() : "";
 
     const user = await prisma.user.findUnique({
       where: { email },
@@ -488,7 +515,8 @@ export const forgotPassword = async (req: AuthRequest, res: Response) => {
     }
 
     res.json({
-      message: "If an account exists for that email, a reset link has been sent.",
+      message:
+        "If an account exists for that email, a reset link has been sent.",
     });
   } catch (error) {
     console.error("Forgot password error:", error);
@@ -533,11 +561,25 @@ export const resetPassword = async (req: AuthRequest, res: Response) => {
     const rawToken: string = req.body.token;
     const password: string = req.body.password;
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // We respond with the same generic "link no longer valid" message for
+    // every token-not-usable reason (missing/expired/already consumed,
+    // user vanished, user deactivated after a RESET was issued). This
+    // avoids leaking which condition occurred, and — importantly —
+    // guarantees the FE always gets a response so the Set Password screen
+    // surfaces an error instead of hanging on an unresolved fetch.
+    const invalidLinkResponse = () =>
+      res
+        .status(400)
+        .json({
+          error: "This link is no longer valid. Please request a new one.",
+        });
 
+    // Validate and consume the token before doing any expensive work — this
+    // prevents CPU-burn attacks that submit many requests with invalid tokens
+    // and rely on bcrypt being called unconditionally.
     const consumed = await consumePasswordResetToken(rawToken);
     if (!consumed) {
-      return null;
+      return invalidLinkResponse();
     }
 
     const existing = await prisma.user.findUnique({
@@ -545,7 +587,7 @@ export const resetPassword = async (req: AuthRequest, res: Response) => {
       select: { isActive: true },
     });
     if (!existing) {
-      return null;
+      return invalidLinkResponse();
     }
 
     // A plain RESET token must not silently re-enable a user who was
@@ -553,8 +595,11 @@ export const resetPassword = async (req: AuthRequest, res: Response) => {
     // rather than leaking account status by 403ing.
     const isInvite = consumed.purpose === PasswordResetPurpose.INVITE;
     if (!isInvite && !existing.isActive) {
-      return null;
+      return invalidLinkResponse();
     }
+
+    // Hash the password only after we know the token is valid and usable.
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await prisma.user.update({
       where: { id: consumed.userId },
@@ -581,20 +626,18 @@ export const resetPassword = async (req: AuthRequest, res: Response) => {
     // same mailbox can't be replayed to take over the account later.
     await invalidateUserTokens(user.id);
 
-    const result = { consumed, user };
+    // Issue a JWT and drop it into the same httpOnly cookie that /login
+    // uses, so the FE lands the user straight in their dashboard. We also
+    // echo the token in the JSON body for backwards compatibility — older
+    // FE builds expect `response.token`; the current build reads the
+    // cookie via subsequent /me calls and ignores the body field.
+    const token = generateToken(user.id, user.email, user.role);
+    res.cookie("auth_token", token, TOKEN_COOKIE_OPTIONS);
 
-    if (!result) {
-      return res
-        .status(400)
-        .json({ error: "This link is no longer valid. Please request a new one." });
-    }
-
-    const token = generateToken(result.user.id, result.user.email, result.user.role);
-    res.cookie('auth_token', token, TOKEN_COOKIE_OPTIONS);
-
-    res.json({
-      user: result.user,
-      purpose: result.consumed.purpose.toLowerCase(),
+    return res.json({
+      user,
+      token,
+      purpose: consumed.purpose.toLowerCase(),
     });
   } catch (error) {
     console.error("Reset password error:", error);
@@ -603,7 +646,7 @@ export const resetPassword = async (req: AuthRequest, res: Response) => {
 };
 
 export const logout = (_req: AuthRequest, res: Response) => {
-  res.clearCookie('auth_token', TOKEN_COOKIE_OPTIONS);
+  res.clearCookie("auth_token", TOKEN_COOKIE_OPTIONS);
   res.json({ success: true });
 };
 

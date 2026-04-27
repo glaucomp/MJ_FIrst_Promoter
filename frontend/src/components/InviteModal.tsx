@@ -39,7 +39,14 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
   const loadCampaigns = async () => {
     try {
       const data = await modelsApi.getCampaigns();
-      const filteredCampaigns = data.filter(c => c.isActive && c.visibleToPromoters);
+      // Server already scopes the list per-role: AMs receive the public
+      // campaign linked from their hidden membership campaign, promoters /
+      // team managers receive `visibleToPromoters: true` campaigns, admins
+      // receive everything. Here we drop inactive rows and keep only
+      // campaigns marked `visibleToPromoters`.
+      const filteredCampaigns = data.filter(
+        (c) => c.isActive && c.visibleToPromoters,
+      );
       setCampaigns(filteredCampaigns);
       if (filteredCampaigns.length > 0) {
         setSelectedCampaignId(filteredCampaigns[0].id);
@@ -147,7 +154,8 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
                 <select
                   value={selectedCampaignId}
                   onChange={(e) => setSelectedCampaignId(e.target.value)}
-                  className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[16px] py-[12px] text-[16px] text-white focus:outline-none focus:border-[#ff0f5f]"
+                  disabled={campaigns.length === 0}
+                  className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[16px] py-[12px] text-[16px] text-white focus:outline-none focus:border-[#ff0f5f] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {campaigns.map((campaign) => (
                     <option key={campaign.id} value={campaign.id}>
@@ -155,6 +163,13 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
                     </option>
                   ))}
                 </select>
+                {campaigns.length === 0 && (
+                  <p className="text-[#ffcc33] text-[13px] leading-[1.4] mt-[4px]">
+                    {userRole === 'account_manager'
+                      ? 'No public campaign is linked to your account manager campaign yet. Ask an admin to set the linked campaign on the Campaigns page.'
+                      : 'No active public campaigns are available. Ask an admin to enable a campaign.'}
+                  </p>
+                )}
               </div>
 
               {quota && !quota.unlimited && (
