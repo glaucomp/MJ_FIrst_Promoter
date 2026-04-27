@@ -19,8 +19,9 @@ export const authenticate = async (
   next: NextFunction
 ) => {
   try {
-    const token = req.cookies?.auth_token
-      ?? req.headers.authorization?.replace(/^Bearer /, '');
+    const authorizationHeader = req.headers.authorization;
+    const bearerToken = authorizationHeader?.trim().match(/^Bearer\s+(.+)$/)?.[1]?.trim();
+    const token = req.cookies?.auth_token ?? bearerToken;
 
     if (!token) {
       return res.status(401).json({ error: 'No token provided' });
