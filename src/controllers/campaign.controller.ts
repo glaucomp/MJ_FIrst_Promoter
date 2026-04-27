@@ -96,10 +96,46 @@ export const getAllCampaigns = async (req: AuthRequest, res: Response) => {
         },
         select: {
           campaign: {
-            select: { linkedCampaignId: true },
+            select: { id: true, linkedCampaignId: true },
           },
         },
       });
+
+      // Self-heal: any membership row whose hidden campaign has no
+      // linkedCampaignId would otherwise produce an empty picker. If there
+      // is exactly one obvious public campaign on the system (active +
+      // visibleToPromoters), back-fill the link automatically so AMs
+      // created before this guard existed (or via the admin UI without an
+      // explicit link) immediately have somewhere to invite onto. If there
+      // are zero or several public campaigns we can't safely guess, so we
+      // leave the link unset and the FE will surface an empty-state.
+      const unlinkedMembershipCampaignIds = Array.from(
+        new Set(
+          amMemberships.flatMap((r) =>
+            r.campaign && !r.campaign.linkedCampaignId ? [r.campaign.id] : [],
+          ),
+        ),
+      );
+      if (unlinkedMembershipCampaignIds.length > 0) {
+        const publicCampaigns = await prisma.campaign.findMany({
+          where: { isActive: true, visibleToPromoters: true },
+          select: { id: true },
+          take: 2,
+        });
+        if (publicCampaigns.length === 1) {
+          const fallbackPublicId = publicCampaigns[0].id;
+          await prisma.campaign.updateMany({
+            where: { id: { in: unlinkedMembershipCampaignIds } },
+            data: { linkedCampaignId: fallbackPublicId },
+          });
+          for (const m of amMemberships) {
+            if (m.campaign && !m.campaign.linkedCampaignId) {
+              m.campaign.linkedCampaignId = fallbackPublicId;
+            }
+          }
+        }
+      }
+
       const linkedCampaignIds = Array.from(
         new Set(
           amMemberships
