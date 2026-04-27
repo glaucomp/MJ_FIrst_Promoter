@@ -598,10 +598,12 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
           visibleToPromoters: false,
           linkedCampaignId: { not: null },
         },
+        orderBy: { id: 'asc' },
       });
       if (!adminCampaign) {
         adminCampaign = await prisma.campaign.findFirst({
           where: { isActive: true, visibleToPromoters: false },
+          orderBy: { id: 'asc' },
         });
       }
       if (adminCampaign && !adminCampaign.linkedCampaignId) {
