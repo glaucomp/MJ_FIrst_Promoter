@@ -1,3 +1,6 @@
+import http from "node:http";
+import https from "node:https";
+
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -184,6 +187,74 @@ export interface TeasemeActionResult {
   raw?: unknown;
 }
 
+// Raw http(s) POST that tolerates self-signed TLS certs (rejectUnauthorized:
+// false). We can't use the global `fetch` for this because Node's fetch (built
+// on undici) doesn't expose a per-call cert-verification toggle without
+// pulling in `undici` as a direct dep. Falling back to node:http(s) keeps the
+// dep tree unchanged and isolates the relaxed TLS behavior to the single call
+// site that needs it (the approve helper hits a Python service that may run
+// behind a self-signed cert in dev / staging).
+const postRawJson = (
+  url: string,
+  body: Record<string, unknown>,
+  headers: Record<string, string>,
+  timeoutMs: number,
+): Promise<{ status: number; body: unknown } | null> => {
+  return new Promise((resolve) => {
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(url);
+    } catch {
+      resolve(null);
+      return;
+    }
+    if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+      resolve(null);
+      return;
+    }
+    const isHttps = parsedUrl.protocol === "https:";
+    const lib = isHttps ? https : http;
+    const payload = JSON.stringify(body);
+    const req = lib.request(
+      url,
+      {
+        method: "POST",
+        headers: {
+          ...headers,
+          "Content-Length": Buffer.byteLength(payload).toString(),
+        },
+        // Accept self-signed certs — some upstream environments (local /
+        // staging Python services) terminate TLS without a CA-signed cert.
+        // Only applied to https:// URLs; ignored for plain http.
+        ...(isHttps ? { rejectUnauthorized: false } : {}),
+      },
+      (res) => {
+        const chunks: Buffer[] = [];
+        res.on("data", (chunk: Buffer) => chunks.push(chunk));
+        res.on("end", () => {
+          const text = Buffer.concat(chunks).toString("utf8");
+          let parsed: unknown = null;
+          if (text) {
+            try {
+              parsed = JSON.parse(text);
+            } catch {
+              parsed = text;
+            }
+          }
+          resolve({ status: res.statusCode ?? 0, body: parsed });
+        });
+      },
+    );
+    req.on("error", () => resolve(null));
+    req.setTimeout(timeoutMs, () => {
+      req.destroy();
+      resolve(null);
+    });
+    req.write(payload);
+    req.end();
+  });
+};
+
 const postToTeaseme = async (
   url: string,
   body: Record<string, unknown>,
@@ -277,6 +348,13 @@ export const orderLandingPageForPreInfluencer = async (params: {
  * caller is expected to treat a non-null return as "transitioned to building".
  * Both `inviteCode` and `email` are required: the upstream contract demands
  * the pair (unlike the looser order-landing-page endpoint above).
+ *
+ * Unlike the other helpers in this file, this one uses `postRawJson` instead
+ * of `postToTeaseme` because the approve service may sit behind a self-signed
+ * TLS cert in dev / staging (e.g. `https://localhost:8000` from an EC2 box).
+ * The raw helper sets `rejectUnauthorized: false` so the request still goes
+ * through; the trade-off is acceptable because the call is locked to the
+ * MJFP_APPROVE_URL host configured in env, not user-controlled input.
  */
 export const approvePreInfluencer = async (params: {
   inviteCode: string;
@@ -288,10 +366,34 @@ export const approvePreInfluencer = async (params: {
   if (!params.email) {
     throw new Error("approvePreInfluencer requires invitee_email");
   }
-  return postToTeaseme(MJFP_APPROVE_URL, {
-    invite_code: params.inviteCode,
-    invitee_email: params.email,
-  });
+  const token = process.env.MJFP_TOKEN;
+  if (!token) return null;
+
+  const result = await postRawJson(
+    MJFP_APPROVE_URL,
+    {
+      invite_code: params.inviteCode,
+      invitee_email: params.email,
+    },
+    {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      "X-Internal-Token": token,
+    },
+    TEASEME_STATUS_TIMEOUT_MS,
+  );
+  if (!result) return null;
+  if (result.status < 200 || result.status >= 300) return null;
+
+  const raw =
+    result.body && typeof result.body === "object"
+      ? (result.body as Record<string, unknown>)
+      : {};
+  const upstreamOk = typeof raw.ok === "boolean" ? raw.ok : null;
+  if (upstreamOk === false) return null;
+  const statusStr =
+    typeof raw.status === "string" && raw.status ? raw.status : null;
+  return { ok: true, status: statusStr, raw: result.body };
 };
 
 /** Notify TeaseMe that a chatter group was assigned to the (now active) promoter. */
