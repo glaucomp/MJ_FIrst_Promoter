@@ -1689,6 +1689,13 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
             : inviteeEmail ?? `Invite · ${referral.inviteCode}`;
           const isBusy = busyId === referral.id;
           const step = referral.preUser?.currentStep ?? 0;
+          const assetLink = referral.preUser?.assetLink ?? null;
+          const canCopyAssetLink = isSafeTeaseUrl(assetLink);
+          const assetLinkTooltip = canCopyAssetLink
+            ? "Copy landing page link"
+            : assetLink
+              ? "Landing page link is unavailable because the URL is invalid or unsafe"
+              : "Landing page link not available yet";
           return (
             <div
               key={referral.id}
@@ -1766,32 +1773,16 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
                     TeaseMe finishes building the LP, so we keep the pill
                     visible-but-disabled in that case rather than hiding it. */}
                 <OnboardingIconPill
-                  title={
-                    isSafeTeaseUrl(referral.preUser?.assetLink ?? null)
-                      ? "Copy landing page link"
-                      : referral.preUser?.assetLink
-                        ? "Landing page link is unavailable because the URL is invalid or unsafe"
-                        : "Landing page link not available yet"
-                  }
-                  ariaLabel={
-                    isSafeTeaseUrl(referral.preUser?.assetLink ?? null)
-                      ? "Copy landing page link"
-                      : referral.preUser?.assetLink
-                        ? "Landing page link is unavailable because the URL is invalid or unsafe"
-                        : "Landing page link not available yet"
-                  }
+                  title={assetLinkTooltip}
+                  ariaLabel={assetLinkTooltip}
                   className={`absolute bottom-[10px] right-[12px] ${
-                    isSafeTeaseUrl(referral.preUser?.assetLink ?? null)
-                      ? ""
-                      : "cursor-not-allowed opacity-50"
+                    canCopyAssetLink ? "" : "cursor-not-allowed opacity-50"
                   }`}
                   onClick={
-                    isSafeTeaseUrl(referral.preUser?.assetLink ?? null)
+                    canCopyAssetLink
                       ? async () => {
                           try {
-                            await navigator.clipboard.writeText(
-                              referral.preUser?.assetLink ?? "",
-                            );
+                            await navigator.clipboard.writeText(assetLink!);
                             showToast(
                               "success",
                               "Landing page link copied!",
