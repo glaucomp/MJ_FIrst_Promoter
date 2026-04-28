@@ -120,6 +120,12 @@ const refreshPreUserSteps = async (
   const staleRows = rows.filter((row) => {
     const pre = row.preUser;
     if (!pre) return false;
+    // Once an AM has approved the invite we mark the row with currentStep
+    // >= 4 (one past the 3-step onboarding survey). At that point upstream's
+    // /step-progress can't tell us anything new about onboarding, and any
+    // poll either is a no-op or risks downgrading our locally-promoted
+    // lifecycle state ("building" -> "approved"). Skip these rows entirely.
+    if (pre.currentStep >= 4) return false;
     if (!pre.lastCheckedAt) return true;
     return now - pre.lastCheckedAt.getTime() > TEASEME_POLL_TTL_MS;
   });
@@ -1060,25 +1066,30 @@ export const orderReferralLandingPage = async (
     }
 
     // The "Order Landing Page" click is a *user-driven* lifecycle promotion:
-    // the AM has explicitly approved the invite. We persist `building`
-    // BEFORE the upstream call so a refresh always reflects the click —
-    // even if upstream is slow / down / returns a non-2xx. The upstream
-    // POST then runs best-effort to actually kick off the LP build; its
-    // failure is logged in teaseme.service but never bubbles up as a 502
-    // here, because that would leave the UI showing an error toast for a
-    // state we *did* successfully record.
+    // the AM has explicitly approved the invite. We force-write
+    // (status="building", currentStep=4) BEFORE the upstream call so a
+    // refresh always reflects the click — even if upstream is slow / down
+    // / returns a non-2xx, or if a previous poll left the row at an
+    // unexpected status like "approved" that the rank-based guard would
+    // refuse to overwrite. The upstream POST then runs best-effort to
+    // actually kick off the LP build; its failure is logged in
+    // teaseme.service but never bubbles up as a 502 here, because that
+    // would leave the UI showing an error toast for a state we *did*
+    // successfully record.
     //
-    // chooseForwardStatus() guards the rare case where the row already
-    // sits at a more advanced status (e.g. `live` because TeaseMe already
-    // finished a build) — we won't downgrade back to `building`.
-    const persistedStatus = chooseForwardStatus(
-      referral.preUser.status,
-      "building",
-    );
+    // The single exception is `live` rows: if the LP is already built,
+    // don't roll back to `building`. currentStep is bumped past the 3-step
+    // onboarding survey to 4 to mark "approved + building"; the card UI
+    // caps the displayed value at ONBOARDING_STEPS.length so this still
+    // renders as "3/3" — it's an internal lifecycle marker that also lets
+    // refreshPreUserSteps skip these rows on subsequent list renders
+    // (post-onboarding poll is a no-op at best, downgrade risk at worst).
+    const isLive = referral.preUser.status === "live";
     const updatedPreUser = await prisma.preUser.update({
       where: { id: referral.preUser.id },
       data: {
-        status: persistedStatus,
+        status: isLive ? "live" : "building",
+        currentStep: Math.max(referral.preUser.currentStep, 4),
         lastCheckedAt: new Date(),
       },
       select: {
