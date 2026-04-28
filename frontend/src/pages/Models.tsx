@@ -1765,48 +1765,49 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
                     to clipboard and shows a toast. assetLink is null until
                     TeaseMe finishes building the LP, so we keep the pill
                     visible-but-disabled in that case rather than hiding it. */}
-                {(() => {
-                  const rawAssetLink = referral.preUser?.assetLink ?? null;
-                  const safeAssetLink = isSafeTeaseUrl(rawAssetLink)
-                    ? rawAssetLink
-                    : null;
-                  const assetLinkTooltip = safeAssetLink
-                    ? "Copy landing page link"
-                    : rawAssetLink
-                      ? "Landing page link is unavailable because the URL is invalid or unsafe"
-                      : "Landing page link not available yet";
-                  return (
-                    <OnboardingIconPill
-                      title={assetLinkTooltip}
-                      ariaLabel={assetLinkTooltip}
-                      className={`absolute bottom-[10px] right-[12px] ${
-                        safeAssetLink ? "" : "cursor-not-allowed opacity-50"
-                      }`}
-                      onClick={
-                        safeAssetLink
-                          ? async () => {
-                              try {
-                                await navigator.clipboard.writeText(
-                                  safeAssetLink,
-                                );
-                                showToast(
-                                  "success",
-                                  "Landing page link copied!",
-                                );
-                              } catch {
-                                showToast(
-                                  "error",
-                                  "Failed to copy landing page link",
-                                );
-                              }
-                            }
-                          : undefined
-                      }
-                    >
-                      <OnboardingCopyIcon className="w-[14px] h-[14px]" />
-                    </OnboardingIconPill>
-                  );
-                })()}
+                <OnboardingIconPill
+                  title={
+                    isSafeTeaseUrl(referral.preUser?.assetLink ?? null)
+                      ? "Copy landing page link"
+                      : referral.preUser?.assetLink
+                        ? "Landing page link is unavailable because the URL is invalid or unsafe"
+                        : "Landing page link not available yet"
+                  }
+                  ariaLabel={
+                    isSafeTeaseUrl(referral.preUser?.assetLink ?? null)
+                      ? "Copy landing page link"
+                      : referral.preUser?.assetLink
+                        ? "Landing page link is unavailable because the URL is invalid or unsafe"
+                        : "Landing page link not available yet"
+                  }
+                  className={`absolute bottom-[10px] right-[12px] ${
+                    isSafeTeaseUrl(referral.preUser?.assetLink ?? null)
+                      ? ""
+                      : "cursor-not-allowed opacity-50"
+                  }`}
+                  onClick={
+                    isSafeTeaseUrl(referral.preUser?.assetLink ?? null)
+                      ? async () => {
+                          try {
+                            await navigator.clipboard.writeText(
+                              referral.preUser?.assetLink ?? "",
+                            );
+                            showToast(
+                              "success",
+                              "Landing page link copied!",
+                            );
+                          } catch {
+                            showToast(
+                              "error",
+                              "Failed to copy landing page link",
+                            );
+                          }
+                        }
+                      : undefined
+                  }
+                >
+                  <OnboardingCopyIcon className="w-[14px] h-[14px]" />
+                </OnboardingIconPill>
               </div>
 
               {/* Action row — layout changes by chip state */}
