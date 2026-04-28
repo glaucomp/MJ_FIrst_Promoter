@@ -3,6 +3,7 @@ import { body } from 'express-validator';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { authenticate, AuthRequest } from '../middleware/auth.middleware';
 import * as chatterController from '../controllers/chatter.controller';
+import { EMAIL_NORMALIZE_OPTIONS } from '../utils/email-normalize';
 
 const router = Router();
 const rateLimitKeyByUserOrIp = (req: Request) => {
@@ -22,7 +23,7 @@ router.post(
     legacyHeaders: false,
   }),
   [
-    body('email').isEmail().normalizeEmail(),
+    body('email').isEmail().normalizeEmail(EMAIL_NORMALIZE_OPTIONS),
     body('firstName').optional().trim(),
     body('lastName').optional().trim(),
   ],
@@ -40,7 +41,7 @@ router.post(
     legacyHeaders: false,
   }),
   [
-    body('email').isEmail().normalizeEmail(),
+    body('email').isEmail().normalizeEmail(EMAIL_NORMALIZE_OPTIONS),
     body('influencer_id').isString().trim().notEmpty(),
     body('telegram_id').isInt({ min: 1 }).toInt(),
     body('full_name').isString().trim().notEmpty(),

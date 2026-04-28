@@ -493,6 +493,15 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ error: 'Insufficient permissions' });
     }
 
+    // Surface express-validator failures (e.g. malformed email) before any
+    // DB work. The route-level validator also lower-cases the address via
+    // normalizeEmail() so the row gets stored in the same canonical form
+    // /login looks up.
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
     const { email, firstName, lastName, userType, campaignId } = req.body as {
       email?: string;
       firstName?: string;
