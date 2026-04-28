@@ -6,6 +6,7 @@ import { createPromoter } from '../controllers/promoter.api.controller';
 import { syncTeaseMeForUser } from '../controllers/teaseme.controller';
 import { UserRole } from '@prisma/client';
 import { PASSWORD_MIN_LENGTH, PASSWORD_TOO_SHORT_MESSAGE } from '../utils/password-policy';
+import { EMAIL_NORMALIZE_OPTIONS } from '../utils/email-normalize';
 
 const router = Router();
 
@@ -23,7 +24,7 @@ router.post(
   authenticate,
   authorize(UserRole.ADMIN),
   [
-    body('email').isEmail().normalizeEmail(),
+    body('email').isEmail().normalizeEmail(EMAIL_NORMALIZE_OPTIONS),
     body('password').isLength({ min: PASSWORD_MIN_LENGTH }).withMessage(PASSWORD_TOO_SHORT_MESSAGE),
     body('firstName').optional().trim(),
     body('lastName').optional().trim()
@@ -33,9 +34,15 @@ router.post(
 
 // Create a non-admin user. Admins can create AMs/TMs/promoters; account
 // managers can create promoters only. Controller enforces the role rules.
+//
+// Normalize the email here so the row gets stored in the same canonical form
+// (lower-cased, dots preserved) that `/login`, `/forgot-password`, etc use
+// when looking the user up. Otherwise a user created via this endpoint with
+// a mixed-case address would never match the lower-cased login lookup.
 router.post(
   '/create',
   authenticate,
+  [body('email').isEmail().normalizeEmail(EMAIL_NORMALIZE_OPTIONS)],
   userController.createUserByAdmin
 );
 

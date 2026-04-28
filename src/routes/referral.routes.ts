@@ -2,6 +2,7 @@ import { Router } from "express";
 import { body } from "express-validator";
 import * as referralController from "../controllers/referral.controller";
 import { authenticate } from "../middleware/auth.middleware";
+import { EMAIL_NORMALIZE_OPTIONS } from "../utils/email-normalize";
 
 const router = Router();
 
@@ -16,20 +17,11 @@ router.post(
       .notEmpty()
       .withMessage("Email is required")
       .isEmail()
-      // Normalize the email before it reaches the controller, but keep
-      // provider-specific canonicalization conservative. In particular, do
-      // not strip Gmail dots or subaddresses (for example,
-      // "dev.mjpro@gmail.com" should not become "devmjpro@gmail.com"), and
-      // do not remove subaddresses for other supported providers. Note that
-      // normalizeEmail() may still lowercase parts of the address.
-      .normalizeEmail({
-        gmail_remove_dots: false,
-        gmail_remove_subaddress: false,
-        gmail_convert_googlemaildotcom: false,
-        outlookdotcom_remove_subaddress: false,
-        yahoo_remove_subaddress: false,
-        icloud_remove_subaddress: false,
-      }),
+      // Normalize the email before it reaches the controller using the
+      // shared conservative options (no Gmail-dot stripping, no
+      // subaddress removal). See `utils/email-normalize.ts` for the
+      // rationale and the full set of disabled flags.
+      .normalizeEmail(EMAIL_NORMALIZE_OPTIONS),
   ],
   referralController.createReferralInvite,
 );
