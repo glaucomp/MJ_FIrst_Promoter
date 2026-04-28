@@ -1234,26 +1234,6 @@ const OnboardingCopyIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-// Allowed hostnames for TeaseMe-provided URLs. Only these origins are
-// permitted to be opened via the "Open" pill to guard against open-redirect
-// or injected javascript: / data: payloads from the upstream API response.
-const TEASEME_APEX = "teaseme.live";
-
-/** Returns true iff `url` is a safe https URL pointing at a TeaseMe host. */
-function isSafeTeaseUrl(url: string | null | undefined): url is string {
-  if (!url) return false;
-  try {
-    const parsed = new URL(url);
-    const host = parsed.hostname;
-    // Accept the apex domain and direct subdomains only (e.g. onboarding.teaseme.live).
-    // The subdomain check uses a dot-prefix so 'evil-teaseme.live' never matches.
-    const isTeasemeHost =
-      host === TEASEME_APEX || host.endsWith(`.${TEASEME_APEX}`);
-    return parsed.protocol === "https:" && isTeasemeHost;
-  } catch {
-    return false;
-  }
-}
 
 // Shared dark-pill wrapper for both onboarding glyphs — matches the
 // Deny/ReAssign button surface so the four controls feel like a set.
@@ -1667,11 +1647,12 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
           // keep the icon visible-but-disabled with a tooltip that says why.
           const isTerminalState =
             chipState === "denied" || chipState === "expired";
+          // Trust whatever URL the upstream sends — open it as-is. Only gate
+          // it on (a) being non-empty and (b) the invite not being in a
+          // terminal state (denied / expired) where the session is gone.
           const rawOpenUrl = referral.preUser?.surveyLink ?? null;
-          // Only allow safe https URLs on teaseme.live — reject anything with
-          // a dangerous scheme (javascript:, data:) or an unexpected host.
           const openUrl =
-            (!isTerminalState && isSafeTeaseUrl(rawOpenUrl)) ? rawOpenUrl : null;
+            !isTerminalState && rawOpenUrl ? rawOpenUrl : null;
           const openTooltip = openUrl
             ? "Open onboarding session"
             : isTerminalState
@@ -1690,12 +1671,10 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
           const isBusy = busyId === referral.id;
           const step = referral.preUser?.currentStep ?? 0;
           const assetLink = referral.preUser?.assetLink ?? null;
-          const canCopyAssetLink = isSafeTeaseUrl(assetLink);
+          const canCopyAssetLink = !!assetLink;
           const assetLinkTooltip = canCopyAssetLink
             ? "Copy landing page link"
-            : assetLink
-              ? "Landing page link is unavailable because the URL is invalid or unsafe"
-              : "Landing page link not available yet";
+            : "Landing page link not available yet";
           return (
             <div
               key={referral.id}
