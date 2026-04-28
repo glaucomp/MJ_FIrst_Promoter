@@ -1659,36 +1659,23 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
       <div className="grid gap-[16px] lg:grid-cols-2 grid-cols-1">
         {visibleReferrals.map((referral) => {
           const chipState = deriveChipState(referral);
-          // The top "Open" pill follows the lifecycle: while the invitee is
-          // mid-survey we point at the in-flight onboarding session
-          // (surveyLink); once the LP is live we point at the built page
-          // (assetLink). Either may still be null upstream — in that case
-          // we keep the pill visible-but-disabled with a tooltip that says
-          // why, rather than hiding it (the slot is part of the card layout).
-          const isOnboardingState =
-            chipState === "waiting" ||
-            chipState === "order_lp" ||
-            chipState === "building";
+          // The Onboarding "Open" icon always points at the in-flight survey
+          // session (preUser.surveyLink) regardless of chip state — even on
+          // lp_live we want the promoter to be able to revisit the survey,
+          // not jump to the built landing page. surveyLink may still be null
+          // upstream (e.g. before the invitee has started); in that case we
+          // keep the icon visible-but-disabled with a tooltip that says why.
           const isTerminalState =
             chipState === "denied" || chipState === "expired";
-          const rawOpenUrl =
-            chipState === "lp_live"
-              ? referral.preUser?.assetLink ?? null
-              : isOnboardingState
-                ? referral.preUser?.surveyLink ?? null
-                : null;
+          const rawOpenUrl = referral.preUser?.surveyLink ?? null;
           // Only allow safe https URLs on teaseme.live — reject anything with
           // a dangerous scheme (javascript:, data:) or an unexpected host.
           const openUrl = isSafeTeaseUrl(rawOpenUrl) ? rawOpenUrl : null;
           const openTooltip = openUrl
-            ? chipState === "lp_live"
-              ? "Open landing page"
-              : "Open onboarding session"
-            : chipState === "lp_live"
-              ? "Landing page URL not available yet"
-              : isTerminalState
-                ? "Onboarding session no longer available"
-                : "Onboarding session not started yet";
+            ? "Open onboarding session"
+            : isTerminalState
+              ? "Onboarding session no longer available"
+              : "Onboarding session not started yet";
           const inviteeEmail =
             referral.referredUser?.email ??
             referral.metadata?.inviteeEmail ??
@@ -1744,12 +1731,12 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
                       {Math.min(step, ONBOARDING_STEPS.length)}/
                       {ONBOARDING_STEPS.length}
                     </span>
-                    {/* Opens the appropriate TeaseMe URL in a new tab:
-                        surveyLink while onboarding is in flight, assetLink
-                        once the LP is live. When the relevant link is null
-                        upstream, OnboardingIconPill renders as a non-
-                        interactive <span> (no onClick) so the pill stays
-                        visible-but-inert with a tooltip. */}
+                    {/* Always opens the in-flight onboarding session
+                        (preUser.surveyLink) in a new tab — even on lp_live —
+                        so the promoter can revisit the survey at any point.
+                        When surveyLink is null upstream, OnboardingIconPill
+                        renders as a non-interactive <span> (no onClick) so
+                        the pill stays visible-but-inert with a tooltip. */}
                     <OnboardingIconPill
                       title={openTooltip}
                       ariaLabel={openTooltip}
@@ -1773,27 +1760,55 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
                   step={step}
                   dimmed={chipState === "expired"}
                 />
-                {/* Copy invite link — writes to clipboard and shows a toast. */}
-                <OnboardingIconPill
-                  title="Copy invite link"
-                  ariaLabel="Copy invite link"
-                  className="absolute bottom-[10px] right-[12px]"
-                  onClick={async () => {
-                    const url = referral.inviteUrl;
-                    if (!url) {
-                      showToast("error", "No invite link available");
-                      return;
-                    }
-                    try {
-                      await navigator.clipboard.writeText(url);
-                      showToast("success", "Invite link copied!");
-                    } catch {
-                      showToast("error", "Failed to copy invite link");
-                    }
-                  }}
-                >
-                  <OnboardingCopyIcon className="w-[14px] h-[14px]" />
-                </OnboardingIconPill>
+                {/* Copy landing-page (asset) link — writes preUser.assetLink
+                    to clipboard and shows a toast. assetLink is null until
+                    TeaseMe finishes building the LP, so we keep the pill
+                    visible-but-disabled in that case rather than hiding it. */}
+                {(() => {
+                  const rawAssetLink = referral.preUser?.assetLink ?? null;
+                  const safeAssetLink = isSafeTeaseUrl(rawAssetLink)
+                    ? rawAssetLink
+                    : null;
+                  return (
+                    <OnboardingIconPill
+                      title={
+                        safeAssetLink
+                          ? "Copy landing page link"
+                          : "Landing page link not available yet"
+                      }
+                      ariaLabel={
+                        safeAssetLink
+                          ? "Copy landing page link"
+                          : "Landing page link not available yet"
+                      }
+                      className={`absolute bottom-[10px] right-[12px] ${
+                        safeAssetLink ? "" : "cursor-not-allowed opacity-50"
+                      }`}
+                      onClick={
+                        safeAssetLink
+                          ? async () => {
+                              try {
+                                await navigator.clipboard.writeText(
+                                  safeAssetLink,
+                                );
+                                showToast(
+                                  "success",
+                                  "Landing page link copied!",
+                                );
+                              } catch {
+                                showToast(
+                                  "error",
+                                  "Failed to copy landing page link",
+                                );
+                              }
+                            }
+                          : undefined
+                      }
+                    >
+                      <OnboardingCopyIcon className="w-[14px] h-[14px]" />
+                    </OnboardingIconPill>
+                  );
+                })()}
               </div>
 
               {/* Action row — layout changes by chip state */}
