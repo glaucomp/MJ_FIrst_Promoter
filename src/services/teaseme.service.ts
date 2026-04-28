@@ -28,6 +28,12 @@ const TEASEME_STATUS_URL = (
   "https://tmapi.mxjprod.work/mjpromoter/pre-influencers/step-progress"
 ).replace(/\/$/, "");
 const TEASEME_STATUS_TIMEOUT_MS = 3_000;
+// The approve call kicks off real work upstream (LP provisioning + DB writes
+// + email triggers) and routinely takes longer than the cheap /step-progress
+// lookup. Bumped to 30s so a slow upstream doesn't get aborted client-side
+// and surface as a misleading "TeaseMe couldn't start the landing-page build"
+// toast while the work was actually in progress.
+const TEASEME_APPROVE_TIMEOUT_MS = 30_000;
 
 export interface TeasemePreUserStatus {
   step: number;
@@ -194,21 +200,34 @@ export interface TeasemeActionResult {
 // dep tree unchanged and isolates the relaxed TLS behavior to the single call
 // site that needs it (the approve helper hits a Python service that may run
 // behind a self-signed cert in dev / staging).
+// Telemetry tag passed into logs so we can tell which call site failed when
+// reading backend output. Kept intentionally tiny (just the leaf path) — the
+// goal is to disambiguate "approve" from "step-progress" without leaking the
+// full upstream URL into structured logs.
 const postRawJson = (
   url: string,
   body: Record<string, unknown>,
   headers: Record<string, string>,
   timeoutMs: number,
+  tag = "teaseme",
 ): Promise<{ status: number; body: unknown } | null> => {
   return new Promise((resolve) => {
     let parsedUrl: URL;
     try {
       parsedUrl = new URL(url);
-    } catch {
+    } catch (err) {
+      console.error(`[${tag}] invalid url`, {
+        url,
+        err: (err as Error).message,
+      });
       resolve(null);
       return;
     }
     if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+      console.error(`[${tag}] unsupported protocol`, {
+        url,
+        protocol: parsedUrl.protocol,
+      });
       resolve(null);
       return;
     }
@@ -241,12 +260,40 @@ const postRawJson = (
               parsed = text;
             }
           }
-          resolve({ status: res.statusCode ?? 0, body: parsed });
+          const status = res.statusCode ?? 0;
+          if (status < 200 || status >= 300) {
+            // Surface the actual upstream status + body so the operator can
+            // tell whether the failure was a 404 (route not deployed), 401
+            // (token mismatch), 5xx (upstream broke), etc. Truncated to keep
+            // the log line readable.
+            console.warn(`[${tag}] upstream non-2xx`, {
+              url,
+              status,
+              body: text.slice(0, 500),
+            });
+          } else {
+            console.info(`[${tag}] upstream ok`, {
+              url,
+              status,
+              hasBody: text.length > 0,
+            });
+          }
+          resolve({ status, body: parsed });
         });
       },
     );
-    req.on("error", () => resolve(null));
+    req.on("error", (err) => {
+      // Network-level failure: ECONNREFUSED, DNS, TLS handshake (when the
+      // remote certificate is rejected for a reason `rejectUnauthorized:
+      // false` doesn't cover, e.g. wrong-host SNI), etc.
+      console.error(`[${tag}] request error`, {
+        url,
+        err: err.message,
+      });
+      resolve(null);
+    });
     req.setTimeout(timeoutMs, () => {
+      console.warn(`[${tag}] request timed out`, { url, timeoutMs });
       req.destroy();
       resolve(null);
     });
@@ -380,7 +427,8 @@ export const approvePreInfluencer = async (params: {
       Accept: "application/json",
       "X-Internal-Token": token,
     },
-    TEASEME_STATUS_TIMEOUT_MS,
+    TEASEME_APPROVE_TIMEOUT_MS,
+    "mjfp.approve",
   );
   if (!result) return null;
   if (result.status < 200 || result.status >= 300) return null;
