@@ -1769,18 +1769,15 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
                   const safeAssetLink = isSafeTeaseUrl(rawAssetLink)
                     ? rawAssetLink
                     : null;
+                  const assetLinkTooltip = safeAssetLink
+                    ? "Copy landing page link"
+                    : rawAssetLink
+                      ? "Landing page link is unavailable because the URL is invalid or unsafe"
+                      : "Landing page link not available yet";
                   return (
                     <OnboardingIconPill
-                      title={
-                        safeAssetLink
-                          ? "Copy landing page link"
-                          : "Landing page link not available yet"
-                      }
-                      ariaLabel={
-                        safeAssetLink
-                          ? "Copy landing page link"
-                          : "Landing page link not available yet"
-                      }
+                      title={assetLinkTooltip}
+                      ariaLabel={assetLinkTooltip}
                       className={`absolute bottom-[10px] right-[12px] ${
                         safeAssetLink ? "" : "cursor-not-allowed opacity-50"
                       }`}
