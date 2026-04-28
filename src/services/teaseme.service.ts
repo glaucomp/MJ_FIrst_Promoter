@@ -170,6 +170,13 @@ const TEASEME_ASSIGN_CHATTERS_URL = (
   process.env.TEASEME_ASSIGN_CHATTERS_URL ||
   "https://tmapi.mxjprod.work/mjpromoter/pre-influencers/assign-chatters"
 ).replace(/\/$/, "");
+// Approve endpoint hit by the AM-facing "Order Landing Page" button. Distinct
+// from TEASEME_ORDER_LP_URL because the upstream contract differs (this one
+// flips the pre-influencer to "approved" and kicks off the LP build).
+const MJFP_APPROVE_URL = (
+  process.env.MJFP_APPROVE_URL ||
+  "https://localhost:8000/mjpromoter/pre-influencers/approve"
+).replace(/\/$/, "");
 
 export interface TeasemeActionResult {
   ok: boolean;
@@ -262,6 +269,29 @@ export const orderLandingPageForPreInfluencer = async (params: {
   const body: Record<string, unknown> = { invite_code: params.inviteCode };
   if (params.email) body.invitee_email = params.email;
   return postToTeaseme(TEASEME_ORDER_LP_URL, body);
+};
+
+/**
+ * Approve a pre-influencer once their onboarding is complete (3/3). Upstream
+ * flips the row to "approved" and starts building the landing page, so the
+ * caller is expected to treat a non-null return as "transitioned to building".
+ * Both `inviteCode` and `email` are required: the upstream contract demands
+ * the pair (unlike the looser order-landing-page endpoint above).
+ */
+export const approvePreInfluencer = async (params: {
+  inviteCode: string;
+  email: string;
+}): Promise<TeasemeActionResult | null> => {
+  if (!params.inviteCode) {
+    throw new Error("approvePreInfluencer requires inviteCode");
+  }
+  if (!params.email) {
+    throw new Error("approvePreInfluencer requires invitee_email");
+  }
+  return postToTeaseme(MJFP_APPROVE_URL, {
+    invite_code: params.inviteCode,
+    invitee_email: params.email,
+  });
 };
 
 /** Notify TeaseMe that a chatter group was assigned to the (now active) promoter. */

@@ -1117,6 +1117,7 @@ const deriveChipState = (r: Referral): ChipState => {
   if (r.isExpired) return "expired";
   if (r.status === "ACTIVE" || r.status === "COMPLETED") return "lp_live";
   const upstream = r.preUser?.status;
+  const step = r.preUser?.currentStep ?? 0;
   switch (upstream) {
     case "live":
       return "lp_live";
@@ -1126,6 +1127,12 @@ const deriveChipState = (r: Referral): ChipState => {
       return "order_lp";
     case "pending":
     default:
+      // Local promotion: once onboarding is fully complete (3/3) we treat
+      // the row as ready-to-order even if upstream hasn't flipped its
+      // `status` field yet. The AM's click then calls /approve, which
+      // authoritatively moves us to "building". Without this, the green
+      // CTA would stay disabled until the upstream poll caught up.
+      if (step >= ONBOARDING_STEPS.length) return "order_lp";
       return "waiting";
   }
 };
@@ -1525,7 +1532,12 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
                     assetLink: null,
                   }),
                   currentStep: result.preUser.currentStep,
-                  status: result.preUser.status,
+                  // Force the chip to "building" on a successful approve.
+                  // The backend already returns "building" after a 200, but
+                  // we override defensively in case upstream omits `status`
+                  // — the user's intent is "click -> show Building" and we
+                  // don't want a transient `order_lp` flash on slow polls.
+                  status: "building",
                   lastCheckedAt: result.preUser.lastCheckedAt,
                   teasemeUserId: result.preUser.teasemeUserId,
                 },
