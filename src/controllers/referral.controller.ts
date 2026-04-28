@@ -6,10 +6,10 @@ import { AuthRequest } from "../middleware/auth.middleware";
 import { emailService } from "../services/email.service";
 import { getPresignedUrl } from "../services/s3.service";
 import {
+  approvePreInfluencer,
   denyPreInfluencer,
   fetchTeasemePreUserStatus,
   notifyChattersAssigned,
-  orderLandingPageForPreInfluencer,
   reassignPreInfluencer,
 } from "../services/teaseme.service";
 
@@ -1018,7 +1018,13 @@ export const orderReferralLandingPage = async (
       });
     }
 
-    const upstream = await orderLandingPageForPreInfluencer({
+    // The "Order Landing Page" click now hits the /pre-influencers/approve
+    // endpoint (see MJFP_APPROVE_URL). A successful approve flips the row
+    // upstream into the "building" lifecycle phase, so we mirror that
+    // locally on a 200 — even if the response body omits `status` — rather
+    // than re-polling. The user's intent is "click -> show Building", and
+    // we don't want to leave the UI on `order_lp` while a re-poll catches up.
+    const upstream = await approvePreInfluencer({
       inviteCode: referral.inviteCode,
       email: referral.preUser.email,
     });
@@ -1029,31 +1035,11 @@ export const orderReferralLandingPage = async (
       });
     }
 
-    // Upstream may return the new `status` directly. If not, re-poll to get
-    // the authoritative value instead of guessing.
-    let nextStatus = upstream.status ?? null;
-    let nextStep = referral.preUser.currentStep;
-    let nextTeasemeId = referral.preUser.teasemeUserId;
-    if (!nextStatus) {
-      const polled = await fetchTeasemePreUserStatus({
-        email: referral.preUser.email,
-        inviteCode: referral.inviteCode,
-      });
-      if (polled) {
-        nextStatus = polled.status ?? nextStatus;
-        nextStep = polled.step;
-        nextTeasemeId = polled.teasemeUserId ?? nextTeasemeId;
-      }
-    }
-
+    const nextStatus = upstream.status ?? "building";
     const updatedPreUser = await prisma.preUser.update({
       where: { id: referral.preUser.id },
       data: {
-        // Only overwrite status when upstream/poll returned a concrete value —
-        // TeaseMe is authoritative and we must not fabricate a status.
-        ...(nextStatus != null ? { status: nextStatus } : {}),
-        currentStep: nextStep,
-        teasemeUserId: nextTeasemeId,
+        status: nextStatus,
         lastCheckedAt: new Date(),
       },
       select: {
