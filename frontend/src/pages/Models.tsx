@@ -1670,7 +1670,8 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
           const rawOpenUrl = referral.preUser?.surveyLink ?? null;
           // Only allow safe https URLs on teaseme.live — reject anything with
           // a dangerous scheme (javascript:, data:) or an unexpected host.
-          const openUrl = isSafeTeaseUrl(rawOpenUrl) ? rawOpenUrl : null;
+          const openUrl =
+            (!isTerminalState && isSafeTeaseUrl(rawOpenUrl)) ? rawOpenUrl : null;
           const openTooltip = openUrl
             ? "Open onboarding session"
             : isTerminalState
