@@ -423,6 +423,11 @@ export const modelsApi = {
       lastCheckedAt: string | null;
       teasemeUserId: string | null;
     };
+    // false when the local DB was promoted to "building" but the upstream
+    // approve POST didn't 2xx (e.g. TeaseMe slow/unreachable). Surfaced so
+    // the UI can show an informational toast like "saved locally — upstream
+    // will retry" without misleading the AM about whether the click stuck.
+    upstreamOk: boolean;
   }> {
     const response = await apiFetch(
       `${API_URL}/referrals/${referralId}/order-landing-page`,

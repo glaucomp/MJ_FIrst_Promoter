@@ -1148,9 +1148,12 @@ const CHIP_LABEL: Record<ChipState, string> = {
 
 // Tailwind class sets extracted once so hover states and DOM stay lean.
 // Colors follow the Figma reference: warm accent on Waiting, outlined
-// mint/pink on Order LP / Building, filled green on LP Live, red on
-// Expired, and muted gray-red on Denied (to signal "explicit finality"
-// without competing visually with the louder Expired red).
+// mint on Order LP, dashed green on Building (in-flight, not yet "done"),
+// filled green on LP Live, red on Expired, and muted gray-red on Denied
+// (to signal "explicit finality" without competing visually with the
+// louder Expired red). The dashed border on Building is encoded directly
+// in the class string (rather than swapping the outer span) so the same
+// `border` class on the wrapper continues to set width + base style.
 const CHIP_CLASS: Record<ChipState, string> = {
   denied:
     "bg-[rgba(110,110,110,0.15)] border-[#6e6e6e] text-[#b3b3b3]",
@@ -1160,8 +1163,11 @@ const CHIP_CLASS: Record<ChipState, string> = {
     "bg-[rgba(255,170,0,0.15)] border-[#cc8800] text-[#ffaa00]",
   order_lp:
     "bg-[rgba(40,255,112,0.06)] border-[#28ff70] text-[#28ff70]",
+  // tm-success-color06 = #22BF56 (per frontend/src/index.css). Dashed
+  // border telegraphs "in progress" without the visual weight of the
+  // solid LP Live pill.
   building:
-    "bg-[rgba(255,79,143,0.08)] border-[#ff4f8f] text-[#ff4f8f]",
+    "border-dashed bg-[rgba(34,191,86,0.08)] border-tm-success-color06 text-tm-success-color06",
   lp_live:
     "bg-tm-success-color12 border-[#00d948] text-[#28ff70]",
 };
@@ -1532,12 +1538,12 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
                     assetLink: null,
                   }),
                   currentStep: result.preUser.currentStep,
-                  // Force the chip to "building" on a successful approve.
-                  // The backend already returns "building" after a 200, but
-                  // we override defensively in case upstream omits `status`
-                  // — the user's intent is "click -> show Building" and we
-                  // don't want a transient `order_lp` flash on slow polls.
-                  status: "building",
+                  // Use the server's persisted status as the source of truth
+                  // (backend writes "building" before returning, and never
+                  // downgrades). Optimistically forcing "building" here is
+                  // unnecessary now and would mask any future server-side
+                  // override (e.g. row already at `live`).
+                  status: result.preUser.status,
                   lastCheckedAt: result.preUser.lastCheckedAt,
                   teasemeUserId: result.preUser.teasemeUserId,
                 },
@@ -1545,7 +1551,18 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
             : r,
         ),
       );
-      showToast("success", "Landing page build requested");
+      // Local DB is the source of truth — once it's saved we always tell
+      // the AM the click succeeded. If the *upstream* approve lagged, we
+      // soften the message but keep the toast green so the user doesn't
+      // feel like the click "didn't work" (it did — locally).
+      if (result.upstreamOk) {
+        showToast("success", "Landing page build requested");
+      } else {
+        showToast(
+          "success",
+          "Saved — TeaseMe will pick this up on the next sync.",
+        );
+      }
     } catch (err) {
       showToast(
         "error",
@@ -1989,10 +2006,10 @@ const CardActions = ({
 
   if (state === "building") {
     return (
-      <div className="flex items-center gap-[8px] w-full rounded-[6px] border border-dashed border-[rgba(255,79,143,0.4)] bg-[rgba(255,79,143,0.04)] px-[14px] py-[10px] text-[#ff4f8f] text-[13px] font-semibold">
+      <div className="flex items-center gap-[8px] w-full rounded-[6px] border border-dashed border-tm-success-color06 bg-[rgba(34,191,86,0.05)] px-[14px] py-[10px] text-tm-success-color06 text-[13px] font-semibold">
         <span
           aria-hidden
-          className="h-[10px] w-[10px] rounded-full bg-[#ff4f8f] animate-pulse"
+          className="h-[10px] w-[10px] rounded-full bg-tm-success-color06 animate-pulse"
         />
         Building landing page…
       </div>

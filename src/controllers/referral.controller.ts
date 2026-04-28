@@ -33,6 +33,45 @@ const TEASEME_POLL_TTL_MS = (() => {
 // dozens of parallel tmapi requests.
 const TEASEME_POLL_CONCURRENCY = 5;
 
+// PreUser.status follows a strictly forward lifecycle: `pending → order_lp →
+// building → live`. Each rank below increases monotonically along that path.
+// Anything we don't recognize (legacy values, future additions) gets rank
+// `Infinity` so the *first* time we see an unknown status we trust upstream;
+// once it's on disk, only an equally-or-more advanced status can replace it.
+const STATUS_RANK: Record<string, number> = {
+  pending: 0,
+  order_lp: 1,
+  building: 2,
+  live: 3,
+};
+
+/**
+ * Resolve the next persisted status given (a) what we already have on disk
+ * and (b) what an upstream poll just told us. Used to defend against stale
+ * `/step-progress` responses that haven't yet learned about a more recent
+ * `/approve` we made on this invite — without this, the next list render
+ * could downgrade `building` back to `pending`, blowing away the AM's click.
+ *
+ * Rules:
+ *   - upstream null/empty → keep current.
+ *   - upstream rank ≥ current rank → adopt upstream (forward transition).
+ *   - upstream rank < current rank → ignore upstream, keep current.
+ *   - either side unranked (unknown enum) → treat its rank as Infinity, so
+ *     unknown values are accepted on disk but won't be overwritten by a
+ *     downgrade. This keeps us forward-compatible with new lifecycle values
+ *     TeaseMe might add later.
+ */
+const chooseForwardStatus = (
+  current: string,
+  upstream: string | null | undefined,
+): string => {
+  if (!upstream) return current;
+  if (upstream === current) return current;
+  const cur = STATUS_RANK[current] ?? Number.POSITIVE_INFINITY;
+  const ups = STATUS_RANK[upstream] ?? Number.POSITIVE_INFINITY;
+  return ups >= cur ? upstream : current;
+};
+
 // Keep the audit trail from unbounded growth — a single invite should never
 // accumulate more than this many step transitions in the stepHistory column.
 const STEP_HISTORY_MAX = 20;
@@ -138,9 +177,11 @@ const refreshPreUserSteps = async (
             data: {
               currentStep: status.step,
               // Mirror TeaseMe's lifecycle string into our own column so the
-              // list endpoint can emit it without a second upstream call. If
-              // upstream omits `status` we keep the last known value.
-              status: status.status ?? pre.status,
+              // list endpoint can emit it without a second upstream call.
+              // chooseForwardStatus() guards against stale `/step-progress`
+              // responses that would otherwise downgrade a row we just
+              // promoted via `/approve` (e.g. building -> pending).
+              status: chooseForwardStatus(pre.status, status.status),
               teasemeUserId: status.teasemeUserId ?? pre.teasemeUserId,
               // Never null out a previously-known link just because a later
               // poll omits it — TeaseMe populates surveyLink first, then
@@ -1018,28 +1059,26 @@ export const orderReferralLandingPage = async (
       });
     }
 
-    // The "Order Landing Page" click now hits the /pre-influencers/approve
-    // endpoint (see MJFP_APPROVE_URL). A successful approve flips the row
-    // upstream into the "building" lifecycle phase, so we mirror that
-    // locally on a 200 — even if the response body omits `status` — rather
-    // than re-polling. The user's intent is "click -> show Building", and
-    // we don't want to leave the UI on `order_lp` while a re-poll catches up.
-    const upstream = await approvePreInfluencer({
-      inviteCode: referral.inviteCode,
-      email: referral.preUser.email,
-    });
-    if (!upstream) {
-      return res.status(502).json({
-        error:
-          "TeaseMe couldn't start the landing-page build right now. Please try again in a moment.",
-      });
-    }
-
-    const nextStatus = upstream.status ?? "building";
+    // The "Order Landing Page" click is a *user-driven* lifecycle promotion:
+    // the AM has explicitly approved the invite. We persist `building`
+    // BEFORE the upstream call so a refresh always reflects the click —
+    // even if upstream is slow / down / returns a non-2xx. The upstream
+    // POST then runs best-effort to actually kick off the LP build; its
+    // failure is logged in teaseme.service but never bubbles up as a 502
+    // here, because that would leave the UI showing an error toast for a
+    // state we *did* successfully record.
+    //
+    // chooseForwardStatus() guards the rare case where the row already
+    // sits at a more advanced status (e.g. `live` because TeaseMe already
+    // finished a build) — we won't downgrade back to `building`.
+    const persistedStatus = chooseForwardStatus(
+      referral.preUser.status,
+      "building",
+    );
     const updatedPreUser = await prisma.preUser.update({
       where: { id: referral.preUser.id },
       data: {
-        status: nextStatus,
+        status: persistedStatus,
         lastCheckedAt: new Date(),
       },
       select: {
@@ -1051,7 +1090,27 @@ export const orderReferralLandingPage = async (
       },
     });
 
-    return res.json({ success: true, preUser: updatedPreUser });
+    // Fire-and-forget the upstream approve. We `await` only so failures get
+    // logged with the referral id in scope (not because we want to block on
+    // the result). The frontend already optimistically renders Building on
+    // a successful response from us, which we'll always send below.
+    const upstream = await approvePreInfluencer({
+      inviteCode: referral.inviteCode,
+      email: referral.preUser.email,
+    });
+    if (!upstream) {
+      console.warn("[order-landing-page] upstream approve failed", {
+        referralId: referral.id,
+        inviteCode: referral.inviteCode,
+        email: referral.preUser.email,
+      });
+    }
+
+    return res.json({
+      success: true,
+      preUser: updatedPreUser,
+      upstreamOk: !!upstream,
+    });
   } catch (error) {
     console.error("Order landing page error:", error);
     return res.status(500).json({ error: "Failed to order landing page" });
