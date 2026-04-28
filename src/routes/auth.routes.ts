@@ -4,6 +4,7 @@ import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import * as authController from '../controllers/auth.controller';
 import { authenticate } from '../middleware/auth.middleware';
 import { PASSWORD_MIN_LENGTH, PASSWORD_TOO_SHORT_MESSAGE } from '../utils/password-policy';
+import { EMAIL_NORMALIZE_OPTIONS } from '../utils/email-normalize';
 
 const router = Router();
 
@@ -52,7 +53,7 @@ const passwordResetIpLimiter = rateLimit({
 router.post(
   '/register',
   [
-    body('email').isEmail().normalizeEmail(),
+    body('email').isEmail().normalizeEmail(EMAIL_NORMALIZE_OPTIONS),
     body('password').isLength({ min: PASSWORD_MIN_LENGTH }).withMessage(PASSWORD_TOO_SHORT_MESSAGE),
     body('firstName').optional().trim(),
     body('lastName').optional().trim(),
@@ -65,7 +66,7 @@ router.post(
 router.post(
   '/login',
   [
-    body('email').isEmail().normalizeEmail(),
+    body('email').isEmail().normalizeEmail(EMAIL_NORMALIZE_OPTIONS),
     body('password').notEmpty()
   ],
   authController.login
@@ -92,7 +93,7 @@ router.post(
   '/forgot-password',
   forgotPasswordIpLimiter,
   forgotPasswordEmailLimiter,
-  [body('email').isEmail().normalizeEmail()],
+  [body('email').isEmail().normalizeEmail(EMAIL_NORMALIZE_OPTIONS)],
   authController.forgotPassword,
 );
 
