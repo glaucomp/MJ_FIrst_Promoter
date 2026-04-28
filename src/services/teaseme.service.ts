@@ -208,6 +208,10 @@ const postRawJson = (
       resolve(null);
       return;
     }
+    if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+      resolve(null);
+      return;
+    }
     const isHttps = parsedUrl.protocol === "https:";
     const lib = isHttps ? https : http;
     const payload = JSON.stringify(body);
