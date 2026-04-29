@@ -83,6 +83,14 @@ export const EditAccountManagerModal = ({
   if (!isOpen || !manager) return null;
 
   const handleSubmit = async () => {
+    // Campaign is required by this UI, even though the underlying
+    // `modelsApi.updateUser` accepts `campaignId: null` to clear an AM's
+    // hidden membership. Clearing leaves the AM unable to invite anyone,
+    // which is never a useful end state — the only path that should be
+    // able to remove an AM's membership is the demote-to-non-AM flow,
+    // which the backend handles automatically. We deliberately mirror
+    // CreateUserModal's "campaign is mandatory for AMs" rule here so the
+    // Create and Edit experiences stay symmetric.
     if (!campaignId) {
       setError("Please select a campaign");
       return;
