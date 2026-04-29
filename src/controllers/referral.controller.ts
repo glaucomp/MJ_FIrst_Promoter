@@ -1428,7 +1428,6 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
             teasemeUserId: true,
             surveyLink: true,
             assetLink: true,
-            welcomeEmailSentAt: true,
           },
         },
         referredUser: {
