@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { authApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { LogoLottie } from '../components/LogoLottie';
 import type { UserRole } from '../types';
 
 type TokenState =
@@ -103,16 +104,10 @@ export const SetPassword = () => {
       <div className="w-full max-w-[420px]">
         <div className="flex flex-col gap-[32px]">
           <div className="flex flex-col gap-[12px] items-center">
-            <div className="flex items-center gap-[4px]">
-              <h1 className="text-[28px] leading-[36px] font-semibold text-white font-primary">
-                TeaseMe
-              </h1>
-              <div className="border border-[#ff0f5f] rounded-[100px] px-[16px] py-[4px] h-[44px] flex items-center justify-center">
-                <span className="text-[28px] leading-[36px] font-tertiary text-[#ff0f5f]">
-                  HQ
-                </span>
-              </div>
-            </div>
+            <LogoLottie height={56} width={220} />
+            <h1 className="absolute h-px w-px overflow-hidden whitespace-nowrap border-0 p-0 [-webkit-clip-path:inset(50%)] [clip:rect(0,0,0,0)]">
+              {heading}
+            </h1>
           </div>
 
           <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-[20px]">

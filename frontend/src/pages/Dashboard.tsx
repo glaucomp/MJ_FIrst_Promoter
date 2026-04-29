@@ -4,6 +4,7 @@ import { StatCard } from '../components/StatCard';
 import { Chart } from '../components/Chart';
 import { QuickTaskCard } from '../components/QuickTaskCard';
 import { mockApi } from '../services/api';
+import { LogoLottie } from '../components/LogoLottie';
 import type { DashboardStats, ChartData } from '../types';
 
 export const Dashboard = () => {
@@ -28,15 +29,9 @@ export const Dashboard = () => {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-[20px]">
         <div className="flex flex-col gap-[12px]">
-          <div className="flex items-center gap-[4px]">
-            <h1 className="text-[28px] leading-[36px] font-semibold text-white font-primary lg:w-full">
-              TeaseMe
-            </h1>
-            <div className="border border-[#ff0f5f] rounded-[100px] px-[16px] py-[4px] h-[44px] flex items-center justify-center">
-              <span className="text-[28px] leading-[36px] font-tertiary text-[#ff0f5f]">
-                HQ
-              </span>
-            </div>
+          <div className="flex items-center lg:hidden">
+            <h1 className="sr-only">Dashboard</h1>
+            <LogoLottie height={48} width={200} />
           </div>
           <p className="text-[16px] leading-[1.4] text-[#9e9e9e] font-medium tracking-[0.2px]">
             Welcome back, {user?.name}…
