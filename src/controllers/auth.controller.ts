@@ -26,6 +26,19 @@ const generateToken = (userId: string, email: string, role: UserRole) =>
     expiresIn: "7d",
   });
 
+// Short-lived single-purpose JWT minted when a user with
+// `mustChangePassword=true` logs in. The frontend exchanges this token
+// (NOT the regular auth_token) at /api/auth/first-password-change. Kept
+// distinct from the session JWT so it can't be reused as a normal cookie
+// session and so its purpose can be audited at verify time.
+const FIRST_PASSWORD_CHANGE_PURPOSE = "first_password_change";
+const generateFirstPasswordChangeToken = (userId: string, email: string) =>
+  jwt.sign(
+    { id: userId, email, purpose: FIRST_PASSWORD_CHANGE_PURPOSE },
+    process.env.JWT_SECRET!,
+    { expiresIn: "15m" },
+  );
+
 const TOKEN_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
@@ -392,6 +405,7 @@ export const login = async (req: AuthRequest, res: Response) => {
         role: true,
         userType: true,
         isActive: true,
+        mustChangePassword: true,
       },
     });
 
@@ -408,15 +422,118 @@ export const login = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
+    // Hard-block: when `mustChangePassword` is set (e.g. on a freshly
+    // promoted pre-influencer who got a temp password in their welcome
+    // email), refuse to mint the regular session cookie. Instead, hand
+    // back a short-lived single-purpose token that the FE swaps at
+    // /api/auth/first-password-change. The user cannot reach any
+    // authenticate-gated route until that endpoint clears the flag.
+    if (user.mustChangePassword) {
+      const changeToken = generateFirstPasswordChangeToken(user.id, user.email);
+      return res.json({
+        requirePasswordChange: true,
+        changeToken,
+        email: user.email,
+        firstName: user.firstName,
+      });
+    }
+
     const token = generateToken(user.id, user.email, user.role);
     res.cookie("auth_token", token, TOKEN_COOKIE_OPTIONS);
 
-    const { password: _, ...userWithoutPassword } = user;
+    const { password: _, mustChangePassword: __, ...userWithoutPassword } = user;
 
     res.json({ user: userWithoutPassword });
   } catch (error) {
     console.error("Login error:", error);
     res.status(500).json({ error: "Login failed" });
+  }
+};
+
+// POST /api/auth/first-password-change { changeToken, newPassword }
+// Consumed exactly once after a `mustChangePassword` login. Verifies the
+// short-lived purpose-tagged JWT, replaces the temp password with the
+// user's chosen one, clears the flag, and finally mints the regular
+// session cookie so the user lands straight in their dashboard. No
+// authenticate middleware: `changeToken` is its own gate.
+export const firstPasswordChange = async (req: AuthRequest, res: Response) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const changeToken: string = req.body.changeToken;
+    const newPassword: string = req.body.newPassword;
+
+    let decoded: { id: string; email: string; purpose: string };
+    try {
+      decoded = jwt.verify(
+        changeToken,
+        process.env.JWT_SECRET!,
+      ) as typeof decoded;
+    } catch {
+      return res.status(401).json({
+        error: "Invalid or expired token. Please log in again.",
+      });
+    }
+
+    if (decoded.purpose !== FIRST_PASSWORD_CHANGE_PURPOSE) {
+      return res.status(401).json({
+        error: "Invalid token purpose.",
+      });
+    }
+
+    const existing = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: {
+        id: true,
+        email: true,
+        isActive: true,
+        mustChangePassword: true,
+      },
+    });
+    if (!existing) {
+      return res.status(401).json({ error: "Account not found." });
+    }
+    if (!existing.isActive) {
+      return res.status(401).json({ error: "Account is inactive." });
+    }
+    // Defensive: if the flag has already been cleared (e.g. the user
+    // ran this flow twice in two tabs) treat the token as spent so we
+    // don't silently re-set the password.
+    if (!existing.mustChangePassword) {
+      return res.status(409).json({
+        error: "Password has already been changed. Please log in.",
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const user = await prisma.user.update({
+      where: { id: existing.id },
+      data: {
+        password: hashedPassword,
+        mustChangePassword: false,
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        userType: true,
+        isActive: true,
+        createdAt: true,
+      },
+    });
+
+    const sessionToken = generateToken(user.id, user.email, user.role);
+    res.cookie("auth_token", sessionToken, TOKEN_COOKIE_OPTIONS);
+
+    return res.json({ user });
+  } catch (error) {
+    console.error("First password change error:", error);
+    return res.status(500).json({ error: "Failed to set new password" });
   }
 };
 
