@@ -576,7 +576,19 @@ export const Models = () => {
                     {section.users.length === 0 ? (
                       <>
                         {canDrop && (
-                        <svg className="text-tm-text-color11 mx-auto h-12" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="currentColor"><path d="m12.593 23.258l-.011.002l-.071.035l-.02.004l-.014-.004l-.071-.035q-.016-.005-.024.005l-.004.01l-.017.428l.005.02l.01.013l.104.074l.015.004l.012-.004l.104-.074l.012-.016l.004-.017l-.017-.427q-.004-.016-.017-.018m.265-.113l-.013.002l-.185.093l-.01.01l-.003.011l.018.43l.005.012l.008.007l.201.093q.019.005.029-.008l.004-.014l-.034-.614q-.005-.018-.02-.022m-.715.002a.02.02 0 0 0-.027.006l-.006.014l-.034.614q.001.018.017.024l.015-.002l.201-.093l.01-.008l.004-.011l.017-.43l-.003-.012l-.01-.01z"/><path fill="currentColor" d="M16 14a5 5 0 0 1 5 5v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1a5 5 0 0 1 5-5zm4-6a1 1 0 0 1 1 1v1h1a1 1 0 1 1 0 2h-1v1a1 1 0 1 1-2 0v-1h-1a1 1 0 1 1 0-2h1V9a1 1 0 0 1 1-1m-8-6a5 5 0 1 1 0 10a5 5 0 0 1 0-10"/></g></svg>
+                          <svg
+                            className="text-tm-text-color11 mx-auto h-12"
+                            viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <g fill="currentColor">
+                              <path d="m12.593 23.258l-.011.002l-.071.035l-.02.004l-.014-.004l-.071-.035q-.016-.005-.024.005l-.004.01l-.017.428l.005.02l.01.013l.104.074l.015.004l.012-.004l.104-.074l.012-.016l.004-.017l-.017-.427q-.004-.016-.017-.018m.265-.113l-.013.002l-.185.093l-.01.01l-.003.011l.018.43l.005.012l.008.007l.201.093q.019.005.029-.008l.004-.014l-.034-.614q-.005-.018-.02-.022m-.715.002a.02.02 0 0 0-.027.006l-.006.014l-.034.614q.001.018.017.024l.015-.002l.201-.093l.01-.008l.004-.011l.017-.43l-.003-.012l-.01-.01z" />
+                              <path
+                                fill="currentColor"
+                                d="M16 14a5 5 0 0 1 5 5v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1a5 5 0 0 1 5-5zm4-6a1 1 0 0 1 1 1v1h1a1 1 0 1 1 0 2h-1v1a1 1 0 1 1-2 0v-1h-1a1 1 0 1 1 0-2h1V9a1 1 0 0 1 1-1m-8-6a5 5 0 1 1 0 10a5 5 0 0 1 0-10"
+                              />
+                            </g>
+                          </svg>
                         )}
 
                         <p className="text-tm-text-color10 text-center text-lg px-4 py-3">
@@ -1155,26 +1167,21 @@ const CHIP_LABEL: Record<ChipState, string> = {
 // in the class string (rather than swapping the outer span) so the same
 // `border` class on the wrapper continues to set width + base style.
 const CHIP_CLASS: Record<ChipState, string> = {
-  denied:
-    "bg-[rgba(110,110,110,0.15)] border-[#6e6e6e] text-[#b3b3b3]",
-  expired:
-    "bg-[rgba(255,42,42,0.12)] border-[#cc0000] text-[#ff2a2a]",
-  waiting:
-    "bg-[rgba(255,170,0,0.15)] border-[#cc8800] text-[#ffaa00]",
-  order_lp:
-    "bg-[rgba(40,255,112,0.06)] border-[#28ff70] text-[#28ff70]",
+  denied: "bg-tm-warning-color12 border-tm-warning-color05 text-tm-warning-color05",
+  expired: "bg-tm-danger-color12 border-tm-danger-color05 text-tm-danger-color05",
+  waiting: "bg-tm-warning-color12 border-tm-warning-color05 text-tm-warning-color05",
+  order_lp: "bg-transparent border-tm-success-color05 text-tm-success-color05",
   // tm-success-color06 = #22BF56 (per frontend/src/index.css). Dashed
   // border telegraphs "in progress" without the visual weight of the
   // solid LP Live pill.
   building:
-    "border-dashed bg-[rgba(34,191,86,0.08)] border-tm-success-color06 text-tm-success-color06",
-  lp_live:
-    "bg-tm-success-color12 border-[#00d948] text-[#28ff70]",
+    "border-dashed bg-transparent border-tm-success-color05 text-tm-success-color05",
+  lp_live: "bg-tm-success-color12 border-tm-success-color05 text-tm-success-color05",
 };
 
 const StatusChip = ({ state }: { state: ChipState }) => (
   <span
-    className={`inline-flex items-center px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border ${CHIP_CLASS[state]}`}
+    className={`inline-flex items-center px-4 py-1 rounded-[100px] text-sm font-medium border ${CHIP_CLASS[state]}`}
   >
     {CHIP_LABEL[state]}
   </span>
@@ -1247,7 +1254,6 @@ const OnboardingCopyIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-
 // Shared dark-pill wrapper for both onboarding glyphs — matches the
 // Deny/ReAssign button surface so the four controls feel like a set.
 // Renders as a <button> when `onClick` is provided (interactive) or as
@@ -1270,15 +1276,17 @@ const OnboardingIconPill = ({
     "inline-flex items-center justify-center rounded-[100px] bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-white px-[10px] py-[4px]";
   if (onClick) {
     return (
+      <div className="glass-button-outer rounded-[100px]">
       <button
         type="button"
         onClick={onClick}
         title={title}
         aria-label={ariaLabel ?? title}
-        className={`${base} hover:bg-[#252525] transition-colors ${className}`}
+        className={`${base} hover:bg-[#252525] transition-all ${className} glass-button-inner`}
       >
         {children}
       </button>
+      </div>
     );
   }
   return (
@@ -1318,16 +1326,14 @@ const OnboardingChecklist = ({
       return (
         <li
           key={idx}
-          className={`flex items-center gap-[8px] ${
-            done
-              ? "text-[#6e6e6e] line-through"
-              : "text-white"
+          className={`flex items-center gap-[8px] tracking-tight ${
+            done ? "text-tm-text-color01 line-through opacity-30" : "text-tm-text-color01"
           }`}
         >
-          <span className="text-[#6e6e6e] font-mono text-[12px] w-[20px]">
+          <span className="text-tm-text-color08 text-sm w-4">
             {String(idx).padStart(2, "0")}
           </span>
-          <span className="font-semibold">{label}</span>
+          <span className="font-medium text-sm">{label}</span>
         </li>
       );
     })}
@@ -1339,18 +1345,14 @@ type ReferralListProps = {
   setReferrals?: React.Dispatch<React.SetStateAction<Referral[]>>;
 };
 
-type ReferralFilter =
-  | "all"
-  | "pending"
-  | "active"
-  | "expired"
-  | "denied";
+type ReferralFilter = "all" | "pending" | "active" | "expired" | "denied";
 
 const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [toast, setToast] = useState<
-    { kind: "success" | "error"; text: string } | null
-  >(null);
+  const [toast, setToast] = useState<{
+    kind: "success" | "error";
+    text: string;
+  } | null>(null);
   // Default filter hides expired invites. "all" here means "everything that
   // isn't expired" — expired rows are only visible when the user clicks the
   // Expired pill explicitly.
@@ -1389,9 +1391,7 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
   const visibleReferrals = useMemo(() => {
     switch (filter) {
       case "pending":
-        return referrals.filter(
-          (r) => r.status === "PENDING" && !r.isExpired,
-        );
+        return referrals.filter((r) => r.status === "PENDING" && !r.isExpired);
       case "active":
         return referrals.filter((r) => r.status === "ACTIVE");
       case "expired":
@@ -1411,8 +1411,7 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
 
   const handleDelete = async (referral: Referral) => {
     const label =
-      referral.metadata?.inviteeEmail ??
-      `invite code ${referral.inviteCode}`;
+      referral.metadata?.inviteeEmail ?? `invite code ${referral.inviteCode}`;
     const noun = referral.status === "CANCELLED" ? "denied" : "expired";
     if (
       !window.confirm(
@@ -1438,9 +1437,10 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
 
   const handleDeny = async (referral: Referral) => {
     const label =
-      referral.metadata?.inviteeEmail ??
-      `invite code ${referral.inviteCode}`;
-    if (!window.confirm(`Deny ${label}? The promoter will be marked as denied.`)) {
+      referral.metadata?.inviteeEmail ?? `invite code ${referral.inviteCode}`;
+    if (
+      !window.confirm(`Deny ${label}? The promoter will be marked as denied.`)
+    ) {
       return;
     }
     setBusyId(referral.id);
@@ -1604,7 +1604,11 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
     );
   }
 
-  const filterOptions: Array<{ id: ReferralFilter; label: string; count: number }> = [
+  const filterOptions: Array<{
+    id: ReferralFilter;
+    label: string;
+    count: number;
+  }> = [
     { id: "all", label: "All", count: counts.all },
     { id: "pending", label: "Pending", count: counts.pending },
     { id: "active", label: "Active", count: counts.active },
@@ -1628,7 +1632,9 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
               }`}
             >
               {opt.label}
-              <span className={`ml-[6px] font-normal ${isSelected ? "opacity-80" : ""}`}>
+              <span
+                className={`ml-[6px] font-normal ${isSelected ? "opacity-80" : ""}`}
+              >
                 {opt.count}
               </span>
             </button>
@@ -1680,8 +1686,7 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
           // it on (a) being non-empty and (b) the invite not being in a
           // terminal state (denied / expired) where the session is gone.
           const rawOpenUrl = referral.preUser?.surveyLink ?? null;
-          const openUrl =
-            !isTerminalState && rawOpenUrl ? rawOpenUrl : null;
+          const openUrl = !isTerminalState && rawOpenUrl ? rawOpenUrl : null;
           const openTooltip = openUrl
             ? "Open onboarding session"
             : isTerminalState
@@ -1696,7 +1701,7 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
                 .filter(Boolean)
                 .join(" ")
                 .trim() || referral.referredUser.email
-            : inviteeEmail ?? `Invite · ${referral.inviteCode}`;
+            : (inviteeEmail ?? `Invite · ${referral.inviteCode}`);
           const isBusy = busyId === referral.id;
           const step = referral.preUser?.currentStep ?? 0;
           const assetLink = referral.preUser?.assetLink ?? null;
@@ -1710,40 +1715,40 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
               className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[16px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-[14px]"
             >
               {/* Header: chip on the left, LEVEL N on the right */}
-              <div className="flex items-center justify-between gap-[12px]">
+              <div className="flex flex-row items-center justify-between">
                 <StatusChip state={chipState} />
                 <div className="flex items-center gap-[6px] text-[#9e9e9e]">
-                  <span className="text-[11px] uppercase tracking-[0.08em] font-bold">
+                  <span className="text-sm uppercase tracking-tight font-bold">
                     Level
                   </span>
-                  <span className="text-white text-[16px] font-bold">
+                  <span className="text-white text-base font-bold">
                     {referral.level}
                   </span>
                 </div>
               </div>
 
               {/* Body: name + campaign */}
-              <div className="flex flex-col gap-[4px] min-w-0">
-                <p className="text-white text-[18px] font-semibold truncate">
-                  {displayName}
-                </p>
-                <p className="text-[#9e9e9e] text-[13px] truncate">
+              <div className="flex flex-col min-w-0">
+                <p className="text-tm-text-color09 text-sm truncate">
                   {inviteeEmail && inviteeEmail !== displayName
                     ? `${inviteeEmail} · ${referral.campaign.name}`
                     : referral.campaign.name}
+                </p>
+                <p className="text-tm-text-color01 text-base font-medium truncate">
+                  {displayName}
                 </p>
               </div>
 
               {/* Onboarding checklist — always shown so the user sees survey
                   progress even on `building` / `lp_live` (a gentle history
                   cue rather than an interactive checklist). */}
-              <div className="relative rounded-[6px] border border-[rgba(255,255,255,0.06)] bg-[rgba(0,0,0,0.2)] px-[14px] py-[12px]">
+              <div className="relative px-[14px] py-[12px]">
                 <div className="flex items-center justify-between mb-[8px]">
-                  <span className="text-[11px] uppercase tracking-[0.08em] text-[#9e9e9e] font-bold">
+                  <span className="text-base text-tm-text-color01 font-medium tracking-tight">
                     Onboarding
                   </span>
                   <div className="flex items-center gap-[8px]">
-                    <span className="text-[11px] font-mono text-[#6e6e6e]">
+                    <span className="text-sm  text-tm-text-color09">
                       {Math.min(step, ONBOARDING_STEPS.length)}/
                       {ONBOARDING_STEPS.length}
                     </span>
@@ -1756,7 +1761,11 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
                     <OnboardingIconPill
                       title={openTooltip}
                       ariaLabel={openTooltip}
-                      className={openUrl ? "" : "cursor-not-allowed opacity-50"}
+                      className={`h-7 w-12 transition-all hover:-translate-y-0.5 select-none ${
+                        openUrl
+                          ? "cursor-pointer"
+                          : "cursor-not-allowed opacity-50 "
+                      }`}
                       onClick={
                         openUrl
                           ? () =>
@@ -1768,7 +1777,7 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
                           : undefined
                       }
                     >
-                      <OnboardingOpenIcon className="w-[14px] h-[14px]" />
+                      <OnboardingOpenIcon className="w-4 h-4" />
                     </OnboardingIconPill>
                   </div>
                 </div>
@@ -1780,21 +1789,19 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
                     to clipboard and shows a toast. assetLink is null until
                     TeaseMe finishes building the LP, so we keep the pill
                     visible-but-disabled in that case rather than hiding it. */}
-                <OnboardingIconPill
+            <div className="glass-button-outer">
+                  <OnboardingIconPill
                   title={assetLinkTooltip}
                   ariaLabel={assetLinkTooltip}
-                  className={`absolute bottom-[10px] right-[12px] ${
-                    canCopyAssetLink ? "" : "cursor-not-allowed opacity-50"
+                  className={`absolute bottom-3 right-4 glass-button-inner ${
+                    canCopyAssetLink ? "" : "cursor-not-allowed opacity-20"
                   }`}
                   onClick={
                     canCopyAssetLink
                       ? async () => {
                           try {
                             await navigator.clipboard.writeText(assetLink!);
-                            showToast(
-                              "success",
-                              "Landing page link copied!",
-                            );
+                            showToast("success", "Landing page link copied!");
                           } catch {
                             showToast(
                               "error",
@@ -1807,6 +1814,7 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
                 >
                   <OnboardingCopyIcon className="w-[14px] h-[14px]" />
                 </OnboardingIconPill>
+            </div>
               </div>
 
               {/* Action row — layout changes by chip state */}
@@ -1877,13 +1885,14 @@ const SecondaryButton = ({
   children: React.ReactNode;
   className?: string;
 }) => (
-  <button
+<div className="glass-button-outer rounded-full">  <button
     onClick={onClick}
     disabled={disabled}
-    className={`flex-1 bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[6px] px-[12px] py-[10px] text-white text-[13px] font-bold hover:bg-[#252525] disabled:opacity-40 disabled:cursor-not-allowed transition-colors ${className}`}
+    className={`glass-button-inner flex-1 bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-full px-[12px] py-[10px] text-white text-[13px] font-bold hover:bg-[#252525] disabled:opacity-40 disabled:cursor-not-allowed transition-colors ${className}`}
   >
     {children}
   </button>
+  </div>
 );
 
 const GreenCta = ({
@@ -1959,7 +1968,7 @@ const CardActions = ({
   if (state === "waiting") {
     return (
       <div className="flex flex-col gap-[8px]">
-        <div className="flex items-center gap-[8px]">
+        <div className="grid grid-cols-2 items-center gap-[8px]">
           <SecondaryButton
             onClick={() => onDeny(referral)}
             disabled={busy}
@@ -1970,10 +1979,7 @@ const CardActions = ({
               {busy ? "…" : "Deny"}
             </span>
           </SecondaryButton>
-          <SecondaryButton
-            onClick={() => onReassign(referral)}
-            disabled={busy}
-          >
+          <SecondaryButton onClick={() => onReassign(referral)} disabled={busy}>
             <span className="inline-flex items-center justify-center gap-[6px]">
               <ReassignIcon className="w-[14px] h-[14px]" />
               Reassign
@@ -1995,10 +2001,7 @@ const CardActions = ({
 
   if (state === "order_lp") {
     return (
-      <GreenCta
-        onClick={() => onOrderLandingPage(referral)}
-        disabled={busy}
-      >
+      <GreenCta onClick={() => onOrderLandingPage(referral)} disabled={busy}>
         {busy ? "Requesting…" : "Order Landing Page"}
       </GreenCta>
     );
@@ -2094,7 +2097,9 @@ const ReassignModal = ({
       .catch((err: unknown) => {
         if (!alive) return;
         setError(
-          err instanceof Error ? err.message : "Failed to load account managers",
+          err instanceof Error
+            ? err.message
+            : "Failed to load account managers",
         );
       })
       .finally(() => {
