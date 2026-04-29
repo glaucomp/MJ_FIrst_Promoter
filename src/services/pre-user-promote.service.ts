@@ -188,6 +188,26 @@ export const promotePreUserToUser = async (
     });
     return { status: "already_emailed" };
   }
+
+  // Re-check the authoritative DB state inside the helper. The caller's
+  // `preUser` snapshot can be stale under concurrency, so relying only on the
+  // passed-in `welcomeEmailSentAt` can allow duplicate welcome emails when two
+  // requests race on the same PreUser.
+  const currentPreUser = await prisma.preUser.findUnique({
+    where: { id: preUser.id },
+    select: {
+      id: true,
+      welcomeEmailSentAt: true,
+    },
+  });
+
+  if (currentPreUser?.welcomeEmailSentAt) {
+    console.info("[promote-pre-user] welcome email already sent in db; skipping", {
+      preUserId: preUser.id,
+      welcomeEmailSentAt: currentPreUser.welcomeEmailSentAt.toISOString(),
+    });
+    return { status: "already_emailed" };
+  }
   // Secondary idempotency: if a User with this email already exists but the
   // PreUser has not been stamped as emailed yet, treat this as a retry path
   // rather than a terminal skip. This covers partial-failure cases where the
