@@ -194,7 +194,10 @@ const refreshPreUserSteps = async (
           const updated = await prisma.preUser.update({
             where: { id: pre.id },
             data: {
-              currentStep: status.step,
+              // Always advance monotonically so a stale upstream poll can
+              // never flip a card backward in the UI. `orderReferralLandingPage`
+              // applies the same rule.
+              currentStep: Math.max(pre.currentStep, status.step),
               // Mirror TeaseMe's lifecycle string into our own column so the
               // list endpoint can emit it without a second upstream call.
               // chooseForwardStatus() guards against stale `/step-progress`

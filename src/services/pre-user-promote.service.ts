@@ -144,24 +144,29 @@ export interface PromotePreUserResult {
 
 /**
  * Promote a TeaseMe pre-influencer to a real `User` row in our DB and email
- * them a temporary password. Triggered when upstream's `survey_step` flips
+ * them a set-password link. Triggered when upstream's `survey_step` flips
  * from 4 (approved) to 5 (published influencer) — at that point the LP is
  * live and the invitee needs login credentials so they can manage their
  * promoter dashboard on our side.
  *
  * Behavior:
- *   - Idempotent on email collision: if a User with this email already
- *     exists we return `already_user` without touching the row or
- *     re-sending the welcome email. This guards against repeated calls on
- *     the same step transition (which shouldn't happen given the polling
- *     skip at currentStep>=5, but is cheap to defend).
- *   - Per the user's choice, we DO NOT touch the PreUser row or the parent
- *     Referral here — that side-effect is intentionally deferred so the
- *     "My Promoters" list keeps showing the LP Live chip via PreUser data.
+ *   - Email-idempotent: if `preUser.welcomeEmailSentAt` is already set,
+ *     returns `already_emailed` immediately without any mutation. This is
+ *     the primary anti-double-email guarantee and survives even if the User
+ *     row is later deleted or `currentStep` is manually rewound.
+ *   - Retry-safe on user collision: if a User with this email already
+ *     exists but `mustChangePassword` is still true (provably in the
+ *     temp-password flow), the password is refreshed and the welcome email
+ *     is retried. If `mustChangePassword` is false (user has already set
+ *     their own credentials or is an unrelated account), returns
+ *     `already_user` without any mutation.
+ *   - Stamps `PreUser.welcomeEmailSentAt` when the welcome email is
+ *     successfully delivered so subsequent polls can skip the promotion
+ *     hook entirely.
  *   - Welcome email is best-effort: a send failure is logged but does not
- *     fail the promotion (the User row is still created, and the operator
- *     can resend manually). We surface `emailSent: false` so the caller
- *     can include it in logs for observability.
+ *     fail the promotion (the User row is still created/updated). We
+ *     surface `emailSent: false` so the caller can include it in logs for
+ *     observability.
  *
  * Defaults match the existing /register handler: bcrypt(10), userType +
  * role both PROMOTER. firstName + username are seeded from the email
@@ -320,17 +325,26 @@ export const promotePreUserToUser = async (
     preUserId: preUser.id,
   });
 
-  // The original implementation attempted to stamp
-  // `PreUser.welcomeEmailSentAt` after a successful send, but that field is
-  // not available on the Prisma model used by this file. Until the Prisma
-  // schema and corresponding DB migration are added, avoid issuing an
-  // invalid Prisma update here so promotion and email delivery can still
-  // complete successfully.
   if (emailSent) {
     console.info("[promote-pre-user] welcome email sent", {
       preUserId: preUser.id,
       userId: user.id,
     });
+    // Stamp PreUser.welcomeEmailSentAt so the poller's anti-double-email
+    // guard and the stale-row filter both see the delivery confirmation.
+    // updateMany + NULL guard is atomic: two concurrent promotions for the
+    // same row will only stamp once (the second sees count=0 and is a no-op).
+    try {
+      await prisma.preUser.updateMany({
+        where: { id: preUser.id, welcomeEmailSentAt: null },
+        data: { welcomeEmailSentAt: new Date() },
+      });
+    } catch (err) {
+      console.error("[promote-pre-user] welcomeEmailSentAt stamp failed", {
+        preUserId: preUser.id,
+        err: err instanceof Error ? err.message : String(err),
+      });
+    }
   }
 
   return {
