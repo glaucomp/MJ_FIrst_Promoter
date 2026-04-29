@@ -30,6 +30,7 @@ export const Dashboard = () => {
       <div className="flex flex-col gap-[20px]">
         <div className="flex flex-col gap-[12px]">
           <div className="flex items-center">
+            <h1 className="sr-only">Dashboard</h1>
             <LogoLottie height={48} width={200} />
           </div>
           <p className="text-[16px] leading-[1.4] text-[#9e9e9e] font-medium tracking-[0.2px]">
