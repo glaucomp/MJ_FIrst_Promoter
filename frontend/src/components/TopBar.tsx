@@ -21,6 +21,7 @@ export const TopBar = () => {
         {/* Logo/Brand */}
         <button
           onClick={() => navigate('/dashboard')}
+          aria-label="Go to dashboard"
           className="flex items-center cursor-pointer"
         >
           <LogoLottie height={40} width={140} />
