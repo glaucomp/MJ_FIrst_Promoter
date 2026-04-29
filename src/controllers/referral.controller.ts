@@ -238,30 +238,19 @@ const refreshPreUserSteps = async (
           // has been recorded as sent. The promotion helper itself is
           // idempotent (early-returns on existing User), so retrying after
           // a partial success is safe and allows automatic email recovery.
-          const latestPre = await prisma.preUser.findUnique({
-            where: { id: pre.id },
-            select: {
-              id: true,
-              email: true,
-              inviteCode: true,
-              referralId: true,
-              welcomeEmailSentAt: true,
-            },
-          });
-
-          if (status.step >= 5 && latestPre && !latestPre.welcomeEmailSentAt) {
+          if (status.step >= 5 && !pre.welcomeEmailSentAt) {
             try {
               await promotePreUserToUser(prisma, {
-                id: latestPre.id,
-                email: latestPre.email,
-                inviteCode: latestPre.inviteCode,
+                id: pre.id,
+                email: pre.email,
+                inviteCode: pre.inviteCode,
                 // Inherit the originating referral so the new User lands
                 // under the right account manager (instead of in the
                 // "Needs assignment" bucket).
-                referralId: latestPre.referralId,
+                referralId: pre.referralId,
                 // Threaded so the helper can short-circuit if the email
                 // has already been delivered for this PreUser row.
-                welcomeEmailSentAt: latestPre.welcomeEmailSentAt,
+                welcomeEmailSentAt: pre.welcomeEmailSentAt,
               });
             } catch (err) {
               // promotePreUserToUser already logs internally and never
