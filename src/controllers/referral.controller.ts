@@ -132,13 +132,12 @@ const refreshPreUserSteps = async (
     // Step 5 is only terminal after downstream side effects have completed.
     // Keep polling step-5 rows until `welcomeEmailSentAt` is set so a
     // transient failure in the 4→5 promotion / welcome-email path can be
-    // retried automatically. To preserve that retry path with the existing
-    // 4→5 promotion hook, treat "step 5 but email not sent yet" as still
-    // effectively being at step 4 until the email is stamped.
-    if (pre.currentStep === 5 && !pre.welcomeEmailSentAt) {
-      pre.currentStep = 4;
-    }
-    if (pre.currentStep >= 5 && pre.welcomeEmailSentAt) return false;
+    // retried automatically. Preserve the actual upstream step on `pre`
+    // and use a derived value only for polling eligibility so callers and
+    // later history calculations continue to see the real current step.
+    const effectiveCurrentStep =
+      pre.currentStep === 5 && !pre.welcomeEmailSentAt ? 4 : pre.currentStep;
+    if (effectiveCurrentStep >= 5 && pre.welcomeEmailSentAt) return false;
     if (!pre.lastCheckedAt) return true;
     return now - pre.lastCheckedAt.getTime() > TEASEME_POLL_TTL_MS;
   });
