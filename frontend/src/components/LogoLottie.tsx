@@ -30,5 +30,3 @@ export const LogoLottie = ({
     </div>
   );
 };
-
-export default LogoLottie;
