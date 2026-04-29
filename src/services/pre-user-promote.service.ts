@@ -285,17 +285,104 @@ export const promotePreUserToUser = async (
         err instanceof Prisma.PrismaClientKnownRequestError &&
         err.code === "P2002"
       ) {
-        console.warn("[promote-pre-user] unique race; treating as already_user", {
-          preUserId: preUser.id,
-          target: err.meta?.target,
-        });
-        const racedUser = await prisma.user.findUnique({
-          where: { email: preUser.email },
-          select: { id: true },
-        });
-        return racedUser
-          ? { status: "already_user", userId: racedUser.id }
-          : { status: "error", error: "P2002 with no resolvable existing user" };
+        const target = Array.isArray(err.meta?.target)
+          ? err.meta.target.map(String)
+          : err.meta?.target
+            ? [String(err.meta.target)]
+            : [];
+        const hasEmailTarget = target.includes("email");
+        const hasUsernameTarget = target.includes("username");
+
+        if (hasEmailTarget) {
+          console.warn("[promote-pre-user] unique race on email; treating as already_user", {
+            preUserId: preUser.id,
+            target,
+          });
+          const racedUser = await prisma.user.findUnique({
+            where: { email: preUser.email },
+            select: { id: true },
+          });
+          return racedUser
+            ? { status: "already_user", userId: racedUser.id }
+            : { status: "error", error: "P2002 on email with no resolvable existing user" };
+        }
+
+        if (hasUsernameTarget) {
+          console.warn("[promote-pre-user] username collision during create; retrying with null username", {
+            preUserId: preUser.id,
+            target,
+          });
+          try {
+            user = await prisma.user.create({
+              data: {
+                email: preUser.email,
+                password: hashedPassword,
+                username: null,
+                firstName,
+                lastName: null,
+                role: UserRole.PROMOTER,
+                userType: UserType.PROMOTER,
+                // Inherit ownership from the originating referral so the new row
+                // shows up under the AM who sent the invite, not in "Needs
+                // assignment". `createdById` is the immutable provenance pointer
+                // (the literal person who triggered creation), `accountManagerId`
+                // is the mutable AM-of-record (settable later via the assign-AM
+                // endpoint). Both default to null when the referral chain can't
+                // resolve a referrer (legacy / orphaned PreUser rows).
+                createdById: ownership.createdById,
+                accountManagerId: ownership.accountManagerId,
+                // Hard-block the user out of the dashboard until they replace
+                // the temp password we just emailed them. Login refuses to mint
+                // a session cookie while this flag is true; the frontend routes
+                // through /first-password-change which clears the flag and sets
+                // the user's real password.
+                mustChangePassword: true,
+              },
+              select: { id: true, email: true, username: true, firstName: true, inviteCode: true },
+            });
+          } catch (retryErr) {
+            if (
+              retryErr instanceof Prisma.PrismaClientKnownRequestError &&
+              retryErr.code === "P2002"
+            ) {
+              const retryTarget = Array.isArray(retryErr.meta?.target)
+                ? retryErr.meta.target.map(String)
+                : retryErr.meta?.target
+                  ? [String(retryErr.meta.target)]
+                  : [];
+              if (retryTarget.includes("email")) {
+                console.warn("[promote-pre-user] email race after username retry; treating as already_user", {
+                  preUserId: preUser.id,
+                  target: retryTarget,
+                });
+                const racedUser = await prisma.user.findUnique({
+                  where: { email: preUser.email },
+                  select: { id: true },
+                });
+                return racedUser
+                  ? { status: "already_user", userId: racedUser.id }
+                  : { status: "error", error: "P2002 on email with no resolvable existing user" };
+              }
+            }
+            console.error("[promote-pre-user] user.create retry with null username failed", {
+              preUserId: preUser.id,
+              err: retryErr instanceof Error ? retryErr.message : String(retryErr),
+            });
+            return {
+              status: "error",
+              error: retryErr instanceof Error ? retryErr.message : "user create retry failed",
+            };
+          }
+        } else {
+          console.warn("[promote-pre-user] unique constraint violation during create", {
+            preUserId: preUser.id,
+            target,
+          });
+          return {
+            status: "error",
+            error: `P2002 on unsupported target: ${target.join(",") || "unknown"}`,
+          };
+        }
       }
       console.error("[promote-pre-user] user.create failed", {
         preUserId: preUser.id,
