@@ -183,62 +183,74 @@ export const promotePreUserToUser = async (
     });
     return { status: "already_emailed" };
   }
-  // Secondary idempotency: bail if a User with this email already exists.
-  // Could happen if the operator previously promoted the row manually, or
-  // if a prior poll cycle already ran this code path and the PreUser step
-  // update raced.
+  // Secondary idempotency: if a User with this email already exists but the
+  // PreUser has not been stamped as emailed yet, treat this as a retry path
+  // rather than a terminal skip. This covers partial-failure cases where the
+  // user row was created in a prior attempt but the welcome email send (or
+  // the later welcomeEmailSentAt stamp) failed.
   const existing = await prisma.user.findUnique({
     where: { email: preUser.email },
-    select: { id: true },
+    select: { id: true, email: true, username: true, firstName: true, inviteCode: true },
   });
+
+  const tempPassword = generateTemporaryPassword();
+  const hashedPassword = await bcrypt.hash(tempPassword, 10);
+
+  let user;
   if (existing) {
-    console.info("[promote-pre-user] user already exists; skipping", {
+    console.info("[promote-pre-user] user already exists; retrying welcome email flow", {
       preUserId: preUser.id,
       userId: existing.id,
       email: preUser.email,
     });
-    return { status: "already_user", userId: existing.id };
-  }
 
-  const emailLocal = preUser.email.split("@")[0] ?? "user";
-  const username = await ensureUniqueUsername(prisma, emailLocal);
-  // firstName is not subject to unique constraints, so we always set it
-  // even if the username derivation gave up.
-  const firstName = sanitizeLocalPart(emailLocal);
-  const tempPassword = generateTemporaryPassword();
-  const hashedPassword = await bcrypt.hash(tempPassword, 10);
-  const ownership = await resolveOwnership(prisma, preUser.referralId);
-
-  let user;
-  try {
-    user = await prisma.user.create({
+    user = await prisma.user.update({
+      where: { id: existing.id },
       data: {
-        email: preUser.email,
         password: hashedPassword,
-        username,
-        firstName,
-        lastName: null,
-        role: UserRole.PROMOTER,
-        userType: UserType.PROMOTER,
-        // Inherit ownership from the originating referral so the new row
-        // shows up under the AM who sent the invite, not in "Needs
-        // assignment". `createdById` is the immutable provenance pointer
-        // (the literal person who triggered creation), `accountManagerId`
-        // is the mutable AM-of-record (settable later via the assign-AM
-        // endpoint). Both default to null when the referral chain can't
-        // resolve a referrer (legacy / orphaned PreUser rows).
-        createdById: ownership.createdById,
-        accountManagerId: ownership.accountManagerId,
-        // Hard-block the user out of the dashboard until they replace
-        // the temp password we just emailed them. Login refuses to mint
-        // a session cookie while this flag is true; the frontend routes
-        // through /first-password-change which clears the flag and sets
-        // the user's real password.
+        // Ensure the user remains blocked until they replace the freshly
+        // generated temporary password included in the retried welcome email.
         mustChangePassword: true,
       },
       select: { id: true, email: true, username: true, firstName: true, inviteCode: true },
     });
-  } catch (err) {
+  } else {
+    const emailLocal = preUser.email.split("@")[0] ?? "user";
+    const username = await ensureUniqueUsername(prisma, emailLocal);
+    // firstName is not subject to unique constraints, so we always set it
+    // even if the username derivation gave up.
+    const firstName = sanitizeLocalPart(emailLocal);
+    const ownership = await resolveOwnership(prisma, preUser.referralId);
+
+    try {
+      user = await prisma.user.create({
+        data: {
+          email: preUser.email,
+          password: hashedPassword,
+          username,
+          firstName,
+          lastName: null,
+          role: UserRole.PROMOTER,
+          userType: UserType.PROMOTER,
+          // Inherit ownership from the originating referral so the new row
+          // shows up under the AM who sent the invite, not in "Needs
+          // assignment". `createdById` is the immutable provenance pointer
+          // (the literal person who triggered creation), `accountManagerId`
+          // is the mutable AM-of-record (settable later via the assign-AM
+          // endpoint). Both default to null when the referral chain can't
+          // resolve a referrer (legacy / orphaned PreUser rows).
+          createdById: ownership.createdById,
+          accountManagerId: ownership.accountManagerId,
+          // Hard-block the user out of the dashboard until they replace
+          // the temp password we just emailed them. Login refuses to mint
+          // a session cookie while this flag is true; the frontend routes
+          // through /first-password-change which clears the flag and sets
+          // the user's real password.
+          mustChangePassword: true,
+        },
+        select: { id: true, email: true, username: true, firstName: true, inviteCode: true },
+      });
+    } catch (err) {
     // Most likely cause: a P2002 unique constraint race between our
     // findUnique check above and the create() — extremely unlikely in this
     // flow but worth handling gracefully so the poller doesn't crash.
