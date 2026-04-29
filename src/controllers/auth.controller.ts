@@ -490,7 +490,6 @@ export const firstPasswordChange = async (req: AuthRequest, res: Response) => {
         id: true,
         email: true,
         isActive: true,
-        mustChangePassword: true,
       },
     });
     if (!existing) {
@@ -499,22 +498,30 @@ export const firstPasswordChange = async (req: AuthRequest, res: Response) => {
     if (!existing.isActive) {
       return res.status(401).json({ error: "Account is inactive." });
     }
-    // Defensive: if the flag has already been cleared (e.g. the user
-    // ran this flow twice in two tabs) treat the token as spent so we
-    // don't silently re-set the password.
-    if (!existing.mustChangePassword) {
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Atomic single-use gate: only the first request that arrives with
+    // mustChangePassword=true wins. Concurrent requests with the same
+    // changeToken race here; the one that finds count=0 gets a 409
+    // instead of silently overwriting the already-set password.
+    const { count } = await prisma.user.updateMany({
+      where: { id: existing.id, mustChangePassword: true },
+      data: {
+        password: hashedPassword,
+        mustChangePassword: false,
+      },
+    });
+    if (count === 0) {
       return res.status(409).json({
         error: "Password has already been changed. Please log in.",
       });
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    const user = await prisma.user.update({
+    // Fetch the updated user for the session token (updateMany doesn't
+    // return rows).
+    const user = await prisma.user.findUniqueOrThrow({
       where: { id: existing.id },
-      data: {
-        password: hashedPassword,
-        mustChangePassword: false,
-      },
       select: {
         id: true,
         email: true,
