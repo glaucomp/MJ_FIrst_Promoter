@@ -293,10 +293,10 @@ export const Models = () => {
         prev.map((u) =>
           u.id === userId
             ? {
-                ...u,
-                createdBy: previousCreatedBy,
-                accountManager: previousAccountManager,
-              }
+              ...u,
+              createdBy: previousCreatedBy,
+              accountManager: previousAccountManager,
+            }
             : u,
         ),
       );
@@ -503,43 +503,38 @@ export const Models = () => {
                 onDragOver={onDragOver}
                 onDragLeave={onDragLeave}
                 onDrop={onDrop}
-                className={`flex flex-col  rounded-[10px] transition-colors ${
-                  isDropTarget
-                    ? "ring-2 ring-tm-text-color10 ring-offset-2 ring-offset-[#0f0f0f]"
-                    : ""
-                }`}
+                className={`flex flex-col  rounded-[10px] transition-colors ${isDropTarget
+                  ? "ring-2 ring-tm-text-color10 ring-offset-2 ring-offset-[#0f0f0f]"
+                  : ""
+                  }`}
               >
                 <button
                   type="button"
                   onClick={() => toggleSection(section.key)}
-                  className={`flex items-center justify-between gap-[12px] text-left border rounded-[10px] px-[16px] py-[12px] transition-colors ${
-                    isNeeds
-                      ? "bg-[#2a1f0a] border-[#b8860b]/40 hover:border-[#b8860b]/70"
-                      : "bg-[#1a1a1a] border-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.16)]"
-                  }`}
+                  className={`flex items-center justify-between gap-[12px] text-left border rounded-[10px] px-[16px] py-[12px] transition-colors ${isNeeds
+                    ? "bg-[#2a1f0a] border-[#b8860b]/40 hover:border-[#b8860b]/70"
+                    : "bg-[#1a1a1a] border-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.16)]"
+                    }`}
                 >
                   <div className="flex items-start gap-[12px] min-w-0">
                     <span
-                      className={`inline-block text-2xl transition-transform ${
-                        isCollapsed ? "" : "rotate-90"
-                      } ${isNeeds ? "text-[#ffb84d]" : "text-tm-primary-color05"}`}
+                      className={`inline-block text-2xl transition-transform ${isCollapsed ? "" : "rotate-90"
+                        } ${isNeeds ? "text-[#ffb84d]" : "text-tm-primary-color05"}`}
                       aria-hidden
                     >
                       ▸
                     </span>
                     <div className="flex flex-col min-w-0">
                       <p
-                        className={`text-xl truncate ${
-                          isNeeds ? "text-[#ffd27a]" : "text-white"
-                        }`}
+                        className={`text-xl truncate ${isNeeds ? "text-[#ffd27a]" : "text-white"
+                          }`}
                       >
                         {headerLabel}
                       </p>
                       {headerSubtitle && (
                         <p
-                          className={`text-sm mt-1 truncate ${
-                            isNeeds ? "text-[#d9b26a]" : "text-tm-text-color09"
-                          }`}
+                          className={`text-sm mt-1 truncate ${isNeeds ? "text-[#d9b26a]" : "text-tm-text-color09"
+                            }`}
                         >
                           {headerSubtitle}
                         </p>
@@ -548,9 +543,8 @@ export const Models = () => {
                   </div>
                   <div className="flex items-center gap-[12px] flex-shrink-0">
                     <span
-                      className={`text-base ${
-                        isNeeds ? "text-[#d9b26a]" : "text-tm-text-color09"
-                      }`}
+                      className={`text-base ${isNeeds ? "text-[#d9b26a]" : "text-tm-text-color09"
+                        }`}
                     >
                       {section.users.length} user
                       {section.users.length !== 1 ? "s" : ""}
@@ -565,13 +559,12 @@ export const Models = () => {
 
                 {!isCollapsed && (
                   <div
-                    className={`flex flex-col justify-center align-center gap-[12px]  min-h-[32px] bg-tm-neutral-color08 px-6 py-8 rounded-b-xl overflow-clip  ${
-                      isDropTarget
-                        ? "border-[#ff0f5f]"
-                        : isNeeds
-                          ? "border-[#b8860b]/40"
-                          : "border-[rgba(255,255,255,0.05)]"
-                    }`}
+                    className={`flex flex-col justify-center align-center gap-[12px]  min-h-[32px] bg-tm-neutral-color08 px-6 py-8 rounded-b-xl overflow-clip  ${isDropTarget
+                      ? "border-[#ff0f5f]"
+                      : isNeeds
+                        ? "border-[#b8860b]/40"
+                        : "border-[rgba(255,255,255,0.05)]"
+                      }`}
                   >
                     {section.users.length === 0 ? (
                       <>
@@ -608,32 +601,30 @@ export const Models = () => {
                             onDragStart={
                               isDraggable
                                 ? (e) => {
-                                    e.dataTransfer.setData(
-                                      "text/plain",
-                                      apiUser.id,
-                                    );
-                                    e.dataTransfer.effectAllowed = "move";
-                                    setDraggingUserId(apiUser.id);
-                                  }
+                                  e.dataTransfer.setData(
+                                    "text/plain",
+                                    apiUser.id,
+                                  );
+                                  e.dataTransfer.effectAllowed = "move";
+                                  setDraggingUserId(apiUser.id);
+                                }
                                 : undefined
                             }
                             onDragEnd={
                               isDraggable
                                 ? () => {
-                                    setDraggingUserId(null);
-                                    setDropTargetKey(null);
-                                  }
+                                  setDraggingUserId(null);
+                                  setDropTargetKey(null);
+                                }
                                 : undefined
                             }
-                            className={`bg-linear-to-t from-[#212121] to-[#23252a] border rounded-[8px] p-[16px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] transition-all ${
-                              isDraggable
-                                ? "cursor-grab active:cursor-grabbing"
-                                : ""
-                            } ${
-                              draggingUserId === apiUser.id
+                            className={`bg-linear-to-t from-[#212121] to-[#23252a] border rounded-[8px] p-[16px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] transition-all ${isDraggable
+                              ? "cursor-grab active:cursor-grabbing"
+                              : ""
+                              } ${draggingUserId === apiUser.id
                                 ? "opacity-10 shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)]"
                                 : "border-[rgba(255,255,255,0.03)]"
-                            } ${reassigningUserId === apiUser.id ? "animate-pulse" : ""}`}
+                              } ${reassigningUserId === apiUser.id ? "animate-pulse" : ""}`}
                             title={
                               isDraggable
                                 ? "Drag onto an account manager to reassign"
@@ -661,11 +652,10 @@ export const Models = () => {
                                 </p>
                                 <div className="flex items-center gap-[8px] w-full">
                                   <span
-                                    className={`px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border ${
-                                      apiUser.isActive
-                                        ? "bg-tm-success-color12 border-[#00d948] text-[#28ff70]"
-                                        : "bg-tm-danger-color12 border-[#cc0000] text-[#ff2a2a]"
-                                    }`}
+                                    className={`px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border ${apiUser.isActive
+                                      ? "bg-tm-success-color12 border-[#00d948] text-[#28ff70]"
+                                      : "bg-tm-danger-color12 border-[#cc0000] text-[#ff2a2a]"
+                                      }`}
                                   >
                                     {apiUser.isActive ? "Active" : "Inactive"}
                                   </span>
@@ -879,11 +869,10 @@ export const Models = () => {
                     </p>
                     <div className="flex items-center gap-[8px] w-full">
                       <span
-                        className={`px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border ${
-                          apiUser.isActive
-                            ? "bg-tm-success-color12 border-[#00d948] text-[#28ff70]"
-                            : "bg-tm-danger-color12 border-[#cc0000] text-[#ff2a2a]"
-                        }`}
+                        className={`px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border ${apiUser.isActive
+                          ? "bg-tm-success-color12 border-[#00d948] text-[#28ff70]"
+                          : "bg-tm-danger-color12 border-[#cc0000] text-[#ff2a2a]"
+                          }`}
                       >
                         {apiUser.isActive ? "Active" : "Inactive"}
                       </span>
@@ -1277,15 +1266,15 @@ const OnboardingIconPill = ({
   if (onClick) {
     return (
       <div className="glass-button-outer rounded-[100px]">
-      <button
-        type="button"
-        onClick={onClick}
-        title={title}
-        aria-label={ariaLabel ?? title}
-        className={`${base} hover:bg-[#252525] transition-all ${className} glass-button-inner`}
-      >
-        {children}
-      </button>
+        <button
+          type="button"
+          onClick={onClick}
+          title={title}
+          aria-label={ariaLabel ?? title}
+          className={`${base} hover:bg-[#252525] transition-all ${className} glass-button-inner`}
+        >
+          {children}
+        </button>
       </div>
     );
   }
@@ -1317,18 +1306,16 @@ const OnboardingChecklist = ({
   dimmed?: boolean;
 }) => (
   <ul
-    className={`flex flex-col gap-[6px] text-[13px] ${
-      dimmed ? "opacity-60" : ""
-    }`}
+    className={`flex flex-col gap-[6px] text-[13px] ${dimmed ? "opacity-60" : ""
+      }`}
   >
     {ONBOARDING_STEPS.map(({ idx, label }) => {
       const done = step >= idx;
       return (
         <li
           key={idx}
-          className={`flex items-center gap-[8px] tracking-tight ${
-            done ? "text-tm-text-color01 line-through opacity-30" : "text-tm-text-color01"
-          }`}
+          className={`flex items-center gap-[8px] tracking-tight ${done ? "text-tm-text-color01 line-through opacity-30" : "text-tm-text-color01"
+            }`}
         >
           <span className="text-tm-text-color08 text-sm w-4">
             {String(idx).padStart(2, "0")}
@@ -1486,12 +1473,12 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
         prev.map((r) =>
           r.id === referral.id
             ? {
-                ...r,
-                metadata: {
-                  ...(r.metadata ?? {}),
-                  accountManagerEmail: result.newReferrer.email,
-                },
-              }
+              ...r,
+              metadata: {
+                ...(r.metadata ?? {}),
+                accountManagerEmail: result.newReferrer.email,
+              },
+            }
             : r,
         ),
       );
@@ -1527,27 +1514,27 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
         prev.map((r) =>
           r.id === referral.id
             ? {
-                ...r,
-                preUser: {
-                  ...(r.preUser ?? {
-                    currentStep: 0,
-                    status: null,
-                    lastCheckedAt: null,
-                    teasemeUserId: null,
-                    surveyLink: null,
-                    assetLink: null,
-                  }),
-                  currentStep: result.preUser.currentStep,
-                  // Use the server's persisted status as the source of truth
-                  // (backend writes "building" before returning, and never
-                  // downgrades). Optimistically forcing "building" here is
-                  // unnecessary now and would mask any future server-side
-                  // override (e.g. row already at `live`).
-                  status: result.preUser.status,
-                  lastCheckedAt: result.preUser.lastCheckedAt,
-                  teasemeUserId: result.preUser.teasemeUserId,
-                },
-              }
+              ...r,
+              preUser: {
+                ...(r.preUser ?? {
+                  currentStep: 0,
+                  status: null,
+                  lastCheckedAt: null,
+                  teasemeUserId: null,
+                  surveyLink: null,
+                  assetLink: null,
+                }),
+                currentStep: result.preUser.currentStep,
+                // Use the server's persisted status as the source of truth
+                // (backend writes "building" before returning, and never
+                // downgrades). Optimistically forcing "building" here is
+                // unnecessary now and would mask any future server-side
+                // override (e.g. row already at `live`).
+                status: result.preUser.status,
+                lastCheckedAt: result.preUser.lastCheckedAt,
+                teasemeUserId: result.preUser.teasemeUserId,
+              },
+            }
             : r,
         ),
       );
@@ -1609,12 +1596,12 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
     label: string;
     count: number;
   }> = [
-    { id: "all", label: "All", count: counts.all },
-    { id: "pending", label: "Pending", count: counts.pending },
-    { id: "active", label: "Active", count: counts.active },
-    { id: "expired", label: "Expired", count: counts.expired },
-    { id: "denied", label: "Denied", count: counts.denied },
-  ];
+      { id: "all", label: "All", count: counts.all },
+      { id: "pending", label: "Pending", count: counts.pending },
+      { id: "active", label: "Active", count: counts.active },
+      { id: "expired", label: "Expired", count: counts.expired },
+      { id: "denied", label: "Denied", count: counts.denied },
+    ];
 
   return (
     <div className="flex flex-col gap-[12px]">
@@ -1625,11 +1612,10 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
             <button
               key={opt.id}
               onClick={() => setFilter(opt.id)}
-              className={`px-[14px] py-[6px] rounded-[100px] text-[12px] font-bold border transition-colors ${
-                isSelected
-                  ? "bg-[#ff0f5f] border-[#ff0f5f] text-white"
-                  : "bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white hover:border-[rgba(255,255,255,0.3)]"
-              }`}
+              className={`px-[14px] py-[6px] rounded-[100px] text-[12px] font-bold border transition-colors ${isSelected
+                ? "bg-[#ff0f5f] border-[#ff0f5f] text-white"
+                : "bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white hover:border-[rgba(255,255,255,0.3)]"
+                }`}
             >
               {opt.label}
               <span
@@ -1644,11 +1630,10 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
 
       {toast && (
         <div
-          className={`rounded-[8px] px-[16px] py-[12px] border text-[14px] font-medium ${
-            toast.kind === "success"
-              ? "bg-tm-success-color12 border-[#00d948] text-[#28ff70]"
-              : "bg-tm-danger-color12 border-[#cc0000] text-[#ff2a2a]"
-          }`}
+          className={`rounded-[8px] px-[16px] py-[12px] border text-[14px] font-medium ${toast.kind === "success"
+            ? "bg-tm-success-color12 border-[#00d948] text-[#28ff70]"
+            : "bg-tm-danger-color12 border-[#cc0000] text-[#ff2a2a]"
+            }`}
         >
           {toast.text}
         </div>
@@ -1660,11 +1645,11 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
             No {filter === "all" ? "active or pending" : filter} referrals
             {filter === "all" && (counts.expired > 0 || counts.denied > 0)
               ? ` — ${[
-                  counts.expired > 0 ? `${counts.expired} expired` : null,
-                  counts.denied > 0 ? `${counts.denied} denied` : null,
-                ]
-                  .filter(Boolean)
-                  .join(", ")} hidden`
+                counts.expired > 0 ? `${counts.expired} expired` : null,
+                counts.denied > 0 ? `${counts.denied} denied` : null,
+              ]
+                .filter(Boolean)
+                .join(", ")} hidden`
               : ""}
             .
           </p>
@@ -1698,9 +1683,9 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
             null;
           const displayName = referral.referredUser
             ? [referral.referredUser.firstName, referral.referredUser.lastName]
-                .filter(Boolean)
-                .join(" ")
-                .trim() || referral.referredUser.email
+              .filter(Boolean)
+              .join(" ")
+              .trim() || referral.referredUser.email
             : (inviteeEmail ?? `Invite · ${referral.inviteCode}`);
           const isBusy = busyId === referral.id;
           const step = referral.preUser?.currentStep ?? 0;
@@ -1761,19 +1746,18 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
                     <OnboardingIconPill
                       title={openTooltip}
                       ariaLabel={openTooltip}
-                      className={`h-7 w-12 transition-all hover:-translate-y-0.5 select-none ${
-                        openUrl
-                          ? "cursor-pointer"
-                          : "cursor-not-allowed opacity-50 "
-                      }`}
+                      className={`h-7 w-12 transition-all hover:-translate-y-0.5 select-none ${openUrl
+                        ? "cursor-pointer"
+                        : "cursor-not-allowed opacity-50 "
+                        }`}
                       onClick={
                         openUrl
                           ? () =>
-                              window.open(
-                                openUrl,
-                                "_blank",
-                                "noopener,noreferrer",
-                              )
+                            window.open(
+                              openUrl,
+                              "_blank",
+                              "noopener,noreferrer",
+                            )
                           : undefined
                       }
                     >
@@ -1789,16 +1773,15 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
                     to clipboard and shows a toast. assetLink is null until
                     TeaseMe finishes building the LP, so we keep the pill
                     visible-but-disabled in that case rather than hiding it. */}
-            <div className="glass-button-outer">
+                <div className="glass-button-outer">
                   <OnboardingIconPill
-                  title={assetLinkTooltip}
-                  ariaLabel={assetLinkTooltip}
-                  className={`absolute bottom-3 right-4 glass-button-inner ${
-                    canCopyAssetLink ? "" : "cursor-not-allowed opacity-20"
-                  }`}
-                  onClick={
-                    canCopyAssetLink
-                      ? async () => {
+                    title={assetLinkTooltip}
+                    ariaLabel={assetLinkTooltip}
+                    className={`absolute bottom-3 right-4 glass-button-inner ${canCopyAssetLink ? "" : "cursor-not-allowed opacity-20"
+                      }`}
+                    onClick={
+                      canCopyAssetLink
+                        ? async () => {
                           try {
                             await navigator.clipboard.writeText(assetLink!);
                             showToast("success", "Landing page link copied!");
@@ -1809,12 +1792,12 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
                             );
                           }
                         }
-                      : undefined
-                  }
-                >
-                  <OnboardingCopyIcon className="w-[14px] h-[14px]" />
-                </OnboardingIconPill>
-            </div>
+                        : undefined
+                    }
+                  >
+                    <OnboardingCopyIcon className="w-[14px] h-[14px]" />
+                  </OnboardingIconPill>
+                </div>
               </div>
 
               {/* Action row — layout changes by chip state */}
@@ -1885,7 +1868,7 @@ const SecondaryButton = ({
   children: React.ReactNode;
   className?: string;
 }) => (
-<div className="glass-button-outer rounded-full">  <button
+  <div className="glass-button-outer rounded-full">  <button
     onClick={onClick}
     disabled={disabled}
     className={`glass-button-inner flex-1 bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-full px-[12px] py-[10px] text-white text-[13px] font-bold hover:bg-[#252525] disabled:opacity-40 disabled:cursor-not-allowed transition-colors ${className}`}
@@ -1991,7 +1974,7 @@ const CardActions = ({
         <button
           disabled
           title="Waiting for the promoter to finish onboarding before a landing page can be ordered."
-          className="w-full rounded-[6px] px-[14px] py-[10px] text-[13px] font-bold border border-[#28ff70] text-[#28ff70] opacity-40 cursor-not-allowed"
+          className="w-full rounded-full px-[14px] py-[10px] text-[13px] font-medium border border-[#28ff70] text-[#28ff70] opacity-40 cursor-not-allowed"
         >
           Order Landing Page
         </button>
