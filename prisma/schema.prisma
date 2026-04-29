@@ -255,13 +255,6 @@ model PreUser {
   assetLink     String?
   stepHistory   Json?
   lastCheckedAt DateTime?
-  // Stamped once promotePreUserToUser successfully sends the welcome
-  // email after the upstream survey_step transitions from 4 -> 5. The
-  // promotion helper short-circuits when this is non-null, so the
-  // welcome email is guaranteed to fire at most once per PreUser row
-  // even if the underlying User row is later deleted or currentStep is
-  // manually rewound.
-  welcomeEmailSentAt DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
