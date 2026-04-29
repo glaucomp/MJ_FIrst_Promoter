@@ -227,19 +227,18 @@ const refreshPreUserSteps = async (
           });
           row.preUser = updated;
 
-          // 4 → 5 transition: upstream now has a published influencer
-          // matching this invite. Mint a real User row so the invitee can
-          // log in to our promoter dashboard, and email them a temporary
-          // password. Per the operator's choice, we DO NOT touch the
-          // PreUser row or the parent Referral here — the My Promoters
-          // chip continues to render LP Live from PreUser.currentStep=5.
+          // Once upstream has a published influencer (step 5+), mint a
+          // real User row so the invitee can log in to our promoter
+          // dashboard, and email them a temporary password. Per the
+          // operator's choice, we DO NOT touch the PreUser row or the
+          // parent Referral here — the My Promoters chip continues to
+          // render LP Live from PreUser.currentStep=5.
           //
-          // The staleRows filter at the top of refreshPreUserSteps already
-          // skips rows with currentStep>=5 on subsequent polls, so this
-          // branch fires exactly once per row in practice. The promotion
-          // helper itself is also idempotent (early-returns on existing
-          // User), so a duplicate call would be a no-op anyway.
-          if (pre.currentStep < 5 && status.step >= 5) {
+          // Keep retrying this hook on later polls until the welcome email
+          // has been recorded as sent. The promotion helper itself is
+          // idempotent (early-returns on existing User), so retrying after
+          // a partial success is safe and allows automatic email recovery.
+          if (status.step >= 5 && !pre.welcomeEmailSentAt) {
             try {
               await promotePreUserToUser(prisma, {
                 id: pre.id,
