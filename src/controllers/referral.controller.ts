@@ -176,6 +176,7 @@ const refreshPreUserSteps = async (
                 teasemeUserId: true,
                 surveyLink: true,
                 assetLink: true,
+                welcomeEmailSentAt: true,
               },
             });
             row.preUser = updated;
@@ -1420,6 +1421,9 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
             teasemeUserId: true,
             surveyLink: true,
             assetLink: true,
+            // Threaded through to the 4->5 promotion hook so we don't
+            // re-trigger the welcome email after it has been delivered.
+            welcomeEmailSentAt: true,
           },
         },
         referredUser: {
