@@ -251,40 +251,44 @@ export const promotePreUserToUser = async (
         select: { id: true, email: true, username: true, firstName: true, inviteCode: true },
       });
     } catch (err) {
-    // Most likely cause: a P2002 unique constraint race between our
-    // findUnique check above and the create() — extremely unlikely in this
-    // flow but worth handling gracefully so the poller doesn't crash.
-    if (
-      err instanceof Prisma.PrismaClientKnownRequestError &&
-      err.code === "P2002"
-    ) {
-      console.warn("[promote-pre-user] unique race; treating as already_user", {
+      // Most likely cause: a P2002 unique constraint race between our
+      // findUnique check above and the create() — extremely unlikely in
+      // this flow but worth handling gracefully so the poller doesn't
+      // crash.
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === "P2002"
+      ) {
+        console.warn("[promote-pre-user] unique race; treating as already_user", {
+          preUserId: preUser.id,
+          target: err.meta?.target,
+        });
+        const racedUser = await prisma.user.findUnique({
+          where: { email: preUser.email },
+          select: { id: true },
+        });
+        return racedUser
+          ? { status: "already_user", userId: racedUser.id }
+          : { status: "error", error: "P2002 with no resolvable existing user" };
+      }
+      console.error("[promote-pre-user] user.create failed", {
         preUserId: preUser.id,
-        target: err.meta?.target,
+        err: err instanceof Error ? err.message : String(err),
       });
-      const racedUser = await prisma.user.findUnique({
-        where: { email: preUser.email },
-        select: { id: true },
-      });
-      return racedUser
-        ? { status: "already_user", userId: racedUser.id }
-        : { status: "error", error: "P2002 with no resolvable existing user" };
+      return {
+        status: "error",
+        error: err instanceof Error ? err.message : "user create failed",
+      };
     }
-    console.error("[promote-pre-user] user.create failed", {
-      preUserId: preUser.id,
-      err: err instanceof Error ? err.message : String(err),
-    });
-    return {
-      status: "error",
-      error: err instanceof Error ? err.message : "user create failed",
-    };
   }
 
   const emailSent = await sendWelcomeEmailSafe({
     email: user.email,
     // Welcome template requires a non-empty username string. Fall back to
-    // the email local-part if the unique-username derivation gave up.
-    username: user.username ?? firstName,
+    // a sanitized email local-part if the unique-username derivation gave
+    // up (or if we updated an existing User row whose username was null).
+    username:
+      user.username ?? sanitizeLocalPart(user.email.split("@")[0] ?? "user"),
     password: tempPassword,
     firstName: user.firstName,
     // ref_id slot in the template is the FirstPromoter-style invite code.
