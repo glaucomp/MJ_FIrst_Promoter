@@ -320,26 +320,17 @@ export const promotePreUserToUser = async (
     preUserId: preUser.id,
   });
 
-  // Stamp the PreUser only when the send actually succeeded — if the
-  // SMTP/transport call failed we want the next poll cycle to retry the
-  // email (the User row still exists, so the secondary "already_user"
-  // guard suppresses a duplicate User create on retry).
+  // The original implementation attempted to stamp
+  // `PreUser.welcomeEmailSentAt` after a successful send, but that field is
+  // not available on the Prisma model used by this file. Until the Prisma
+  // schema and corresponding DB migration are added, avoid issuing an
+  // invalid Prisma update here so promotion and email delivery can still
+  // complete successfully.
   if (emailSent) {
-    try {
-      await prisma.preUser.update({
-        where: { id: preUser.id },
-        data: { welcomeEmailSentAt: new Date() },
-      });
-    } catch (err) {
-      // Don't fail the promotion: the User row is created and the email
-      // was delivered; failing to stamp the flag only weakens the
-      // anti-double-email guarantee on this single row, and the
-      // secondary "already_user" check still prevents re-creation.
-      console.error("[promote-pre-user] welcomeEmailSentAt stamp failed", {
-        preUserId: preUser.id,
-        err: err instanceof Error ? err.message : String(err),
-      });
-    }
+    console.info("[promote-pre-user] welcome email sent", {
+      preUserId: preUser.id,
+      userId: user.id,
+    });
   }
 
   return {
