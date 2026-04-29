@@ -129,13 +129,14 @@ const refreshPreUserSteps = async (
   const staleRows = rows.filter((row) => {
     const pre = row.preUser;
     if (!pre) return false;
-    // Step 5 is terminal — the matching influencer is published, so the
-    // PreUser row is in a steady state and there is nothing the next
-    // /step-progress call can teach us. We keep polling steps 0..4
-    // (including the post-approve "Building" state) so the chip can
-    // promote itself to "LP Live" automatically once upstream flips
-    // survey_step to 5.
-    if (pre.currentStep >= 5) return false;
+    // Step 5 is only terminal after downstream side effects have completed.
+    // Keep polling step-5 rows until `welcomeEmailSentAt` is set so a
+    // transient failure in the 4→5 promotion / welcome-email path can be
+    // retried automatically. Earlier steps remain pollable as before.
+    const welcomeEmailSentAt = (
+      pre as PreUserRow & { welcomeEmailSentAt?: Date | null }
+    ).welcomeEmailSentAt;
+    if (pre.currentStep >= 5 && welcomeEmailSentAt) return false;
     if (!pre.lastCheckedAt) return true;
     return now - pre.lastCheckedAt.getTime() > TEASEME_POLL_TTL_MS;
   });
