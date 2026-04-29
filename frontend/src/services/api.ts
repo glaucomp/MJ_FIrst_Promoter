@@ -565,6 +565,40 @@ export const modelsApi = {
     await handleResponse(response, 'Failed to delete user');
   },
 
+  /**
+   * Admin-only update for an existing user. Used by the admin Users page to
+   * edit account managers (and any other user) — name, email, optional new
+   * password, optional userType change. For account managers, `campaignId`
+   * swaps the AM's hidden membership campaign (which the backend models as
+   * an ACTIVE referral row); pass `null` to clear it.
+   */
+  async updateUser(
+    userId: string,
+    input: {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+      password?: string;
+      userType?: 'account_manager' | 'team_manager' | 'promoter' | 'chatter' | 'payer' | 'admin';
+      campaignId?: string | null;
+    },
+  ): Promise<ApiUser> {
+    const body: Record<string, unknown> = {};
+    if (input.firstName !== undefined) body.firstName = input.firstName;
+    if (input.lastName !== undefined) body.lastName = input.lastName;
+    if (input.email !== undefined) body.email = input.email;
+    if (input.password) body.password = input.password;
+    if (input.userType) body.userType = input.userType.toUpperCase();
+    if (input.campaignId !== undefined) body.campaignId = input.campaignId;
+    const response = await apiFetch(`${API_URL}/users/${userId}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(body),
+    });
+    const data = await handleResponse(response, 'Failed to update user');
+    return data.user;
+  },
+
   async assignAccountManager(
     userId: string,
     accountManagerId: string | null,
@@ -913,6 +947,17 @@ export interface AccountManagerSummary {
     createdCampaigns?: number;
     createdChatterGroups?: number;
   };
+  /**
+   * The hidden Account Manager membership campaign this AM is currently
+   * enrolled in (encoded as the AM's ACTIVE referral whose campaign is
+   * `visibleToPromoters: false`). `null` when the AM has no active
+   * membership — usually a data anomaly worth flagging in the admin UI.
+   */
+  currentCampaign?: {
+    id: string;
+    name: string;
+    linkedCampaign: { id: string; name: string } | null;
+  } | null;
 }
 
 export const usersApi = {
