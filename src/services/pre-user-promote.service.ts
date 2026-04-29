@@ -8,10 +8,10 @@ import { emailService } from "./email.service";
 
 // ─── Temporary password ──────────────────────────────────────────────────────
 //
-// Plain alphanumeric (base64url, 12 chars ≈ 72 bits of entropy). Symbols and
-// case-mixed sets cause friction when the user copy/pastes from email
-// (especially on mobile), and the welcome email already strongly nudges the
-// user to change the password on first login.
+// URL-safe base64url characters (letters, digits, "-" and "_"), 12 chars ≈
+// 72 bits of entropy. Larger symbol sets can cause friction when the user
+// copy/pastes from email (especially on mobile), and the welcome email
+// already strongly nudges the user to change the password on first login.
 const TEMP_PASSWORD_LENGTH = 12;
 
 const generateTemporaryPassword = (): string => {
