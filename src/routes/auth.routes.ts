@@ -117,4 +117,21 @@ router.post(
   authController.resetPassword,
 );
 
+// First-login password change. Reached when /login responds with
+// `requirePasswordChange: true` (i.e. the user was created with a temp
+// password by the TeaseMe 4->5 promotion flow). Consumes the short-lived
+// `changeToken` minted by the login endpoint, swaps in the user's chosen
+// password, clears the must-change flag, and mints the regular session
+// cookie. Reuses the same per-IP rate limiter as /password-reset so a
+// brute-forced changeToken can't burn through the JWT secret unbounded.
+router.post(
+  '/first-password-change',
+  passwordResetIpLimiter,
+  [
+    body('changeToken').isString().notEmpty(),
+    body('newPassword').isString().isLength({ min: PASSWORD_MIN_LENGTH }).withMessage(PASSWORD_TOO_SHORT_MESSAGE),
+  ],
+  authController.firstPasswordChange,
+);
+
 export default router;

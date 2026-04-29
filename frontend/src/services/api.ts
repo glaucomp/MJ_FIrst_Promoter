@@ -9,8 +9,8 @@ export interface LoginResponse {
   user: {
     id: string;
     email: string;
-    firstName: string;
-    lastName: string;
+    firstName: string | null;
+    lastName: string | null;
     role: string;
     userType: string;
     isActive: boolean;
@@ -18,8 +18,27 @@ export interface LoginResponse {
   token?: string; // Deprecated: server now sets httpOnly cookie
 }
 
+// Returned in place of LoginResponse when the backend has marked this
+// account as `mustChangePassword=true` (typically a freshly promoted
+// pre-influencer who got a temp password by email). The frontend MUST
+// route the user to /first-password-change with `changeToken` instead
+// of treating the response as a successful session.
+export interface RequirePasswordChangeResponse {
+  requirePasswordChange: true;
+  changeToken: string;
+  email: string;
+  firstName: string | null;
+}
+
+export type LoginResult = LoginResponse | RequirePasswordChangeResponse;
+
+export const isPasswordChangeRequired = (
+  result: LoginResult,
+): result is RequirePasswordChangeResponse =>
+  (result as RequirePasswordChangeResponse).requirePasswordChange === true;
+
 export const authApi = {
-  async login(email: string, password: string): Promise<LoginResponse> {
+  async login(email: string, password: string): Promise<LoginResult> {
     const response = await apiFetch(`${API_URL}/auth/login`, {
       method: 'POST',
       headers: {
@@ -30,7 +49,7 @@ export const authApi = {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || 'Invalid email or password');
+      throw new Error(errorData.error || errorData.message || 'Invalid email or password');
     }
 
     return response.json();
@@ -102,6 +121,28 @@ export const authApi = {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.error || 'Failed to reset password');
+    }
+    return response.json();
+  },
+
+  /**
+   * Exchange the short-lived `changeToken` from a `requirePasswordChange`
+   * login response for a real session. The backend writes the new
+   * password, clears the must-change flag, and sets the auth_token
+   * cookie so subsequent requests are authenticated normally.
+   */
+  async firstPasswordChange(
+    changeToken: string,
+    newPassword: string,
+  ): Promise<LoginResponse> {
+    const response = await apiFetch(`${API_URL}/auth/first-password-change`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ changeToken, newPassword }),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Failed to set new password');
     }
     return response.json();
   },
@@ -422,12 +463,15 @@ export const modelsApi = {
       status: string;
       lastCheckedAt: string | null;
       teasemeUserId: string | null;
+      // surveyLink and assetLink are returned alongside the lifecycle fields
+      // because the click handler re-polls TeaseMe's /step-progress before
+      // returning, so links may freshly populate (in particular `assetLink`
+      // appears once upstream finishes building the landing page). Letting
+      // the frontend ingest them in the same response keeps the UI from
+      // having to wait for the next list refresh to pick up the LP URL.
+      surveyLink: string | null;
+      assetLink: string | null;
     };
-    // false when the local DB was promoted to "building" but the upstream
-    // approve POST didn't 2xx (e.g. TeaseMe slow/unreachable). Surfaced so
-    // the UI can show an informational toast like "saved locally — upstream
-    // will retry" without misleading the AM about whether the click stuck.
-    upstreamOk: boolean;
   }> {
     const response = await apiFetch(
       `${API_URL}/referrals/${referralId}/order-landing-page`,
