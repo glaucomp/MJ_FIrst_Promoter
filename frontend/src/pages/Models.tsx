@@ -7,6 +7,7 @@ import {
 } from "react";
 import { useLocation } from "react-router-dom";
 import { CreateUserModal } from "../components/CreateUserModal";
+import { EditAccountManagerModal } from "../components/EditAccountManagerModal";
 import { InviteModal } from "../components/InviteModal";
 import { useAuth } from "../contexts/AuthContext";
 import {
@@ -75,6 +76,16 @@ export const Models = () => {
   const [isCreateUserModalOpen, setIsCreateUserModalOpen] = useState(false);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  // Account-manager admin actions: which AM is currently being edited (modal),
+  // which AM the admin is confirming a delete for, and whether a delete is in flight.
+  const [editingManager, setEditingManager] =
+    useState<AccountManagerSummary | null>(null);
+  const [confirmDeleteManagerId, setConfirmDeleteManagerId] = useState<
+    string | null
+  >(null);
+  const [deletingManagerId, setDeletingManagerId] = useState<string | null>(
+    null,
+  );
 
   // Admin view: account manager sections + filters. Grouping is always on;
   // filters just narrow what's visible inside each section.
@@ -319,6 +330,60 @@ export const Models = () => {
     }
   };
 
+  // Admin: delete an account manager. The backend pre-checks for owned
+  // campaigns / chatter groups and returns a 409 with a useful message if any
+  // exist. On success we drop the AM from local state — managed users that
+  // pointed at this AM via `accountManagerId` get nulled out by the schema's
+  // ON DELETE SET NULL, so they'll re-appear under "Needs assignment" on the
+  // next reload.
+  const handleDeleteAccountManager = async (managerId: string) => {
+    setDeletingManagerId(managerId);
+    try {
+      await modelsApi.deleteUser(managerId);
+      setAccountManagers((prev) => prev.filter((m) => m.id !== managerId));
+      setConfirmDeleteManagerId(null);
+      // Reload users so any orphaned managed users move to "Needs assignment".
+      void loadData();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to delete account manager",
+      );
+    } finally {
+      setDeletingManagerId(null);
+    }
+  };
+
+  // Admin: handle the result of an EditAccountManagerModal save. The PUT
+  // response gives us the canonical user row, but the AM list cache uses a
+  // narrower `AccountManagerSummary` shape — so we refetch the AM list to
+  // pick up the new `currentCampaign` (and any other server-resolved fields).
+  // We also patch the user-row `accountManager` snapshot in place so any
+  // managed users show the new email immediately.
+  const handleAccountManagerUpdated = (updated: ApiUser) => {
+    void usersApi
+      .listAccountManagers()
+      .then(setAccountManagers)
+      .catch((err) => {
+        console.warn("Failed to refresh account managers:", err);
+      });
+
+    setAllUsers((prev) =>
+      prev.map((u) =>
+        u.accountManager?.id === updated.id
+          ? {
+              ...u,
+              accountManager: {
+                ...u.accountManager,
+                email: updated.email,
+                firstName: updated.firstName ?? null,
+                lastName: updated.lastName ?? null,
+              },
+            }
+          : u,
+      ),
+    );
+  };
+
   const handleOpenInviteModal = (type: "referral" | "tracking") => {
     setModalType(type);
     setIsInviteModalOpen(true);
@@ -508,15 +573,17 @@ export const Models = () => {
                   : ""
                   }`}
               >
-                <button
-                  type="button"
-                  onClick={() => toggleSection(section.key)}
-                  className={`flex items-center justify-between gap-[12px] text-left border rounded-[10px] px-[16px] py-[12px] transition-colors ${isNeeds
+                <div
+                  className={`flex items-center justify-between gap-[12px] border rounded-[10px] px-[16px] py-[12px] transition-colors ${isNeeds
                     ? "bg-[#2a1f0a] border-[#b8860b]/40 hover:border-[#b8860b]/70"
                     : "bg-[#1a1a1a] border-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.16)]"
                     }`}
                 >
-                  <div className="flex items-start gap-[12px] min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => toggleSection(section.key)}
+                    className="flex items-start gap-[12px] min-w-0 text-left flex-1"
+                  >
                     <span
                       className={`inline-block text-2xl transition-transform ${isCollapsed ? "" : "rotate-90"
                         } ${isNeeds ? "text-[#ffb84d]" : "text-tm-primary-color05"}`}
@@ -540,7 +607,7 @@ export const Models = () => {
                         </p>
                       )}
                     </div>
-                  </div>
+                  </button>
                   <div className="flex items-center gap-[12px] flex-shrink-0">
                     <span
                       className={`text-base ${isNeeds ? "text-[#d9b26a]" : "text-tm-text-color09"
@@ -554,8 +621,66 @@ export const Models = () => {
                         ${sectionTotal.toFixed(2)}
                       </span>
                     )}
+                    {section.variant === "manager" && section.manager && (
+                      <div className="flex items-center gap-[6px] pl-[8px] ml-[4px] border-l border-[rgba(255,255,255,0.08)]">
+                        {confirmDeleteManagerId === section.manager.id ? (
+                          <>
+                            <span className="text-[#9e9e9e] text-[12px] hidden lg:inline">
+                              Delete?
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                section.manager &&
+                                handleDeleteAccountManager(section.manager.id)
+                              }
+                              disabled={
+                                deletingManagerId === section.manager.id
+                              }
+                              className="px-[10px] py-[4px] rounded-[6px] text-[12px] font-bold bg-tm-danger-color12 border border-[#cc0000] text-[#ff2a2a] hover:bg-[#880000] disabled:opacity-50 transition-colors"
+                            >
+                              {deletingManagerId === section.manager.id
+                                ? "..."
+                                : "Yes"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDeleteManagerId(null)}
+                              className="px-[10px] py-[4px] rounded-[6px] text-[12px] font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white transition-colors"
+                            >
+                              No
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (section.manager)
+                                  setEditingManager(section.manager);
+                              }}
+                              className="px-[10px] py-[4px] rounded-[6px] text-[12px] font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white hover:border-[rgba(255,255,255,0.2)] transition-colors"
+                              title="Edit account manager"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (section.manager)
+                                  setConfirmDeleteManagerId(section.manager.id);
+                              }}
+                              className="px-[10px] py-[4px] rounded-[6px] text-[12px] font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-tm-danger-color04 hover:text-tm-danger-color05 hover:border-[#cc0000]/50 transition-colors"
+                              title="Delete account manager"
+                            >
+                              Delete
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
-                </button>
+                </div>
 
                 {!isCollapsed && (
                   <div
@@ -745,6 +870,13 @@ export const Models = () => {
           onCreated={(newUser) => {
             setAllUsers((prev) => [newUser, ...prev]);
           }}
+        />
+
+        <EditAccountManagerModal
+          isOpen={editingManager !== null}
+          manager={editingManager}
+          onClose={() => setEditingManager(null)}
+          onUpdated={handleAccountManagerUpdated}
         />
       </div>
     );
