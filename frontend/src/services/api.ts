@@ -49,7 +49,7 @@ export const authApi = {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || 'Invalid email or password');
+      throw new Error(errorData.error || errorData.message || 'Invalid email or password');
     }
 
     return response.json();

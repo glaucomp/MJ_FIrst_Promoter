@@ -144,10 +144,11 @@ export interface PromotePreUserResult {
 
 /**
  * Promote a TeaseMe pre-influencer to a real `User` row in our DB and email
- * them a set-password link. Triggered when upstream's `survey_step` flips
+ * them a temporary password. Triggered when upstream's `survey_step` flips
  * from 4 (approved) to 5 (published influencer) — at that point the LP is
  * live and the invitee needs login credentials so they can manage their
- * promoter dashboard on our side.
+ * promoter dashboard on our side. The user is required to change the
+ * temporary password on their first login (`mustChangePassword = true`).
  *
  * Behavior:
  *   - Email-idempotent: if `preUser.welcomeEmailSentAt` is already set,
