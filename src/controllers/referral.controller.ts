@@ -176,7 +176,6 @@ const refreshPreUserSteps = async (
                 teasemeUserId: true,
                 surveyLink: true,
                 assetLink: true,
-                welcomeEmailSentAt: true,
               },
             });
             row.preUser = updated;
