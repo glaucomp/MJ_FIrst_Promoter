@@ -69,6 +69,12 @@ model User {
   role          UserRole @default(PROMOTER)
   userType      UserType @default(PROMOTER) // Type of user: ADMIN, ACCOUNT_MANAGER, TEAM_MANAGER, or PROMOTER
   isActive      Boolean  @default(true)
+  // Set to true for users created via the TeaseMe pre-influencer 4->5
+  // promotion (welcomed with a temp password). Login refuses to mint a
+  // session cookie while this flag is true; the user is redirected to a
+  // one-shot /first-password-change flow that clears the flag and sets
+  // their real password before they can use the dashboard.
+  mustChangePassword Boolean @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -249,6 +255,10 @@ model PreUser {
   assetLink     String?
   stepHistory   Json?
   lastCheckedAt DateTime?
+  // Stamped once the welcome email has been successfully delivered for this
+  // pre-user (i.e. after a successful 4→5 promotion run). Null means the
+  // email has not been sent yet (or the send failed and a retry is pending).
+  welcomeEmailSentAt DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 

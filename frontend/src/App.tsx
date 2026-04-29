@@ -12,6 +12,7 @@ import { ChatterDashboard } from './pages/ChatterDashboard';
 import { ChatterGroupToolsPage } from './pages/ChatterGroupToolsPage';
 import { Login } from './pages/Login';
 import { SetPassword } from './pages/SetPassword';
+import { FirstPasswordChange } from './pages/FirstPasswordChange';
 import type { ReactNode } from 'react';
 import type { UserRole } from './types';
 
@@ -76,6 +77,11 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
       <Route path="/set-password/:token" element={<SetPassword />} />
+      {/* Reached only via Login.tsx after a `requirePasswordChange` login.
+          Public route (no auth gate, no PublicRoute redirect) because the
+          user has no session cookie yet — they're holding a short-lived
+          changeToken in router state instead. */}
+      <Route path="/first-password-change" element={<FirstPasswordChange />} />
       <Route
         path="/"
         element={

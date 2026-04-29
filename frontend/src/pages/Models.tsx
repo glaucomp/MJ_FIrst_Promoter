@@ -1116,25 +1116,22 @@ const deriveChipState = (r: Referral): ChipState => {
   if (r.status === "CANCELLED") return "denied";
   if (r.isExpired) return "expired";
   if (r.status === "ACTIVE" || r.status === "COMPLETED") return "lp_live";
-  const upstream = r.preUser?.status;
+  // Lifecycle is driven entirely by upstream's `survey_step` (0..5):
+  //   0  no progress signal yet                              -> Waiting
+  //   1  survey link issued (onboarding can be started)      -> Waiting
+  //   2  survey completed                                    -> Waiting
+  //   3  asset link submitted (3/3 done, AM may approve)     -> Order LP
+  //   4  pre-influencer approved, no published influencer    -> Building
+  //   5  matching influencer exists and is published         -> LP Live
+  // PreUser.status is intentionally ignored here: upstream emits a mix of
+  // values ("pending", "approved", "live", ...) that don't map cleanly to
+  // our chip states. The step number is the only monotonic signal we get
+  // and is the single source of truth for the badge.
   const step = r.preUser?.currentStep ?? 0;
-  switch (upstream) {
-    case "live":
-      return "lp_live";
-    case "building":
-      return "building";
-    case "order_lp":
-      return "order_lp";
-    case "pending":
-    default:
-      // Local promotion: once onboarding is fully complete (3/3) we treat
-      // the row as ready-to-order even if upstream hasn't flipped its
-      // `status` field yet. The AM's click then calls /approve, which
-      // authoritatively moves us to "building". Without this, the green
-      // CTA would stay disabled until the upstream poll caught up.
-      if (step >= ONBOARDING_STEPS.length) return "order_lp";
-      return "waiting";
-  }
+  if (step >= 5) return "lp_live";
+  if (step >= 4) return "building";
+  if (step >= 3) return "order_lp";
+  return "waiting";
 };
 
 const CHIP_LABEL: Record<ChipState, string> = {
@@ -1523,6 +1520,10 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
     setBusyId(referral.id);
     try {
       const result = await modelsApi.orderReferralLandingPage(referral.id);
+      // Server returns a freshly re-polled PreUser snapshot
+      // (currentStep, status, links). Spread it directly — chip state is
+      // derived solely from `currentStep`, so an authoritative server-side
+      // step is all the UI needs. No optimistic forcing of "building".
       setReferrals?.((prev) =>
         prev.map((r) =>
           r.id === referral.id
@@ -1538,31 +1539,17 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
                     assetLink: null,
                   }),
                   currentStep: result.preUser.currentStep,
-                  // Use the server's persisted status as the source of truth
-                  // (backend writes "building" before returning, and never
-                  // downgrades). Optimistically forcing "building" here is
-                  // unnecessary now and would mask any future server-side
-                  // override (e.g. row already at `live`).
                   status: result.preUser.status,
                   lastCheckedAt: result.preUser.lastCheckedAt,
                   teasemeUserId: result.preUser.teasemeUserId,
+                  surveyLink: result.preUser.surveyLink,
+                  assetLink: result.preUser.assetLink,
                 },
               }
             : r,
         ),
       );
-      // Local DB is the source of truth — once it's saved we always tell
-      // the AM the click succeeded. If the *upstream* approve lagged, we
-      // soften the message but keep the toast green so the user doesn't
-      // feel like the click "didn't work" (it did — locally).
-      if (result.upstreamOk) {
-        showToast("success", "Landing page build requested");
-      } else {
-        showToast(
-          "success",
-          "Saved — TeaseMe will pick this up on the next sync.",
-        );
-      }
+      showToast("success", "Landing page build requested");
     } catch (err) {
       showToast(
         "error",
