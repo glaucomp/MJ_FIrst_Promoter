@@ -29,7 +29,7 @@ export const Dashboard = () => {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-[20px]">
         <div className="flex flex-col gap-[12px]">
-          <div className="flex items-center">
+          <div className="flex items-center lg:hidden">
             <h1 className="sr-only">Dashboard</h1>
             <LogoLottie height={48} width={200} />
           </div>
