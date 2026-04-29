@@ -105,6 +105,9 @@ export const SetPassword = () => {
         <div className="flex flex-col gap-[32px]">
           <div className="flex flex-col gap-[12px] items-center">
             <LogoLottie height={56} width={220} />
+            <h1 className="absolute h-px w-px overflow-hidden whitespace-nowrap border-0 p-0 [-webkit-clip-path:inset(50%)] [clip:rect(0,0,0,0)]">
+              {heading}
+            </h1>
           </div>
 
           <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-[20px]">
