@@ -200,25 +200,25 @@ export const promotePreUserToUser = async (
     },
   });
 
+  // Guard: only overwrite the password/flag when the existing account is
+  // provably still in the temp-password flow (mustChangePassword=true).
+  // If the flag is false the user has already set their own credentials (or
+  // this is a completely unrelated legitimate account that happens to share
+  // the email). Touching that account would be an unauthenticated password
+  // reset, so we return `already_user` without any mutation.
+  if (existing && !existing.mustChangePassword) {
+    console.info(
+      "[promote-pre-user] user already exists with own credentials; skipping mutation",
+      { preUserId: preUser.id, userId: existing.id, email: preUser.email },
+    );
+    return { status: "already_user", userId: existing.id };
+  }
+
   const tempPassword = generateTemporaryPassword();
   const hashedPassword = await bcrypt.hash(tempPassword, 10);
 
   let user;
   if (existing) {
-    // Guard: only overwrite the password/flag when the existing account is
-    // provably still in the temp-password flow (mustChangePassword=true).
-    // If the flag is false the user has already set their own credentials (or
-    // this is a completely unrelated legitimate account that happens to share
-    // the email). Touching that account would be an unauthenticated password
-    // reset, so we return `already_user` without any mutation.
-    if (!existing.mustChangePassword) {
-      console.info(
-        "[promote-pre-user] user already exists with own credentials; skipping mutation",
-        { preUserId: preUser.id, userId: existing.id, email: preUser.email },
-      );
-      return { status: "already_user", userId: existing.id };
-    }
-
     console.info("[promote-pre-user] user already exists; retrying welcome email flow", {
       preUserId: preUser.id,
       userId: existing.id,
