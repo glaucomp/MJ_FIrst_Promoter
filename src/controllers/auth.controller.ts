@@ -26,6 +26,19 @@ const generateToken = (userId: string, email: string, role: UserRole) =>
     expiresIn: "7d",
   });
 
+// Short-lived single-purpose JWT minted when a user with
+// `mustChangePassword=true` logs in. The frontend exchanges this token
+// (NOT the regular auth_token) at /api/auth/first-password-change. Kept
+// distinct from the session JWT so it can't be reused as a normal cookie
+// session and so its purpose can be audited at verify time.
+const FIRST_PASSWORD_CHANGE_PURPOSE = "first_password_change";
+const generateFirstPasswordChangeToken = (userId: string, email: string) =>
+  jwt.sign(
+    { id: userId, email, purpose: FIRST_PASSWORD_CHANGE_PURPOSE },
+    process.env.JWT_SECRET!,
+    { expiresIn: "15m" },
+  );
+
 const TOKEN_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
@@ -392,6 +405,7 @@ export const login = async (req: AuthRequest, res: Response) => {
         role: true,
         userType: true,
         isActive: true,
+        mustChangePassword: true,
       },
     });
 
@@ -408,15 +422,125 @@ export const login = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
+    // Hard-block: when `mustChangePassword` is set (e.g. on a freshly
+    // promoted pre-influencer who got a temp password in their welcome
+    // email), refuse to mint the regular session cookie. Instead, hand
+    // back a short-lived single-purpose token that the FE swaps at
+    // /api/auth/first-password-change. The user cannot reach any
+    // authenticate-gated route until that endpoint clears the flag.
+    if (user.mustChangePassword) {
+      const changeToken = generateFirstPasswordChangeToken(user.id, user.email);
+      return res.json({
+        requirePasswordChange: true,
+        changeToken,
+        email: user.email,
+        firstName: user.firstName,
+      });
+    }
+
     const token = generateToken(user.id, user.email, user.role);
     res.cookie("auth_token", token, TOKEN_COOKIE_OPTIONS);
 
-    const { password: _, ...userWithoutPassword } = user;
+    const { password: _, mustChangePassword: __, ...userWithoutPassword } = user;
 
     res.json({ user: userWithoutPassword });
   } catch (error) {
     console.error("Login error:", error);
     res.status(500).json({ error: "Login failed" });
+  }
+};
+
+// POST /api/auth/first-password-change { changeToken, newPassword }
+// Consumed exactly once after a `mustChangePassword` login. Verifies the
+// short-lived purpose-tagged JWT, replaces the temp password with the
+// user's chosen one, clears the flag, and finally mints the regular
+// session cookie so the user lands straight in their dashboard. No
+// authenticate middleware: `changeToken` is its own gate.
+export const firstPasswordChange = async (req: AuthRequest, res: Response) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const changeToken: string = req.body.changeToken;
+    const newPassword: string = req.body.newPassword;
+
+    let decoded: { id: string; email: string; purpose: string };
+    try {
+      decoded = jwt.verify(
+        changeToken,
+        process.env.JWT_SECRET!,
+      ) as typeof decoded;
+    } catch {
+      return res.status(401).json({
+        error: "Invalid or expired token. Please log in again.",
+      });
+    }
+
+    if (decoded.purpose !== FIRST_PASSWORD_CHANGE_PURPOSE) {
+      return res.status(401).json({
+        error: "Invalid token purpose.",
+      });
+    }
+
+    const existing = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: {
+        id: true,
+        email: true,
+        isActive: true,
+      },
+    });
+    if (!existing) {
+      return res.status(401).json({ error: "Account not found." });
+    }
+    if (!existing.isActive) {
+      return res.status(401).json({ error: "Account is inactive." });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Atomic single-use gate: only the first request that arrives with
+    // mustChangePassword=true wins. Concurrent requests with the same
+    // changeToken race here; the one that finds count=0 gets a 409
+    // instead of silently overwriting the already-set password.
+    const { count } = await prisma.user.updateMany({
+      where: { id: existing.id, mustChangePassword: true },
+      data: {
+        password: hashedPassword,
+        mustChangePassword: false,
+      },
+    });
+    if (count === 0) {
+      return res.status(409).json({
+        error: "Password has already been changed. Please log in.",
+      });
+    }
+
+    // Fetch the updated user for the session token (updateMany doesn't
+    // return rows).
+    const user = await prisma.user.findUniqueOrThrow({
+      where: { id: existing.id },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        userType: true,
+        isActive: true,
+        createdAt: true,
+      },
+    });
+
+    const sessionToken = generateToken(user.id, user.email, user.role);
+    res.cookie("auth_token", sessionToken, TOKEN_COOKIE_OPTIONS);
+
+    return res.json({ user });
+  } catch (error) {
+    console.error("First password change error:", error);
+    return res.status(500).json({ error: "Failed to set new password" });
   }
 };
 
@@ -609,6 +733,11 @@ export const resetPassword = async (req: AuthRequest, res: Response) => {
         // even if the row was created with `isActive: false`. RESET leaves
         // `isActive` untouched so concurrent deactivations aren't reversed.
         ...(isInvite ? { isActive: true } : {}),
+        // Always clear the temp-password gate so users who set their
+        // password via this flow (including promoted pre-influencers whose
+        // invite link lands here) are not stuck in the mustChangePassword
+        // loop on their next login.
+        mustChangePassword: false,
       },
       select: {
         id: true,

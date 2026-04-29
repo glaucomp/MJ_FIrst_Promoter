@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { RequirePasswordChangeError, useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { authApi } from '../services/api';
 import { LogoLottie } from '../components/LogoLottie';
@@ -26,6 +26,20 @@ export const Login = () => {
       const loggedInUser = await login(email, password);
       navigate(loggedInUser.baseRole === 'chatter' ? '/chatter-portal' : '/dashboard');
     } catch (err) {
+      // The backend signaled the account is on a temp password (created
+      // by the TeaseMe 4->5 promotion flow). Route to /first-password-change
+      // so the user can set a real password before reaching the dashboard.
+      if (err instanceof RequirePasswordChangeError) {
+        navigate('/first-password-change', {
+          state: {
+            changeToken: err.changeToken,
+            email: err.emailAddress,
+            firstName: err.firstName,
+          },
+          replace: true,
+        });
+        return;
+      }
       setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
     } finally {
       setIsLoading(false);

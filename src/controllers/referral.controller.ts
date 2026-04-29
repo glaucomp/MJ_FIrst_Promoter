@@ -4,6 +4,7 @@ import { validationResult } from "express-validator";
 import { nanoid } from "nanoid";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { emailService } from "../services/email.service";
+import { promotePreUserToUser } from "../services/pre-user-promote.service";
 import { getPresignedUrl } from "../services/s3.service";
 import {
   approvePreInfluencer,
@@ -91,6 +92,10 @@ const readStepHistory = (raw: Prisma.JsonValue | null | undefined): StepHistoryE
 type PreUserRow = {
   id: string;
   email: string;
+  // FK back to the originating Referral. Required for the 4→5 promotion
+  // hook to inherit the referrer (so the new User lands under the right
+  // account manager instead of in "Needs assignment").
+  referralId: string | null;
   inviteCode: string | null;
   currentStep: number;
   status: string;
@@ -99,6 +104,10 @@ type PreUserRow = {
   teasemeUserId: string | null;
   surveyLink: string | null;
   assetLink: string | null;
+  // Stamped by promotePreUserToUser when the welcome email is delivered.
+  // Threaded into the promotion call so the helper can short-circuit on
+  // already-emailed rows (anti-double-email guarantee).
+  welcomeEmailSentAt: Date | null;
 };
 
 type ReferralRowWithPreUser = { preUser: PreUserRow | null };
@@ -120,12 +129,15 @@ const refreshPreUserSteps = async (
   const staleRows = rows.filter((row) => {
     const pre = row.preUser;
     if (!pre) return false;
-    // Once an AM has approved the invite we mark the row with currentStep
-    // >= 4 (one past the 3-step onboarding survey). At that point upstream's
-    // /step-progress can't tell us anything new about onboarding, and any
-    // poll either is a no-op or risks downgrading our locally-promoted
-    // lifecycle state ("building" -> "approved"). Skip these rows entirely.
-    if (pre.currentStep >= 4) return false;
+    // Step 5 is only terminal after downstream side effects have completed.
+    // Keep polling step-5 rows until `welcomeEmailSentAt` is set so a
+    // transient failure in the 4→5 promotion / welcome-email path can be
+    // retried automatically. Preserve the actual upstream step on `pre`
+    // and use a derived value only for polling eligibility so callers and
+    // later history calculations continue to see the real current step.
+    const effectiveCurrentStep =
+      pre.currentStep === 5 && !pre.welcomeEmailSentAt ? 4 : pre.currentStep;
+    if (effectiveCurrentStep >= 5 && pre.welcomeEmailSentAt) return false;
     if (!pre.lastCheckedAt) return true;
     return now - pre.lastCheckedAt.getTime() > TEASEME_POLL_TTL_MS;
   });
@@ -155,6 +167,7 @@ const refreshPreUserSteps = async (
               select: {
                 id: true,
                 email: true,
+                referralId: true,
                 inviteCode: true,
                 currentStep: true,
                 status: true,
@@ -163,6 +176,7 @@ const refreshPreUserSteps = async (
                 teasemeUserId: true,
                 surveyLink: true,
                 assetLink: true,
+                welcomeEmailSentAt: true,
               },
             });
             row.preUser = updated;
@@ -181,7 +195,10 @@ const refreshPreUserSteps = async (
           const updated = await prisma.preUser.update({
             where: { id: pre.id },
             data: {
-              currentStep: status.step,
+              // Always advance monotonically so a stale upstream poll can
+              // never flip a card backward in the UI. `orderReferralLandingPage`
+              // applies the same rule.
+              currentStep: Math.max(pre.currentStep, status.step),
               // Mirror TeaseMe's lifecycle string into our own column so the
               // list endpoint can emit it without a second upstream call.
               // chooseForwardStatus() guards against stale `/step-progress`
@@ -200,6 +217,7 @@ const refreshPreUserSteps = async (
             select: {
               id: true,
               email: true,
+              referralId: true,
               inviteCode: true,
               currentStep: true,
               status: true,
@@ -208,9 +226,49 @@ const refreshPreUserSteps = async (
               teasemeUserId: true,
               surveyLink: true,
               assetLink: true,
+              welcomeEmailSentAt: true,
             },
           });
           row.preUser = updated;
+
+          // Once upstream has a published influencer (step 5+), mint a
+          // real User row so the invitee can log in to our promoter
+          // dashboard, and email them a temporary password. Per the
+          // operator's choice, we DO NOT touch the PreUser row or the
+          // parent Referral here — the My Promoters chip continues to
+          // render LP Live from PreUser.currentStep=5.
+          //
+          // Keep retrying this hook on later polls until the welcome email
+          // has been recorded as sent. The promotion helper itself is
+          // idempotent (early-returns on existing User), so retrying after
+          // a partial success is safe and allows automatic email recovery.
+          if (status.step >= 5 && !updated.welcomeEmailSentAt) {
+            try {
+              await promotePreUserToUser(prisma, {
+                id: updated.id,
+                email: updated.email,
+                inviteCode: updated.inviteCode,
+                // Inherit the originating referral so the new User lands
+                // under the right account manager (instead of in the
+                // "Needs assignment" bucket).
+                referralId: updated.referralId,
+                // Use the post-update snapshot so a concurrent request that
+                // stamped welcomeEmailSentAt between our read and this point
+                // is reflected here and the helper short-circuits correctly.
+                welcomeEmailSentAt: updated.welcomeEmailSentAt,
+              });
+            } catch (err) {
+              // promotePreUserToUser already logs internally and never
+              // rethrows on expected failures (P2002, email send miss),
+              // so anything reaching here is an unexpected exception
+              // (e.g. DB outage). Swallow it so a single bad row doesn't
+              // poison the rest of the polling batch.
+              console.error("[refreshPreUserSteps] promote threw", {
+                preUserId: pre.id,
+                err: (err as Error).message,
+              });
+            }
+          }
         } catch (err) {
           console.error("[refreshPreUserSteps] poll failed", {
             preUserId: pre.id,
@@ -850,6 +908,11 @@ const loadReferralForAction = async (
           lastCheckedAt: true,
           stepHistory: true,
           teasemeUserId: true,
+          // Needed by orderReferralLandingPage so the post-approve repoll
+          // can preserve the previously-known link if the upstream poll
+          // omits it.
+          surveyLink: true,
+          assetLink: true,
         },
       },
       referredUser: {
@@ -1065,46 +1128,21 @@ export const orderReferralLandingPage = async (
       });
     }
 
-    // The "Order Landing Page" click is a *user-driven* lifecycle promotion:
-    // the AM has explicitly approved the invite. We force-write
-    // (status="building", currentStep=4) BEFORE the upstream call so a
-    // refresh always reflects the click — even if upstream is slow / down
-    // / returns a non-2xx, or if a previous poll left the row at an
-    // unexpected status like "approved" that the rank-based guard would
-    // refuse to overwrite. The upstream POST then runs best-effort to
-    // actually kick off the LP build; its failure is logged in
-    // teaseme.service but never bubbles up as a 502 here, because that
-    // would leave the UI showing an error toast for a state we *did*
-    // successfully record.
-    //
-    // The single exception is `live` rows: if the LP is already built,
-    // don't roll back to `building`. currentStep is bumped past the 3-step
-    // onboarding survey to 4 to mark "approved + building"; the card UI
-    // caps the displayed value at ONBOARDING_STEPS.length so this still
-    // renders as "3/3" — it's an internal lifecycle marker that also lets
-    // refreshPreUserSteps skip these rows on subsequent list renders
-    // (post-onboarding poll is a no-op at best, downgrade risk at worst).
-    const isLive = referral.preUser.status === "live";
-    const updatedPreUser = await prisma.preUser.update({
-      where: { id: referral.preUser.id },
-      data: {
-        status: isLive ? "live" : "building",
-        currentStep: Math.max(referral.preUser.currentStep, 4),
-        lastCheckedAt: new Date(),
-      },
-      select: {
-        id: true,
-        currentStep: true,
-        status: true,
-        lastCheckedAt: true,
-        teasemeUserId: true,
-      },
-    });
-
-    // Fire-and-forget the upstream approve. We `await` only so failures get
-    // logged with the referral id in scope (not because we want to block on
-    // the result). The frontend already optimistically renders Building on
-    // a successful response from us, which we'll always send below.
+    // The "Order Landing Page" click is a thin orchestration around the
+    // upstream contract:
+    //   1. POST /approve — flips the pre-influencer to approved upstream
+    //      and kicks off the LP build. If this fails (network / non-2xx /
+    //      timeout) we surface a 502 so the UI can show an error toast —
+    //      there is no local fallback because the chip is now driven
+    //      entirely by upstream's `survey_step`.
+    //   2. POST /step-progress — re-poll right after to learn the new
+    //      step (typically advances to 4 once approved). Persist whatever
+    //      upstream tells us; the chip on the card derives state from
+    //      `currentStep` alone, so any monotonic forward movement here
+    //      is enough to flip the badge to Building.
+    //   3. If the post-approve poll lags (still returns null), we just
+    //      bump lastCheckedAt and let the periodic poller catch up. We
+    //      still return success because /approve itself succeeded.
     const upstream = await approvePreInfluencer({
       inviteCode: referral.inviteCode,
       email: referral.preUser.email,
@@ -1115,13 +1153,64 @@ export const orderReferralLandingPage = async (
         inviteCode: referral.inviteCode,
         email: referral.preUser.email,
       });
+      return res.status(502).json({
+        error:
+          "TeaseMe couldn't start the landing-page build right now. Please try again in a moment.",
+      });
     }
 
-    return res.json({
-      success: true,
-      preUser: updatedPreUser,
-      upstreamOk: !!upstream,
+    const status = await fetchTeasemePreUserStatus({
+      email: referral.preUser.email,
+      inviteCode: referral.inviteCode ?? undefined,
     });
+    const now = new Date();
+
+    // Default update: just bump lastCheckedAt so the periodic poller
+    // re-tries soon. Used when the immediate post-approve poll lagged.
+    let updateData: Prisma.PreUserUpdateInput = { lastCheckedAt: now };
+
+    if (status) {
+      const history = readStepHistory(referral.preUser.stepHistory);
+      const nextHistory =
+        status.step > referral.preUser.currentStep
+          ? [
+              ...history,
+              { step: status.step, at: now.toISOString() },
+            ].slice(-STEP_HISTORY_MAX)
+          : history;
+
+      updateData = {
+        // Never go backwards — if upstream's poll lags and reports a
+        // lower step than we already have, keep the higher one. The
+        // rank-based chooseForwardStatus() does the same for the status
+        // string field.
+        currentStep: Math.max(referral.preUser.currentStep, status.step),
+        status: chooseForwardStatus(referral.preUser.status, status.status),
+        teasemeUserId: status.teasemeUserId ?? referral.preUser.teasemeUserId,
+        // Don't null out a previously-known link if a later poll omits
+        // it — surveyLink populates first, then assetLink later.
+        surveyLink: status.surveyLink ?? referral.preUser.surveyLink,
+        assetLink: status.assetLink ?? referral.preUser.assetLink,
+        lastCheckedAt: now,
+        stepHistory: nextHistory as unknown as Prisma.InputJsonValue,
+      };
+    }
+
+    const updatedPreUser = await prisma.preUser.update({
+      where: { id: referral.preUser.id },
+      data: updateData,
+      select: {
+        id: true,
+        currentStep: true,
+        status: true,
+        lastCheckedAt: true,
+        teasemeUserId: true,
+        surveyLink: true,
+        assetLink: true,
+      },
+    });
+
+    return res.json({ success: true, preUser: updatedPreUser });
   } catch (error) {
     console.error("Order landing page error:", error);
     return res.status(500).json({ error: "Failed to order landing page" });
@@ -1322,6 +1411,9 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
           select: {
             id: true,
             email: true,
+            // Required by refreshPreUserSteps' 4->5 promotion hook so the
+            // new User row inherits the originating referral's owner.
+            referralId: true,
             inviteCode: true,
             currentStep: true,
             status: true,
@@ -1330,6 +1422,9 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
             teasemeUserId: true,
             surveyLink: true,
             assetLink: true,
+            // Threaded through to the 4->5 promotion hook so we don't
+            // re-trigger the welcome email after it has been delivered.
+            welcomeEmailSentAt: true,
           },
         },
         referredUser: {
