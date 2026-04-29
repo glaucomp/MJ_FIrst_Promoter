@@ -9,8 +9,8 @@ export interface LoginResponse {
   user: {
     id: string;
     email: string;
-    firstName: string;
-    lastName: string;
+    firstName: string | null;
+    lastName: string | null;
     role: string;
     userType: string;
     isActive: boolean;

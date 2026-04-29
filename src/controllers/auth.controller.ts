@@ -733,6 +733,11 @@ export const resetPassword = async (req: AuthRequest, res: Response) => {
         // even if the row was created with `isActive: false`. RESET leaves
         // `isActive` untouched so concurrent deactivations aren't reversed.
         ...(isInvite ? { isActive: true } : {}),
+        // Always clear the temp-password gate so users who set their
+        // password via this flow (including promoted pre-influencers whose
+        // invite link lands here) are not stuck in the mustChangePassword
+        // loop on their next login.
+        mustChangePassword: false,
       },
       select: {
         id: true,

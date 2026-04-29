@@ -1,24 +1,12 @@
 import crypto from "node:crypto";
 
-import { Prisma, PrismaClient, UserRole, UserType } from "@prisma/client";
+import { Prisma, PasswordResetPurpose, PrismaClient, UserRole, UserType } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
-import { getFrontendUrl } from "../utils/frontend-url";
+import { buildSetPasswordUrl } from "../utils/frontend-url";
+import { createPasswordResetToken } from "./password-reset.service";
 import { emailService } from "./email.service";
 
-// ─── Temporary password ──────────────────────────────────────────────────────
-//
-// URL-safe base64url characters (letters, digits, "-" and "_"), 12 chars ≈
-// 72 bits of entropy. Larger symbol sets can cause friction when the user
-// copy/pastes from email (especially on mobile), and the welcome email
-// already strongly nudges the user to change the password on first login.
-const TEMP_PASSWORD_LENGTH = 12;
-
-const generateTemporaryPassword = (): string => {
-  // randomBytes -> base64url -> trim. 9 bytes encodes to 12 url-safe chars
-  // without padding, which is exactly what we want.
-  return crypto.randomBytes(9).toString("base64url").slice(0, TEMP_PASSWORD_LENGTH);
-};
 
 // ─── Username derivation ─────────────────────────────────────────────────────
 //
@@ -144,11 +132,12 @@ export interface PromotePreUserResult {
 
 /**
  * Promote a TeaseMe pre-influencer to a real `User` row in our DB and email
- * them a temporary password. Triggered when upstream's `survey_step` flips
- * from 4 (approved) to 5 (published influencer) — at that point the LP is
- * live and the invitee needs login credentials so they can manage their
- * promoter dashboard on our side. The user is required to change the
- * temporary password on their first login (`mustChangePassword = true`).
+ * them a one-time set-password invite link. Triggered when upstream's
+ * `survey_step` flips from 4 (approved) to 5 (published influencer) — at
+ * that point the LP is live and the invitee needs login credentials so they
+ * can manage their promoter dashboard on our side. The user is required to
+ * set their password via the invite link (`mustChangePassword = true` until
+ * they do so via the `/api/auth/password-reset` endpoint).
  *
  * Behavior:
  *   - Email-idempotent: if `preUser.welcomeEmailSentAt` is already set,
@@ -156,15 +145,16 @@ export interface PromotePreUserResult {
  *     the primary anti-double-email guarantee and survives even if the User
  *     row is later deleted or `currentStep` is manually rewound.
  *   - Retry-safe on user collision: if a User with this email already
- *     exists but `mustChangePassword` is still true (provably in the
- *     temp-password flow), the password is refreshed and the welcome email
- *     is retried. If `mustChangePassword` is false (user has already set
- *     their own credentials or is an unrelated account), returns
- *     `already_user` without any mutation.
- *   - Stamps `PreUser.welcomeEmailSentAt` when the welcome email is
+ *     exists and `mustChangePassword` is still true (still in the invite
+ *     flow), a fresh invite token is created and the set-password email is
+ *     retried **without** rotating the stored password hash. If
+ *     `mustChangePassword` is false (user has already set their own
+ *     credentials or is an unrelated account), returns `already_user`
+ *     without any mutation.
+ *   - Stamps `PreUser.welcomeEmailSentAt` when the invite email is
  *     successfully delivered so subsequent polls can skip the promotion
  *     hook entirely.
- *   - Welcome email is best-effort: a send failure is logged but does not
+ *   - Invite email is best-effort: a send failure is logged but does not
  *     fail the promotion (the User row is still created/updated). We
  *     surface `emailSent: false` so the caller can include it in logs for
  *     observability.
@@ -240,27 +230,18 @@ export const promotePreUserToUser = async (
     return { status: "already_user", userId: existing.id };
   }
 
-  const tempPassword = generateTemporaryPassword();
-  const hashedPassword = await bcrypt.hash(tempPassword, 10);
-
   let user;
   if (existing) {
-    console.info("[promote-pre-user] user already exists; retrying welcome email flow", {
+    console.info("[promote-pre-user] user already exists; resending invite email", {
       preUserId: preUser.id,
       userId: existing.id,
       email: preUser.email,
     });
-
-    user = await prisma.user.update({
-      where: { id: existing.id },
-      data: {
-        password: hashedPassword,
-        // Ensure the user remains blocked until they replace the freshly
-        // generated temporary password included in the retried welcome email.
-        mustChangePassword: true,
-      },
-      select: { id: true, email: true, username: true, firstName: true, inviteCode: true },
-    });
+    // Don't rotate the password — the stored hash is already an unguessable
+    // random value. A fresh invite token will be created below so the new
+    // set-password link works even if the previous token expired or the
+    // first email was never delivered.
+    user = existing;
   } else {
     const emailLocal = preUser.email.split("@")[0] ?? "user";
     const username = await ensureUniqueUsername(prisma, emailLocal);
@@ -268,6 +249,14 @@ export const promotePreUserToUser = async (
     // even if the username derivation gave up.
     const firstName = sanitizeLocalPart(emailLocal);
     const ownership = await resolveOwnership(prisma, preUser.referralId);
+
+    // Generate a random, unguessable password hash. The user will set their
+    // real password via the set-password invite link; this value is never
+    // emailed. bcrypt cost-10 is kept in line with the rest of the codebase.
+    const hashedPassword = await bcrypt.hash(
+      crypto.randomBytes(32).toString("hex"),
+      10,
+    );
 
     try {
       user = await prisma.user.create({
@@ -416,25 +405,15 @@ export const promotePreUserToUser = async (
     }
   }
 
-  const emailSent = await sendWelcomeEmailSafe({
+  const emailSent = await sendInviteEmailSafe(prisma, {
     email: user.email,
-    // Welcome template requires a non-empty username string. Fall back to
-    // a sanitized email local-part if the unique-username derivation gave
-    // up (or if we updated an existing User row whose username was null).
-    username:
-      user.username ?? sanitizeLocalPart(user.email.split("@")[0] ?? "user"),
-    password: tempPassword,
     firstName: user.firstName,
-    // ref_id slot in the template is the FirstPromoter-style invite code.
-    // We don't auto-generate one for newly-promoted users, so use the
-    // originating Referral's invite code if available.
-    refId: preUser.inviteCode ?? "—",
     userId: user.id,
     preUserId: preUser.id,
   });
 
   if (emailSent) {
-    console.info("[promote-pre-user] welcome email sent", {
+    console.info("[promote-pre-user] invite email sent", {
       preUserId: preUser.id,
       userId: user.id,
     });
@@ -463,50 +442,52 @@ export const promotePreUserToUser = async (
   };
 };
 
-interface WelcomeEmailContext {
+interface InviteEmailContext {
   email: string;
-  username: string;
-  password: string;
   firstName: string | null;
-  refId: string;
   userId: string;
   preUserId: string;
 }
 
 /**
- * Best-effort welcome-email dispatch. Logs the outcome but never throws —
- * the User row is what matters for login, and the operator can trigger a
- * resend manually if the bounce is real.
+ * Best-effort invite-email dispatch. Creates a one-time set-password token
+ * and sends a `sendSetPasswordEmail` so the new promoter can choose their
+ * own password without a plaintext credential ever appearing in an email.
+ * Logs the outcome but never throws — the User row is what matters for
+ * login, and the operator can trigger a resend manually if needed.
  */
-const sendWelcomeEmailSafe = async (
-  ctx: WelcomeEmailContext,
+const sendInviteEmailSafe = async (
+  prisma: PrismaClient,
+  ctx: InviteEmailContext,
 ): Promise<boolean> => {
-  const loginUrl = `${getFrontendUrl()}/login`;
   let sent = false;
   try {
-    sent = await emailService.sendPromoterWelcomeEmail({
+    const { rawToken, expiresAt } = await createPasswordResetToken(
+      ctx.userId,
+      PasswordResetPurpose.INVITE,
+    );
+    const setupUrl = buildSetPasswordUrl(rawToken);
+    sent = await emailService.sendSetPasswordEmail({
       email: ctx.email,
-      username: ctx.username,
-      password: ctx.password,
-      firstName: ctx.firstName ?? undefined,
-      ref_id: ctx.refId,
-      loginUrl,
+      firstName: ctx.firstName,
+      setupUrl,
+      expiresAt,
     });
   } catch (err) {
-    console.error("[promote-pre-user] welcome email threw", {
+    console.error("[promote-pre-user] invite email threw", {
       userId: ctx.userId,
       err: err instanceof Error ? err.message : String(err),
     });
     return false;
   }
   if (sent) {
-    console.info("[promote-pre-user] promoted + emailed", {
+    console.info("[promote-pre-user] promoted + invite emailed", {
       preUserId: ctx.preUserId,
       userId: ctx.userId,
       email: ctx.email,
     });
   } else {
-    console.warn("[promote-pre-user] welcome email not sent", {
+    console.warn("[promote-pre-user] invite email not sent", {
       userId: ctx.userId,
       email: ctx.email,
     });
