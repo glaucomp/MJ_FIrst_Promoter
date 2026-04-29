@@ -415,21 +415,22 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
     });
 
     if (campaignId !== undefined && currentUser.role === UserRole.ADMIN && user.userType === UserType.ACCOUNT_MANAGER) {
-      // Find the AM's existing active hidden-campaign referral. We pull every
-      // ACTIVE referral they received and filter in JS because Prisma's
-      // relation filter doesn't compose well with `referredUserId`.
-      const activeReferrals = await prisma.referral.findMany({
-        where: { referredUserId: id, status: 'ACTIVE' },
+      // Find the AM's existing active hidden-campaign referral directly in SQL.
+      const existing = await prisma.referral.findFirst({
+        where: {
+          referredUserId: id,
+          status: 'ACTIVE',
+          campaign: {
+            isActive: true,
+            visibleToPromoters: false,
+          },
+        },
         select: {
           id: true,
           campaignId: true,
           referrerId: true,
-          campaign: { select: { isActive: true, visibleToPromoters: true } },
         },
       });
-      const existing = activeReferrals.find(
-        (r) => r.campaign.isActive && !r.campaign.visibleToPromoters,
-      );
 
       if (resolvedAmCampaign === null) {
         // Caller cleared the campaign — cancel the active hidden referral.
