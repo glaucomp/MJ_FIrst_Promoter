@@ -255,6 +255,10 @@ model PreUser {
   assetLink     String?
   stepHistory   Json?
   lastCheckedAt DateTime?
+  // Stamped once the welcome email has been successfully delivered for this
+  // pre-user (i.e. after a successful 4→5 promotion run). Null means the
+  // email has not been sent yet (or the send failed and a retry is pending).
+  welcomeEmailSentAt DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
