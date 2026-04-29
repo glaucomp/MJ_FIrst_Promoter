@@ -61,6 +61,7 @@ export const Login = () => {
         <div className="flex flex-col gap-[32px]">
           {/* Logo/Header */}
           <div className="flex flex-col gap-[12px] items-center">
+            <h1 className="sr-only">{mode === 'login' ? 'Login' : 'Forgot password'}</h1>
             <LogoLottie height={56} width={220} />
             <p className="text-base leading-[1.4] text-[#9e9e9e] font-medium tracking-[0.2px]">
               {mode === 'login'
