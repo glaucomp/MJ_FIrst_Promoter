@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { authApi } from '../services/api';
+import { LogoLottie } from '../components/LogoLottie';
 
 type Mode = 'login' | 'forgot';
 
@@ -60,16 +61,7 @@ export const Login = () => {
         <div className="flex flex-col gap-[32px]">
           {/* Logo/Header */}
           <div className="flex flex-col gap-[12px] items-center">
-            <div className="flex items-center gap-[4px]">
-              <h1 className="text-[28px] leading-[36px] font-semibold text-white font-primary">
-                TeaseMe
-              </h1>
-              <div className="border border-[#ff0f5f] rounded-[100px] px-[16px] py-[4px] h-[44px] flex items-center justify-center">
-                <span className="text-[28px] leading-[36px] font-tertiary text-[#ff0f5f]">
-                  HQ
-                </span>
-              </div>
-            </div>
+            <LogoLottie height={56} width={220} />
             <p className="text-base leading-[1.4] text-[#9e9e9e] font-medium tracking-[0.2px]">
               {mode === 'login'
                 ? 'Sign in to your account'
