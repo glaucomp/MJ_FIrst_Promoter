@@ -43,5 +43,31 @@ export const getPresignedUrl = async (
   }
 };
 
+/**
+ * Downloads an S3 object into a Buffer. Returns null when the key is
+ * falsy or the fetch fails. Used by server-side image-composition
+ * pipelines (e.g. email-compose.service.ts) that need the raw bytes
+ * rather than a presigned URL — typically because the result is then
+ * processed in-memory and embedded as a data URL.
+ */
+export const downloadObjectBuffer = async (
+  key?: string | null,
+): Promise<Buffer | null> => {
+  if (!key) return null;
+  try {
+    const command = new GetObjectCommand({ Bucket: bucket, Key: key });
+    const response = await s3Client.send(command);
+    if (!response.Body) return null;
+    // The SDK returns Body as a Readable stream in Node — collect into
+    // a Buffer. transformToByteArray() is provided by the smithy stream
+    // helpers and is the documented way to materialise small objects.
+    const bytes = await response.Body.transformToByteArray();
+    return Buffer.from(bytes);
+  } catch (error) {
+    console.error('[s3.service] Failed to download key', key, error);
+    return null;
+  }
+};
+
 export const teasemeBucket = bucket;
 export const teasemeRegion = region;

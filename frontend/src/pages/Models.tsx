@@ -1863,6 +1863,13 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
           const assetLinkTooltip = canCopyAssetLink
             ? "Copy landing page link"
             : "Landing page link not available yet";
+          // On lp_live the onboarding history is purely informational — the
+          // promoter has already finished the survey and the LP is live —
+          // so we fade the checklist + header to 20% to push the eye toward
+          // the Assign Chatters CTA. The asset-link copy button stays at
+          // full opacity because it's still the primary affordance inside
+          // this block.
+          const isLive = chipState === "lp_live";
           return (
             <div
               key={referral.id}
@@ -1897,7 +1904,10 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
                   progress even on `building` / `lp_live` (a gentle history
                   cue rather than an interactive checklist). */}
               <div className="relative px-[14px] py-[12px]">
-                <div className="flex items-center justify-between mb-[8px]">
+                <div
+                  className={`flex items-center justify-between mb-[8px] ${isLive ? "opacity-20" : ""
+                    }`}
+                >
                   <span className="text-base text-tm-text-color01 font-medium tracking-tight">
                     Onboarding
                   </span>
@@ -1934,10 +1944,12 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
                     </OnboardingIconPill>
                   </div>
                 </div>
-                <OnboardingChecklist
-                  step={step}
-                  dimmed={chipState === "expired"}
-                />
+                <div className={isLive ? "opacity-20" : ""}>
+                  <OnboardingChecklist
+                    step={step}
+                    dimmed={chipState === "expired"}
+                  />
+                </div>
                 {/* Copy landing-page (asset) link — writes preUser.assetLink
                     to clipboard and shows a toast. assetLink is null until
                     TeaseMe finishes building the LP, so we keep the pill
@@ -2184,9 +2196,21 @@ const CardActions = ({
   // step >= 5. Referrals accepted via /register have no preUser row (the
   // backend deletes it on registration), and the API requires preUser to be
   // present — so we omit the button entirely for those cases.
+  //
+  // Additionally, once the promoter has logged in for the first time and
+  // completed /first-password-change (User.mustChangePassword flips to
+  // false), the welcome flow is finished and the button is hidden. The
+  // AM should not be able to accidentally rotate an active user's
+  // password back to a temp value via Resend after that point — if the
+  // promoter loses access they go through the standard forgot-password
+  // flow instead.
   const welcomeEmailSent = !!referral.preUser?.welcomeEmailSentAt;
+  const completedFirstLogin =
+    referral.referredUser?.mustChangePassword === false;
   const canSendWelcomeEmail =
-    referral.preUser != null && referral.preUser.currentStep >= 5;
+    referral.preUser != null &&
+    referral.preUser.currentStep >= 5 &&
+    !completedFirstLogin;
   return (
     <div className="flex flex-col gap-[8px]">
       {canSendWelcomeEmail && (

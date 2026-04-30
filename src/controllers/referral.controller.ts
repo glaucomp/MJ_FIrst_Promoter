@@ -1525,6 +1525,10 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
             username: true,
             profilePhotoKey: true,
             createdAt: true,
+            // Drives Send/Resend Welcome Email visibility on LP Live
+            // cards: button hides once the promoter has completed
+            // /first-password-change (mustChangePassword flips to false).
+            mustChangePassword: true,
           },
         },
         childReferrals: {
