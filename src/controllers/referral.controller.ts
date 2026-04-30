@@ -1,16 +1,9 @@
-import {
-  PasswordResetPurpose,
-  Prisma,
-  PrismaClient,
-  UserRole,
-  UserType,
-} from "@prisma/client";
+import { Prisma, PrismaClient, UserRole, UserType } from "@prisma/client";
 import { Response } from "express";
 import { validationResult } from "express-validator";
 import { nanoid } from "nanoid";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { emailService } from "../services/email.service";
-import { createPasswordResetToken } from "../services/password-reset.service";
 import { promotePreUserToUser } from "../services/pre-user-promote.service";
 import { getPresignedUrl } from "../services/s3.service";
 import {
@@ -20,7 +13,6 @@ import {
   notifyChattersAssigned,
   reassignPreInfluencer,
 } from "../services/teaseme.service";
-import { buildSetPasswordUrl } from "../utils/frontend-url";
 
 const prisma = new PrismaClient();
 
@@ -1387,83 +1379,20 @@ export const sendReferralWelcomeEmail = async (
       });
     }
 
-    // The helper short-circuits with `already_user` when a User row exists
-    // and `mustChangePassword === false` — i.e. the promoter has already
-    // chosen their own password. The operator still wants the welcome
-    // email to go out (this is what the button says it does), so we send
-    // the same `sendSetPasswordEmail` here directly, scoped to the
-    // existing user, **without** rotating their password hash or flipping
-    // `mustChangePassword`. The recipient gets the same welcome email
-    // they'd have received if this were a fresh promotion; if they click
-    // the set-password link they can choose a new password (same effect
-    // as forgot-password), and if they ignore it their existing password
-    // continues to work.
+    // The helper only returns `already_user` when an operator has NOT
+    // requested a resend (forceResend is false). Since the controller
+    // always sets forceResend=true for this AM-driven action, the
+    // promoter's password is rotated and the welcome email is re-sent
+    // even if they had previously chosen their own password. We surface
+    // any unexpected `already_user` here as a 500 so we know the helper
+    // contract drifted.
     if (result.status === "already_user") {
-      const targetUser = await prisma.user.findUnique({
-        where: { email: referral.preUser.email },
-        select: {
-          id: true,
-          email: true,
-          firstName: true,
-          isActive: true,
-        },
-      });
-
-      if (!targetUser?.isActive) {
-        return res.status(409).json({
-          error:
-            "This promoter already has an account but it is inactive. Reactivate it before sending the welcome email.",
-        });
-      }
-
-      let emailOk = false;
-      try {
-        const { rawToken, expiresAt } = await createPasswordResetToken(
-          targetUser.id,
-          PasswordResetPurpose.INVITE,
-        );
-        const setupUrl = buildSetPasswordUrl(rawToken);
-        emailOk = await emailService.sendSetPasswordEmail({
-          email: targetUser.email,
-          firstName: targetUser.firstName,
-          setupUrl,
-          expiresAt,
-        });
-      } catch (err) {
-        console.error("Send welcome email (already_user) error:", err);
-        return res.status(500).json({
-          error: "Failed to send welcome email",
-        });
-      }
-
-      // Stamp `welcomeEmailSentAt` so the button label flips to "Resend
-      // Welcome Email" on the next render even when the original
-      // promotion attempt skipped the stamp due to `already_user`.
-      if (emailOk) {
-        try {
-          await prisma.preUser.update({
-            where: { id: referral.preUser.id },
-            data: { welcomeEmailSentAt: new Date() },
-          });
-        } catch (err) {
-          console.error(
-            "Failed to stamp welcomeEmailSentAt after already_user resend",
-            err,
-          );
-        }
-      }
-
-      const updated = await prisma.preUser.findUnique({
-        where: { id: referral.preUser.id },
-        select: { welcomeEmailSentAt: true },
-      });
-
-      return res.json({
-        success: true,
-        mode: wasAlreadySent ? "resent" : "sent",
-        emailSent: emailOk,
-        welcomeEmailSentAt:
-          updated?.welcomeEmailSentAt?.toISOString() ?? null,
+      console.error(
+        "[send-welcome-email] unexpected already_user result with forceResend=true",
+        { referralId: id, preUserId: referral.preUser.id },
+      );
+      return res.status(500).json({
+        error: "Unexpected state while sending welcome email",
       });
     }
 
