@@ -111,22 +111,15 @@ export class EmailService {
 
     const subject = '🎉 Welcome to MJ First Promoter Program!';
 
-    // Branded header banner. Reuses the upstream TeaseMe verify-header
-    // artwork served from the public S3 bucket (BUCKET_PUBLIC_URL +
-    // /email_verify_header.png). Width/height match the upstream Python
-    // pipeline's EMAIL_HEADER_SIZE = (520, 150), so the image renders at
-    // native resolution without scaling artefacts. To use a different
-    // banner (reset-password header, influencer heart background, etc),
-    // swap to one of the other exported constants from this module.
+    // Branded header banner. When the caller provides a per-promoter
+    // composite (e.g. a data URL from composeWelcomeHeaderDataUrl), use
+    // that; otherwise fall back to the static verify-header artwork from
+    // the public S3 bucket. Either way the markup is identical — only the
+    // image src changes.
     const [, HEADER_HEIGHT_PX] = EMAIL_HEADER_SIZE;
-    // When the caller provides a per-promoter composite (e.g. data URL
-    // built by composeWelcomeHeaderDataUrl), use that as the banner;
-    // otherwise fall back to the static verify-header artwork. Either
-    // way the markup is identical — the image just changes.
     const headerImageUrl = headerOverride || EMAIL_VERIFY_HEADER_URL;
 
-    const headerHtml = headerImageUrl
-      ? `
+    const headerHtml = `
           <tr>
             <td align="center" style="background:#0f1012;padding:0;">
               <img
@@ -141,22 +134,6 @@ export class EmailService {
             <td align="center" style="padding:28px 40px 0 40px;">
               <div style="display:inline-block;padding:8px 16px;border:1px solid ${BRAND_PRIMARY};border-radius:999px;color:${BRAND_PRIMARY};font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">TeaseMe HQ</div>
               <h1 style="font-size:26px;line-height:1.3;color:#ffffff;margin:20px 0 8px 0;font-weight:700;">
-                Welcome ${escapeHtml(name)}!
-              </h1>
-              <p style="font-size:15px;color:#c7c7c7;margin:0;">
-                Your promoter account is ready
-              </p>
-            </td>
-          </tr>`
-      : `
-          <tr>
-            <td align="center" style="padding:36px 40px 8px 40px;">
-              <div style="display:inline-block;padding:8px 16px;border:1px solid ${BRAND_PRIMARY};border-radius:999px;color:${BRAND_PRIMARY};font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">TeaseMe HQ</div>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:16px 40px 0 40px;">
-              <h1 style="font-size:26px;line-height:1.3;color:#ffffff;margin:0 0 8px 0;font-weight:700;">
                 Welcome ${escapeHtml(name)}!
               </h1>
               <p style="font-size:15px;color:#c7c7c7;margin:0;">
