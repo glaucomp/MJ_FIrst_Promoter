@@ -93,9 +93,10 @@ export const register = async (req: AuthRequest, res: Response) => {
     }
 
     // Inherit ownership (createdById + accountManagerId) from the
-    // originating Referral's referrer using the same resolver the welcome
-    // -email path uses, so an invitee who registers via /register lands
-    // under the inviting AM directly instead of in "Needs assignment".
+    // originating Referral's referrer using the same resolver the
+    // welcome-email path uses, so an invitee who registers via /register
+    // lands under the inviting AM directly instead of in "Needs
+    // assignment".
     //
     // Rules (see resolveOwnership):
     //   - Referrer is an AM/Admin → that referrer becomes both
