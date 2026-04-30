@@ -522,10 +522,7 @@ export const modelsApi = {
    */
   async sendReferralWelcomeEmail(referralId: string): Promise<{
     success: true;
-    // `password_reset` is returned when the promoter has already set their
-    // own password — the backend silently switches to a regular forgot-
-    // password email so the AM can still help them recover access.
-    mode: 'sent' | 'resent' | 'password_reset';
+    mode: 'sent' | 'resent';
     emailSent: boolean;
     welcomeEmailSentAt: string | null;
   }> {
