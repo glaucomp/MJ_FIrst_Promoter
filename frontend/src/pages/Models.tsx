@@ -1656,6 +1656,7 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
                     teasemeUserId: null,
                     surveyLink: null,
                     assetLink: null,
+                    welcomeEmailSentAt: null,
                   }),
                   currentStep: result.preUser.currentStep,
                   status: result.preUser.status,
@@ -1694,6 +1695,50 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
       showToast(
         "error",
         err instanceof Error ? err.message : "Failed to assign chatters",
+      );
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  // Manual welcome-email dispatch for LP Live cards. The button label is
+  // derived from `preUser.welcomeEmailSentAt` (Send vs Resend), and after
+  // a successful round-trip we splice the new timestamp into the local
+  // referral so the label flips immediately without waiting for the next
+  // /my-referrals refetch.
+  const handleSendWelcomeEmail = async (referral: Referral) => {
+    setBusyId(referral.id);
+    try {
+      const result = await modelsApi.sendReferralWelcomeEmail(referral.id);
+      setReferrals?.((prev) =>
+        prev.map((r) =>
+          r.id === referral.id && r.preUser
+            ? {
+                ...r,
+                preUser: {
+                  ...r.preUser,
+                  welcomeEmailSentAt: result.welcomeEmailSentAt,
+                },
+              }
+            : r,
+        ),
+      );
+      const verb = result.mode === "resent" ? "Resent" : "Sent";
+      if (result.emailSent) {
+        showToast("success", `${verb} welcome email`);
+      } else {
+        // The promotion succeeded (User exists, password set) but the
+        // outbound email transport failed. Surface that distinction so
+        // the AM knows another resend is worth trying.
+        showToast(
+          "error",
+          "Account is ready but the welcome email could not be delivered. Please try resending.",
+        );
+      }
+    } catch (err) {
+      showToast(
+        "error",
+        err instanceof Error ? err.message : "Failed to send welcome email",
       );
     } finally {
       setBusyId(null);
@@ -1929,6 +1974,7 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
                 onReassign={(r) => setReassignFor(r)}
                 onOrderLandingPage={handleOrderLandingPage}
                 onAssignChatters={(r) => setAssignChattersFor(r)}
+                onSendWelcomeEmail={handleSendWelcomeEmail}
               />
             </div>
           );
@@ -1963,7 +2009,7 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
 //   waiting  → [Deny][ReAssign]  +  disabled "Order Landing Page"
 //   order_lp → full-width green "Order Landing Page"
 //   building → no CTA, grayed "Building landing page…" placeholder
-//   lp_live  → full-width pink "Assign Chatters"
+//   lp_live  → secondary "Send/Resend Welcome Email" + pink "Assign Chatters"
 
 type CardActionsProps = {
   state: ChipState;
@@ -1974,6 +2020,7 @@ type CardActionsProps = {
   onReassign: (r: Referral) => void;
   onOrderLandingPage: (r: Referral) => void;
   onAssignChatters: (r: Referral) => void;
+  onSendWelcomeEmail: (r: Referral) => void;
 };
 
 const SecondaryButton = ({
@@ -2042,6 +2089,7 @@ const CardActions = ({
   onReassign,
   onOrderLandingPage,
   onAssignChatters,
+  onSendWelcomeEmail,
 }: CardActionsProps) => {
   // Expired and Denied share the same "dead row" UX: the invite is over,
   // the only useful action is to clean it up. We used to offer Resend for
@@ -2121,11 +2169,28 @@ const CardActions = ({
     );
   }
 
-  // lp_live
+  // lp_live — two-action stack: a secondary "Send/Resend Welcome Email"
+  // button on top, the existing pink "Assign Chatters" CTA below. The
+  // top button's label is driven by `preUser.welcomeEmailSentAt`: null
+  // means it has never been delivered (Send), any timestamp means we've
+  // sent it at least once (Resend).
+  const welcomeEmailSent = !!referral.preUser?.welcomeEmailSentAt;
   return (
-    <PinkCta onClick={() => onAssignChatters(referral)} disabled={busy}>
-      {busy ? "Assigning…" : "Assign Chatters"}
-    </PinkCta>
+    <div className="flex flex-col gap-[8px]">
+      <SecondaryButton
+        onClick={() => onSendWelcomeEmail(referral)}
+        disabled={busy}
+      >
+        {busy
+          ? "Sending…"
+          : welcomeEmailSent
+            ? "Resend Welcome Email"
+            : "Send Welcome Email"}
+      </SecondaryButton>
+      <PinkCta onClick={() => onAssignChatters(referral)} disabled={busy}>
+        {busy ? "Assigning…" : "Assign Chatters"}
+      </PinkCta>
+    </div>
   );
 };
 

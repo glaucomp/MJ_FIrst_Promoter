@@ -129,15 +129,12 @@ const refreshPreUserSteps = async (
   const staleRows = rows.filter((row) => {
     const pre = row.preUser;
     if (!pre) return false;
-    // Step 5 is only terminal after downstream side effects have completed.
-    // Keep polling step-5 rows until `welcomeEmailSentAt` is set so a
-    // transient failure in the 4→5 promotion / welcome-email path can be
-    // retried automatically. Preserve the actual upstream step on `pre`
-    // and use a derived value only for polling eligibility so callers and
-    // later history calculations continue to see the real current step.
-    const effectiveCurrentStep =
-      pre.currentStep === 5 && !pre.welcomeEmailSentAt ? 4 : pre.currentStep;
-    if (effectiveCurrentStep >= 5 && pre.welcomeEmailSentAt) return false;
+    // Step 5 (matching influencer published) is the terminal upstream
+    // state — once we've recorded it locally there is nothing left to
+    // learn from /step-progress. Welcome-email delivery is an operator
+    // action driven by the "Send Welcome Email" button on the card, not
+    // a polling side-effect, so we don't keep polling step-5 rows.
+    if (pre.currentStep >= 5) return false;
     if (!pre.lastCheckedAt) return true;
     return now - pre.lastCheckedAt.getTime() > TEASEME_POLL_TTL_MS;
   });
@@ -231,44 +228,11 @@ const refreshPreUserSteps = async (
           });
           row.preUser = updated;
 
-          // Once upstream has a published influencer (step 5+), mint a
-          // real User row so the invitee can log in to our promoter
-          // dashboard, and email them a temporary password. Per the
-          // operator's choice, we DO NOT touch the PreUser row or the
-          // parent Referral here — the My Promoters chip continues to
-          // render LP Live from PreUser.currentStep=5.
-          //
-          // Keep retrying this hook on later polls until the welcome email
-          // has been recorded as sent. The promotion helper itself is
-          // idempotent (early-returns on existing User), so retrying after
-          // a partial success is safe and allows automatic email recovery.
-          if (status.step >= 5 && !updated.welcomeEmailSentAt) {
-            try {
-              await promotePreUserToUser(prisma, {
-                id: updated.id,
-                email: updated.email,
-                inviteCode: updated.inviteCode,
-                // Inherit the originating referral so the new User lands
-                // under the right account manager (instead of in the
-                // "Needs assignment" bucket).
-                referralId: updated.referralId,
-                // Use the post-update snapshot so a concurrent request that
-                // stamped welcomeEmailSentAt between our read and this point
-                // is reflected here and the helper short-circuits correctly.
-                welcomeEmailSentAt: updated.welcomeEmailSentAt,
-              });
-            } catch (err) {
-              // promotePreUserToUser already logs internally and never
-              // rethrows on expected failures (P2002, email send miss),
-              // so anything reaching here is an unexpected exception
-              // (e.g. DB outage). Swallow it so a single bad row doesn't
-              // poison the rest of the polling batch.
-              console.error("[refreshPreUserSteps] promote threw", {
-                preUserId: pre.id,
-                err: (err as Error).message,
-              });
-            }
-          }
+          // Note: promoting the PreUser to a real User + sending the
+          // welcome email is no longer an automatic side-effect of the
+          // 4→5 transition. That work is now driven explicitly by the
+          // AM clicking "Send Welcome Email" / "Resend Welcome Email" on
+          // the LP Live card (see sendReferralWelcomeEmail below).
         } catch (err) {
           console.error("[refreshPreUserSteps] poll failed", {
             preUserId: pre.id,
@@ -913,6 +877,11 @@ const loadReferralForAction = async (
           // omits it.
           surveyLink: true,
           assetLink: true,
+          // Required by sendReferralWelcomeEmail so the helper can
+          // short-circuit duplicate sends, and to inherit the originating
+          // referral's owner when promoting the PreUser to a real User.
+          referralId: true,
+          welcomeEmailSentAt: true,
         },
       },
       referredUser: {
@@ -1325,6 +1294,125 @@ export const assignReferralChatters = async (
   } catch (error) {
     console.error("Assign chatters error:", error);
     return res.status(500).json({ error: "Failed to assign chatter group" });
+  }
+};
+
+/**
+ * Manual welcome-email dispatch for the LP Live card. Replaces the
+ * previous automatic 4→5 promotion hook in `refreshPreUserSteps`.
+ *
+ * Behaviour:
+ *   - First click (`welcomeEmailSentAt` is null) → creates the User row
+ *     with a freshly generated temp password, sends the welcome email,
+ *     and stamps `welcomeEmailSentAt`.
+ *   - Subsequent clicks ("Resend") → re-uses the existing User row,
+ *     rotates its password (we can't recover the original plaintext
+ *     because it's bcrypt-hashed, so resend always rotates), re-sends
+ *     the email, and re-stamps `welcomeEmailSentAt`. We force this by
+ *     passing `welcomeEmailSentAt: null` into the helper, which makes
+ *     it take the "user already exists, retry" branch.
+ *
+ * The helper is best-effort on the email-send step but never throws, so
+ * a transient SES failure surfaces here as `emailSent: false` and the
+ * AM can simply click again.
+ */
+export const sendReferralWelcomeEmail = async (
+  req: AuthRequest,
+  res: Response,
+) => {
+  try {
+    const { id } = req.params;
+    const user = req.user!;
+
+    const loaded = await loadReferralForAction(id, user);
+    if (loaded.error) {
+      return res.status(loaded.error.code).json({ error: loaded.error.message });
+    }
+    const { referral } = loaded;
+
+    if (
+      user.role !== UserRole.ADMIN &&
+      user.userType !== UserType.ACCOUNT_MANAGER
+    ) {
+      return res.status(403).json({
+        error:
+          "Access denied: only account managers or admins can send welcome emails",
+      });
+    }
+
+    if (!referral.preUser) {
+      return res.status(400).json({
+        error:
+          "This invite has no TeaseMe pre-influencer attached yet — the user hasn't started onboarding.",
+      });
+    }
+
+    // Welcome email is only meaningful once the influencer is published
+    // (LP Live, currentStep === 5). Earlier steps would create a User
+    // before the upstream lifecycle has caught up, which is what we
+    // explicitly moved away from when removing the auto-promote hook.
+    if (referral.preUser.currentStep < 5) {
+      return res.status(400).json({
+        error:
+          "The landing page must be live before the welcome email can be sent.",
+      });
+    }
+
+    const wasAlreadySent = !!referral.preUser.welcomeEmailSentAt;
+
+    const result = await promotePreUserToUser(prisma, {
+      id: referral.preUser.id,
+      email: referral.preUser.email,
+      inviteCode: referral.preUser.inviteCode,
+      referralId: referral.preUser.referralId,
+      welcomeEmailSentAt: referral.preUser.welcomeEmailSentAt,
+      // Operator-initiated send / resend. Bypasses BOTH the in-memory and
+      // DB-side anti-double-email guards inside the helper so a click on
+      // "Resend Welcome Email" always rotates the temp password and
+      // delivers a fresh email — the previous plaintext password can't
+      // be recovered (bcrypt is one-way), so a true "resend the same
+      // password" isn't possible here anyway.
+      forceResend: true,
+    });
+
+    if (result.status === "error") {
+      return res.status(500).json({
+        error: result.error ?? "Failed to send welcome email",
+      });
+    }
+
+    // The helper short-circuits with `already_user` when a User row exists
+    // and `mustChangePassword === false` — i.e. the promoter has already
+    // chosen their own password. Re-issuing an invite at that point would
+    // be an unauthenticated password reset, so we surface a 409 here with
+    // a clear message instead of returning a misleading "email failed"
+    // success-shaped response. The right next step for an AM in this case
+    // is the regular password-reset flow, not the welcome email.
+    if (result.status === "already_user") {
+      return res.status(409).json({
+        error:
+          "This promoter has already set their own password. Use the password-reset flow if they need to recover access.",
+      });
+    }
+
+    // Echo the freshly stamped flag so the frontend can flip the button
+    // label from "Send Welcome Email" to "Resend Welcome Email" without
+    // a full list re-fetch.
+    const updated = await prisma.preUser.findUnique({
+      where: { id: referral.preUser.id },
+      select: { welcomeEmailSentAt: true },
+    });
+
+    return res.json({
+      success: true,
+      mode: wasAlreadySent ? "resent" : "sent",
+      emailSent: result.emailSent ?? false,
+      welcomeEmailSentAt:
+        updated?.welcomeEmailSentAt?.toISOString() ?? null,
+    });
+  } catch (error) {
+    console.error("Send welcome email error:", error);
+    return res.status(500).json({ error: "Failed to send welcome email" });
   }
 };
 

@@ -16,6 +16,7 @@ import {
   invalidateUserTokens,
   validatePasswordResetToken,
 } from "../services/password-reset.service";
+import { resolveOwnership } from "../services/pre-user-promote.service";
 import { getUserTypeInfo } from "../services/user.service";
 import { buildSetPasswordUrl } from "../utils/frontend-url";
 
@@ -91,6 +92,29 @@ export const register = async (req: AuthRequest, res: Response) => {
       }
     }
 
+    // Inherit ownership (createdById + accountManagerId) from the
+    // originating Referral's referrer using the same resolver the welcome
+    // -email path uses, so an invitee who registers via /register lands
+    // under the inviting AM directly instead of in "Needs assignment".
+    //
+    // Rules (see resolveOwnership):
+    //   - Referrer is an AM/Admin → that referrer becomes both
+    //     createdById and accountManagerId.
+    //   - Referrer is a regular promoter → createdById = referrer,
+    //     accountManagerId = referrer.accountManagerId (so the new user
+    //     inherits the same AM as their inviter).
+    //   - No invite or unresolvable chain → both null (legitimate "Needs
+    //     assignment" fallback).
+    //
+    // Newly-promoted Account Managers are an exception: AMs don't have an
+    // AM-of-record, so we drop accountManagerId for them. createdById
+    // still records the admin who invited them, for provenance.
+    const ownership = referral
+      ? await resolveOwnership(prisma, referral.id)
+      : { createdById: null, accountManagerId: null };
+    const accountManagerIdForCreate =
+      userType === UserType.ACCOUNT_MANAGER ? null : ownership.accountManagerId;
+
     // Create user
     const user = await prisma.user.create({
       data: {
@@ -100,6 +124,8 @@ export const register = async (req: AuthRequest, res: Response) => {
         lastName,
         role,
         userType,
+        createdById: ownership.createdById,
+        accountManagerId: accountManagerIdForCreate,
       },
       select: {
         id: true,

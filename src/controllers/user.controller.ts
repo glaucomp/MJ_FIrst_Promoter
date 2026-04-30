@@ -601,6 +601,18 @@ export const assignAccountManager = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    // Resolve the new AM's hidden-membership campaign so we can also migrate
+    // the dragged user onto the AM's public `linkedCampaign`. Without this,
+    // assigning would only flip `User.accountManagerId` and leave the user's
+    // active Referral pointing at the *previous* AM's campaign — meaning the
+    // new AM would own the user on the Users page but the user would still
+    // appear under the old AM's "My Promoters" list and continue to accrue
+    // commissions on the old campaign tier.
+    //
+    // We only migrate when assigning. Unassignment (accountManagerId=null)
+    // intentionally leaves Referrals alone so we don't orphan a user's
+    // commission attribution as a side-effect of clearing the column.
+    let targetLinkedCampaignId: string | null = null;
     if (accountManagerId) {
       const manager = await prisma.user.findUnique({
         where: { id: accountManagerId },
@@ -612,28 +624,118 @@ export const assignAccountManager = async (req: AuthRequest, res: Response) => {
       if (manager.id === id) {
         return res.status(400).json({ error: 'A user cannot be assigned to themselves' });
       }
-    }
 
-    const updated = await prisma.user.update({
-      where: { id },
-      data: { accountManagerId },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
-        userType: true,
-        accountManager: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-            userType: true,
+      // The AM's hidden membership campaign — created by an admin invite —
+      // carries `linkedCampaignId` pointing at the public campaign that AM
+      // recruits promoters under (same plumbing `createReferralInvite` uses
+      // when an AM sends a regular invite). We pick the most recently
+      // accepted ACTIVE membership in case an AM has been moved across
+      // campaigns over time.
+      const amMembership = await prisma.referral.findFirst({
+        where: {
+          referredUserId: accountManagerId,
+          status: 'ACTIVE',
+          campaign: {
+            isActive: true,
+            visibleToPromoters: false,
+            linkedCampaignId: { not: null },
           },
         },
-      },
+        orderBy: { acceptedAt: 'desc' },
+        select: { campaign: { select: { linkedCampaignId: true } } },
+      });
+      targetLinkedCampaignId = amMembership?.campaign?.linkedCampaignId ?? null;
+      if (!targetLinkedCampaignId) {
+        // The AM has no usable hidden-membership campaign yet — most likely
+        // an admin promoted them to AM but never bound them to a campaign.
+        // We log a warning and continue with the bare `accountManagerId`
+        // update so the assignment isn't blocked entirely; the user will
+        // still need to be moved onto a campaign once the AM is configured.
+        console.warn('[assignAccountManager] AM has no linked public campaign; skipping referral migration', {
+          accountManagerId,
+          userId: id,
+        });
+      }
+    }
+
+    // Wrap the User update + Referral migration so we never leave the rows
+    // in an inconsistent state (e.g. accountManagerId pointing at AM2 while
+    // the active Referral still claims AM1).
+    const updated = await prisma.$transaction(async (tx) => {
+      const u = await tx.user.update({
+        where: { id },
+        data: { accountManagerId },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          role: true,
+          userType: true,
+          accountManager: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+              userType: true,
+            },
+          },
+        },
+      });
+
+      if (accountManagerId && targetLinkedCampaignId) {
+        // Find the user's current "I am the invitee" referral. We treat the
+        // most recent ACTIVE one as authoritative and only migrate when it
+        // doesn't already point at the new AM's linkedCampaign — repeated
+        // drags onto the same AM are a no-op.
+        const current = await tx.referral.findFirst({
+          where: { referredUserId: id, status: 'ACTIVE' },
+          orderBy: { acceptedAt: 'desc' },
+          select: { id: true, campaignId: true, referrerId: true },
+        });
+
+        const alreadyOnTargetCampaign =
+          current &&
+          current.campaignId === targetLinkedCampaignId &&
+          current.referrerId === accountManagerId;
+
+        if (!alreadyOnTargetCampaign) {
+          // Cancel any stale active referral so the user has at most one
+          // ACTIVE "I am the invitee" row at a time. We deliberately do NOT
+          // touch CANCELLED / PENDING referrals or the user's customer-
+          // tracking referrals (those have referredUserId=null), and we
+          // do NOT re-attribute past commissions — historical commission
+          // ownership stays with the old referral.
+          if (current) {
+            await tx.referral.update({
+              where: { id: current.id },
+              data: { status: 'CANCELLED' },
+            });
+          }
+
+          await tx.referral.create({
+            data: {
+              referrerId: accountManagerId,
+              referredUserId: id,
+              campaignId: targetLinkedCampaignId,
+              // 10-char nanoid; collisions are astronomically unlikely
+              // and a P2002 here would just bubble out of the txn,
+              // rolling the user.update back too — exactly what we want.
+              inviteCode: nanoid(10),
+              status: 'ACTIVE',
+              acceptedAt: new Date(),
+              metadata: {
+                source: 'manual-am-assign',
+                previousReferralId: current?.id ?? null,
+                assignedAt: new Date().toISOString(),
+              } as Prisma.InputJsonValue,
+            },
+          });
+        }
+      }
+
+      return u;
     });
 
     // Mirror the shape used by getAllUsers so the frontend can replace a row
