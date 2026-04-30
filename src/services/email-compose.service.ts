@@ -1,29 +1,26 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
-
 import sharp from "sharp";
 
-import { EMAIL_HEADER_SIZE } from "./email.service";
+import { EMAIL_HEADER_SIZE, EMAIL_WELCOME_HEADER_BG_URL } from "./email.service";
 import { downloadObjectBuffer } from "./s3.service";
 
 // ─── Email header composition ────────────────────────────────────────────────
 //
 // Server-side equivalent of the upstream Python `compose_email_header_image_url`.
-// Builds a banner sized to EMAIL_HEADER_SIZE using the local heart-background
-// asset (welcome-email-header-bg.png) and, when we have a profile photo
-// key, composites the promoter's photo masked to a circle and centred on
-// top. Returns the result as a `data:image/png;base64,…` URL so the
-// welcome email can embed it inline (no S3 upload, no presigned URL,
-// no expiry).
+// Builds a banner sized to EMAIL_HEADER_SIZE using the heart-background asset
+// served from the same public S3 bucket as the other email header images
+// (EMAIL_WELCOME_HEADER_BG_URL) and, when we have a profile photo key,
+// composites the promoter's photo masked to a circle and centred on top.
+// Returns the result as a `data:image/png;base64,…` URL so the welcome email
+// can embed it inline (no expiry).
 //
 // Photo handling:
 //   - photoKey provided + download succeeds → photo composited inside ring
 //   - photoKey missing or download fails    → background only, no photo
 //
-// Returns null only when the local background asset itself is missing
-// or unreadable, or sharp throws. In that null case the caller
-// (sendPromoterWelcomeEmail) falls back to the upstream verify-header
-// banner.
+// Returns null only when the background cannot be fetched (e.g. network error
+// or the object is missing from the bucket), or sharp throws. In that null
+// case the caller (sendPromoterWelcomeEmail) falls back to the upstream
+// verify-header banner.
 
 const [HEADER_W, HEADER_H] = EMAIL_HEADER_SIZE;
 // Photo diameter + centred anchor — the circle sits in the middle of
@@ -35,20 +32,6 @@ const CIRCLE_CENTRE_Y = Math.round(HEADER_H / 2);
 const RING_THICKNESS = 4;
 const RING_COLOUR = "#FF5C74";
 
-// Local background asset. Resolved relative to this source file so it
-// works under ts-node (src/services/ → src/assets/email/) and any
-// build pipeline that mirrors the layout into dist/. If the deploy
-// pipeline strips static assets, the read fails gracefully and the
-// email falls back to the static banner — so a missing asset never
-// breaks send delivery.
-const BACKGROUND_ASSET_PATH = path.resolve(
-  __dirname,
-  "..",
-  "assets",
-  "email",
-  "welcome-email-header-bg.png",
-);
-
 interface ComposeInput {
   // S3 key of the promoter's profile photo. Empty/null is supported —
   // in that case we still return a data URL, just without the photo
@@ -59,24 +42,34 @@ interface ComposeInput {
   identifier?: string;
 }
 
-// Module-level cache so we don't re-read the same PNG from disk on
-// every welcome-email send. The asset only changes on deploy, so a
-// single read at first use is enough; concurrent first-callers all
-// share the same in-flight promise.
+// Module-level cache so we don't re-fetch the same PNG from the public
+// S3 bucket on every welcome-email send. The asset only changes on
+// deploy; a single fetch at first use is enough. Concurrent first-callers
+// all share the same in-flight promise.
 let cachedBackgroundPromise: Promise<Buffer | null> | null = null;
 
 const readBackgroundBuffer = async (): Promise<Buffer | null> => {
   if (!cachedBackgroundPromise) {
     cachedBackgroundPromise = (async () => {
       try {
-        return await readFile(BACKGROUND_ASSET_PATH);
+        const response = await fetch(EMAIL_WELCOME_HEADER_BG_URL);
+        if (!response.ok) {
+          console.warn(
+            "[email-compose] failed to fetch background asset from S3",
+            { url: EMAIL_WELCOME_HEADER_BG_URL, status: response.status },
+          );
+          cachedBackgroundPromise = null;
+          return null;
+        }
+        const arrayBuffer = await response.arrayBuffer();
+        return Buffer.from(arrayBuffer);
       } catch (err) {
         console.warn(
-          "[email-compose] failed to read local background asset",
-          { path: BACKGROUND_ASSET_PATH, err: err instanceof Error ? err.message : String(err) },
+          "[email-compose] failed to fetch background asset from S3",
+          { url: EMAIL_WELCOME_HEADER_BG_URL, err: err instanceof Error ? err.message : String(err) },
         );
         // Don't poison the cache permanently — null this out so a later
-        // call (e.g. after the asset is dropped in) can retry.
+        // call can retry after a transient network error.
         cachedBackgroundPromise = null;
         return null;
       }
@@ -158,7 +151,7 @@ export const composeWelcomeHeaderDataUrl = async (
   const trimmedPhotoKey = photoKey?.trim() || "";
 
   try {
-    // Download the photo (best-effort) and read the local background in
+    // Download the photo (best-effort) and fetch the S3 background in
     // parallel. The background is the deal-breaker; the photo is
     // optional — a missing photo just means we skip the overlay.
     const [photoBytes, backgroundBytes] = await Promise.all([
@@ -167,8 +160,8 @@ export const composeWelcomeHeaderDataUrl = async (
     ]);
     if (!backgroundBytes) {
       console.warn(
-        "[email-compose] compose skipped — local background asset missing",
-        { identifier, backgroundPath: BACKGROUND_ASSET_PATH },
+        "[email-compose] compose skipped — background asset unavailable",
+        { identifier, backgroundUrl: EMAIL_WELCOME_HEADER_BG_URL },
       );
       return null;
     }

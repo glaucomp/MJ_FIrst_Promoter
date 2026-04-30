@@ -90,6 +90,7 @@ const BUCKET_PUBLIC_URL = (
 export const EMAIL_VERIFY_HEADER_URL = `${BUCKET_PUBLIC_URL}/email_verify_header.png`;
 export const EMAIL_RESET_HEADER_URL = `${BUCKET_PUBLIC_URL}/email-assets/reset_password_header.jpg`;
 export const EMAIL_INFLUENCER_HEADER_BG_URL = `${BUCKET_PUBLIC_URL}/influencer_header_background.png`;
+export const EMAIL_WELCOME_HEADER_BG_URL = `${BUCKET_PUBLIC_URL}/welcome-email-header-bg.png`;
 
 // Native pixel size of the banners hosted in the bucket (width, height).
 // Mirrors the upstream Python EMAIL_HEADER_SIZE = (520, 150) so HTML
