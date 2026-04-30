@@ -127,32 +127,38 @@ export class EmailService {
     const headerHtml = headerImageUrl
       ? `
           <tr>
-            <td align="center" style="background:#23293b;padding:0;">
+            <td align="center" style="background:#0f1012;padding:0;">
               <img
                 src="${headerImageUrl}"
                 alt="TeaseMe"
                 height="${HEADER_HEIGHT_PX}"
-                style="width:100%;max-width:520px;height:${HEADER_HEIGHT_PX}px;display:block;border-top-left-radius:24px;border-top-right-radius:24px;object-fit:cover;"
+                style="width:100%;max-width:540px;height:${HEADER_HEIGHT_PX}px;display:block;border-top-left-radius:16px;border-top-right-radius:16px;object-fit:cover;"
               />
             </td>
           </tr>
           <tr>
-            <td align="center" style="padding:24px 30px 0 30px;">
-              <h1 style="font-family:'Arial Rounded MT Bold',Arial,sans-serif;font-size:28px;font-weight:bold;margin:0;color:#333;">
-                🎉 Welcome ${name}!
+            <td align="center" style="padding:28px 40px 0 40px;">
+              <div style="display:inline-block;padding:8px 16px;border:1px solid ${BRAND_PRIMARY};border-radius:999px;color:${BRAND_PRIMARY};font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">TeaseMe HQ</div>
+              <h1 style="font-size:26px;line-height:1.3;color:#ffffff;margin:20px 0 8px 0;font-weight:700;">
+                Welcome ${escapeHtml(name)}!
               </h1>
-              <p style="font-size:16px;color:#666;margin:8px 0 0 0;">
+              <p style="font-size:15px;color:#c7c7c7;margin:0;">
                 Your promoter account is ready
               </p>
             </td>
           </tr>`
       : `
           <tr>
-            <td align="center" style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:40px 30px;">
-              <h1 style="font-family:'Arial Rounded MT Bold',Arial,sans-serif;font-size:32px;font-weight:bold;margin:0;color:#fff;">
-                🎉 Welcome ${name}!
+            <td align="center" style="padding:36px 40px 8px 40px;">
+              <div style="display:inline-block;padding:8px 16px;border:1px solid ${BRAND_PRIMARY};border-radius:999px;color:${BRAND_PRIMARY};font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">TeaseMe HQ</div>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:16px 40px 0 40px;">
+              <h1 style="font-size:26px;line-height:1.3;color:#ffffff;margin:0 0 8px 0;font-weight:700;">
+                Welcome ${escapeHtml(name)}!
               </h1>
-              <p style="font-size:16px;color:#fff;margin:8px 0 0 0;opacity:0.9;">
+              <p style="font-size:15px;color:#c7c7c7;margin:0;">
                 Your promoter account is ready
               </p>
             </td>
@@ -165,79 +171,86 @@ export class EmailService {
     <meta charset="UTF-8">
     <title>Welcome to MJ First Promoter</title>
 </head>
-<body style="background:#f7f8fc;padding:0;margin:0;font-family:Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f7f8fc;padding:40px 0;">
+<body style="background:#0f1012;padding:0;margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0f1012;padding:40px 0;">
     <tr>
       <td align="center">
-        <table width="520" cellpadding="0" cellspacing="0" border="0" style="background:#fff;border-radius:24px;box-shadow:0 10px 32px rgba(50,50,93,0.10),0 2px 4px rgba(0,0,0,0.07);overflow:hidden;">
+        <table width="540" cellpadding="0" cellspacing="0" border="0" style="background:#1a1a1a;border:1px solid rgba(255,255,255,0.06);border-radius:16px;overflow:hidden;">
 
-          <!-- Header (branded image from BUCKET_PUBLIC_URL; gradient
-               fallback if the URL ever resolves to empty) -->
           ${headerHtml}
 
-          <!-- Main Content -->
           <tr>
-            <td align="center" style="padding:32px 30px 16px 30px;">
-              <p style="font-size:16px;color:#666;margin:0 0 24px 0;text-align:left;">
-                Hi ${name},
+            <td style="padding:28px 40px 8px 40px;">
+              <p style="font-size:15px;line-height:1.6;color:#c7c7c7;margin:0 0 16px 0;">
+                Hi ${escapeHtml(name)},
               </p>
-              
-              <p style="font-size:16px;color:#666;margin:0 0 24px 0;text-align:left;">
-                Your promoter account has been successfully created! You can now start referring customers and earning commissions.
+              <p style="font-size:15px;line-height:1.6;color:#c7c7c7;margin:0 0 24px 0;">
+                Your promoter account has been successfully created. You can now start referring customers and earning commissions.
               </p>
-              
-              <!-- Credentials Box -->
-              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f9f9f9;border-left:4px solid #667eea;border-radius:8px;margin:24px 0;">
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:0 40px;">
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0f1012;border:1px solid rgba(255,255,255,0.06);border-left:3px solid ${BRAND_PRIMARY};border-radius:10px;">
                 <tr>
                   <td style="padding:20px;">
-                    <h3 style="font-size:18px;font-weight:bold;margin:0 0 16px 0;color:#333;">📋 Your Login Credentials</h3>
-                    <p style="font-size:14px;margin:8px 0;color:#555;">
-                      <strong>Username:</strong> <code style="background:#fff;padding:4px 8px;border-radius:4px;font-family:monospace;">${username}</code>
+                    <h3 style="font-size:15px;font-weight:700;margin:0 0 14px 0;color:#ffffff;letter-spacing:0.3px;">Your Login Credentials</h3>
+                    <p style="font-size:13px;margin:8px 0;color:#9a9a9a;">
+                      <strong style="color:#c7c7c7;">Username:</strong> <code style="background:#1a1a1a;border:1px solid rgba(255,255,255,0.06);padding:3px 8px;border-radius:6px;font-family:'SFMono-Regular',Menlo,monospace;color:#ffffff;font-size:12px;">${escapeHtml(username)}</code>
                     </p>
-                    <p style="font-size:14px;margin:8px 0;color:#555;">
-                      <strong>Email:</strong> <code style="background:#fff;padding:4px 8px;border-radius:4px;font-family:monospace;">${email}</code>
+                    <p style="font-size:13px;margin:8px 0;color:#9a9a9a;">
+                      <strong style="color:#c7c7c7;">Email:</strong> <code style="background:#1a1a1a;border:1px solid rgba(255,255,255,0.06);padding:3px 8px;border-radius:6px;font-family:'SFMono-Regular',Menlo,monospace;color:#ffffff;font-size:12px;">${escapeHtml(email)}</code>
                     </p>
-                    <p style="font-size:14px;margin:8px 0;color:#555;">
-                      <strong>Password:</strong> <code style="background:#fff;padding:4px 8px;border-radius:4px;font-family:monospace;">${password}</code>
+                    <p style="font-size:13px;margin:8px 0;color:#9a9a9a;">
+                      <strong style="color:#c7c7c7;">Password:</strong> <code style="background:#1a1a1a;border:1px solid rgba(255,255,255,0.06);padding:3px 8px;border-radius:6px;font-family:'SFMono-Regular',Menlo,monospace;color:#ffffff;font-size:12px;">${escapeHtml(password)}</code>
                     </p>
-                    <p style="font-size:14px;margin:8px 0;color:#555;">
-                      <strong>Referral ID:</strong> <code style="background:#fff;padding:4px 8px;border-radius:4px;font-family:monospace;">${ref_id}</code>
+                    <p style="font-size:13px;margin:8px 0;color:#9a9a9a;">
+                      <strong style="color:#c7c7c7;">Referral ID:</strong> <code style="background:#1a1a1a;border:1px solid rgba(255,255,255,0.06);padding:3px 8px;border-radius:6px;font-family:'SFMono-Regular',Menlo,monospace;color:#ffffff;font-size:12px;">${escapeHtml(ref_id)}</code>
                     </p>
                   </td>
                 </tr>
               </table>
-              
-              <p style="font-size:14px;color:#e74c3c;margin:16px 0;padding:12px;background:#fff3f3;border-radius:6px;text-align:left;">
-                ⚠️ <strong>Important:</strong> Please change your password after your first login for security.
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:16px 40px 0 40px;">
+              <p style="font-size:13px;line-height:1.6;color:${BRAND_PRIMARY};margin:0;padding:12px 14px;background:rgba(255,15,95,0.08);border:1px solid rgba(255,15,95,0.25);border-radius:8px;">
+                <strong>Important:</strong> Please change your password after your first login for security.
               </p>
-              
-              <div style="text-align:center;margin:24px 0;">
-                <a href="${loginUrl}"
-                  style="background:#667eea;border-radius:8px;color:#fff;text-decoration:none;display:inline-block;padding:16px 40px;font-size:18px;font-weight:bold;box-shadow:0 4px 12px rgba(102,126,234,0.4);">
-                  Login to Dashboard
-                </a>
-              </div>
-              
-              <div style="text-align:left;margin:24px 0 0 0;">
-                <h3 style="font-size:16px;font-weight:bold;margin:0 0 12px 0;color:#333;">🚀 Next Steps:</h3>
-                <ol style="font-size:14px;color:#666;margin:0;padding-left:20px;">
-                  <li style="margin-bottom:8px;">Login to your dashboard</li>
-                  <li style="margin-bottom:8px;">Change your password</li>
-                  <li style="margin-bottom:8px;">Generate tracking links for campaigns</li>
-                  <li style="margin-bottom:8px;">Start referring customers and earning commissions!</li>
-                </ol>
-              </div>
-              
-              <p style="margin:24px 0 0 0;font-size:13px;color:#999;text-align:center;">
+            </td>
+          </tr>
+
+          <tr>
+            <td align="center" style="padding:24px 40px 8px 40px;">
+              <a href="${loginUrl}" style="display:inline-block;background:linear-gradient(180deg,${BRAND_PRIMARY} 0%,${BRAND_PRIMARY_DARK} 100%);color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;">Login to Dashboard</a>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:16px 40px 0 40px;">
+              <h3 style="font-size:14px;font-weight:700;margin:0 0 10px 0;color:#ffffff;letter-spacing:0.3px;">Next Steps</h3>
+              <ol style="font-size:13px;line-height:1.7;color:#9a9a9a;margin:0;padding-left:20px;">
+                <li>Login to your dashboard</li>
+                <li>Change your password</li>
+                <li>Generate tracking links for campaigns</li>
+                <li>Start referring customers and earning commissions</li>
+              </ol>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:24px 40px 12px 40px;border-top:1px solid rgba(255,255,255,0.06);margin-top:24px;">
+              <p style="font-size:12px;line-height:1.6;color:#7a7a7a;margin:0;">
                 If you didn't sign up for this, please ignore this email.
               </p>
             </td>
           </tr>
-          
-          <!-- Footer -->
+
           <tr>
-            <td align="center" style="padding:20px 0 12px 0;background:#e5e5e5;color:#999;font-size:13px;border-bottom-left-radius:24px;border-bottom-right-radius:24px;">
-              © ${currentYear} MJ First Promoter Platform. All rights reserved.
+            <td align="center" style="background:#0f1012;padding:16px;">
+              <p style="font-size:11px;color:#555555;margin:0;">© ${currentYear} TeaseMe HQ. All rights reserved.</p>
             </td>
           </tr>
         </table>
