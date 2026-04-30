@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { PasswordResetPurpose, PrismaClient, UserRole, UserType } from '@prisma/client';
+import { PasswordResetPurpose, Prisma, PrismaClient, UserRole, UserType } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
 import { nanoid } from 'nanoid';
@@ -317,11 +317,51 @@ export const getUserById = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// Prisma client surface accepted by helpers that may be invoked either with
+// the top-level client OR the interactive-transaction proxy. Using the
+// transaction-client type means callers inside `prisma.$transaction` can
+// pass `tx` directly so the work joins the surrounding transaction instead
+// of starting its own implicit one.
+type DbClient = PrismaClient | Prisma.TransactionClient;
+
+// Cancel every ACTIVE referral the given user received whose campaign is a
+// hidden AM membership campaign. Used both when an AM is reassigned away
+// from a campaign and when an AM is demoted to a non-AM userType, so the
+// stale membership row doesn't leak into "what hidden campaign is this user
+// in?" lookups (e.g. the `currentCampaign` shaping in getAccountManagers).
+async function cancelHiddenMembershipReferrals(
+  userId: string,
+  client: DbClient = prisma,
+): Promise<void> {
+  const stale = await client.referral.findMany({
+    where: { referredUserId: userId, status: 'ACTIVE' },
+    select: {
+      id: true,
+      campaign: { select: { isActive: true, visibleToPromoters: true } },
+    },
+  });
+  const ids = stale
+    .filter((r) => r.campaign.isActive && !r.campaign.visibleToPromoters)
+    .map((r) => r.id);
+  if (ids.length === 0) return;
+  await client.referral.updateMany({
+    where: { id: { in: ids } },
+    data: { status: 'CANCELLED' },
+  });
+}
+
 export const updateUser = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const currentUser = req.user!;
-    const { firstName, lastName, email, password, userType } = req.body;
+    const { firstName, lastName, email, password, userType, campaignId } = req.body as {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+      password?: string;
+      userType?: string;
+      campaignId?: string | null;
+    };
 
     // Users can only update their own profile unless they're admin
     if (currentUser.role !== UserRole.ADMIN && currentUser.id !== id) {
@@ -341,19 +381,165 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
       updateData.userType = userType;
     }
 
-    const user = await prisma.user.update({
-      where: { id },
-      data: updateData,
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
-        userType: true,
-        isActive: true,
-        updatedAt: true
+    // We need the current row whenever an admin is touching userType or the
+    // hidden-membership campaign so we can:
+    //   1. Validate the campaign assignment against the userType the row will
+    //      have AFTER the update (`nextUserType`), not the stale one — this
+    //      lets a single request both promote a PROMOTER to AM and set their
+    //      campaign without two round-trips.
+    //   2. Detect AM → non-AM transitions on the way out and cancel any
+    //      lingering ACTIVE hidden-membership referrals so they don't pollute
+    //      AM lookups for the user's new identity.
+    const adminTouchesMembership =
+      currentUser.role === UserRole.ADMIN &&
+      (campaignId !== undefined || userType !== undefined);
+    const target = adminTouchesMembership
+      ? await prisma.user.findUnique({
+          where: { id },
+          select: { id: true, userType: true },
+        })
+      : null;
+    if (adminTouchesMembership && !target) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Effective userType post-update — what the row WILL be after Prisma
+    // applies `updateData`. Only meaningful when we actually fetched `target`.
+    const nextUserType: UserType | undefined = target
+      ? ((updateData.userType as UserType | undefined) ?? target.userType)
+      : undefined;
+
+    // Account-manager campaign reassignment.
+    //
+    // AM ↔ campaign membership is encoded as an ACTIVE Referral row whose
+    // `referredUser` is the AM and whose `campaign` is the hidden AM
+    // membership campaign. To "change" an AM's campaign we cancel the existing
+    // active hidden-campaign referral and create a fresh ACTIVE one pointing
+    // at the new campaign. We keep `referrerId` stable when possible so
+    // commission flow / provenance are preserved.
+    //
+    // Only admins can do this. We resolve the target campaign and validate it
+    // up front so we don't half-update on a bad request.
+    let resolvedAmCampaign:
+      | { id: string; name: string; linkedCampaignId: string | null }
+      | null = null;
+    if (campaignId !== undefined && currentUser.role === UserRole.ADMIN) {
+      // Use the effective post-update userType so a single request can
+      // promote a user to AM and set their campaign at the same time.
+      if (nextUserType !== UserType.ACCOUNT_MANAGER) {
+        return res.status(400).json({
+          error: 'Only account managers can be assigned to a hidden membership campaign',
+        });
       }
+      if (campaignId !== null) {
+        const campaign = await prisma.campaign.findUnique({
+          where: { id: campaignId },
+          select: {
+            id: true,
+            name: true,
+            isActive: true,
+            visibleToPromoters: true,
+            linkedCampaignId: true,
+          },
+        });
+        if (!campaign || !campaign.isActive || campaign.visibleToPromoters) {
+          return res.status(400).json({
+            error: 'Selected campaign is not a valid hidden Account Manager campaign',
+          });
+        }
+        resolvedAmCampaign = {
+          id: campaign.id,
+          name: campaign.name,
+          linkedCampaignId: campaign.linkedCampaignId,
+        };
+      }
+    }
+
+    // The user update and any membership-referral mutations have to land
+    // atomically — otherwise an admin could see profile fields change while
+    // the AM↔campaign invariant is broken (e.g. user.update succeeds but
+    // referral.create fails, leaving the AM with no hidden membership).
+    // Validation has already happened above; everything inside this block is
+    // a write and must roll back together on any failure.
+    const user = await prisma.$transaction(async (tx) => {
+      const updated = await tx.user.update({
+        where: { id },
+        data: updateData,
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          role: true,
+          userType: true,
+          isActive: true,
+          updatedAt: true,
+        },
+      });
+
+      if (currentUser.role === UserRole.ADMIN && target) {
+        const wasAm = target.userType === UserType.ACCOUNT_MANAGER;
+        const isAm = updated.userType === UserType.ACCOUNT_MANAGER;
+
+        if (wasAm && !isAm) {
+          // Demoted away from AM — clear stale hidden-membership referrals so
+          // the row doesn't keep showing up as an AM in membership lookups.
+          // We do this regardless of whether `campaignId` was passed; the
+          // userType change alone is enough to invalidate the membership.
+          await cancelHiddenMembershipReferrals(id, tx);
+        } else if (isAm && campaignId !== undefined) {
+          // Find the AM's existing active hidden-campaign referral. We pull
+          // every ACTIVE referral they received and filter in JS because
+          // Prisma's relation filter doesn't compose well with `referredUserId`.
+          const activeReferrals = await tx.referral.findMany({
+            where: { referredUserId: id, status: 'ACTIVE' },
+            select: {
+              id: true,
+              campaignId: true,
+              referrerId: true,
+              campaign: { select: { isActive: true, visibleToPromoters: true } },
+            },
+          });
+          const existing = activeReferrals.find(
+            (r) => r.campaign.isActive && !r.campaign.visibleToPromoters,
+          );
+
+          if (resolvedAmCampaign === null) {
+            // Caller cleared the campaign — cancel the active hidden referral.
+            if (existing) {
+              await tx.referral.update({
+                where: { id: existing.id },
+                data: { status: 'CANCELLED' },
+              });
+            }
+          } else if (!existing || existing.campaignId !== resolvedAmCampaign.id) {
+            // Cancel any stale hidden membership referral, then create a fresh
+            // ACTIVE one. Reuse the previous referrer when we have it so
+            // commission attribution stays put; otherwise fall back to the
+            // current admin caller.
+            if (existing) {
+              await tx.referral.update({
+                where: { id: existing.id },
+                data: { status: 'CANCELLED' },
+              });
+            }
+            const referrerId = existing?.referrerId ?? currentUser.id;
+            await tx.referral.create({
+              data: {
+                inviteCode: nanoid(10),
+                campaignId: resolvedAmCampaign.id,
+                referrerId,
+                referredUserId: id,
+                status: 'ACTIVE',
+                level: 1,
+                acceptedAt: new Date(),
+              },
+            });
+          }
+        }
+      }
+
+      return updated;
     });
 
     res.json({ user, message: 'User updated successfully' });
@@ -470,12 +656,65 @@ export const deleteUser = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
 
-    await prisma.user.delete({
-      where: { id }
+    // Soft pre-flight checks for the relations that have RESTRICT delete
+    // semantics in the schema (Campaign.createdById and ChatterGroup.createdById).
+    // For AMs especially, this is the typical reason a delete fails — surface a
+    // clear 409 before we hit the FK-constraint error.
+    const target = await prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        userType: true,
+        _count: {
+          select: {
+            createdCampaigns: true,
+            createdChatterGroups: true,
+            managedUsers: true,
+          },
+        },
+      },
     });
 
-    res.json({ message: 'User deleted successfully' });
-  } catch (error) {
+    if (!target) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const blockingCounts = target._count;
+    if (
+      (blockingCounts.createdCampaigns ?? 0) > 0 ||
+      (blockingCounts.createdChatterGroups ?? 0) > 0
+    ) {
+      const reasons: string[] = [];
+      if (blockingCounts.createdCampaigns) {
+        reasons.push(
+          `${blockingCounts.createdCampaigns} campaign${blockingCounts.createdCampaigns === 1 ? '' : 's'}`,
+        );
+      }
+      if (blockingCounts.createdChatterGroups) {
+        reasons.push(
+          `${blockingCounts.createdChatterGroups} chatter group${blockingCounts.createdChatterGroups === 1 ? '' : 's'}`,
+        );
+      }
+      return res.status(409).json({
+        error: `Cannot delete this user — they still own ${reasons.join(' and ')}. Reassign or delete those first.`,
+      });
+    }
+
+    await prisma.user.delete({ where: { id } });
+
+    res.json({
+      message: 'User deleted successfully',
+      // Useful for the admin UI: how many people now need re-assignment.
+      managedUsersOrphaned: blockingCounts.managedUsers ?? 0,
+    });
+  } catch (error: any) {
+    // Prisma FK constraint errors land here (e.g. relations we didn't pre-check).
+    if (error?.code === 'P2003') {
+      console.error('Delete user FK error:', error);
+      return res.status(409).json({
+        error: 'Cannot delete this user — they are still referenced by other records.',
+      });
+    }
     console.error('Delete user error:', error);
     res.status(500).json({ error: 'Failed to delete user' });
   }
@@ -735,11 +974,47 @@ export const getAccountManagers = async (_req: AuthRequest, res: Response) => {
             createdChatterGroups: true,
           },
         },
+        // Include the active referral whose campaign is the hidden AM
+        // membership campaign — that's how AM↔campaign membership is encoded.
+        // We pull every ACTIVE referral the AM received and pick the hidden,
+        // active one in code. There should normally be exactly one.
+        referralsReceived: {
+          where: { status: 'ACTIVE' },
+          select: {
+            id: true,
+            campaign: {
+              select: {
+                id: true,
+                name: true,
+                isActive: true,
+                visibleToPromoters: true,
+                linkedCampaign: { select: { id: true, name: true } },
+              },
+            },
+          },
+        },
       },
       orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }, { email: 'asc' }],
     });
 
-    res.json({ managers });
+    const shaped = managers.map((m) => {
+      const membership = m.referralsReceived.find(
+        (r) => r.campaign.isActive && !r.campaign.visibleToPromoters,
+      );
+      const { referralsReceived: _drop, ...rest } = m;
+      return {
+        ...rest,
+        currentCampaign: membership
+          ? {
+              id: membership.campaign.id,
+              name: membership.campaign.name,
+              linkedCampaign: membership.campaign.linkedCampaign,
+            }
+          : null,
+      };
+    });
+
+    res.json({ managers: shaped });
   } catch (error) {
     console.error('Get account managers error:', error);
     res.status(500).json({ error: 'Failed to fetch account managers' });

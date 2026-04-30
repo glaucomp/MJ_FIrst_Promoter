@@ -12,7 +12,7 @@ export const LogoLottie = ({
   className,
   width,
   height,
-  ariaLabel = 'TeaseMe HQ',
+  ariaLabel = 'MJ Promoter',
 }: LogoLottieProps) => {
   return (
     <div
