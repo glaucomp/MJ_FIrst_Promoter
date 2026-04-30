@@ -4,7 +4,12 @@ import { Prisma, PrismaClient, UserRole, UserType } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 import { getFrontendUrl } from "../utils/frontend-url";
+import { composeWelcomeHeaderDataUrl } from "./email-compose.service";
 import { emailService } from "./email.service";
+import {
+  fetchTeasemePreUserStatus,
+  syncUserFromTeaseMe,
+} from "./teaseme.service";
 
 // ─── Temporary password generation ───────────────────────────────────────────
 //
@@ -294,6 +299,7 @@ export const promotePreUserToUser = async (
         username: true,
         firstName: true,
         inviteCode: true,
+        profilePhotoKey: true,
       },
     });
   } else {
@@ -330,7 +336,7 @@ export const promotePreUserToUser = async (
           // the user's real password.
           mustChangePassword: true,
         },
-        select: { id: true, email: true, username: true, firstName: true, inviteCode: true },
+        select: { id: true, email: true, username: true, firstName: true, inviteCode: true, profilePhotoKey: true },
       });
     } catch (err) {
       // Most likely cause: a P2002 unique constraint race between our
@@ -394,7 +400,7 @@ export const promotePreUserToUser = async (
                 // the user's real password.
                 mustChangePassword: true,
               },
-              select: { id: true, email: true, username: true, firstName: true, inviteCode: true },
+              select: { id: true, email: true, username: true, firstName: true, inviteCode: true, profilePhotoKey: true },
             });
           } catch (retryErr) {
             if (
@@ -503,6 +509,137 @@ export const promotePreUserToUser = async (
     }
   }
 
+  // Mirror the upstream TeaseMe influencer profile onto our User row so
+  // `profilePhotoKey` (and voiceId / social links) is populated before we
+  // build the welcome-email banner. New promotions never have a photo key
+  // locally — TeaseMe stores it on the published influencer — so without
+  // this step the compositor below always short-circuits to null and the
+  // email falls back to the plain heart banner. Wrapped in try/catch so
+  // a 404 / network blip from upstream is non-fatal: the welcome email
+  // still goes out, just with the static banner instead of the composed
+  // one.
+  //
+  // Upstream's /influencer/<key> endpoint is keyed on the public TeaseMe
+  // handle, NOT the local username we derive from the email local-part —
+  // so passing `User.username` straight through 404s every time. Resolve
+  // the upstream username via /step-progress first (same call the My
+  // Promoters poller uses) and pass it as an explicit override; fall
+  // back to `User.username` only when step-progress doesn't yield one.
+  let photoKeyForCompose: string | null = user.profilePhotoKey ?? null;
+
+  // Resolve every plausible TeaseMe lookup key we know about. The
+  // /influencer/<key> endpoint accepts both the public username and the
+  // upstream pre_influencer_id, and we don't have a guaranteed-correct
+  // single source — so we try each in order and use the first one that
+  // works. Order matters: upstream username (most stable, returned by
+  // /step-progress when the LP is live) → upstream pre_influencer_id
+  // (always set once approved) → invite code → our local username (last
+  // resort, derived from email local-part and rarely matches upstream).
+  const candidateKeys: { source: string; key: string }[] = [];
+  let stepStatus: Awaited<ReturnType<typeof fetchTeasemePreUserStatus>> = null;
+  try {
+    stepStatus = await fetchTeasemePreUserStatus({
+      email: preUser.email,
+      inviteCode: preUser.inviteCode ?? undefined,
+    });
+  } catch (err) {
+    console.warn("[promote-pre-user] teaseme step-progress lookup threw", {
+      userId: user.id,
+      err: err instanceof Error ? err.message : String(err),
+    });
+  }
+  console.info("[promote-pre-user] teaseme step-progress resolved", {
+    userId: user.id,
+    email: preUser.email,
+    inviteCode: preUser.inviteCode ?? null,
+    statusReturned: stepStatus !== null,
+    upstreamUsername: stepStatus?.username ?? null,
+    upstreamUserId: stepStatus?.teasemeUserId ?? null,
+    upstreamStep: stepStatus?.step ?? null,
+  });
+  if (stepStatus?.username) {
+    candidateKeys.push({ source: "step-progress.username", key: stepStatus.username });
+  }
+  if (stepStatus?.teasemeUserId) {
+    candidateKeys.push({ source: "step-progress.teasemeUserId", key: stepStatus.teasemeUserId });
+  }
+  // Fall back to the PreUser's persisted teasemeUserId (the poller writes
+  // it on every /step-progress refresh, so it can be present even when
+  // the live call above timed out / returned null).
+  try {
+    const persisted = await prisma.preUser.findUnique({
+      where: { id: preUser.id },
+      select: { teasemeUserId: true },
+    });
+    if (
+      persisted?.teasemeUserId &&
+      !candidateKeys.some((c) => c.key === persisted.teasemeUserId)
+    ) {
+      candidateKeys.push({
+        source: "preUser.teasemeUserId",
+        key: persisted.teasemeUserId,
+      });
+    }
+  } catch (err) {
+    console.warn("[promote-pre-user] failed to read persisted teasemeUserId", {
+      preUserId: preUser.id,
+      err: err instanceof Error ? err.message : String(err),
+    });
+  }
+  if (preUser.inviteCode) {
+    candidateKeys.push({ source: "preUser.inviteCode", key: preUser.inviteCode });
+  }
+  if (user.username && !candidateKeys.some((c) => c.key === user.username)) {
+    candidateKeys.push({ source: "user.username", key: user.username });
+  }
+
+  let syncOk = false;
+  for (const candidate of candidateKeys) {
+    try {
+      const synced = await syncUserFromTeaseMe(user.id, candidate.key);
+      photoKeyForCompose = synced.profilePhotoKey;
+      console.info("[promote-pre-user] teaseme sync ok before welcome email", {
+        userId: user.id,
+        lookupKey: candidate.key,
+        lookupSource: candidate.source,
+        profilePhotoKey: synced.profilePhotoKey,
+      });
+      syncOk = true;
+      break;
+    } catch (err) {
+      console.warn("[promote-pre-user] teaseme sync attempt failed; trying next key", {
+        userId: user.id,
+        lookupKey: candidate.key,
+        lookupSource: candidate.source,
+        err: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+  if (!syncOk) {
+    console.warn(
+      "[promote-pre-user] teaseme sync failed for every candidate key; using existing photoKey if any",
+      {
+        userId: user.id,
+        triedKeys: candidateKeys.map((c) => `${c.source}=${c.key}`),
+        existingPhotoKey: user.profilePhotoKey,
+      },
+    );
+  }
+
+  // Build the per-promoter banner composite (heart background + circular
+  // profile photo + pink ring) and inline it as a data URL so the email
+  // template can use it as the <img src> directly — no S3 upload, no
+  // presigned URL, no expiry. Mirrors the upstream Python
+  // `compose_email_header_image_url` semantics. Returns null if the
+  // user has no profilePhotoKey yet, the photo or background download
+  // fails, or sharp throws — in any of those cases the email just falls
+  // back to the static verify-header banner, which is a graceful
+  // degradation rather than a user-visible failure.
+  const headerImageOverrideUrl = await composeWelcomeHeaderDataUrl({
+    photoKey: photoKeyForCompose ?? "",
+    identifier: user.id,
+  });
+
   const emailSent = await sendWelcomeEmailSafe({
     email: user.email,
     username:
@@ -510,6 +647,7 @@ export const promotePreUserToUser = async (
     firstName: user.firstName,
     refId: user.inviteCode ?? "",
     tempPassword,
+    headerImageOverrideUrl,
     userId: user.id,
     preUserId: preUser.id,
   });
@@ -558,6 +696,12 @@ interface WelcomeEmailContext {
   firstName: string | null;
   refId: string;
   tempPassword: string;
+  // Optional override for the welcome-email banner — typically a
+  // `data:image/png;base64,…` URL produced by
+  // `composeWelcomeHeaderDataUrl` containing the promoter's profile
+  // photo composited onto the heart background. Null falls back to the
+  // static verify-header banner.
+  headerImageOverrideUrl: string | null;
   userId: string;
   preUserId: string;
 }
@@ -583,6 +727,7 @@ const sendWelcomeEmailSafe = async (
       firstName: ctx.firstName ?? undefined,
       ref_id: ctx.refId,
       loginUrl,
+      headerImageOverrideUrl: ctx.headerImageOverrideUrl,
     });
   } catch (err) {
     console.error("[promote-pre-user] welcome email threw", {

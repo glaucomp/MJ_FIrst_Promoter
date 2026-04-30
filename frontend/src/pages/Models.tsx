@@ -2184,9 +2184,21 @@ const CardActions = ({
   // step >= 5. Referrals accepted via /register have no preUser row (the
   // backend deletes it on registration), and the API requires preUser to be
   // present — so we omit the button entirely for those cases.
+  //
+  // Additionally, once the promoter has logged in for the first time and
+  // completed /first-password-change (User.mustChangePassword flips to
+  // false), the welcome flow is finished and the button is hidden. The
+  // AM should not be able to accidentally rotate an active user's
+  // password back to a temp value via Resend after that point — if the
+  // promoter loses access they go through the standard forgot-password
+  // flow instead.
   const welcomeEmailSent = !!referral.preUser?.welcomeEmailSentAt;
+  const completedFirstLogin =
+    referral.referredUser?.mustChangePassword === false;
   const canSendWelcomeEmail =
-    referral.preUser != null && referral.preUser.currentStep >= 5;
+    referral.preUser != null &&
+    referral.preUser.currentStep >= 5 &&
+    !completedFirstLogin;
   return (
     <div className="flex flex-col gap-[8px]">
       {canSendWelcomeEmail && (

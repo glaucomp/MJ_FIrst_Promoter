@@ -240,6 +240,12 @@ export interface Referral {
     username?: string | null;
     /** Presigned GET URL (1h expiry). */
     photoUrl?: string | null;
+    // false = promoter has completed /first-password-change after their
+    // first login. Drives the Send/Resend Welcome Email button visibility
+    // on LP Live cards: shown while the welcome flow is unfinished
+    // (mustChangePassword === true OR no referredUser yet), hidden once
+    // the promoter has rotated their temp password into a real one.
+    mustChangePassword?: boolean;
   };
   commissions?: ReferralCommission[];
   childReferrals?: Array<{

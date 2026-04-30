@@ -20,6 +20,13 @@ interface WelcomeEmailData {
   firstName?: string;
   ref_id: string;
   loginUrl: string;
+  // Optional override for the banner <img src>. When provided, replaces
+  // the static EMAIL_VERIFY_HEADER_URL for this single send — typically
+  // a `data:image/png;base64,…` URL produced by
+  // `composeWelcomeHeaderDataUrl` containing the promoter's profile
+  // photo composited onto the heart-background banner. Null/undefined
+  // falls back to the static verify-header banner.
+  headerImageOverrideUrl?: string | null;
 }
 
 interface SetPasswordEmailData {
@@ -65,6 +72,30 @@ const formatExpiry = (expiresAt: Date) => {
 const BRAND_PRIMARY = '#ff0f5f';
 const BRAND_PRIMARY_DARK = '#cc0047';
 
+// ─── Email header banner URLs ────────────────────────────────────────────────
+//
+// Mirrors the upstream Python settings.BUCKET_PUBLIC_URL + the per-template
+// header constants. We host the same artwork in the same public S3 bucket
+// so any banner already used by the Python pipeline (verify, reset, live-
+// influencer) can be reused here without duplicating assets.
+//
+// Resolved once at module load — no need to re-read process.env on every
+// email send. If `BUCKET_PUBLIC_URL` is unset we fall back to the known
+// upstream value so dev environments don't ship broken <img> tags.
+const BUCKET_PUBLIC_URL = (
+  process.env.BUCKET_PUBLIC_URL?.trim() ||
+  'https://bucket-image-tease-me.s3.us-east-1.amazonaws.com'
+).replace(/\/+$/, '');
+
+export const EMAIL_VERIFY_HEADER_URL = `${BUCKET_PUBLIC_URL}/email_verify_header.png`;
+export const EMAIL_RESET_HEADER_URL = `${BUCKET_PUBLIC_URL}/email-assets/reset_password_header.jpg`;
+export const EMAIL_INFLUENCER_HEADER_BG_URL = `${BUCKET_PUBLIC_URL}/influencer_header_background.png`;
+
+// Native pixel size of the banners hosted in the bucket (width, height).
+// Mirrors the upstream Python EMAIL_HEADER_SIZE = (520, 150) so HTML
+// renders at native resolution without scaling artefacts.
+export const EMAIL_HEADER_SIZE: readonly [number, number] = [520, 150];
+
 export class EmailService {
   /**
    * @deprecated Leaks the plaintext password in the email body. New users
@@ -73,11 +104,60 @@ export class EmailService {
    */
   async sendPromoterWelcomeEmail(data: WelcomeEmailData): Promise<boolean> {
     const { email, username, password, firstName, ref_id, loginUrl } = data;
+    const headerOverride = data.headerImageOverrideUrl?.trim() || '';
     const name = firstName || username;
     const currentYear = new Date().getFullYear();
 
     const subject = '🎉 Welcome to MJ First Promoter Program!';
-    
+
+    // Branded header banner. Reuses the upstream TeaseMe verify-header
+    // artwork served from the public S3 bucket (BUCKET_PUBLIC_URL +
+    // /email_verify_header.png). Width/height match the upstream Python
+    // pipeline's EMAIL_HEADER_SIZE = (520, 150), so the image renders at
+    // native resolution without scaling artefacts. To use a different
+    // banner (reset-password header, influencer heart background, etc),
+    // swap to one of the other exported constants from this module.
+    const [, HEADER_HEIGHT_PX] = EMAIL_HEADER_SIZE;
+    // When the caller provides a per-promoter composite (e.g. data URL
+    // built by composeWelcomeHeaderDataUrl), use that as the banner;
+    // otherwise fall back to the static verify-header artwork. Either
+    // way the markup is identical — the image just changes.
+    const headerImageUrl = headerOverride || EMAIL_VERIFY_HEADER_URL;
+
+    const headerHtml = headerImageUrl
+      ? `
+          <tr>
+            <td align="center" style="background:#23293b;padding:0;">
+              <img
+                src="${headerImageUrl}"
+                alt="TeaseMe"
+                height="${HEADER_HEIGHT_PX}"
+                style="width:100%;max-width:520px;height:${HEADER_HEIGHT_PX}px;display:block;border-top-left-radius:24px;border-top-right-radius:24px;object-fit:cover;"
+              />
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:24px 30px 0 30px;">
+              <h1 style="font-family:'Arial Rounded MT Bold',Arial,sans-serif;font-size:28px;font-weight:bold;margin:0;color:#333;">
+                🎉 Welcome ${name}!
+              </h1>
+              <p style="font-size:16px;color:#666;margin:8px 0 0 0;">
+                Your promoter account is ready
+              </p>
+            </td>
+          </tr>`
+      : `
+          <tr>
+            <td align="center" style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:40px 30px;">
+              <h1 style="font-family:'Arial Rounded MT Bold',Arial,sans-serif;font-size:32px;font-weight:bold;margin:0;color:#fff;">
+                🎉 Welcome ${name}!
+              </h1>
+              <p style="font-size:16px;color:#fff;margin:8px 0 0 0;opacity:0.9;">
+                Your promoter account is ready
+              </p>
+            </td>
+          </tr>`;
+
     const bodyHtml = `
 <!DOCTYPE html>
 <html lang="en">
@@ -90,19 +170,11 @@ export class EmailService {
     <tr>
       <td align="center">
         <table width="520" cellpadding="0" cellspacing="0" border="0" style="background:#fff;border-radius:24px;box-shadow:0 10px 32px rgba(50,50,93,0.10),0 2px 4px rgba(0,0,0,0.07);overflow:hidden;">
-          
-          <!-- Header -->
-          <tr>
-            <td align="center" style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:40px 30px;">
-              <h1 style="font-family:'Arial Rounded MT Bold',Arial,sans-serif;font-size:32px;font-weight:bold;margin:0;color:#fff;">
-                🎉 Welcome ${name}!
-              </h1>
-              <p style="font-size:16px;color:#fff;margin:8px 0 0 0;opacity:0.9;">
-                Your promoter account is ready
-              </p>
-            </td>
-          </tr>
-          
+
+          <!-- Header (branded image from BUCKET_PUBLIC_URL; gradient
+               fallback if the URL ever resolves to empty) -->
+          ${headerHtml}
+
           <!-- Main Content -->
           <tr>
             <td align="center" style="padding:32px 30px 16px 30px;">

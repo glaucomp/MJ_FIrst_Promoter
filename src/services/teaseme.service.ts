@@ -623,9 +623,16 @@ const normalizeSocialPlatform = (raw: string): string | null => {
 /**
  * Syncs a User row with data from TeaseMe, keyed by the user's username.
  * Updates voiceId, S3 keys, teasemeSyncedAt and replaces the user's socialLinks.
+ *
+ * `usernameOverride` lets callers resolve the upstream TeaseMe username out
+ * of band (e.g. via /step-progress) and pass it in directly. Needed for the
+ * 4→5 promotion flow because our local `User.username` is derived from the
+ * email local-part and rarely matches the public TeaseMe handle, so the
+ * naive `fetchInfluencer(user.username)` lookup 404s.
  */
 export const syncUserFromTeaseMe = async (
   userId: string,
+  usernameOverride?: string | null,
 ): Promise<SyncedUser> => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -634,14 +641,15 @@ export const syncUserFromTeaseMe = async (
   if (!user) {
     throw new TeaseMeSyncValidationError(`User ${userId} not found`, 404);
   }
-  if (!user.username) {
+  const lookupKey = usernameOverride?.trim() || user.username;
+  if (!lookupKey) {
     throw new TeaseMeSyncValidationError(
       `User ${userId} has no username; cannot sync`,
       400,
     );
   }
 
-  const influencer = await fetchInfluencer(user.username);
+  const influencer = await fetchInfluencer(lookupKey);
   const rawLinks = extractSocialLinks(influencer);
 
   // Dedupe by platform (TeaseMe may return duplicates), normalise the platform key,
@@ -674,7 +682,7 @@ export const syncUserFromTeaseMe = async (
   }
 
   console.info(
-    `[teaseme.sync] user=${user.username} raw=${rawLinks.length} kept=${byPlatform.size}` +
+    `[teaseme.sync] user=${user.username} lookup=${lookupKey} raw=${rawLinks.length} kept=${byPlatform.size}` +
       (rejected.length ? ` rejected=${JSON.stringify(rejected)}` : ""),
   );
 
@@ -702,7 +710,7 @@ export const syncUserFromTeaseMe = async (
       insertedCount = result.count;
     }
     console.info(
-      `[teaseme.sync] user=${user.username} deleted=${deleted.count} inserted=${insertedCount} ` +
+      `[teaseme.sync] user=${user.username} lookup=${lookupKey} deleted=${deleted.count} inserted=${insertedCount} ` +
         `platforms=[${Array.from(byPlatform.keys()).join(",")}]`,
     );
 
