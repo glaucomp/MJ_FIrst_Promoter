@@ -214,6 +214,12 @@ export interface ReferralMetadata {
   emailSentAt?: string | null;
   expiresAt?: string | null;
   resendCount?: number;
+  /** Set to 'am-migration' when a referral is CANCELLED as part of an AM
+   *  reassignment (not an explicit AM rejection). Used by the UI to suppress
+   *  the misleading "Denied" chip and filter pill for these rows. */
+  source?: string | null;
+  /** ISO timestamp recorded when source === 'am-migration'. */
+  migratedAt?: string | null;
 }
 
 export interface Referral {

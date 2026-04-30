@@ -1246,6 +1246,8 @@ const deriveChipState = (r: Referral): ChipState => {
   // Explicit deny beats everything else — once an AM has said no, we don't
   // want the UI to keep nagging them with "Order LP" etc even if the
   // underlying preUser row still has an in-flight TeaseMe status.
+  // AM-migration rows also carry CANCELLED but are filtered out by isDenied
+  // before reaching card rendering, so this branch is only hit for genuine denials.
   if (r.status === "CANCELLED") return "denied";
   if (r.isExpired) return "expired";
   if (r.status === "ACTIVE" || r.status === "COMPLETED") return "lp_live";
@@ -1485,7 +1487,11 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
   // lifecycle event (invite window lapsed), denied is an explicit AM
   // rejection. Both are still hidden from the "All" tab so they don't
   // clutter the default view.
-  const isDenied = (r: Referral) => r.status === "CANCELLED";
+  // AM-reassignment rows also carry CANCELLED but are tagged with
+  // source === 'am-migration' in their metadata — exclude them from the
+  // "denied" bucket so they don't pollute the Denied filter or chip.
+  const isDenied = (r: Referral) =>
+    r.status === "CANCELLED" && r.metadata?.source !== "am-migration";
   const isExpiredOnly = (r: Referral) => r.isExpired && !isDenied(r);
 
   const counts = useMemo(() => {
@@ -2174,19 +2180,28 @@ const CardActions = ({
   // top button's label is driven by `preUser.welcomeEmailSentAt`: null
   // means it has never been delivered (Send), any timestamp means we've
   // sent it at least once (Resend).
+  //
+  // The Send/Resend button is only shown when `referral.preUser` exists AND
+  // step >= 5. Referrals accepted via /register have no preUser row (the
+  // backend deletes it on registration), and the API requires preUser to be
+  // present — so we omit the button entirely for those cases.
   const welcomeEmailSent = !!referral.preUser?.welcomeEmailSentAt;
+  const canSendWelcomeEmail =
+    referral.preUser != null && referral.preUser.currentStep >= 5;
   return (
     <div className="flex flex-col gap-[8px]">
-      <SecondaryButton
-        onClick={() => onSendWelcomeEmail(referral)}
-        disabled={busy}
-      >
-        {busy
-          ? "Sending…"
-          : welcomeEmailSent
-            ? "Resend Welcome Email"
-            : "Send Welcome Email"}
-      </SecondaryButton>
+      {canSendWelcomeEmail && (
+        <SecondaryButton
+          onClick={() => onSendWelcomeEmail(referral)}
+          disabled={busy}
+        >
+          {busy
+            ? "Sending…"
+            : welcomeEmailSent
+              ? "Resend Welcome Email"
+              : "Send Welcome Email"}
+        </SecondaryButton>
+      )}
       <PinkCta onClick={() => onAssignChatters(referral)} disabled={busy}>
         {busy ? "Assigning…" : "Assign Chatters"}
       </PinkCta>

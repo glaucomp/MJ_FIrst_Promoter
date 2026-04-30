@@ -701,16 +701,39 @@ export const assignAccountManager = async (req: AuthRequest, res: Response) => {
           current.referrerId === accountManagerId;
 
         if (!alreadyOnTargetCampaign) {
-          // Cancel any stale active referral so the user has at most one
+          // Cancel any stale active referrals so the user has at most one
           // ACTIVE "I am the invitee" row at a time. We deliberately do NOT
           // touch CANCELLED / PENDING referrals or the user's customer-
           // tracking referrals (those have referredUserId=null), and we
           // do NOT re-attribute past commissions — historical commission
           // ownership stays with the old referral.
-          await tx.referral.updateMany({
+          //
+          // Each row is updated individually so we can merge the
+          // `source: 'am-migration'` marker into its existing metadata without
+          // overwriting it. The marker lets the frontend distinguish these from
+          // explicit AM rejections (which also use CANCELLED) and suppress the
+          // misleading "Denied" chip for migrated rows.
+          const activeReferrals = await tx.referral.findMany({
             where: { referredUserId: id, status: 'ACTIVE' },
-            data: { status: 'CANCELLED' },
+            select: { id: true, metadata: true },
           });
+          for (const ref of activeReferrals) {
+            const existing =
+              typeof ref.metadata === 'object' && ref.metadata !== null
+                ? (ref.metadata as Record<string, unknown>)
+                : {};
+            await tx.referral.update({
+              where: { id: ref.id },
+              data: {
+                status: 'CANCELLED',
+                metadata: {
+                  ...existing,
+                  source: 'am-migration',
+                  migratedAt: new Date().toISOString(),
+                } as Prisma.InputJsonValue,
+              },
+            });
+          }
 
           await tx.referral.create({
             data: {
