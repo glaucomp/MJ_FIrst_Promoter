@@ -1366,10 +1366,10 @@ export const sendReferralWelcomeEmail = async (
       welcomeEmailSentAt: referral.preUser.welcomeEmailSentAt,
       // Operator-initiated send / resend. Bypasses BOTH the in-memory and
       // DB-side anti-double-email guards inside the helper so a click on
-      // "Resend Welcome Email" always rotates the temp password and
-      // delivers a fresh email — the previous plaintext password can't
-      // be recovered (bcrypt is one-way), so a true "resend the same
-      // password" isn't possible here anyway.
+      // "Resend Welcome Email" reissues a fresh set-password / invite
+      // token and delivers a new email. The previous plaintext password
+      // can't be recovered (bcrypt is one-way), so a true "resend the
+      // same password" isn't possible here anyway.
       forceResend: true,
     });
 
