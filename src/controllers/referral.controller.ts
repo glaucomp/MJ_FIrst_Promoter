@@ -1389,15 +1389,15 @@ export const sendReferralWelcomeEmail = async (
 
     // The helper short-circuits with `already_user` when a User row exists
     // and `mustChangePassword === false` — i.e. the promoter has already
-    // chosen their own password. Re-issuing an invite at that point would
-    // overwrite their bcrypt hash, which we explicitly don't do. Instead
-    // we mint a regular RESET token (same flow as /forgot-password) and
-    // mail it via `sendPasswordResetEmail` so the AM can still help the
-    // promoter regain access (e.g. forgotten password, change email).
-    // Note: `welcomeEmailSentAt` is intentionally NOT updated in this
-    // branch — that flag tracks the initial invite, not subsequent
-    // recovery emails. The button label keeps saying "Resend Welcome
-    // Email" / "Send Welcome Email" exactly as it would otherwise.
+    // chosen their own password. The operator still wants the welcome
+    // email to go out (this is what the button says it does), so we send
+    // the same `sendSetPasswordEmail` here directly, scoped to the
+    // existing user, **without** rotating their password hash or flipping
+    // `mustChangePassword`. The recipient gets the same welcome email
+    // they'd have received if this were a fresh promotion; if they click
+    // the set-password link they can choose a new password (same effect
+    // as forgot-password), and if they ignore it their existing password
+    // continues to work.
     if (result.status === "already_user") {
       const targetUser = await prisma.user.findUnique({
         where: { email: referral.preUser.email },
@@ -1412,36 +1412,59 @@ export const sendReferralWelcomeEmail = async (
       if (!targetUser?.isActive) {
         return res.status(409).json({
           error:
-            "This promoter already has an account but it is inactive. Reactivate it before sending password emails.",
+            "This promoter already has an account but it is inactive. Reactivate it before sending the welcome email.",
         });
       }
 
+      let emailOk = false;
       try {
         const { rawToken, expiresAt } = await createPasswordResetToken(
           targetUser.id,
-          PasswordResetPurpose.RESET,
+          PasswordResetPurpose.INVITE,
         );
-        const resetUrl = buildSetPasswordUrl(rawToken);
-        const emailOk = await emailService.sendPasswordResetEmail({
+        const setupUrl = buildSetPasswordUrl(rawToken);
+        emailOk = await emailService.sendSetPasswordEmail({
           email: targetUser.email,
           firstName: targetUser.firstName,
-          resetUrl,
+          setupUrl,
           expiresAt,
         });
-
-        return res.json({
-          success: true,
-          mode: "password_reset",
-          emailSent: emailOk,
-          welcomeEmailSentAt:
-            referral.preUser.welcomeEmailSentAt?.toISOString() ?? null,
-        });
       } catch (err) {
-        console.error("Send password-reset email error:", err);
+        console.error("Send welcome email (already_user) error:", err);
         return res.status(500).json({
-          error: "Failed to send password reset email",
+          error: "Failed to send welcome email",
         });
       }
+
+      // Stamp `welcomeEmailSentAt` so the button label flips to "Resend
+      // Welcome Email" on the next render even when the original
+      // promotion attempt skipped the stamp due to `already_user`.
+      if (emailOk) {
+        try {
+          await prisma.preUser.update({
+            where: { id: referral.preUser.id },
+            data: { welcomeEmailSentAt: new Date() },
+          });
+        } catch (err) {
+          console.error(
+            "Failed to stamp welcomeEmailSentAt after already_user resend",
+            err,
+          );
+        }
+      }
+
+      const updated = await prisma.preUser.findUnique({
+        where: { id: referral.preUser.id },
+        select: { welcomeEmailSentAt: true },
+      });
+
+      return res.json({
+        success: true,
+        mode: wasAlreadySent ? "resent" : "sent",
+        emailSent: emailOk,
+        welcomeEmailSentAt:
+          updated?.welcomeEmailSentAt?.toISOString() ?? null,
+      });
     }
 
     // Echo the freshly stamped flag so the frontend can flip the button
