@@ -1,9 +1,16 @@
-import { Prisma, PrismaClient, UserRole, UserType } from "@prisma/client";
+import {
+  PasswordResetPurpose,
+  Prisma,
+  PrismaClient,
+  UserRole,
+  UserType,
+} from "@prisma/client";
 import { Response } from "express";
 import { validationResult } from "express-validator";
 import { nanoid } from "nanoid";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { emailService } from "../services/email.service";
+import { createPasswordResetToken } from "../services/password-reset.service";
 import { promotePreUserToUser } from "../services/pre-user-promote.service";
 import { getPresignedUrl } from "../services/s3.service";
 import {
@@ -13,6 +20,7 @@ import {
   notifyChattersAssigned,
   reassignPreInfluencer,
 } from "../services/teaseme.service";
+import { buildSetPasswordUrl } from "../utils/frontend-url";
 
 const prisma = new PrismaClient();
 
@@ -1382,15 +1390,58 @@ export const sendReferralWelcomeEmail = async (
     // The helper short-circuits with `already_user` when a User row exists
     // and `mustChangePassword === false` — i.e. the promoter has already
     // chosen their own password. Re-issuing an invite at that point would
-    // be an unauthenticated password reset, so we surface a 409 here with
-    // a clear message instead of returning a misleading "email failed"
-    // success-shaped response. The right next step for an AM in this case
-    // is the regular password-reset flow, not the welcome email.
+    // overwrite their bcrypt hash, which we explicitly don't do. Instead
+    // we mint a regular RESET token (same flow as /forgot-password) and
+    // mail it via `sendPasswordResetEmail` so the AM can still help the
+    // promoter regain access (e.g. forgotten password, change email).
+    // Note: `welcomeEmailSentAt` is intentionally NOT updated in this
+    // branch — that flag tracks the initial invite, not subsequent
+    // recovery emails. The button label keeps saying "Resend Welcome
+    // Email" / "Send Welcome Email" exactly as it would otherwise.
     if (result.status === "already_user") {
-      return res.status(409).json({
-        error:
-          "This promoter has already set their own password. Use the password-reset flow if they need to recover access.",
+      const targetUser = await prisma.user.findUnique({
+        where: { email: referral.preUser.email },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          isActive: true,
+        },
       });
+
+      if (!targetUser?.isActive) {
+        return res.status(409).json({
+          error:
+            "This promoter already has an account but it is inactive. Reactivate it before sending password emails.",
+        });
+      }
+
+      try {
+        const { rawToken, expiresAt } = await createPasswordResetToken(
+          targetUser.id,
+          PasswordResetPurpose.RESET,
+        );
+        const resetUrl = buildSetPasswordUrl(rawToken);
+        const emailOk = await emailService.sendPasswordResetEmail({
+          email: targetUser.email,
+          firstName: targetUser.firstName,
+          resetUrl,
+          expiresAt,
+        });
+
+        return res.json({
+          success: true,
+          mode: "password_reset",
+          emailSent: emailOk,
+          welcomeEmailSentAt:
+            referral.preUser.welcomeEmailSentAt?.toISOString() ?? null,
+        });
+      } catch (err) {
+        console.error("Send password-reset email error:", err);
+        return res.status(500).json({
+          error: "Failed to send password reset email",
+        });
+      }
     }
 
     // Echo the freshly stamped flag so the frontend can flip the button
