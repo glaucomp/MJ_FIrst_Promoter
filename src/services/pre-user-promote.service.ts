@@ -65,10 +65,11 @@ export interface PromotePreUserInput {
   welcomeEmailSentAt: Date | null;
   // Operator-initiated resend opt-in. When `true`, BOTH the input-side
   // check (`preUser.welcomeEmailSentAt`) and the DB-side race check are
-  // bypassed so a resend always rotates the password and re-sends the
-  // email. This is exactly what the "Resend Welcome Email" button on
-  // the LP Live card needs: a deliberate, AM-driven action that should
-  // always go through regardless of historical state.
+  // bypassed so a resend always issues a fresh invite/set-password token
+  // and re-sends the email. This does not rotate an existing stored
+  // password hash. This is exactly what the "Resend Welcome Email"
+  // button on the LP Live card needs: a deliberate, AM-driven action
+  // that should always go through regardless of historical state.
   forceResend?: boolean;
 }
 
