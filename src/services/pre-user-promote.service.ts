@@ -630,10 +630,12 @@ export const promotePreUserToUser = async (
   // profile photo + pink ring) and inline it as a data URL so the email
   // template can use it as the <img src> directly — no S3 upload, no
   // presigned URL, no expiry. Mirrors the upstream Python
-  // `compose_email_header_image_url` semantics. Returns null if the
-  // user has no profilePhotoKey yet, the photo or background download
-  // fails, or sharp throws — in any of those cases the email just falls
-  // back to the static verify-header banner, which is a graceful
+  // `compose_email_header_image_url` semantics. If the user has no
+  // profilePhotoKey yet, or if downloading the profile photo fails, this
+  // still returns a background-only `data:image/png;base64,...` URL.
+  // It only returns null if the local background asset cannot be read or
+  // image composition fails (for example if sharp throws), in which case
+  // the email falls back to the static verify-header banner as a graceful
   // degradation rather than a user-visible failure.
   const headerImageOverrideUrl = await composeWelcomeHeaderDataUrl({
     photoKey: photoKeyForCompose ?? "",
