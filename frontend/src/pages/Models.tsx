@@ -1731,17 +1731,32 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
             : r,
         ),
       );
-      const verb = result.mode === "resent" ? "Resent" : "Sent";
-      if (result.emailSent) {
-        showToast("success", `${verb} welcome email`);
+      if (result.mode === "password_reset") {
+        // The promoter has already chosen their own password, so the
+        // backend swapped the welcome invite for a forgot-password
+        // style reset link. Different copy so the AM understands what
+        // actually went out.
+        if (result.emailSent) {
+          showToast(
+            "success",
+            "Sent password reset email — the promoter already set their own password, so a reset link was sent instead.",
+          );
+        } else {
+          showToast(
+            "error",
+            "Could not deliver the password reset email. Please try again.",
+          );
+        }
       } else {
-        // The promotion succeeded (User exists, password set) but the
-        // outbound email transport failed. Surface that distinction so
-        // the AM knows another resend is worth trying.
-        showToast(
-          "error",
-          "Account is ready but the welcome email could not be delivered. Please try resending.",
-        );
+        const verb = result.mode === "resent" ? "Resent" : "Sent";
+        if (result.emailSent) {
+          showToast("success", `${verb} welcome email`);
+        } else {
+          showToast(
+            "error",
+            "Account is ready but the welcome email could not be delivered. Please try resending.",
+          );
+        }
       }
     } catch (err) {
       showToast(
