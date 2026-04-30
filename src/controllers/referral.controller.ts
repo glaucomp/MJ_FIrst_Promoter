@@ -1306,11 +1306,9 @@ export const assignReferralChatters = async (
  *     with a freshly generated temp password, sends the welcome email,
  *     and stamps `welcomeEmailSentAt`.
  *   - Subsequent clicks ("Resend") → re-uses the existing User row,
- *     rotates its password (we can't recover the original plaintext
- *     because it's bcrypt-hashed, so resend always rotates), re-sends
- *     the email, and re-stamps `welcomeEmailSentAt`. We force this by
- *     passing `welcomeEmailSentAt: null` into the helper, which makes
- *     it take the "user already exists, retry" branch.
+ *     requests a resend via `forceResend: true`, issues a fresh
+ *     set-password token / welcome flow email, and re-stamps
+ *     `welcomeEmailSentAt`.
  *
  * The helper is best-effort on the email-send step but never throws, so
  * a transient SES failure surfaces here as `emailSent: false` and the
