@@ -707,12 +707,10 @@ export const assignAccountManager = async (req: AuthRequest, res: Response) => {
           // tracking referrals (those have referredUserId=null), and we
           // do NOT re-attribute past commissions — historical commission
           // ownership stays with the old referral.
-          if (current) {
-            await tx.referral.update({
-              where: { id: current.id },
-              data: { status: 'CANCELLED' },
-            });
-          }
+          await tx.referral.updateMany({
+            where: { referredUserId: id, status: 'ACTIVE' },
+            data: { status: 'CANCELLED' },
+          });
 
           await tx.referral.create({
             data: {
