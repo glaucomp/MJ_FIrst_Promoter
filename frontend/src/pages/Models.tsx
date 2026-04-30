@@ -1916,21 +1916,28 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
                       {Math.min(step, ONBOARDING_STEPS.length)}/
                       {ONBOARDING_STEPS.length}
                     </span>
-                    {/* Always opens the in-flight onboarding session
-                        (preUser.surveyLink) in a new tab — even on lp_live —
-                        so the promoter can revisit the survey at any point.
-                        When surveyLink is null upstream, OnboardingIconPill
-                        renders as a non-interactive <span> (no onClick) so
-                        the pill stays visible-but-inert with a tooltip. */}
+                    {/* Opens the in-flight onboarding session
+                        (preUser.surveyLink) in a new tab. On lp_live the
+                        survey is finished and the pill becomes a dim,
+                        non-interactive token (matches the Onboarding header
+                        being faded to 20%). When surveyLink is null upstream,
+                        OnboardingIconPill renders as a non-interactive <span>
+                        so the pill stays visible-but-inert with a tooltip. */}
                     <OnboardingIconPill
-                      title={openTooltip}
-                      ariaLabel={openTooltip}
-                      className={`h-7 w-12 transition-all hover:-translate-y-0.5 select-none ${openUrl
-                        ? "cursor-pointer"
-                        : "cursor-not-allowed opacity-50 "
+                      title={
+                        isLive ? "Onboarding completed" : openTooltip
+                      }
+                      ariaLabel={
+                        isLive ? "Onboarding completed" : openTooltip
+                      }
+                      className={`h-7 w-12 transition-all select-none ${isLive
+                        ? "cursor-not-allowed opacity-20"
+                        : openUrl
+                          ? "cursor-pointer hover:-translate-y-0.5"
+                          : "cursor-not-allowed opacity-50 "
                         }`}
                       onClick={
-                        openUrl
+                        !isLive && openUrl
                           ? () =>
                             window.open(
                               openUrl,
@@ -1952,13 +1959,15 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
                 </div>
                 {/* Copy landing-page (asset) link — writes preUser.assetLink
                     to clipboard and shows a toast. assetLink is null until
-                    TeaseMe finishes building the LP, so we keep the pill
-                    visible-but-disabled in that case rather than hiding it. */}
+                    TeaseMe finishes building the LP; in that case the click
+                    is disabled (cursor-not-allowed, no onClick) but the pill
+                    keeps its full visual treatment so it looks identical
+                    across every card state. */}
                 <div className="glass-button-outer">
                   <OnboardingIconPill
                     title={assetLinkTooltip}
                     ariaLabel={assetLinkTooltip}
-                    className={`absolute bottom-3 right-4 glass-button-inner ${canCopyAssetLink ? "" : "cursor-not-allowed opacity-20"
+                    className={`absolute bottom-3 right-4 glass-button-inner ${canCopyAssetLink ? "" : "cursor-not-allowed"
                       }`}
                     onClick={
                       canCopyAssetLink

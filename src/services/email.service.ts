@@ -183,9 +183,6 @@ export class EmailService {
                     <p style="font-size:13px;margin:8px 0;color:#9a9a9a;">
                       <strong style="color:#c7c7c7;">Password:</strong> <code style="background:#1a1a1a;border:1px solid rgba(255,255,255,0.06);padding:3px 8px;border-radius:6px;font-family:'SFMono-Regular',Menlo,monospace;color:#ffffff;font-size:12px;">${escapeHtml(password)}</code>
                     </p>
-                    <p style="font-size:13px;margin:8px 0;color:#9a9a9a;">
-                      <strong style="color:#c7c7c7;">Referral ID:</strong> <code style="background:#1a1a1a;border:1px solid rgba(255,255,255,0.06);padding:3px 8px;border-radius:6px;font-family:'SFMono-Regular',Menlo,monospace;color:#ffffff;font-size:12px;">${escapeHtml(ref_id)}</code>
-                    </p>
                   </td>
                 </tr>
               </table>
@@ -248,7 +245,6 @@ Your Login Credentials:
 - Username: ${username}
 - Email: ${email}
 - Password: ${password}
-- Referral ID: ${ref_id}
 
 Login at: ${loginUrl}
 
