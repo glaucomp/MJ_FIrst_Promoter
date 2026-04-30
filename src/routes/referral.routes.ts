@@ -83,6 +83,14 @@ router.post(
   referralController.assignReferralChatters,
 );
 
+// Send (or resend) the promoter welcome email. Replaces the automatic
+// 4→5 promotion hook with an explicit AM-driven action.
+router.post(
+  "/:id/send-welcome-email",
+  authenticate,
+  referralController.sendReferralWelcomeEmail,
+);
+
 // Get referral details
 router.get("/:id", authenticate, referralController.getReferralById);
 
