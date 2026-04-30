@@ -1246,9 +1246,11 @@ const deriveChipState = (r: Referral): ChipState => {
   // Explicit deny beats everything else — once an AM has said no, we don't
   // want the UI to keep nagging them with "Order LP" etc even if the
   // underlying preUser row still has an in-flight TeaseMe status.
-  // AM-migration rows also carry CANCELLED but are filtered out by isDenied
-  // before reaching card rendering, so this branch is only hit for genuine denials.
-  if (r.status === "CANCELLED") return "denied";
+  // AM-migration rows can also carry CANCELLED, but they should not surface
+  // in the UI as denied invites.
+  if (r.status === "CANCELLED" && r.metadata?.source !== "am-migration") {
+    return "denied";
+  }
   if (r.isExpired) return "expired";
   if (r.status === "ACTIVE" || r.status === "COMPLETED") return "lp_live";
   // Lifecycle is driven entirely by upstream's `survey_step` (0..5):
