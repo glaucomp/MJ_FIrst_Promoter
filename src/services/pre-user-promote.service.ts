@@ -63,6 +63,14 @@ export interface PromotePreUserInput {
   // is delivered at most once per PreUser row, even if the underlying
   // User row is later deleted or `currentStep` is manually rewound.
   welcomeEmailSentAt: Date | null;
+  // Operator-initiated resend opt-in. When `true`, BOTH the input-side
+  // check (`preUser.welcomeEmailSentAt`) and the DB-side race check are
+  // bypassed so a resend always issues a fresh invite/set-password token
+  // and re-sends the email. This does not rotate an existing stored
+  // password hash. This is exactly what the "Resend Welcome Email"
+  // button on the LP Live card needs: a deliberate, AM-driven action
+  // that should always go through regardless of historical state.
+  forceResend?: boolean;
 }
 
 interface ResolvedOwnership {
@@ -87,7 +95,7 @@ interface ResolvedOwnership {
  *     invited them. `createdById` still records the literal referrer
  *     for provenance.
  */
-const resolveOwnership = async (
+export const resolveOwnership = async (
   prisma: PrismaClient,
   referralId: string | null,
 ): Promise<ResolvedOwnership> => {
@@ -167,37 +175,41 @@ export const promotePreUserToUser = async (
   prisma: PrismaClient,
   preUser: PromotePreUserInput,
 ): Promise<PromotePreUserResult> => {
-  // Durable "email already sent" record on the PreUser row. Survives even
-  // if the resulting User row is later deleted manually, so the welcome
-  // email truly fires at most once per PreUser. This is the strongest
-  // anti-double-email guarantee — it would only be bypassed by an
-  // explicit `welcomeEmailSentAt = null` rewrite in the DB.
-  if (preUser.welcomeEmailSentAt) {
-    console.info("[promote-pre-user] welcome email already sent; skipping", {
-      preUserId: preUser.id,
-      welcomeEmailSentAt: preUser.welcomeEmailSentAt.toISOString(),
-    });
-    return { status: "already_emailed" };
-  }
+  // Anti-double-email guards. Both bypassed when `forceResend` is set so
+  // the operator can drive a deliberate "Resend Welcome Email" action
+  // from the LP Live card without us blocking it.
+  if (!preUser.forceResend) {
+    // Durable "email already sent" record on the PreUser row. Survives
+    // even if the resulting User row is later deleted manually, so the
+    // welcome email fires at most once per PreUser when nobody asks for
+    // a resend.
+    if (preUser.welcomeEmailSentAt) {
+      console.info("[promote-pre-user] welcome email already sent; skipping", {
+        preUserId: preUser.id,
+        welcomeEmailSentAt: preUser.welcomeEmailSentAt.toISOString(),
+      });
+      return { status: "already_emailed" };
+    }
 
-  // Re-check the authoritative DB state inside the helper. The caller's
-  // `preUser` snapshot can be stale under concurrency, so relying only on the
-  // passed-in `welcomeEmailSentAt` can allow duplicate welcome emails when two
-  // requests race on the same PreUser.
-  const currentPreUser = await prisma.preUser.findUnique({
-    where: { id: preUser.id },
-    select: {
-      id: true,
-      welcomeEmailSentAt: true,
-    },
-  });
-
-  if (currentPreUser?.welcomeEmailSentAt) {
-    console.info("[promote-pre-user] welcome email already sent in db; skipping", {
-      preUserId: preUser.id,
-      welcomeEmailSentAt: currentPreUser.welcomeEmailSentAt.toISOString(),
+    // Re-check the authoritative DB state. The caller's snapshot can be
+    // stale under concurrency, so relying only on the passed-in
+    // `welcomeEmailSentAt` can allow duplicate welcome emails when two
+    // non-resend requests race on the same PreUser.
+    const currentPreUser = await prisma.preUser.findUnique({
+      where: { id: preUser.id },
+      select: {
+        id: true,
+        welcomeEmailSentAt: true,
+      },
     });
-    return { status: "already_emailed" };
+
+    if (currentPreUser?.welcomeEmailSentAt) {
+      console.info("[promote-pre-user] welcome email already sent in db; skipping", {
+        preUserId: preUser.id,
+        welcomeEmailSentAt: currentPreUser.welcomeEmailSentAt.toISOString(),
+      });
+      return { status: "already_emailed" };
+    }
   }
   // Secondary idempotency: if a User with this email already exists but the
   // PreUser has not been stamped as emailed yet, treat this as a retry path
@@ -402,6 +414,58 @@ export const promotePreUserToUser = async (
         status: "error",
         error: err instanceof Error ? err.message : "user create failed",
       };
+    }
+  }
+
+  // Accept the originating Referral so the user appears under exactly ONE
+  // card on My Promoters going forward.
+  //
+  // Without this, the parent Referral stays PENDING with the PreUser still
+  // attached → it keeps rendering as an LP-Live "invite" card, while the
+  // newly-promoted User looks orphaned (no ACTIVE referral linking them
+  // as `referredUser`). Drag-dropping the orphan onto an AM then creates
+  // a *second* ACTIVE Referral (manual-am-assign), and we end up with two
+  // cards for the same person.
+  //
+  // Mirrors the acceptance step in the /register handler — same fields,
+  // same idempotency. We deliberately do NOT delete the PreUser here:
+  // welcomeEmailSentAt lives on it and drives the Send/Resend button label
+  // on the LP Live card. The chip itself flips to LP Live via Referral
+  // status (deriveChipState prioritises status === ACTIVE), so keeping the
+  // PreUser around doesn't double-render the card.
+  //
+  // updateMany + status guard makes this idempotent and safe under retries:
+  // - PENDING row → flipped to ACTIVE on first call, no-op on resend.
+  // - ACTIVE row → no-op (count=0, status filter excludes it).
+  // - CANCELLED row → intentionally NOT auto-resurrected; an admin
+  //   explicitly denied the invite so we don't undo that.
+  if (preUser.referralId) {
+    try {
+      const accepted = await prisma.referral.updateMany({
+        where: { id: preUser.referralId, status: "PENDING" },
+        data: {
+          referredUserId: user.id,
+          status: "ACTIVE",
+          acceptedAt: new Date(),
+        },
+      });
+      if (accepted.count > 0) {
+        console.info("[promote-pre-user] parent referral accepted", {
+          preUserId: preUser.id,
+          referralId: preUser.referralId,
+          userId: user.id,
+        });
+      }
+    } catch (err) {
+      // Non-fatal: the user row exists and can log in. Worst case the
+      // operator sees the duplicate-card UI for a moment until an admin
+      // re-runs or cancels the stale row manually. We log so this
+      // doesn't fail silently.
+      console.error("[promote-pre-user] failed to accept parent referral", {
+        preUserId: preUser.id,
+        referralId: preUser.referralId,
+        err: err instanceof Error ? err.message : String(err),
+      });
     }
   }
 

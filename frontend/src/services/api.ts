@@ -214,6 +214,12 @@ export interface ReferralMetadata {
   emailSentAt?: string | null;
   expiresAt?: string | null;
   resendCount?: number;
+  /** Set to 'am-migration' when a referral is CANCELLED as part of an AM
+   *  reassignment (not an explicit AM rejection). Used by the UI to suppress
+   *  the misleading "Denied" chip and filter pill for these rows. */
+  source?: string | null;
+  /** ISO timestamp recorded when source === 'am-migration'. */
+  migratedAt?: string | null;
 }
 
 export interface Referral {
@@ -279,6 +285,10 @@ export interface Referral {
     // response. Used by the top "Open" pill once chip = lp_live. Null
     // until upstream populates (i.e. until the LP build finishes).
     assetLink: string | null;
+    // ISO timestamp the welcome email was last delivered to the invitee
+    // (after the AM clicked "Send Welcome Email" on the LP Live card).
+    // Drives the Send/Resend button label. Null = never sent.
+    welcomeEmailSentAt: string | null;
   } | null;
 }
 
@@ -499,6 +509,31 @@ export const modelsApi = {
       },
     );
     return handleResponse(response, 'Failed to assign chatters');
+  },
+
+  /**
+   * Manually trigger (or re-trigger) the promoter welcome email for an
+   * LP-Live referral. Replaces the previous automatic 4→5 promotion hook.
+   *
+   * `mode` discriminates a fresh send from a resend so the UI can adjust
+   * its toast copy. `welcomeEmailSentAt` is the freshly stamped ISO
+   * timestamp echoed back by the server, used to flip the button label
+   * to "Resend Welcome Email" without a full list refetch.
+   */
+  async sendReferralWelcomeEmail(referralId: string): Promise<{
+    success: true;
+    mode: 'sent' | 'resent';
+    emailSent: boolean;
+    welcomeEmailSentAt: string | null;
+  }> {
+    const response = await apiFetch(
+      `${API_URL}/referrals/${referralId}/send-welcome-email`,
+      {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      },
+    );
+    return handleResponse(response, 'Failed to send welcome email');
   },
 
   async getInviteQuota(campaignId: string): Promise<{
