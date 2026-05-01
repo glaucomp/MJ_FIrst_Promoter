@@ -1495,16 +1495,26 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
   const isDenied = (r: Referral) =>
     r.status === "CANCELLED" && r.metadata?.source !== "am-migration";
   const isExpiredOnly = (r: Referral) => r.isExpired && !isDenied(r);
+  // `am-migration` is the marker the backend stamps on referrals that were
+  // superseded by another row (user dragged onto a new AM, orphan invite
+  // adopted into the canonical referral, etc). They're audit-only — no UI
+  // affordance applies — so we strip them out before either counting or
+  // rendering. Without this they'd otherwise leak into the "All" tab and
+  // paint a phantom "Waiting" card alongside the real one because they
+  // pass !isDenied (source is am-migration) and !isExpired.
+  const isAmMigration = (r: Referral) =>
+    r.status === "CANCELLED" && r.metadata?.source === "am-migration";
 
   const counts = useMemo(() => {
-    const expired = referrals.filter(isExpiredOnly).length;
-    const denied = referrals.filter(isDenied).length;
-    const pending = referrals.filter(
+    const visible = referrals.filter((r) => !isAmMigration(r));
+    const expired = visible.filter(isExpiredOnly).length;
+    const denied = visible.filter(isDenied).length;
+    const pending = visible.filter(
       (r) => r.status === "PENDING" && !r.isExpired,
     ).length;
-    const active = referrals.filter((r) => r.status === "ACTIVE").length;
+    const active = visible.filter((r) => r.status === "ACTIVE").length;
     return {
-      all: referrals.length - expired - denied,
+      all: visible.length - expired - denied,
       pending,
       active,
       expired,
@@ -1513,18 +1523,19 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
   }, [referrals]);
 
   const visibleReferrals = useMemo(() => {
+    const base = referrals.filter((r) => !isAmMigration(r));
     switch (filter) {
       case "pending":
-        return referrals.filter((r) => r.status === "PENDING" && !r.isExpired);
+        return base.filter((r) => r.status === "PENDING" && !r.isExpired);
       case "active":
-        return referrals.filter((r) => r.status === "ACTIVE");
+        return base.filter((r) => r.status === "ACTIVE");
       case "expired":
-        return referrals.filter(isExpiredOnly);
+        return base.filter(isExpiredOnly);
       case "denied":
-        return referrals.filter(isDenied);
+        return base.filter(isDenied);
       case "all":
       default:
-        return referrals.filter((r) => !r.isExpired && !isDenied(r));
+        return base.filter((r) => !r.isExpired && !isDenied(r));
     }
   }, [referrals, filter]);
 
