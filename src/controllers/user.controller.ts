@@ -1151,17 +1151,26 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
           amMembership?.campaign?.linkedCampaignId ?? null;
 
         if (linkedCampaignId) {
-          const orphanInvite = await prisma.referral.findFirst({
+          const orphanInvites = await prisma.referral.findMany({
             where: {
               referrerId: caller.id,
-              campaignId: linkedCampaignId,
               referredUserId: null,
               status: { in: ['PENDING', 'ACTIVE'] },
               metadata: { path: ['inviteeEmail'], equals: newUser.email },
             },
             orderBy: { createdAt: 'desc' },
-            select: { id: true, metadata: true },
+            select: { id: true, campaignId: true, metadata: true },
           });
+
+          const orphanInvite =
+            orphanInvites.find((invite) => invite.campaignId === linkedCampaignId) ??
+            null;
+          const otherCampaignOrphanInvites = orphanInvites.filter(
+            (invite) => invite.campaignId !== linkedCampaignId,
+          );
+
+          const adoptionTimestamp = new Date();
+          const tx: Prisma.PrismaPromise<unknown>[] = [];
 
           if (orphanInvite) {
             const orphanMeta =
@@ -1169,36 +1178,65 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
               orphanInvite.metadata !== null
                 ? (orphanInvite.metadata as Record<string, unknown>)
                 : {};
-            await prisma.referral.update({
-              where: { id: orphanInvite.id },
-              data: {
-                referredUserId: newUser.id,
-                status: 'ACTIVE',
-                acceptedAt: new Date(),
-                metadata: {
-                  ...orphanMeta,
-                  source: 'am-assign-adopted',
-                  adoptedAt: new Date().toISOString(),
-                } as Prisma.InputJsonValue,
-              },
-            });
+            tx.push(
+              prisma.referral.update({
+                where: { id: orphanInvite.id },
+                data: {
+                  referredUserId: newUser.id,
+                  status: 'ACTIVE',
+                  acceptedAt: adoptionTimestamp,
+                  metadata: {
+                    ...orphanMeta,
+                    source: 'am-assign-adopted',
+                    adoptedAt: adoptionTimestamp.toISOString(),
+                  } as Prisma.InputJsonValue,
+                },
+              }),
+            );
           } else {
-            await prisma.referral.create({
-              data: {
-                inviteCode: nanoid(10),
-                campaignId: linkedCampaignId,
-                referrerId: caller.id,
-                referredUserId: newUser.id,
-                status: 'ACTIVE',
-                level: 1,
-                acceptedAt: new Date(),
-                metadata: {
-                  source: 'am-direct-create',
-                  createdAt: new Date().toISOString(),
-                } as Prisma.InputJsonValue,
-              },
-            });
+            tx.push(
+              prisma.referral.create({
+                data: {
+                  inviteCode: nanoid(10),
+                  campaignId: linkedCampaignId,
+                  referrerId: caller.id,
+                  referredUserId: newUser.id,
+                  status: 'ACTIVE',
+                  level: 1,
+                  acceptedAt: adoptionTimestamp,
+                  metadata: {
+                    source: 'am-direct-create',
+                    createdAt: adoptionTimestamp.toISOString(),
+                  } as Prisma.InputJsonValue,
+                },
+              }),
+            );
           }
+
+          for (const otherOrphanInvite of otherCampaignOrphanInvites) {
+            const otherOrphanMeta =
+              typeof otherOrphanInvite.metadata === 'object' &&
+              otherOrphanInvite.metadata !== null
+                ? (otherOrphanInvite.metadata as Record<string, unknown>)
+                : {};
+            tx.push(
+              prisma.referral.update({
+                where: { id: otherOrphanInvite.id },
+                data: {
+                  status: 'CANCELLED',
+                  metadata: {
+                    ...otherOrphanMeta,
+                    source: 'am-assign-swept',
+                    sweptAt: adoptionTimestamp.toISOString(),
+                    sweptBecause: 'linked-campaign-referral-created-or-adopted',
+                    adoptedUserId: newUser.id,
+                  } as Prisma.InputJsonValue,
+                },
+              }),
+            );
+          }
+
+          await prisma.$transaction(tx);
         } else {
           // No usable hidden membership campaign yet — usually means the
           // AM was promoted but never bound to a public campaign. Don't
