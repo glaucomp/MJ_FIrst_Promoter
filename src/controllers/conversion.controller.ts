@@ -671,9 +671,13 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
             where: {
               referredUserId: refundAmId,
               status: 'ACTIVE',
+              referrer: {
+                role: 'ADMIN',
+              },
               campaign: {
                 visibleToPromoters: false,
                 linkedCampaignId: campaign.id,
+                isActive: true,
               },
             },
             orderBy: { acceptedAt: 'desc' },
