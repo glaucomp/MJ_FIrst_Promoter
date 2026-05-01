@@ -1,6 +1,6 @@
 {
-  "name": "TeaseMe",
-  "short_name": "TeaseMe",
+  "name": "MxJ Promo",
+  "short_name": "MJPromo",
   "icons": [
     {
       "src": "/web-app-manifest-192x192.png",
@@ -15,7 +15,7 @@
       "purpose": "maskable"
     }
   ],
-  "theme_color": "#ffccd5",
-  "background_color": "#ffccd5",
+  "theme_color": "#F1126F",
+  "background_color": "#F1126F",
   "display": "standalone"
 }

@@ -47,6 +47,7 @@ const mapApiUserToUser = (apiUser: any): User => {
     id: apiUser.id,
     name,
     email: apiUser.email,
+    username: apiUser.username ?? null,
     role: role,
     baseRole: role,
     canSwitchToPromoter: role === 'team_manager',

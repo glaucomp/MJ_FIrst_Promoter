@@ -1463,11 +1463,26 @@ const OnboardingChecklist = ({
 type ReferralListProps = {
   referrals: Referral[];
   setReferrals?: React.Dispatch<React.SetStateAction<Referral[]>>;
+  // Admins get override buttons (Delete / Reassign) on every card state so
+  // they can reallocate or remove referrals that are past the normal AM
+  // window (e.g. accepted/active/building). Non-admin AMs keep the stock
+  // action row.
+  isAdmin?: boolean;
 };
 
 type ReferralFilter = "all" | "pending" | "active" | "expired" | "denied";
 
-const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
+const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: ReferralListProps) => {
+  const auth = useAuth() as {
+    user?: {
+      role?: string | null;
+      isAdmin?: boolean | null;
+    } | null;
+  };
+  const isAdmin =
+    isAdminProp ??
+    auth?.user?.isAdmin === true ||
+    auth?.user?.role === "admin";
   const [busyId, setBusyId] = useState<string | null>(null);
   const [toast, setToast] = useState<{
     kind: "success" | "error";
@@ -1495,16 +1510,26 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
   const isDenied = (r: Referral) =>
     r.status === "CANCELLED" && r.metadata?.source !== "am-migration";
   const isExpiredOnly = (r: Referral) => r.isExpired && !isDenied(r);
+  // `am-migration` is the marker the backend stamps on referrals that were
+  // superseded by another row (user dragged onto a new AM, orphan invite
+  // adopted into the canonical referral, etc). They're audit-only — no UI
+  // affordance applies — so we strip them out before either counting or
+  // rendering. Without this they'd otherwise leak into the "All" tab and
+  // paint a phantom "Waiting" card alongside the real one because they
+  // pass !isDenied (source is am-migration) and !isExpired.
+  const isAmMigration = (r: Referral) =>
+    r.status === "CANCELLED" && r.metadata?.source === "am-migration";
 
   const counts = useMemo(() => {
-    const expired = referrals.filter(isExpiredOnly).length;
-    const denied = referrals.filter(isDenied).length;
-    const pending = referrals.filter(
+    const visible = referrals.filter((r) => !isAmMigration(r));
+    const expired = visible.filter(isExpiredOnly).length;
+    const denied = visible.filter(isDenied).length;
+    const pending = visible.filter(
       (r) => r.status === "PENDING" && !r.isExpired,
     ).length;
-    const active = referrals.filter((r) => r.status === "ACTIVE").length;
+    const active = visible.filter((r) => r.status === "ACTIVE").length;
     return {
-      all: referrals.length - expired - denied,
+      all: visible.length - expired - denied,
       pending,
       active,
       expired,
@@ -1513,18 +1538,19 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
   }, [referrals]);
 
   const visibleReferrals = useMemo(() => {
+    const base = referrals.filter((r) => !isAmMigration(r));
     switch (filter) {
       case "pending":
-        return referrals.filter((r) => r.status === "PENDING" && !r.isExpired);
+        return base.filter((r) => r.status === "PENDING" && !r.isExpired);
       case "active":
-        return referrals.filter((r) => r.status === "ACTIVE");
+        return base.filter((r) => r.status === "ACTIVE");
       case "expired":
-        return referrals.filter(isExpiredOnly);
+        return base.filter(isExpiredOnly);
       case "denied":
-        return referrals.filter(isDenied);
+        return base.filter(isDenied);
       case "all":
       default:
-        return referrals.filter((r) => !r.isExpired && !isDenied(r));
+        return base.filter((r) => !r.isExpired && !isDenied(r));
     }
   }, [referrals, filter]);
 
@@ -1536,7 +1562,24 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
   const handleDelete = async (referral: Referral) => {
     const label =
       referral.metadata?.inviteeEmail ?? `invite code ${referral.inviteCode}`;
-    const noun = referral.status === "CANCELLED" ? "denied" : "expired";
+    // Use the derived chip state for the confirmation noun so admin overrides
+    // on active/building/order_lp rows get accurate wording instead of the
+    // historical "expired" fallback.
+    const chipState = deriveChipState(referral);
+    const noun =
+      chipState === "denied"
+        ? "denied"
+        : chipState === "expired"
+          ? "expired"
+          : chipState === "lp_live"
+            ? "active"
+            : chipState === "waiting"
+              ? "pending"
+              : chipState === "order_lp"
+                ? "in-progress"
+                : chipState === "building"
+                  ? "in-progress"
+                  : "active"; // safe fallback
     if (
       !window.confirm(
         `Delete ${noun} invite for ${label}? This cannot be undone.`,
@@ -1995,6 +2038,7 @@ const ReferralList = ({ referrals, setReferrals }: ReferralListProps) => {
                 state={chipState}
                 referral={referral}
                 busy={isBusy}
+                isAdmin={isAdmin}
                 onDelete={handleDelete}
                 onDeny={handleDeny}
                 onReassign={(r) => setReassignFor(r)}
@@ -2041,6 +2085,11 @@ type CardActionsProps = {
   state: ChipState;
   referral: Referral;
   busy: boolean;
+  // When true, render override Delete + Reassign affordances in every state.
+  // Admins need these to reallocate or remove referrals that are past the
+  // normal AM window (accepted/active/building/lp_live). Default false keeps
+  // AMs on the curated state-driven action row.
+  isAdmin?: boolean;
   onDelete: (r: Referral) => void;
   onDeny: (r: Referral) => void;
   onReassign: (r: Referral) => void;
@@ -2048,6 +2097,51 @@ type CardActionsProps = {
   onAssignChatters: (r: Referral) => void;
   onSendWelcomeEmail: (r: Referral) => void;
 };
+
+// Compact admin-only footer rendered below the state-driven CTA row on any
+// card whose state doesn't already expose Delete / Reassign. Keeps admin
+// overrides visually separate from the happy-path AM workflow so it's clear
+// these are power-user actions.
+const AdminOverrideRow = ({
+  referral,
+  busy,
+  onDelete,
+  onReassign,
+  showReassign,
+}: {
+  referral: Referral;
+  busy: boolean;
+  onDelete: (r: Referral) => void;
+  onReassign: (r: Referral) => void;
+  showReassign: boolean;
+}) => (
+  <div className="flex items-center justify-between gap-[8px] pt-[6px] mt-[2px] border-t border-[rgba(255,255,255,0.06)]">
+    <span
+      className="text-[#9e9e9e] text-[11px] uppercase tracking-[0.3px]"
+      title="Admin-only overrides"
+    >
+      Admin
+    </span>
+    <div className="flex items-center gap-[8px]">
+      {showReassign && (
+        <button
+          onClick={() => onReassign(referral)}
+          disabled={busy}
+          className="bg-transparent border border-[rgba(255,255,255,0.14)] rounded-[6px] px-[10px] py-[6px] text-[#d0d0d0] text-[12px] font-bold hover:text-white hover:border-[rgba(255,255,255,0.3)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        >
+          Reassign
+        </button>
+      )}
+      <button
+        onClick={() => onDelete(referral)}
+        disabled={busy}
+        className="bg-transparent border border-[rgba(255,255,255,0.14)] rounded-[6px] px-[10px] py-[6px] text-[#d0d0d0] text-[12px] font-bold hover:text-[#ff2a2a] hover:border-[#cc0000] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+      >
+        Delete
+      </button>
+    </div>
+  </div>
+);
 
 const SecondaryButton = ({
   onClick,
@@ -2110,6 +2204,7 @@ const CardActions = ({
   state,
   referral,
   busy,
+  isAdmin = false,
   onDelete,
   onDeny,
   onReassign,
@@ -2117,6 +2212,22 @@ const CardActions = ({
   onAssignChatters,
   onSendWelcomeEmail,
 }: CardActionsProps) => {
+  // Admin override footer — rendered on states that don't already offer
+  // Delete/Reassign in their stock row. This override is intentionally
+  // admin-only in the UI, but the backend permissions are broader:
+  // DELETE can also be allowed for the original inviter on some invite
+  // states, and reassign can also be allowed for account managers.
+  const adminOverride = (opts: { showReassign: boolean }) =>
+    isAdmin ? (
+      <AdminOverrideRow
+        referral={referral}
+        busy={busy}
+        onDelete={onDelete}
+        onReassign={onReassign}
+        showReassign={opts.showReassign}
+      />
+    ) : null;
+
   // Expired and Denied share the same "dead row" UX: the invite is over,
   // the only useful action is to clean it up. We used to offer Resend for
   // expired rows, but the underlying TeaseMe preUser is effectively stale
@@ -2171,26 +2282,35 @@ const CardActions = ({
         >
           Order Landing Page
         </button>
+        {/* Reassign is already in the row above, so the admin footer only
+            needs the Delete override here. */}
+        {adminOverride({ showReassign: false })}
       </div>
     );
   }
 
   if (state === "order_lp") {
     return (
-      <GreenCta onClick={() => onOrderLandingPage(referral)} disabled={busy}>
-        {busy ? "Requesting…" : "Order Landing Page"}
-      </GreenCta>
+      <div className="flex flex-col gap-[8px]">
+        <GreenCta onClick={() => onOrderLandingPage(referral)} disabled={busy}>
+          {busy ? "Requesting…" : "Order Landing Page"}
+        </GreenCta>
+        {adminOverride({ showReassign: true })}
+      </div>
     );
   }
 
   if (state === "building") {
     return (
-      <div className="flex items-center gap-[8px] w-full rounded-[6px] border border-dashed border-tm-success-color06 bg-[rgba(34,191,86,0.05)] px-[14px] py-[10px] text-tm-success-color06 text-[13px] font-semibold">
-        <span
-          aria-hidden
-          className="h-[10px] w-[10px] rounded-full bg-tm-success-color06 animate-pulse"
-        />
-        Building landing page…
+      <div className="flex flex-col gap-[8px]">
+        <div className="flex items-center gap-[8px] w-full rounded-[6px] border border-dashed border-tm-success-color06 bg-[rgba(34,191,86,0.05)] px-[14px] py-[10px] text-tm-success-color06 text-[13px] font-semibold">
+          <span
+            aria-hidden
+            className="h-[10px] w-[10px] rounded-full bg-tm-success-color06 animate-pulse"
+          />
+          Building landing page…
+        </div>
+        {adminOverride({ showReassign: true })}
       </div>
     );
   }
@@ -2237,6 +2357,7 @@ const CardActions = ({
       <PinkCta onClick={() => onAssignChatters(referral)} disabled={busy}>
         {busy ? "Assigning…" : "Assign Chatters"}
       </PinkCta>
+      {adminOverride({ showReassign: true })}
     </div>
   );
 };

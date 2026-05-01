@@ -735,24 +735,107 @@ export const assignAccountManager = async (req: AuthRequest, res: Response) => {
             });
           }
 
-          await tx.referral.create({
-            data: {
-              referrerId: accountManagerId,
-              referredUserId: id,
-              campaignId: targetLinkedCampaignId,
-              // 10-char nanoid; collisions are astronomically unlikely
-              // and a P2002 here would just bubble out of the txn,
-              // rolling the user.update back too — exactly what we want.
-              inviteCode: nanoid(10),
-              status: 'ACTIVE',
-              acceptedAt: new Date(),
-              metadata: {
-                source: 'manual-am-assign',
-                previousReferralId: current?.id ?? null,
-                assignedAt: new Date().toISOString(),
-              } as Prisma.InputJsonValue,
-            },
-          });
+          // Prefer adopting an orphan invite over creating a fresh row.
+          // An "orphan" here is the AM's own pending email-invite that was
+          // never accepted (`referredUserId = NULL`), keyed off
+          // `metadata.inviteeEmail`. Without this lookup, the "AM invited
+          // an email → admin manually created the user → dragged onto AM"
+          // flow leaves the original invite stranded with the same
+          // (referrerId, campaignId, email) tuple as the new manual-am-assign
+          // row, producing two cards on My Promoters for the same person.
+          //
+          // We constrain the lookup to the AM's own `targetLinkedCampaignId`
+          // so adoption only happens when the campaign matches; orphans on
+          // other campaigns are cancelled below to keep "at most one ACTIVE"
+          // invariant.
+          const orphanInvite = u.email
+            ? await tx.referral.findFirst({
+                where: {
+                  referrerId: accountManagerId,
+                  campaignId: targetLinkedCampaignId,
+                  referredUserId: null,
+                  status: { in: ['PENDING', 'ACTIVE'] },
+                  metadata: { path: ['inviteeEmail'], equals: u.email },
+                },
+                orderBy: { createdAt: 'desc' },
+                select: { id: true, metadata: true },
+              })
+            : null;
+
+          if (orphanInvite) {
+            const orphanMeta =
+              typeof orphanInvite.metadata === 'object' &&
+              orphanInvite.metadata !== null
+                ? (orphanInvite.metadata as Record<string, unknown>)
+                : {};
+            await tx.referral.update({
+              where: { id: orphanInvite.id },
+              data: {
+                referredUserId: id,
+                status: 'ACTIVE',
+                acceptedAt: new Date(),
+                metadata: {
+                  ...orphanMeta,
+                  source: 'am-assign-adopted',
+                  previousReferralId: current?.id ?? null,
+                  adoptedAt: new Date().toISOString(),
+                } as Prisma.InputJsonValue,
+              },
+            });
+
+            // Sweep up any *other* orphan invites this AM has open for the
+            // same email on different campaigns. Without this, an AM who
+            // happened to have invited the same email on a stale public
+            // campaign would still leave a second card behind.
+            const otherOrphans = u.email
+              ? await tx.referral.findMany({
+                  where: {
+                    referrerId: accountManagerId,
+                    campaignId: { not: targetLinkedCampaignId },
+                    referredUserId: null,
+                    status: { in: ['PENDING', 'ACTIVE'] },
+                    metadata: { path: ['inviteeEmail'], equals: u.email },
+                  },
+                  select: { id: true, metadata: true },
+                })
+              : [];
+            for (const ref of otherOrphans) {
+              const existing =
+                typeof ref.metadata === 'object' && ref.metadata !== null
+                  ? (ref.metadata as Record<string, unknown>)
+                  : {};
+              await tx.referral.update({
+                where: { id: ref.id },
+                data: {
+                  status: 'CANCELLED',
+                  metadata: {
+                    ...existing,
+                    source: 'am-migration',
+                    migratedAt: new Date().toISOString(),
+                  } as Prisma.InputJsonValue,
+                },
+              });
+            }
+          } else {
+            await tx.referral.create({
+              data: {
+                referrerId: accountManagerId,
+                referredUserId: id,
+                campaignId: targetLinkedCampaignId,
+                // 10-char nanoid; collisions are astronomically unlikely
+                // and a P2002 here would just bubble out of the txn,
+                // rolling the user.update back too — exactly what we want.
+                inviteCode: nanoid(10),
+                status: 'ACTIVE',
+                acceptedAt: new Date(),
+                metadata: {
+                  source: 'manual-am-assign',
+                  previousReferralId: current?.id ?? null,
+                  assignedAt: new Date().toISOString(),
+                } as Prisma.InputJsonValue,
+              },
+            });
+          }
         }
       }
 
@@ -793,6 +876,9 @@ export const deleteUser = async (req: AuthRequest, res: Response) => {
             createdCampaigns: true,
             createdChatterGroups: true,
             managedUsers: true,
+            referralsMade: true,
+            referralsReceived: true,
+            chatterGroupMemberships: true,
           },
         },
       },
@@ -823,12 +909,90 @@ export const deleteUser = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    await prisma.user.delete({ where: { id } });
+    // Several FKs on User don't cascade in the schema and would otherwise
+    // trip a P2003 before we ever reach the delete row. Admin-delete is the
+    // "I want this user gone" escape hatch, so we clean them up explicitly
+    // inside a transaction rather than asking the operator to hunt them down
+    // from a dozen UIs first:
+    //   • Referral.referrerId  (RESTRICT, not nullable)   → hard-delete the rows
+    //   • Referral.referredUserId (RESTRICT, nullable)    → null it out (keeps
+    //     history + commission attribution for the inviter)
+    //   • Commission.referralId (nullable, no onDelete)   → null it out on any
+    //     commission pointing at a referral we're about to delete; commissions
+    //     owned by *this* user cascade via Commission.userId=Cascade, so this
+    //     only affects commissions belonging to other users (e.g. upstream
+    //     referrers on child referrals).
+    //   • Referral.parentReferralId (nullable, no onDelete) → null it out on
+    //     any child referrals whose parent we're deleting.
+    //   • ClickTracking.userId  (nullable, no onDelete)   → null it out so the
+    //     historic click record survives for reporting.
+    //
+    // ChatterGroupMember.chatterId cascades already, as do apiKeys / tracking
+    // links / social links / password tokens / commissions owned by this user,
+    // so those need no explicit cleanup.
+    await prisma.$transaction(async (tx) => {
+      // Collect the ids of referrals we're about to hard-delete so we can
+      // clean up every FK pointing at them in one pass (rather than per-row
+      // in a loop).
+      const referrerRefs = await tx.referral.findMany({
+        where: { referrerId: id },
+        select: { id: true },
+      });
+      const referrerRefIds = referrerRefs.map((r) => r.id);
+
+      if (referrerRefIds.length > 0) {
+        // Detach commissions + child referrals + click tracking + customers +
+        // transactions so the referral.deleteMany below doesn't hit a Restrict.
+        await tx.commission.updateMany({
+          where: { referralId: { in: referrerRefIds } },
+          data: { referralId: null },
+        });
+        await tx.referral.updateMany({
+          where: { parentReferralId: { in: referrerRefIds } },
+          data: { parentReferralId: null },
+        });
+        await tx.clickTracking.updateMany({
+          where: { referralId: { in: referrerRefIds } },
+          data: { referralId: null },
+        });
+        await tx.customer.updateMany({
+          where: { referralId: { in: referrerRefIds } },
+          data: { referralId: null },
+        });
+        await tx.transaction.updateMany({
+          where: { referralId: { in: referrerRefIds } },
+          data: { referralId: null },
+        });
+        // PreUser.referralId cascades on delete, so it goes away automatically.
+        await tx.referral.deleteMany({
+          where: { id: { in: referrerRefIds } },
+        });
+      }
+
+      // Orphan referrals where this user is the invitee — we keep the row so
+      // the inviter's My Promoters history / commission attribution survives.
+      await tx.referral.updateMany({
+        where: { referredUserId: id },
+        data: { referredUserId: null },
+      });
+
+      // ClickTracking.userId is nullable + has no cascade, so null it out
+      // rather than let the FK block the user.delete below.
+      await tx.clickTracking.updateMany({
+        where: { userId: id },
+        data: { userId: null },
+      });
+
+      await tx.user.delete({ where: { id } });
+    });
 
     res.json({
       message: 'User deleted successfully',
       // Useful for the admin UI: how many people now need re-assignment.
       managedUsersOrphaned: blockingCounts.managedUsers ?? 0,
+      referralsRemoved: blockingCounts.referralsMade ?? 0,
+      referralsOrphaned: blockingCounts.referralsReceived ?? 0,
+      chatterGroupsLeft: blockingCounts.chatterGroupMemberships ?? 0,
     });
   } catch (error: any) {
     // Prisma FK constraint errors land here (e.g. relations we didn't pre-check).
@@ -1029,6 +1193,155 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
             acceptedAt: new Date(),
           },
         });
+      }
+    }
+
+    // When an AM creates a promoter directly (no pre-existing invite
+    // flow), mirror the admin → AM behavior: create an ACTIVE referral on
+    // the AM's public `linkedCampaign` so the new user (a) shows up in the
+    // AM's My Promoters list — which is sourced by `referrerId = AM` in
+    // `getMyReferrals` — and (b) carries proper campaign attribution for
+    // commissions.
+    //
+    // If the AM had already sent an email-invite to this address and the
+    // invite is still orphaned (`referredUserId = NULL`,
+    // `metadata.inviteeEmail = email`), adopt it in place rather than
+    // creating a fresh row. Same dedup guard `assignAccountManager`
+    // uses; without it the AM ends up with two cards on My Promoters.
+    if (callerIsAm && resolvedType !== UserType.ACCOUNT_MANAGER) {
+      try {
+        // Resolve the AM's hidden membership referral to find their public
+        // linkedCampaign. Mirrors the lookup in `assignAccountManager`
+        // (lines 634-647) — kept inline rather than extracted so the two
+        // paths stay visually parallel; lift this if a third caller needs
+        // the same shape.
+        const amMembership = await prisma.referral.findFirst({
+          where: {
+            referredUserId: caller.id,
+            status: 'ACTIVE',
+            campaign: {
+              isActive: true,
+              visibleToPromoters: false,
+              linkedCampaignId: { not: null },
+            },
+          },
+          orderBy: { acceptedAt: 'desc' },
+          select: { campaign: { select: { linkedCampaignId: true } } },
+        });
+        const linkedCampaignId =
+          amMembership?.campaign?.linkedCampaignId ?? null;
+
+        if (linkedCampaignId) {
+          const orphanInvites = await prisma.referral.findMany({
+            where: {
+              referrerId: caller.id,
+              referredUserId: null,
+              status: { in: ['PENDING', 'ACTIVE'] },
+              metadata: { path: ['inviteeEmail'], equals: newUser.email },
+            },
+            orderBy: { createdAt: 'desc' },
+            select: { id: true, campaignId: true, metadata: true },
+          });
+
+          const orphanInvite =
+            orphanInvites.find((invite) => invite.campaignId === linkedCampaignId) ??
+            null;
+          const otherCampaignOrphanInvites = orphanInvites.filter(
+            (invite) => invite.campaignId !== linkedCampaignId,
+          );
+
+          const adoptionTimestamp = new Date();
+          const tx: Prisma.PrismaPromise<unknown>[] = [];
+
+          if (orphanInvite) {
+            const orphanMeta =
+              typeof orphanInvite.metadata === 'object' &&
+              orphanInvite.metadata !== null
+                ? (orphanInvite.metadata as Record<string, unknown>)
+                : {};
+            tx.push(
+              prisma.referral.update({
+                where: { id: orphanInvite.id },
+                data: {
+                  referredUserId: newUser.id,
+                  status: 'ACTIVE',
+                  acceptedAt: adoptionTimestamp,
+                  metadata: {
+                    ...orphanMeta,
+                    source: 'am-assign-adopted',
+                    adoptedAt: adoptionTimestamp.toISOString(),
+                  } as Prisma.InputJsonValue,
+                },
+              }),
+            );
+          } else {
+            tx.push(
+              prisma.referral.create({
+                data: {
+                  inviteCode: nanoid(10),
+                  campaignId: linkedCampaignId,
+                  referrerId: caller.id,
+                  referredUserId: newUser.id,
+                  status: 'ACTIVE',
+                  level: 1,
+                  acceptedAt: adoptionTimestamp,
+                  metadata: {
+                    source: 'am-direct-create',
+                    createdAt: adoptionTimestamp.toISOString(),
+                  } as Prisma.InputJsonValue,
+                },
+              }),
+            );
+          }
+
+          for (const otherOrphanInvite of otherCampaignOrphanInvites) {
+            const otherOrphanMeta =
+              typeof otherOrphanInvite.metadata === 'object' &&
+              otherOrphanInvite.metadata !== null
+                ? (otherOrphanInvite.metadata as Record<string, unknown>)
+                : {};
+            tx.push(
+              prisma.referral.update({
+                where: { id: otherOrphanInvite.id },
+                data: {
+                  status: 'CANCELLED',
+                  metadata: {
+                    ...otherOrphanMeta,
+                    source: 'am-assign-swept',
+                    sweptAt: adoptionTimestamp.toISOString(),
+                    sweptBecause: 'linked-campaign-referral-created-or-adopted',
+                    adoptedUserId: newUser.id,
+                  } as Prisma.InputJsonValue,
+                },
+              }),
+            );
+          }
+
+          await prisma.$transaction(tx);
+        } else {
+          // No usable hidden membership campaign yet — usually means the
+          // AM was promoted but never bound to a public campaign. Don't
+          // block user creation; just leave the new user without a
+          // campaign attribution and warn so the operator can fix it.
+          console.warn(
+            '[createUserByAdmin] AM has no linked public campaign; skipping referral creation',
+            { accountManagerId: caller.id, userId: newUser.id },
+          );
+        }
+      } catch (err) {
+        // Non-fatal: the user row already exists and can log in. Worst
+        // case the AM doesn't see them on My Promoters until an admin
+        // drags them onto an AM (which re-runs the same adoption logic
+        // via `assignAccountManager`). Logged so this doesn't fail
+        // silently.
+        console.error(
+          '[createUserByAdmin] failed to create/adopt referral for AM-created user',
+          {
+            accountManagerId: caller.id,
+            userId: newUser.id,
+            err: err instanceof Error ? err.message : String(err),
+          },
+        );
       }
     }
 
