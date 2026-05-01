@@ -10,6 +10,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  username?: string | null;
   role: UserRole;
   baseRole: UserRole; // The user's actual role in the system
   canSwitchToPromoter?: boolean; // Only team_managers have this

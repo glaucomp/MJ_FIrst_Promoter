@@ -582,6 +582,7 @@ export const getCurrentUser = async (req: AuthRequest, res: Response) => {
       select: {
         id: true,
         email: true,
+        username: true,
         firstName: true,
         lastName: true,
         role: true,
