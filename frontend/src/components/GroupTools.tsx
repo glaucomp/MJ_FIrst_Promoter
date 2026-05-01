@@ -18,17 +18,12 @@ const callPreregister = async (payload: {
   telegram_id: number;
   full_name: string;
 }): Promise<PreregisterSuccess> => {
-  const token = localStorage.getItem("auth_token");
-  if (!token) {
-    throw new Error("You must be logged in to generate an invite.");
-  }
-
   let response: Response;
   try {
     response = await fetch(`${API_URL}/chatters/preregister-vip`, {
       method: "POST",
+      credentials: "include",
       headers: {
-        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
