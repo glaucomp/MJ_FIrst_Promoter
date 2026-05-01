@@ -1562,7 +1562,20 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
   const handleDelete = async (referral: Referral) => {
     const label =
       referral.metadata?.inviteeEmail ?? `invite code ${referral.inviteCode}`;
-    const noun = referral.status === "CANCELLED" ? "denied" : "expired";
+    // Use the derived chip state for the confirmation noun so admin overrides
+    // on active/building/order_lp rows get accurate wording instead of the
+    // historical "expired" fallback.
+    const chipState = deriveChipState(referral);
+    const noun =
+      chipState === "denied"
+        ? "denied"
+        : chipState === "expired"
+          ? "expired"
+          : chipState === "lp_live"
+            ? "active"
+            : chipState === "waiting"
+              ? "pending"
+              : chipState; // order_lp | building — use the label as-is
     if (
       !window.confirm(
         `Delete ${noun} invite for ${label}? This cannot be undone.`,

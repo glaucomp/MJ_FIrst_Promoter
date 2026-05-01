@@ -765,29 +765,28 @@ export const resendReferralInvite = async (
     //     We must NOT clobber an upstream-supplied session URL that
     //     refreshPreUserSteps may have already written — TeaseMe's URL
     //     is the authoritative one once it shows up.
-    const existingPreUser = await prisma.preUser.findUnique({
+    // Use upsert so concurrent resends can't race to a P2002 on
+    // PreUser.referralId / inviteCode.  The update branch only resets
+    // lastCheckedAt — surveyLink is backfilled in the separate updateMany
+    // below which guards on `surveyLink: null` so we never overwrite an
+    // upstream-supplied session URL.
+    await prisma.preUser.upsert({
       where: { referralId: referral.id },
-      select: { id: true, surveyLink: true },
+      update: { lastCheckedAt: null },
+      create: {
+        email: inviteeEmail,
+        referralId: referral.id,
+        inviteCode: referral.inviteCode,
+        currentStep: 0,
+        surveyLink: inviteUrl,
+      },
     });
-    if (existingPreUser) {
-      await prisma.preUser.update({
-        where: { id: existingPreUser.id },
-        data: {
-          lastCheckedAt: null,
-          ...(existingPreUser.surveyLink ? {} : { surveyLink: inviteUrl }),
-        },
-      });
-    } else {
-      await prisma.preUser.create({
-        data: {
-          email: inviteeEmail,
-          referralId: referral.id,
-          inviteCode: referral.inviteCode,
-          currentStep: 0,
-          surveyLink: inviteUrl,
-        },
-      });
-    }
+    // Backfill surveyLink only when it hasn't been set yet (i.e. the upsert
+    // hit the update branch and the column is still null).
+    await prisma.preUser.updateMany({
+      where: { referralId: referral.id, surveyLink: null },
+      data: { surveyLink: inviteUrl },
+    });
 
     const inviterName =
       [referral.referrer.firstName, referral.referrer.lastName]
@@ -884,6 +883,9 @@ export const deleteReferralInvite = async (
     //   • Referral.parentReferralId (nullable, no onDelete) → null it out on
     //     child referrals so they aren't orphaned with a dangling FK.
     //   • ClickTracking.referralId (nullable, no onDelete) → same treatment.
+    //   • Customer.referralId (nullable, no onDelete) → null it out so revenue
+    //     attribution rows survive.
+    //   • Transaction.referralId (nullable, no onDelete) → same treatment.
     //   • PreUser.referralId cascades on delete so it goes away automatically.
     await prisma.$transaction(async (tx) => {
       await tx.commission.updateMany({
@@ -895,6 +897,14 @@ export const deleteReferralInvite = async (
         data: { parentReferralId: null },
       });
       await tx.clickTracking.updateMany({
+        where: { referralId: referral.id },
+        data: { referralId: null },
+      });
+      await tx.customer.updateMany({
+        where: { referralId: referral.id },
+        data: { referralId: null },
+      });
+      await tx.transaction.updateMany({
         where: { referralId: referral.id },
         data: { referralId: null },
       });

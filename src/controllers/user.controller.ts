@@ -941,8 +941,8 @@ export const deleteUser = async (req: AuthRequest, res: Response) => {
       const referrerRefIds = referrerRefs.map((r) => r.id);
 
       if (referrerRefIds.length > 0) {
-        // Detach commissions + child referrals + click tracking so the
-        // referral.deleteMany below doesn't hit a Restrict.
+        // Detach commissions + child referrals + click tracking + customers +
+        // transactions so the referral.deleteMany below doesn't hit a Restrict.
         await tx.commission.updateMany({
           where: { referralId: { in: referrerRefIds } },
           data: { referralId: null },
@@ -952,6 +952,14 @@ export const deleteUser = async (req: AuthRequest, res: Response) => {
           data: { parentReferralId: null },
         });
         await tx.clickTracking.updateMany({
+          where: { referralId: { in: referrerRefIds } },
+          data: { referralId: null },
+        });
+        await tx.customer.updateMany({
+          where: { referralId: { in: referrerRefIds } },
+          data: { referralId: null },
+        });
+        await tx.transaction.updateMany({
           where: { referralId: { in: referrerRefIds } },
           data: { referralId: null },
         });
