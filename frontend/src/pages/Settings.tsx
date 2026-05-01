@@ -261,6 +261,32 @@ export const Settings = () => {
             />
           </div>
           <div className="flex flex-col gap-[8px]">
+            <label htmlFor="profileUsername" className="text-[#9e9e9e] text-[14px] leading-[1.4] font-bold uppercase tracking-[0.2px]">
+              Username
+            </label>
+            <div className="relative">
+              <input
+                id="profileUsername"
+                type="text"
+                value={user?.username || ''}
+                readOnly
+                aria-readonly="true"
+                placeholder="—"
+                className="w-full bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[16px] py-[12px] pr-[44px] text-[16px] text-white opacity-80 select-all placeholder-[#444]"
+              />
+              <span
+                aria-hidden="true"
+                title="Username cannot be changed"
+                className="absolute right-[14px] top-1/2 -translate-y-1/2 text-[#9e9e9e]"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M6 10V8a6 6 0 1 1 12 0v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <rect x="4" y="10" width="16" height="11" rx="2" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
+                </svg>
+              </span>
+            </div>
+          </div>
+          <div className="flex flex-col gap-[8px]">
             <label htmlFor="profileEmail" className="text-[#9e9e9e] text-[14px] leading-[1.4] font-bold uppercase tracking-[0.2px]">
               Email
             </label>
