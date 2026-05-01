@@ -808,33 +808,57 @@ export const deleteReferralInvite = async (
       return res.status(404).json({ error: "Referral not found" });
     }
 
+    const isAdminCaller = user.role === UserRole.ADMIN;
+
     // Only the original inviter or an admin can delete. Same rule as resend.
-    if (user.role !== UserRole.ADMIN && referral.referrerId !== user.id) {
+    if (!isAdminCaller && referral.referrerId !== user.id) {
       return res.status(403).json({ error: "Access denied" });
     }
 
-    // Refuse to delete anything that has downstream state attached. Pending
-    // and explicitly-denied (CANCELLED) invites are both safe to hard-delete
-    // because neither has a referredUser attached — pending hasn't accepted
-    // yet, denied was rejected before acceptance. Once a user has signed up
-    // via the code we must keep the row for commission attribution + audit,
-    // so ACTIVE / COMPLETED stay off-limits. Admins hit the same guard — if
-    // this ever needs overriding, do it from the DB, not through this route.
-    const deletableStatuses = new Set(["PENDING", "CANCELLED"]);
-    if (referral.referredUserId || !deletableStatuses.has(referral.status)) {
-      return res.status(400).json({
-        error:
-          "Only pending or denied invites can be deleted. This referral has already been accepted.",
-      });
-    }
-    if (referral._count.childReferrals > 0) {
-      return res.status(400).json({
-        error:
-          "Cannot delete a referral that has downstream referrals attached.",
-      });
+    // Non-admin callers: refuse to delete anything that has downstream state
+    // attached. Pending and explicitly-denied (CANCELLED) invites are both
+    // safe to hard-delete because neither has a referredUser attached.
+    // Admins get the escape hatch — they can delete accepted/active referrals
+    // too, with the FK cleanup below — so they can reallocate or remove
+    // assignments for users that are stuck on the Users page delete path.
+    if (!isAdminCaller) {
+      const deletableStatuses = new Set(["PENDING", "CANCELLED"]);
+      if (referral.referredUserId || !deletableStatuses.has(referral.status)) {
+        return res.status(400).json({
+          error:
+            "Only pending or denied invites can be deleted. This referral has already been accepted.",
+        });
+      }
+      if (referral._count.childReferrals > 0) {
+        return res.status(400).json({
+          error:
+            "Cannot delete a referral that has downstream referrals attached.",
+        });
+      }
     }
 
-    await prisma.referral.delete({ where: { id: referral.id } });
+    // Clean up the FKs that don't cascade before deleting the referral itself.
+    //   • Commission.referralId (nullable, no onDelete) → null it out so the
+    //     commission rows survive for audit / payout history.
+    //   • Referral.parentReferralId (nullable, no onDelete) → null it out on
+    //     child referrals so they aren't orphaned with a dangling FK.
+    //   • ClickTracking.referralId (nullable, no onDelete) → same treatment.
+    //   • PreUser.referralId cascades on delete so it goes away automatically.
+    await prisma.$transaction(async (tx) => {
+      await tx.commission.updateMany({
+        where: { referralId: referral.id },
+        data: { referralId: null },
+      });
+      await tx.referral.updateMany({
+        where: { parentReferralId: referral.id },
+        data: { parentReferralId: null },
+      });
+      await tx.clickTracking.updateMany({
+        where: { referralId: referral.id },
+        data: { referralId: null },
+      });
+      await tx.referral.delete({ where: { id: referral.id } });
+    });
 
     return res.json({ success: true, id: referral.id });
   } catch (error) {
@@ -974,8 +998,9 @@ export const reassignReferralInvite = async (
 
     // Reassignment is an AM-level action — a plain promoter inviter must not
     // be able to change commission ownership on their own referrals.
+    const isAdminCaller = user.role === UserRole.ADMIN;
     if (
-      user.role !== UserRole.ADMIN &&
+      !isAdminCaller &&
       user.userType !== UserType.ACCOUNT_MANAGER
     ) {
       return res.status(403).json({
@@ -983,23 +1008,56 @@ export const reassignReferralInvite = async (
       });
     }
 
-    // Reassignment only makes sense for pending referrals that haven't been
-    // accepted yet. Once a referred user has signed up, commission attribution
-    // is already in motion and ownership changes are disallowed.
-    if (referral.status !== "PENDING" || referral.referredUser !== null) {
+    // Non-admin callers: reassignment only makes sense for pending referrals
+    // that haven't been accepted yet. Once a referred user has signed up,
+    // commission attribution is already in motion and ownership changes are
+    // disallowed for AMs. Admins get an escape hatch so they can reallocate
+    // stuck/accepted referrals (e.g. before deleting a user, or to recover
+    // from a misfired invite).
+    if (!isAdminCaller) {
+      if (referral.status !== "PENDING" || referral.referredUser !== null) {
+        return res.status(400).json({
+          error: "Only pending referrals without an accepted invitee can be reassigned",
+        });
+      }
+    } else if (referral.status === "COMPLETED") {
+      // Even admins shouldn't move commission ownership on a fully-settled
+      // referral. That's effectively rewriting payout history; if it ever
+      // really needs to happen, do it from the DB under an audit trail.
       return res.status(400).json({
-        error: "Only pending referrals without an accepted invitee can be reassigned",
+        error: "Completed referrals cannot be reassigned",
       });
     }
 
-    // The new referrer must be an account manager — reassignment moves the
-    // promoter between AMs, it's not a generic user swap.
+    // The new referrer must be an account manager (the common case) or, for
+    // admin callers only, another admin. Both shapes keep commission
+    // attribution owned by someone the invite system already knows about.
     const newReferrer = await prisma.user.findFirst({
-      where: { id: newReferrerId, userType: UserType.ACCOUNT_MANAGER },
+      where: isAdminCaller
+        ? {
+            id: newReferrerId,
+            OR: [
+              { userType: UserType.ACCOUNT_MANAGER },
+              { role: UserRole.ADMIN },
+            ],
+          }
+        : { id: newReferrerId, userType: UserType.ACCOUNT_MANAGER },
       select: { id: true, email: true, firstName: true, lastName: true },
     });
     if (!newReferrer) {
-      return res.status(404).json({ error: "New account manager not found" });
+      return res.status(404).json({
+        error: isAdminCaller
+          ? "New referrer must be an account manager or admin"
+          : "New account manager not found",
+      });
+    }
+
+    // No-op guard: reassigning to the current referrer is a waste of an
+    // upstream call and would confuse TeaseMe's own bookkeeping.
+    if (newReferrer.id === referral.referrerId) {
+      return res.status(400).json({
+        error: "Referral is already assigned to this user",
+      });
     }
 
     // Reassign is best-effort upstream: ownership attribution is ours
