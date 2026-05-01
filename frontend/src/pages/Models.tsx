@@ -2196,9 +2196,10 @@ const CardActions = ({
   onSendWelcomeEmail,
 }: CardActionsProps) => {
   // Admin override footer — rendered on states that don't already offer
-  // Delete/Reassign in their stock row. The backend gate on both routes is
-  // admin-only, so surfacing the buttons to non-admins would just produce
-  // 403s.
+  // Delete/Reassign in their stock row. This override is intentionally
+  // admin-only in the UI, but the backend permissions are broader:
+  // DELETE can also be allowed for the original inviter on some invite
+  // states, and reassign can also be allowed for account managers.
   const adminOverride = (opts: { showReassign: boolean }) =>
     isAdmin ? (
       <AdminOverrideRow
