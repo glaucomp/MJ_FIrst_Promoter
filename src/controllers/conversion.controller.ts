@@ -79,7 +79,6 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
           email: true,
           firstName: true,
           lastName: true,
-          accountManagerId: true,
           referralsReceived: {
             where: { status: 'ACTIVE' },
             select: {
