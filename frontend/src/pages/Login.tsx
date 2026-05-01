@@ -87,7 +87,7 @@ export const Login = () => {
           {mode === 'login' ? (
             <form onSubmit={handleSubmit} className="flex flex-col gap-[20px]">
               <div
-                className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-[20px]"
+                className="relative bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-[20px]"
               >
                 <div className="flex flex-col gap-[8px]">
                   <label
@@ -108,25 +108,12 @@ export const Login = () => {
                 </div>
 
                 <div className="flex flex-col gap-[8px]">
-                  <div className="flex items-center justify-between">
-                    <label
-                      htmlFor="password"
-                      className="text-[#9e9e9e] text-[14px] leading-[1.4] font-bold uppercase tracking-[0.2px]"
-                    >
-                      Password
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMode('forgot');
-                        setError('');
-                        setForgotMessage('');
-                      }}
-                      className="text-[13px] leading-[1.4] text-[#ff0f5f] hover:underline font-semibold"
-                    >
-                      Forgot password?
-                    </button>
-                  </div>
+                  <label
+                    htmlFor="password"
+                    className="text-[#9e9e9e] text-[14px] leading-[1.4] font-bold uppercase tracking-[0.2px]"
+                  >
+                    Password
+                  </label>
                   <input
                     id="password"
                     type="password"
@@ -152,6 +139,24 @@ export const Login = () => {
                   className="bg-linear-to-t from-tm-primary-color09 to-tm-primary-color06 rounded px-6 py-2 text-white text-base font-bold leading-[1.4] tracking-[0.2px] shadow-[0px_2px_4px_rgba(0,0,0,0.2)] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isLoading ? 'Signing In...' : 'Sign In'}
+                </button>
+
+                {/*
+                  Rendered last in DOM so keyboard tab order is:
+                  Email → Password → Sign In → Forgot password.
+                  Visually pinned to the top-right of the Password section
+                  via absolute positioning against the card's relative parent.
+                */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('forgot');
+                    setError('');
+                    setForgotMessage('');
+                  }}
+                  className="absolute top-[122px] right-[24px] text-[13px] leading-[1.4] text-[#ff0f5f] hover:underline font-semibold"
+                >
+                  Forgot password?
                 </button>
               </div>
 
