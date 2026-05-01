@@ -1575,7 +1575,11 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
             ? "active"
             : chipState === "waiting"
               ? "pending"
-              : chipState; // order_lp | building — use the label as-is
+              : chipState === "order_lp"
+                ? "in-progress"
+                : chipState === "building"
+                  ? "in-progress"
+                  : "active"; // safe fallback
     if (
       !window.confirm(
         `Delete ${noun} invite for ${label}? This cannot be undone.`,
