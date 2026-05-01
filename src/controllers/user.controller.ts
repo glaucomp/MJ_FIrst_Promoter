@@ -876,6 +876,9 @@ export const deleteUser = async (req: AuthRequest, res: Response) => {
             createdCampaigns: true,
             createdChatterGroups: true,
             managedUsers: true,
+            referralsMade: true,
+            referralsReceived: true,
+            chatterGroupMemberships: true,
           },
         },
       },
@@ -906,12 +909,90 @@ export const deleteUser = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    await prisma.user.delete({ where: { id } });
+    // Several FKs on User don't cascade in the schema and would otherwise
+    // trip a P2003 before we ever reach the delete row. Admin-delete is the
+    // "I want this user gone" escape hatch, so we clean them up explicitly
+    // inside a transaction rather than asking the operator to hunt them down
+    // from a dozen UIs first:
+    //   • Referral.referrerId  (RESTRICT, not nullable)   → hard-delete the rows
+    //   • Referral.referredUserId (RESTRICT, nullable)    → null it out (keeps
+    //     history + commission attribution for the inviter)
+    //   • Commission.referralId (nullable, no onDelete)   → null it out on any
+    //     commission pointing at a referral we're about to delete; commissions
+    //     owned by *this* user cascade via Commission.userId=Cascade, so this
+    //     only affects commissions belonging to other users (e.g. upstream
+    //     referrers on child referrals).
+    //   • Referral.parentReferralId (nullable, no onDelete) → null it out on
+    //     any child referrals whose parent we're deleting.
+    //   • ClickTracking.userId  (nullable, no onDelete)   → null it out so the
+    //     historic click record survives for reporting.
+    //
+    // ChatterGroupMember.chatterId cascades already, as do apiKeys / tracking
+    // links / social links / password tokens / commissions owned by this user,
+    // so those need no explicit cleanup.
+    await prisma.$transaction(async (tx) => {
+      // Collect the ids of referrals we're about to hard-delete so we can
+      // clean up every FK pointing at them in one pass (rather than per-row
+      // in a loop).
+      const referrerRefs = await tx.referral.findMany({
+        where: { referrerId: id },
+        select: { id: true },
+      });
+      const referrerRefIds = referrerRefs.map((r) => r.id);
+
+      if (referrerRefIds.length > 0) {
+        // Detach commissions + child referrals + click tracking + customers +
+        // transactions so the referral.deleteMany below doesn't hit a Restrict.
+        await tx.commission.updateMany({
+          where: { referralId: { in: referrerRefIds } },
+          data: { referralId: null },
+        });
+        await tx.referral.updateMany({
+          where: { parentReferralId: { in: referrerRefIds } },
+          data: { parentReferralId: null },
+        });
+        await tx.clickTracking.updateMany({
+          where: { referralId: { in: referrerRefIds } },
+          data: { referralId: null },
+        });
+        await tx.customer.updateMany({
+          where: { referralId: { in: referrerRefIds } },
+          data: { referralId: null },
+        });
+        await tx.transaction.updateMany({
+          where: { referralId: { in: referrerRefIds } },
+          data: { referralId: null },
+        });
+        // PreUser.referralId cascades on delete, so it goes away automatically.
+        await tx.referral.deleteMany({
+          where: { id: { in: referrerRefIds } },
+        });
+      }
+
+      // Orphan referrals where this user is the invitee — we keep the row so
+      // the inviter's My Promoters history / commission attribution survives.
+      await tx.referral.updateMany({
+        where: { referredUserId: id },
+        data: { referredUserId: null },
+      });
+
+      // ClickTracking.userId is nullable + has no cascade, so null it out
+      // rather than let the FK block the user.delete below.
+      await tx.clickTracking.updateMany({
+        where: { userId: id },
+        data: { userId: null },
+      });
+
+      await tx.user.delete({ where: { id } });
+    });
 
     res.json({
       message: 'User deleted successfully',
       // Useful for the admin UI: how many people now need re-assignment.
       managedUsersOrphaned: blockingCounts.managedUsers ?? 0,
+      referralsRemoved: blockingCounts.referralsMade ?? 0,
+      referralsOrphaned: blockingCounts.referralsReceived ?? 0,
+      chatterGroupsLeft: blockingCounts.chatterGroupMemberships ?? 0,
     });
   } catch (error: any) {
     // Prisma FK constraint errors land here (e.g. relations we didn't pre-check).
