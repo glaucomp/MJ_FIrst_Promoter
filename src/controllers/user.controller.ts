@@ -1115,12 +1115,12 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // When an AM creates a promoter / team-manager directly (no
-    // pre-existing invite flow), mirror the admin → AM behavior: create an
-    // ACTIVE referral on the AM's public `linkedCampaign` so the new user
-    // (a) shows up in the AM's My Promoters list — which is sourced by
-    // `referrerId = AM` in `getMyReferrals` — and (b) carries proper
-    // campaign attribution for commissions.
+    // When an AM creates a promoter directly (no pre-existing invite
+    // flow), mirror the admin → AM behavior: create an ACTIVE referral on
+    // the AM's public `linkedCampaign` so the new user (a) shows up in the
+    // AM's My Promoters list — which is sourced by `referrerId = AM` in
+    // `getMyReferrals` — and (b) carries proper campaign attribution for
+    // commissions.
     //
     // If the AM had already sent an email-invite to this address and the
     // invite is still orphaned (`referredUserId = NULL`,
