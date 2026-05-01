@@ -240,8 +240,12 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
             where: {
               referredUserId: sellingPromoterAmId,
               status: 'ACTIVE',
+              referrer: {
+                role: 'ADMIN',
+              },
               campaign: {
                 visibleToPromoters: false,
+                isActive: true,
                 linkedCampaignId: campaign.id,
               },
             },
