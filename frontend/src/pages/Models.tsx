@@ -1481,8 +1481,7 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
   };
   const isAdmin =
     isAdminProp ??
-    auth?.user?.isAdmin === true ||
-    auth?.user?.role === "admin";
+    (auth?.user?.isAdmin === true || auth?.user?.role === "admin");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [toast, setToast] = useState<{
     kind: "success" | "error";
