@@ -1472,7 +1472,17 @@ type ReferralListProps = {
 
 type ReferralFilter = "all" | "pending" | "active" | "expired" | "denied";
 
-const ReferralList = ({ referrals, setReferrals, isAdmin = false }: ReferralListProps) => {
+const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: ReferralListProps) => {
+  const auth = useAuth() as {
+    user?: {
+      role?: string | null;
+      isAdmin?: boolean | null;
+    } | null;
+  };
+  const isAdmin =
+    isAdminProp ??
+    auth?.user?.isAdmin === true ||
+    auth?.user?.role === "admin";
   const [busyId, setBusyId] = useState<string | null>(null);
   const [toast, setToast] = useState<{
     kind: "success" | "error";
