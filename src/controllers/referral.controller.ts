@@ -546,11 +546,22 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
       resendCount: 0,
     } satisfies Prisma.InputJsonValue;
 
+    const refCode = inviter.username || inviter.inviteCode || user.id;
+
     // Create the Referral and seed a matching PreUser row atomically. The
     // PreUser tracks TeaseMe onboarding lifecycle (step 0..N) until the
     // invitee registers on our side, at which point the register handler
     // deletes it. Keeping both writes in one transaction guarantees we never
     // have a pending invite without its lifecycle row.
+    //
+    // We also seed `preUser.surveyLink` with the freshly-built invite URL
+    // so the "Open onboarding session" pill on the My Promoters card is
+    // clickable from the moment the invite is sent — instead of being
+    // dead until TeaseMe's /step-progress returns its own session URL.
+    // refreshPreUserSteps / orderReferralLandingPage both write
+    // `surveyLink: status.surveyLink ?? pre.surveyLink`, so our seed is
+    // preserved until upstream supplies a real one and is then overwritten
+    // forward-only.
     const referral = await prisma.$transaction(async (tx) => {
       const created = await tx.referral.create({
         data: {
@@ -584,19 +595,27 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
         },
       });
 
+      const seedInviteUrl = buildInviteUrl(created.campaign, {
+        refCode,
+        inviteCode,
+        inviteeEmail: email as string,
+        inviterEmail: inviter.email,
+        accountManagerEmail,
+      });
+
       await tx.preUser.create({
         data: {
           email: email as string,
           referralId: created.id,
           inviteCode,
           currentStep: 0,
+          surveyLink: seedInviteUrl,
         },
       });
 
       return created;
     });
 
-    const refCode = inviter.username || inviter.inviteCode || user.id;
     const inviteUrl = buildInviteUrl(referral.campaign, {
       refCode,
       inviteCode,
@@ -737,16 +756,38 @@ export const resendReferralInvite = async (
     // of waiting for the normal TTL — a resend usually means the inviter
     // wants fresh status. Upsert so rows that pre-date this migration still
     // get a PreUser without requiring a backfill.
-    await prisma.preUser.upsert({
+    //
+    // surveyLink handling on resend:
+    //   - create branch: seed with the freshly-built inviteUrl so the
+    //     "Open onboarding session" pill is live from the first render
+    //     (matches createReferralInvite behaviour for new invites).
+    //   - update branch: only backfill surveyLink when it's still null.
+    //     We must NOT clobber an upstream-supplied session URL that
+    //     refreshPreUserSteps may have already written — TeaseMe's URL
+    //     is the authoritative one once it shows up.
+    const existingPreUser = await prisma.preUser.findUnique({
       where: { referralId: referral.id },
-      update: { lastCheckedAt: null },
-      create: {
-        email: inviteeEmail,
-        referralId: referral.id,
-        inviteCode: referral.inviteCode,
-        currentStep: 0,
-      },
+      select: { id: true, surveyLink: true },
     });
+    if (existingPreUser) {
+      await prisma.preUser.update({
+        where: { id: existingPreUser.id },
+        data: {
+          lastCheckedAt: null,
+          ...(existingPreUser.surveyLink ? {} : { surveyLink: inviteUrl }),
+        },
+      });
+    } else {
+      await prisma.preUser.create({
+        data: {
+          email: inviteeEmail,
+          referralId: referral.id,
+          inviteCode: referral.inviteCode,
+          currentStep: 0,
+          surveyLink: inviteUrl,
+        },
+      });
+    }
 
     const inviterName =
       [referral.referrer.firstName, referral.referrer.lastName]
