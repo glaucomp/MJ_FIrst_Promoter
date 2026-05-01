@@ -270,10 +270,9 @@ export const Settings = () => {
                 type="text"
                 value={user?.username || ''}
                 readOnly
-                disabled
                 aria-readonly="true"
                 placeholder="—"
-                className="w-full bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[16px] py-[12px] pr-[44px] text-[16px] text-white opacity-80 cursor-not-allowed select-all placeholder-[#444]"
+                className="w-full bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[16px] py-[12px] pr-[44px] text-[16px] text-white opacity-80 select-all placeholder-[#444]"
               />
               <span
                 aria-hidden="true"
