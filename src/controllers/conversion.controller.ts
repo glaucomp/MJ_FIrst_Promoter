@@ -346,7 +346,7 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
           orderBy: { acceptedAt: 'desc' },
           select: { id: true },
         });
-        level2ReferralIdForCommission = l2Row?.id ?? referral.id;
+        level2ReferralIdForCommission = l2Row?.id ?? inviterOnCampaign?.id ?? null;
       }
     }
 
