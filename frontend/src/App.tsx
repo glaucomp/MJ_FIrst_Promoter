@@ -23,6 +23,12 @@ const FirstPasswordChange = lazy(() =>
   import('./pages/FirstPasswordChange').then((m) => ({ default: m.FirstPasswordChange })),
 );
 
+const RouteFallback = () => (
+  <div className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center">
+    <div className="text-white text-[18px]">Loading...</div>
+  </div>
+);
+
 interface ProtectedRouteProps {
   children: ReactNode;
   allowedRoles?: UserRole[];
@@ -32,11 +38,7 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center">
-        <div className="text-white text-[18px]">Loading...</div>
-      </div>
-    );
+    return <RouteFallback />;
   }
 
   if (!user) {
@@ -60,11 +62,7 @@ const PublicRoute = ({ children }: { children: ReactNode }) => {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center">
-        <div className="text-white text-[18px]">Loading...</div>
-      </div>
-    );
+    return <RouteFallback />;
   }
 
   if (user) {
@@ -78,12 +76,6 @@ const ChatterRedirect = () => {
   const { user } = useAuth();
   return <Navigate to={user ? defaultLandingFor(user.baseRole) : '/login'} replace />;
 };
-
-const RouteFallback = () => (
-  <div className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center">
-    <div className="text-white text-[18px]">Loading...</div>
-  </div>
-);
 
 function AppRoutes() {
   return (
