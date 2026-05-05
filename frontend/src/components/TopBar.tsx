@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import type { UserRole } from '../types';
 import { IconLogout } from './NavIcons';
 import { LogoLottie } from './LogoLottie';
-import { navItems } from './navConfig';
+import { defaultLandingPath, navItems } from './navConfig';
 
 export const TopBar = () => {
   const navigate = useNavigate();
@@ -20,8 +20,8 @@ export const TopBar = () => {
       <div className="flex items-center justify-between h-full px-[40px]">
         {/* Logo/Brand */}
         <button
-          onClick={() => navigate('/dashboard')}
-          aria-label="Go to dashboard"
+          onClick={() => user && navigate(defaultLandingPath(user.baseRole))}
+          aria-label="Go to home"
           className="flex items-center cursor-pointer"
         >
           <LogoLottie height={40} width={140} />

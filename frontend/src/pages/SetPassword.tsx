@@ -4,18 +4,12 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { authApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { LogoLottie } from '../components/LogoLottie';
-import type { UserRole } from '../types';
+import { defaultLandingPath } from '../components/navConfig';
 
 type TokenState =
   | { status: 'loading' }
   | { status: 'valid'; email: string; firstName: string | null; purpose: 'invite' | 'reset' }
   | { status: 'invalid' };
-
-const defaultLandingFor = (role: UserRole): string => {
-  if (role === 'chatter') return '/chatter-portal';
-  if (role === 'payer') return '/reports';
-  return '/dashboard';
-};
 
 export const SetPassword = () => {
   const { token: rawToken } = useParams<{ token: string }>();
@@ -79,7 +73,7 @@ export const SetPassword = () => {
     try {
       const response = await authApi.resetPassword(rawToken, password);
       const mapped = loginWithToken(response.token, response.user);
-      navigate(defaultLandingFor(mapped.baseRole), { replace: true });
+      navigate(defaultLandingPath(mapped.baseRole), { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to set password');
     } finally {

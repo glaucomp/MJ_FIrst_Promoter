@@ -1,7 +1,6 @@
 import type { ComponentType, SVGProps } from 'react';
 import type { UserRole } from '../types';
 import {
-  IconHome,
   IconModels,
   IconPersona,
   IconChatterGroups,
@@ -23,7 +22,7 @@ export interface NavItem {
 }
 
 export const navItems: NavItem[] = [
-  { id: 'dashboard', Icon: IconHome, label: 'Dashboard', path: '/dashboard', allowedRoles: ['admin', 'team_manager', 'account_manager', 'promoter'] },
+  // { id: 'dashboard', Icon: IconHome, label: 'Dashboard', path: '/dashboard', allowedRoles: ['admin', 'team_manager', 'account_manager', 'promoter'] },
   // Admins + account managers manage users directly on /models.
   // Team managers / promoters see the same page as "Referrals" (their own list).
   { id: 'users', Icon: IconModels, label: 'Users', path: '/models', allowedRoles: ['admin', 'account_manager'] },
@@ -36,3 +35,12 @@ export const navItems: NavItem[] = [
   { id: 'payouts', Icon: IconPayout, label: 'Payouts', path: '/payouts', allowedRoles: ['admin', 'payer'] },
   { id: 'settings', Icon: IconSettings, label: 'Settings', path: '/settings', allowedRoles: ['admin', 'team_manager', 'account_manager', 'promoter', 'chatter', 'payer'] },
 ];
+
+/** First meaningful screen per role when Dashboard is not the default entry. */
+export const defaultLandingPath = (role: UserRole): string => {
+  if (role === 'chatter') return '/chatter-portal';
+  if (role === 'payer') return '/reports';
+  if (role === 'admin' || role === 'account_manager') return '/models';
+  if (role === 'team_manager' || role === 'promoter') return '/referrals';
+  return '/reports';
+};

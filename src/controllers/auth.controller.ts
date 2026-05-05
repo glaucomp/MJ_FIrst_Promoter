@@ -40,10 +40,14 @@ const generateFirstPasswordChangeToken = (userId: string, email: string) =>
     { expiresIn: "15m" },
   );
 
-const TOKEN_COOKIE_OPTIONS = {
+const TOKEN_COOKIE_BASE = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
   sameSite: "strict" as const,
+};
+
+const TOKEN_COOKIE_OPTIONS = {
+  ...TOKEN_COOKIE_BASE,
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 
@@ -803,7 +807,7 @@ export const resetPassword = async (req: AuthRequest, res: Response) => {
 };
 
 export const logout = (_req: AuthRequest, res: Response) => {
-  res.clearCookie("auth_token", TOKEN_COOKIE_OPTIONS);
+  res.clearCookie("auth_token", TOKEN_COOKIE_BASE);
   res.json({ success: true });
 };
 

@@ -4,6 +4,7 @@ import { RequirePasswordChangeError, useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { authApi } from '../services/api';
 import { LogoLottie } from '../components/LogoLottie';
+import { defaultLandingPath } from '../components/navConfig';
 
 type Mode = 'login' | 'forgot';
 
@@ -24,7 +25,7 @@ export const Login = () => {
 
     try {
       const loggedInUser = await login(email, password);
-      navigate(loggedInUser.baseRole === 'chatter' ? '/chatter-portal' : '/dashboard');
+      navigate(defaultLandingPath(loggedInUser.baseRole));
     } catch (err) {
       // The backend signaled the account is on a temp password (created
       // by the TeaseMe 4->5 promotion flow). Route to /first-password-change
