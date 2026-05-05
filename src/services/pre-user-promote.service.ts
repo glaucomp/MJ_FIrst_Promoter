@@ -209,6 +209,7 @@ async function ensurePromoterCustomerTrackingReferral(
       referrerId: referral.referrerId,
       referredUserId: null,
       status: "ACTIVE",
+      campaignId: assignedCampaignId,
     },
   });
 
