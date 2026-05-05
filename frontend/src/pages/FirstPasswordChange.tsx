@@ -3,16 +3,7 @@ import type { FormEvent } from 'react';
 import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { LogoLottie } from '../components/LogoLottie';
-import type { UserRole } from '../types';
-
-// Landing destination after a successful first-password-change. Mirrors
-// the chooser used by Login + SetPassword so we don't accidentally drop
-// chatters/payers on the wrong default page.
-const defaultLandingFor = (role: UserRole): string => {
-  if (role === 'chatter') return '/chatter-portal';
-  if (role === 'payer') return '/reports';
-  return '/dashboard';
-};
+import { defaultLandingPath } from '../components/navConfig';
 
 interface LocationState {
   changeToken?: string;
@@ -70,7 +61,7 @@ export const FirstPasswordChange = () => {
     setIsSubmitting(true);
     try {
       const mapped = await firstPasswordChange(changeToken, password);
-      navigate(defaultLandingFor(mapped.baseRole), { replace: true });
+      navigate(defaultLandingPath(mapped.baseRole), { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to set new password');
     } finally {
