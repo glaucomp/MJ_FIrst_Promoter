@@ -253,6 +253,14 @@ const hasAccountManagerAccess = (user: AuthRequest["user"]) => {
 // Referral.metadata is typed as Prisma.JsonValue. Narrow it to the shape we
 // actually write so callers can read `inviteeEmail` / `expiresAt` / etc
 // without repeating the type guard everywhere.
+//
+// AM-line vs promoter-line (for analytics / pending reports only):
+// - When the inviter is ADMIN or ACCOUNT_MANAGER, `accountManagerEmail` is set
+//   to the same value as `inviterEmail`. When they differ, the inviter is a
+//   promoter and `accountManagerEmail` is their assigned AM.
+// - Do NOT use `inviteeEmail === accountManagerEmail` for that split; see
+//   docs/referral-invite-metadata.md. Sale payouts use ACTIVE referrals +
+//   User.userType + conversion.controller hidden-membership resolution.
 type ReferralMetadata = {
   accountManagerEmail?: string | null;
   inviterEmail?: string | null;

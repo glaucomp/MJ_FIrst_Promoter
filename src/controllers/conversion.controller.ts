@@ -1,8 +1,55 @@
 import { Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, UserRole } from '@prisma/client';
 import { ApiKeyRequest } from '../middleware/apiKey.middleware';
 
 const prisma = new PrismaClient();
+
+const hiddenLinkedCampaignClause = (publicSaleCampaignId: string) => ({
+  visibleToPromoters: false,
+  isActive: true,
+  linkedCampaignId: publicSaleCampaignId,
+});
+
+/** Resolves the referral row whose hidden `secondaryRate` pays the public upline (AM direct slice). */
+async function resolveAmMembershipReferralForSale(args: {
+  publicUplineUserId: string | null;
+  sellerUserId: string;
+  publicSaleCampaignId: string;
+}) {
+  const { publicUplineUserId, sellerUserId, publicSaleCampaignId } = args;
+  if (publicUplineUserId == null) return null;
+
+  const select = {
+    id: true,
+    campaign: { select: { id: true, secondaryRate: true } },
+  } as const;
+  const hidden = hiddenLinkedCampaignClause(publicSaleCampaignId);
+
+  // 1) AM enrolled the seller on the hidden campaign linked to this public program (seed + some prod rows).
+  const amInvitedSeller = await prisma.referral.findFirst({
+    where: {
+      referrerId: publicUplineUserId,
+      referredUserId: sellerUserId,
+      status: 'ACTIVE',
+      campaign: hidden,
+    },
+    orderBy: { acceptedAt: 'desc' },
+    select,
+  });
+  if (amInvitedSeller) return amInvitedSeller;
+
+  // 2) Admin enrolled the upline as an account manager (invitee row only — not influencer→friend hidden chains).
+  return prisma.referral.findFirst({
+    where: {
+      referredUserId: publicUplineUserId,
+      status: 'ACTIVE',
+      referrer: { role: UserRole.ADMIN },
+      campaign: hidden,
+    },
+    orderBy: { acceptedAt: 'desc' },
+    select,
+  });
+}
 
 // POST /api/v2/track/sale
 export const trackSale = async (req: ApiKeyRequest, res: Response) => {
@@ -244,31 +291,13 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
     // influencers who referred a friend (they use public referral % below).
     const membershipSubjectUserId = publicUplineUserId;
 
-    // If `membershipSubjectUserId` has an ACTIVE referral as invitee on a
-    // hidden campaign linked to this public sale campaign, pay that hidden
-    // campaign's secondary rate (e.g. 10% AM membership), not the public
-    // "referral commission %" (e.g. 5%).
-    const amMembershipReferral =
-      membershipSubjectUserId != null
-        ? await prisma.referral.findFirst({
-            where: {
-              referredUserId: membershipSubjectUserId,
-              status: 'ACTIVE',
-              campaign: {
-                visibleToPromoters: false,
-                isActive: true,
-                linkedCampaignId: campaign.id,
-              },
-            },
-            orderBy: { acceptedAt: 'desc' },
-            select: {
-              id: true,
-              campaign: {
-                select: { id: true, secondaryRate: true },
-              },
-            },
-          })
-        : null;
+    // Hidden AM rate: either AM→seller on the linked hidden campaign, or
+    // admin→AM invitee membership (see `resolveAmMembershipReferralForSale`).
+    const amMembershipReferral = await resolveAmMembershipReferralForSale({
+      publicUplineUserId: membershipSubjectUserId,
+      sellerUserId: referral.referrerId,
+      publicSaleCampaignId: campaign.id,
+    });
 
     // Pre-compute all amounts before entering the transaction
     const level1Amount = (revenue * campaign.commissionRate) / 100;
@@ -731,27 +760,11 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
     const refundPublicUplineUserId =
       refundParentUplineUserId ?? refundInviterReferrerId ?? null;
 
-    const amMembershipReferralRefund =
-      refundPublicUplineUserId != null
-        ? await prisma.referral.findFirst({
-            where: {
-              referredUserId: refundPublicUplineUserId,
-              status: 'ACTIVE',
-              campaign: {
-                visibleToPromoters: false,
-                linkedCampaignId: campaign.id,
-                isActive: true,
-              },
-            },
-            orderBy: { acceptedAt: 'desc' },
-            select: {
-              id: true,
-              campaign: {
-                select: { id: true, secondaryRate: true },
-              },
-            },
-          })
-        : null;
+    const amMembershipReferralRefund = await resolveAmMembershipReferralForSale({
+      publicUplineUserId: refundPublicUplineUserId,
+      sellerUserId: referral.referrerId,
+      publicSaleCampaignId: campaign.id,
+    });
 
     const level1RefundAmount = -(refundRevenue * campaign.commissionRate) / 100;
     const refundGroup =
