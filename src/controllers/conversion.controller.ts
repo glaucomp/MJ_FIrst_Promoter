@@ -807,7 +807,7 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
           orderBy: { acceptedAt: 'desc' },
           select: { id: true },
         });
-        refundLevel2ReferralIdForCommission = l2RowRefund?.id ?? referral.id;
+        refundLevel2ReferralIdForCommission = l2RowRefund?.id ?? null;
       }
     }
 
