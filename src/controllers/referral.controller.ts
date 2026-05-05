@@ -258,9 +258,9 @@ const hasAccountManagerAccess = (user: AuthRequest["user"]) => {
 // - When the inviter is ADMIN or ACCOUNT_MANAGER, `accountManagerEmail` is set
 //   to the same value as `inviterEmail`. When they differ, the inviter is a
 //   promoter and `accountManagerEmail` is their assigned AM.
-// - Do NOT use `inviteeEmail === accountManagerEmail` for that split; see
-//   docs/referral-invite-metadata.md. Sale payouts use ACTIVE referrals +
-//   User.userType + conversion.controller hidden-membership resolution.
+// - Do NOT use `inviteeEmail === accountManagerEmail` for that split.
+//   Derive sale payouts from ACTIVE referrals plus `User.userType`, and apply
+//   the hidden-membership resolution described in `conversion.controller`.
 type ReferralMetadata = {
   accountManagerEmail?: string | null;
   inviterEmail?: string | null;
