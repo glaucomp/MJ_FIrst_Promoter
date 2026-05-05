@@ -214,7 +214,8 @@ async function ensurePromoterCustomerTrackingReferral(
   });
 
   const { nanoid } = await import("nanoid");
-  const local = promotedEmail.split("@")[0] ?? "user";
+  const localPart = promotedEmail.split("@")[0] ?? "user";
+  const local = sanitizeLocalPart(localPart) || "user";
   const customerTrackingCode = `${local}_${nanoid(8)}`;
 
   await prisma.referral.create({
