@@ -727,12 +727,9 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
       orderBy: { acceptedAt: 'desc' },
       select: { id: true, referrerId: true },
     });
-    const refundInviterReferralId = inviterOnCampaignRefund?.id ?? null;
     const refundInviterReferrerId = inviterOnCampaignRefund?.referrerId ?? null;
     const refundPublicUplineUserId =
       refundParentUplineUserId ?? refundInviterReferrerId ?? null;
-    const refundLevel2ReferralIdForCommission =
-      refundParentRef?.id ?? refundInviterReferralId ?? null;
 
     const amMembershipReferralRefund =
       refundPublicUplineUserId != null
@@ -810,7 +807,7 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
           orderBy: { acceptedAt: 'desc' },
           select: { id: true },
         });
-        refundLevel2ReferralIdForCommission = l2RowRefund?.id ?? null;
+        refundLevel2ReferralIdForCommission = l2RowRefund?.id ?? inviterOnCampaignRefund?.id ?? null;
       }
     }
 
