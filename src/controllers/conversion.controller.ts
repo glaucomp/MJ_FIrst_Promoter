@@ -221,22 +221,21 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
     const parentRef = referral.parentReferral ?? null;
     const parentUplineUserId = parentRef?.referrerId ?? null;
 
-    // If the *direct upline user* (parent tracking row's referrer) was enrolled
-    // by an admin into a hidden campaign linked to this public sale campaign,
-    // they are an account manager for payout purposes — use that campaign's
-    // secondary rate (e.g. 10%), not the public "referral commission %" (e.g. 5%).
+    // If the *direct upline user* has an ACTIVE referral as invitee on a
+    // hidden campaign that links to this public sale campaign, pay that hidden
+    // campaign's secondary rate (e.g. 10% AM membership), not the public
+    // "referral commission %" (e.g. 5%).
     //
-    // This does not rely on `User.userType` or `accountManagerId`, which are
-    // often missing or still PROMOTER on real AM rows (Leo / Glauca case).
+    // We intentionally do NOT require `referrer.role === ADMIN` here: some
+    // production rows (or future flows) may not match that filter even though
+    // the row is the real AM membership — `assignAccountManager` uses the same
+    // looser campaign shape. Requiring ADMIN caused Leo to fall through to 5%.
     const amMembershipReferral =
       parentUplineUserId != null
         ? await prisma.referral.findFirst({
             where: {
               referredUserId: parentUplineUserId,
               status: 'ACTIVE',
-              referrer: {
-                role: 'ADMIN',
-              },
               campaign: {
                 visibleToPromoters: false,
                 isActive: true,
@@ -663,9 +662,6 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
             where: {
               referredUserId: refundParentUplineUserId,
               status: 'ACTIVE',
-              referrer: {
-                role: 'ADMIN',
-              },
               campaign: {
                 visibleToPromoters: false,
                 linkedCampaignId: campaign.id,
