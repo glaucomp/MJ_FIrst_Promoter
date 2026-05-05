@@ -95,7 +95,7 @@ export const Campaigns = () => {
       return;
     }
     if (form.commissionRate < 0 || form.commissionRate > 100) {
-      setFormError("Commission rate must be 0–100");
+      setFormError("Promoter commission must be 0–100");
       return;
     }
 
@@ -270,7 +270,7 @@ export const Campaigns = () => {
                 <div className="grid grid-cols-3 gap-2 lg:grid lg:grid-cols-6 lg:gap-4 lg:text-center lg:mt-3">
                   <div className="flex flex-col gap-2">
                     <p className="text-tm-text-color10 text-xs uppercase font-bold">
-                      Commission
+                      Promoter commission %
                     </p>
                     <p className="text-white text-lg ">
                       {c.commissionRate}%
@@ -279,7 +279,7 @@ export const Campaigns = () => {
                   {c.secondaryRate != null && c.secondaryRate > 0 && (
                     <div className="flex flex-col gap-2">
                       <p className="text-tm-text-color10 text-xs uppercase font-bold">
-                        Upline
+                        {secondaryRateLabelForCampaign(c.visibleToPromoters)}
                       </p>
                       <p className="text-white text-lg ">
                         {c.secondaryRate}%
@@ -291,7 +291,7 @@ export const Campaigns = () => {
                     c.visibleToPromoters && (
                       <div className="flex flex-col gap-2">
                         <p className="text-tm-text-color10 text-xs uppercase font-bold">
-                          Acc Mgr
+                          Account manager %
                         </p>
                         <p className="text-white text-lg ">
                           {c.recurringRate}%
@@ -448,7 +448,7 @@ export const Campaigns = () => {
 
               {/* Rates row */}
               <div className="flex gap-[12px] flex-col lg:flex-row">
-                <Field label="Commission %" className="flex-1">
+                <Field label="Promoter commission %" className="flex-1">
                   <input
                     type="number"
                     min={0}
@@ -464,7 +464,12 @@ export const Campaigns = () => {
                     className={inputCls}
                   />
                 </Field>
-                <Field label="Upline %" className="flex-1">
+                <Field
+                  label={secondaryRateLabelForCampaign(
+                    form.visibleToPromoters ?? true,
+                  )}
+                  className="flex-1"
+                >
                   <input
                     type="number"
                     min={0}
@@ -481,7 +486,7 @@ export const Campaigns = () => {
                   />
                 </Field>
                 {form.visibleToPromoters && (
-                  <Field label="Acc Manager %" className="flex-1">
+                  <Field label="Account manager %" className="flex-1">
                     <input
                       type="number"
                       min={0}
@@ -624,6 +629,11 @@ export const Campaigns = () => {
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+
+/** `secondaryRate` meaning: AM % on hidden campaigns, referral upline % on public. */
+function secondaryRateLabelForCampaign(visibleToPromoters: boolean): string {
+  return visibleToPromoters ? "Referral commission %" : "Account manager %";
+}
 
 const inputCls =
   "bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[14px] py-[11px] text-[14px] text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555] w-full";
