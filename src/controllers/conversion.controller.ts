@@ -725,11 +725,14 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
         status: 'ACTIVE',
       },
       orderBy: { acceptedAt: 'desc' },
-      select: { referrerId: true },
+      select: { id: true, referrerId: true },
     });
+    const refundInviterReferralId = inviterOnCampaignRefund?.id ?? null;
     const refundInviterReferrerId = inviterOnCampaignRefund?.referrerId ?? null;
     const refundPublicUplineUserId =
       refundParentUplineUserId ?? refundInviterReferrerId ?? null;
+    const refundLevel2ReferralIdForCommission =
+      refundParentRef?.id ?? refundInviterReferralId ?? null;
 
     const amMembershipReferralRefund =
       refundPublicUplineUserId != null
