@@ -155,6 +155,86 @@ export const resolveOwnership = async (
   };
 };
 
+/**
+ * Mirrors auth.controller register: create customer tracking referral
+ * (`referredUserId: null`) with optional parent link to inviter's tracking row.
+ * Idempotent per (promotedUserId, assigned public campaign).
+ */
+async function ensurePromoterCustomerTrackingReferral(
+  prisma: PrismaClient,
+  inviteReferralId: string,
+  promotedUserId: string,
+  promotedEmail: string,
+): Promise<void> {
+  const referral = await prisma.referral.findUnique({
+    where: { id: inviteReferralId },
+    include: { campaign: true },
+  });
+  if (!referral || referral.referredUserId !== promotedUserId) return;
+  if (referral.status !== "ACTIVE") return;
+
+  let assignedCampaignId = referral.campaignId;
+  const camp = referral.campaign;
+  if (!camp.visibleToPromoters) {
+    if (camp.linkedCampaignId) {
+      assignedCampaignId = camp.linkedCampaignId;
+    } else {
+      const visibleCampaign = await prisma.campaign.findFirst({
+        where: { isActive: true, visibleToPromoters: true },
+        orderBy: { createdAt: "asc" },
+      });
+      if (!visibleCampaign) {
+        console.warn(
+          "[promote-pre-user] no visible campaign; skipping customer tracking referral",
+          { inviteReferralId },
+        );
+        return;
+      }
+      assignedCampaignId = visibleCampaign.id;
+    }
+  }
+
+  const existing = await prisma.referral.findFirst({
+    where: {
+      referrerId: promotedUserId,
+      referredUserId: null,
+      status: "ACTIVE",
+      campaignId: assignedCampaignId,
+    },
+  });
+  if (existing) return;
+
+  const referrerTracking = await prisma.referral.findFirst({
+    where: {
+      referrerId: referral.referrerId,
+      referredUserId: null,
+      status: "ACTIVE",
+    },
+  });
+
+  const { nanoid } = await import("nanoid");
+  const local = promotedEmail.split("@")[0] ?? "user";
+  const customerTrackingCode = `${local}_${nanoid(8)}`;
+
+  await prisma.referral.create({
+    data: {
+      inviteCode: customerTrackingCode,
+      campaignId: assignedCampaignId,
+      referrerId: promotedUserId,
+      referredUserId: null,
+      parentReferralId: referrerTracking?.id ?? null,
+      status: "ACTIVE",
+      level: referral.level + 1,
+      acceptedAt: new Date(),
+    },
+  });
+
+  console.info("[promote-pre-user] customer tracking referral created", {
+    userId: promotedUserId,
+    campaignId: assignedCampaignId,
+  });
+}
+
 export interface PromotePreUserResult {
   status: "promoted" | "already_user" | "already_emailed" | "error";
   userId?: string;
@@ -505,6 +585,25 @@ export const promotePreUserToUser = async (
         preUserId: preUser.id,
         referralId: preUser.referralId,
         err: err instanceof Error ? err.message : String(err),
+      });
+    }
+
+    try {
+      await ensurePromoterCustomerTrackingReferral(
+        prisma,
+        preUser.referralId,
+        user.id,
+        user.email,
+      );
+    } catch (trackingErr) {
+      console.error("[promote-pre-user] customer tracking referral failed", {
+        preUserId: preUser.id,
+        referralId: preUser.referralId,
+        userId: user.id,
+        err:
+          trackingErr instanceof Error
+            ? trackingErr.message
+            : String(trackingErr),
       });
     }
   }

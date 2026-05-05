@@ -221,20 +221,38 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
     const parentRef = referral.parentReferral ?? null;
     const parentUplineUserId = parentRef?.referrerId ?? null;
 
-    // If the *direct upline user* has an ACTIVE referral as invitee on a
-    // hidden campaign that links to this public sale campaign, pay that hidden
+    const inviterOnCampaign = await prisma.referral.findFirst({
+      where: {
+        referredUserId: referral.referrerId,
+        campaignId: campaign.id,
+        status: 'ACTIVE',
+      },
+      orderBy: { acceptedAt: 'desc' },
+      select: { referrerId: true },
+    });
+    const inviterReferrerId = inviterOnCampaign?.referrerId ?? null;
+
+    // Who sits "above" the seller on this public campaign: tracking parent
+    // first, else the person who invited the seller onto this campaign.
+    // - AM → influencer: usually inviter = AM (parent often null) → AM path.
+    // - Influencer → friend: parent or inviter = influencer → public referral %.
+    const publicUplineUserId = parentUplineUserId ?? inviterReferrerId ?? null;
+
+    // Hidden "Account manager campaign" slice: only users with an ACTIVE
+    // invitee row on a hidden campaign linked to this public sale campaign.
+    // That is true for account managers enrolled by admin, not for normal
+    // influencers who referred a friend (they use public referral % below).
+    const membershipSubjectUserId = publicUplineUserId;
+
+    // If `membershipSubjectUserId` has an ACTIVE referral as invitee on a
+    // hidden campaign linked to this public sale campaign, pay that hidden
     // campaign's secondary rate (e.g. 10% AM membership), not the public
     // "referral commission %" (e.g. 5%).
-    //
-    // We intentionally do NOT require `referrer.role === ADMIN` here: some
-    // production rows (or future flows) may not match that filter even though
-    // the row is the real AM membership — `assignAccountManager` uses the same
-    // looser campaign shape. Requiring ADMIN caused Leo to fall through to 5%.
     const amMembershipReferral =
-      parentUplineUserId != null
+      membershipSubjectUserId != null
         ? await prisma.referral.findFirst({
             where: {
-              referredUserId: parentUplineUserId,
+              referredUserId: membershipSubjectUserId,
               status: 'ACTIVE',
               campaign: {
                 visibleToPromoters: false,
@@ -265,20 +283,19 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
 
     // Account-manager-aware upline payout.
     //
-    //   1) Direct upline has a hidden (admin-invited) membership campaign
-    //      linked to this public sale campaign → pay that campaign's
-    //      secondaryRate to the upline (AM "Account manager %").
+    //   A) Seller was brought in by an account manager (hidden membership row
+    //      linked to this public campaign) → pay hidden secondaryRate to that
+    //      AM, not the public "referral commission %".
     //
-    //   2) Otherwise the direct upline gets the public campaign's
-    //      secondaryRate (referral commission) unless they are the same user
-    //      as `accountManagerId` — in that case we skip L2 and use (3) so the
-    //      AM never receives the public 5% slot by mistake.
+    //   B) Seller was referred by another influencer / friend on this public
+    //      campaign → pay public campaign secondaryRate (referral tier) to the
+    //      direct upline (parent in tracking chain, or inviter row if parent
+    //      missing).
     //
-    //   3) Off-chain AM (`User.accountManagerId`) gets `recurringRate` when
-    //      (1) did not apply.
+    //   C) Off-chain AM (`User.accountManagerId`) gets `recurringRate` when
+    //      (A) did not apply.
 
-    // (1) Direct upline has AM membership on a hidden campaign linked to this
-    //     sale → pay that campaign's secondaryRate (not public secondary).
+    // (1) Hidden AM membership rate (see A above).
     let amDirectAmount = 0;
     let amDirectRate = 0;
     let amDirectCampaignId: string | null = null;
@@ -296,23 +313,44 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
     // If the upline has no usable hidden-campaign rate, fall back to other
     // paths (public L2 and/or recurring AM %).
     const amDirectPaid = amDirectAmount > 0;
+    const directAmRecipientUserId = amDirectPaid
+      ? membershipSubjectUserId
+      : null;
 
-    const uplineIsAlsoAssignedAccountManager =
-      !!parentRef &&
+    const skipPublicReferralSliceToAssignedAm =
+      !!publicUplineUserId &&
       !!sellingPromoterAmId &&
-      parentRef.referrerId === sellingPromoterAmId;
+      publicUplineUserId === sellingPromoterAmId;
 
-    // (2) Regular L2 (upline) payout — only when we did not pay AM membership
-    //     and the upline is not the assigned AM (avoid paying public 5% to AM).
+    // (2) Public "referral commission %" to upline (see B above).
     const level2Amount =
       !amDirectPaid &&
-      !uplineIsAlsoAssignedAccountManager &&
-      parentRef &&
+      !skipPublicReferralSliceToAssignedAm &&
+      !!publicUplineUserId &&
       (campaign.secondaryRate ?? 0) > 0
         ? (revenue * campaign.secondaryRate!) / 100
         : 0;
 
-    // (3) AM-not-direct payout — always paid via accountManagerId lookup.
+    let level2ReferralIdForCommission: string | null = null;
+    if (level2Amount > 0 && publicUplineUserId) {
+      if (parentRef?.referrerId === publicUplineUserId) {
+        level2ReferralIdForCommission = parentRef.id;
+      } else {
+        const l2Row = await prisma.referral.findFirst({
+          where: {
+            referrerId: publicUplineUserId,
+            referredUserId: referral.referrerId,
+            campaignId: campaign.id,
+            status: 'ACTIVE',
+          },
+          orderBy: { acceptedAt: 'desc' },
+          select: { id: true },
+        });
+        level2ReferralIdForCommission = l2Row?.id ?? referral.id;
+      }
+    }
+
+    // (3) AM-not-direct payout — recurring % on public campaign (see C above).
     let amIndirectAmount = 0;
     let amIndirectRate = 0;
     let amIndirectUserId: string | null = null;
@@ -414,7 +452,12 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
         // (1) AM is the direct upline → pay AM using the AM Campaign rate.
         //     This *replaces* the regular L2 upline payout (the AM is the
         //     upline) and there is no separate Acc-Manager-% payout.
-        if (amDirectAmount > 0 && parentRef && amDirectCampaignId && amDirectReferralId) {
+        if (
+          amDirectAmount > 0 &&
+          directAmRecipientUserId &&
+          amDirectCampaignId &&
+          amDirectReferralId
+        ) {
           commission2 = await tx.commission.create({
             data: {
               amount: amDirectAmount,
@@ -422,7 +465,7 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
               saleAmount: revenue,
               status: 'unpaid',
               description: `Account manager (direct upline) from ${referral.referrer.firstName}'s sale ($${revenue.toFixed(2)})`,
-              userId: parentRef.referrerId,
+              userId: directAmRecipientUserId,
               campaignId: amDirectCampaignId,
               referralId: amDirectReferralId,
               customerId: customer.id,
@@ -431,8 +474,12 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
           });
         }
 
-        // (2) Regular L2 upline (only when the direct upline is NOT the AM).
-        if (level2Amount > 0 && parentRef) {
+        // (2) Public referral upline (influencer → friend path, or multi-level).
+        if (
+          level2Amount > 0 &&
+          publicUplineUserId &&
+          level2ReferralIdForCommission
+        ) {
           commission2 = await tx.commission.create({
             data: {
               amount: level2Amount,
@@ -440,9 +487,9 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
               saleAmount: revenue,
               status: 'unpaid',
               description: `T2 upline from ${referral.referrer.firstName}'s sale ($${revenue.toFixed(2)})`,
-              userId: parentRef.referrerId,
+              userId: publicUplineUserId,
               campaignId: campaign.id,
-              referralId: parentRef.id,
+              referralId: level2ReferralIdForCommission,
               customerId: customer.id,
               transactionId: transaction.id,
             },
@@ -472,17 +519,33 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
         return { customer, transaction, commission1, chatterCommissions, commission2, commission3 };
       });
 
+    let level2Email: string | null | undefined = parentRef?.referrer.email;
+    if (!level2Email && amDirectAmount > 0 && membershipSubjectUserId) {
+      const u = await prisma.user.findUnique({
+        where: { id: membershipSubjectUserId },
+        select: { email: true },
+      });
+      level2Email = u?.email ?? undefined;
+    }
+    if (!level2Email && level2Amount > 0 && publicUplineUserId) {
+      const u = await prisma.user.findUnique({
+        where: { id: publicUplineUserId },
+        select: { email: true },
+      });
+      level2Email = u?.email ?? undefined;
+    }
+
     console.log(`✅ Commission created: $${level1Amount.toFixed(2)} for ${referral.referrer.email}`);
     if (group) {
       console.log(`✅ Chatter commissions: $${perChatter.toFixed(2)} × ${group.members.length} chatters from group ${group.id}`);
     }
     if (amDirectAmount > 0) {
       console.log(
-        `✅ AM (direct upline) Commission: $${amDirectAmount.toFixed(2)} (${amDirectRate}%) for ${parentRef?.referrer.email}`,
+        `✅ AM (direct upline) Commission: $${amDirectAmount.toFixed(2)} (${amDirectRate}%) for user ${membershipSubjectUserId} (${level2Email ?? "email n/a"})`,
       );
     } else if (level2Amount > 0) {
       console.log(
-        `✅ T2 Upline Commission: $${level2Amount.toFixed(2)} for ${parentRef?.referrer.email}`,
+        `✅ T2 Upline Commission: $${level2Amount.toFixed(2)} for public upline ${publicUplineUserId} (${level2Email ?? "email n/a"})`,
       );
     }
     if (amIndirectAmount > 0) {
@@ -495,7 +558,6 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
     // belongs either to the AM (direct upline case) or to a regular
     // influencer upline; either way it's the parentReferral's referrer.
     const level2Amt = amDirectAmount > 0 ? amDirectAmount : level2Amount;
-    const level2Email = parentRef?.referrer.email;
 
     res.status(200).json({
       success: true,
@@ -656,11 +718,24 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
     const refundParentRef = referral.parentReferral ?? null;
     const refundParentUplineUserId = refundParentRef?.referrerId ?? null;
 
+    const inviterOnCampaignRefund = await prisma.referral.findFirst({
+      where: {
+        referredUserId: referral.referrerId,
+        campaignId: campaign.id,
+        status: 'ACTIVE',
+      },
+      orderBy: { acceptedAt: 'desc' },
+      select: { referrerId: true },
+    });
+    const refundInviterReferrerId = inviterOnCampaignRefund?.referrerId ?? null;
+    const refundPublicUplineUserId =
+      refundParentUplineUserId ?? refundInviterReferrerId ?? null;
+
     const amMembershipReferralRefund =
-      refundParentUplineUserId != null
+      refundPublicUplineUserId != null
         ? await prisma.referral.findFirst({
             where: {
-              referredUserId: refundParentUplineUserId,
+              referredUserId: refundPublicUplineUserId,
               status: 'ACTIVE',
               campaign: {
                 visibleToPromoters: false,
@@ -704,18 +779,37 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
 
     const amDirectRefundPaid = amDirectRefundAmount !== 0;
 
-    const refundUplineIsAlsoAssignedAm =
-      !!refundParentRef &&
+    const refundSkipPublicReferralSliceToAssignedAm =
+      !!refundPublicUplineUserId &&
       !!refundAmId &&
-      refundParentRef.referrerId === refundAmId;
+      refundPublicUplineUserId === refundAmId;
 
     const level2RefundAmount =
       !amDirectRefundPaid &&
-      !refundUplineIsAlsoAssignedAm &&
-      refundParentRef &&
+      !refundSkipPublicReferralSliceToAssignedAm &&
+      !!refundPublicUplineUserId &&
       (campaign.secondaryRate ?? 0) > 0
         ? -(refundRevenue * campaign.secondaryRate!) / 100
         : 0;
+
+    let refundLevel2ReferralIdForCommission: string | null = null;
+    if (level2RefundAmount !== 0 && refundPublicUplineUserId) {
+      if (refundParentRef?.referrerId === refundPublicUplineUserId) {
+        refundLevel2ReferralIdForCommission = refundParentRef.id;
+      } else {
+        const l2RowRefund = await prisma.referral.findFirst({
+          where: {
+            referrerId: refundPublicUplineUserId,
+            referredUserId: referral.referrerId,
+            campaignId: campaign.id,
+            status: 'ACTIVE',
+          },
+          orderBy: { acceptedAt: 'desc' },
+          select: { id: true },
+        });
+        refundLevel2ReferralIdForCommission = l2RowRefund?.id ?? referral.id;
+      }
+    }
 
     let amIndirectRefundAmount = 0;
     let amIndirectRefundRate = 0;
@@ -787,7 +881,7 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
       //     when the direct upline is the selling promoter's AM.
       if (
         amDirectRefundAmount !== 0 &&
-        refundParentRef &&
+        refundPublicUplineUserId &&
         amDirectRefundCampaignId &&
         amDirectRefundReferralId
       ) {
@@ -798,7 +892,7 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
             saleAmount: refundRevenue,
             status: 'paid',
             description: `Account manager (direct upline) refund ($${refundRevenue.toFixed(2)})`,
-            userId: refundParentRef.referrerId,
+            userId: refundPublicUplineUserId,
             campaignId: amDirectRefundCampaignId,
             referralId: amDirectRefundReferralId,
             customerId: customer.id,
@@ -807,8 +901,12 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
         });
       }
 
-      // (2) Regular L2 upline reversal — only when the direct upline is NOT the AM.
-      if (level2RefundAmount !== 0 && refundParentRef) {
+      // (2) Public referral upline refund
+      if (
+        level2RefundAmount !== 0 &&
+        refundPublicUplineUserId &&
+        refundLevel2ReferralIdForCommission
+      ) {
         await tx.commission.create({
           data: {
             amount: level2RefundAmount,
@@ -816,9 +914,9 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
             saleAmount: refundRevenue,
             status: 'paid',
             description: `T2 refund ($${refundRevenue.toFixed(2)})`,
-            userId: refundParentRef.referrerId,
+            userId: refundPublicUplineUserId,
             campaignId: campaign.id,
-            referralId: refundParentRef.id,
+            referralId: refundLevel2ReferralIdForCommission,
             customerId: customer.id,
             transactionId: refundTransaction.id,
           },
