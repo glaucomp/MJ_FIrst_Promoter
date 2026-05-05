@@ -90,8 +90,7 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
                   id: true,
                   email: true,
                   firstName: true,
-                  lastName: true,
-                  userType: true,
+                  lastName: true
                 }
               },
               parentReferral: {
@@ -104,8 +103,7 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
                       id: true,
                       email: true,
                       firstName: true,
-                      lastName: true,
-                      userType: true,
+                      lastName: true
                     }
                   },
                   parentReferral: {
@@ -118,8 +116,7 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
                           id: true,
                           email: true,
                           firstName: true,
-                          lastName: true,
-                          userType: true,
+                          lastName: true
                         }
                       }
                     }
@@ -301,9 +298,18 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
     // paths (public L2 and/or recurring AM %).
     const amDirectPaid = amDirectAmount > 0;
 
-    // (2) Regular L2 (upline) payout — only when we did not pay AM membership.
+    const uplineIsAlsoAssignedAccountManager =
+      !!parentRef &&
+      !!sellingPromoterAmId &&
+      parentRef.referrerId === sellingPromoterAmId;
+
+    // (2) Regular L2 (upline) payout — only when we did not pay AM membership
+    //     and the upline is not the assigned AM (avoid paying public 5% to AM).
     const level2Amount =
-      !amDirectPaid && parentRef && (campaign.secondaryRate ?? 0) > 0
+      !amDirectPaid &&
+      !uplineIsAlsoAssignedAccountManager &&
+      parentRef &&
+      (campaign.secondaryRate ?? 0) > 0
         ? (revenue * campaign.secondaryRate!) / 100
         : 0;
 
@@ -702,8 +708,16 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
 
     const amDirectRefundPaid = amDirectRefundAmount !== 0;
 
+    const refundUplineIsAlsoAssignedAm =
+      !!refundParentRef &&
+      !!refundAmId &&
+      refundParentRef.referrerId === refundAmId;
+
     const level2RefundAmount =
-      !amDirectRefundPaid && refundParentRef && (campaign.secondaryRate ?? 0) > 0
+      !amDirectRefundPaid &&
+      !refundUplineIsAlsoAssignedAm &&
+      refundParentRef &&
+      (campaign.secondaryRate ?? 0) > 0
         ? -(refundRevenue * campaign.secondaryRate!) / 100
         : 0;
 
