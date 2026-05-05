@@ -228,7 +228,7 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
         status: 'ACTIVE',
       },
       orderBy: { acceptedAt: 'desc' },
-      select: { referrerId: true },
+      select: { id: true, referrerId: true },
     });
     const inviterReferrerId = inviterOnCampaign?.referrerId ?? null;
 
