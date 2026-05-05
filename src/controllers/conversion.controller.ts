@@ -90,7 +90,8 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
                   id: true,
                   email: true,
                   firstName: true,
-                  lastName: true
+                  lastName: true,
+                  userType: true,
                 }
               },
               parentReferral: {
@@ -103,7 +104,8 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
                       id: true,
                       email: true,
                       firstName: true,
-                      lastName: true
+                      lastName: true,
+                      userType: true,
                     }
                   },
                   parentReferral: {
@@ -116,7 +118,8 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
                           id: true,
                           email: true,
                           firstName: true,
-                          lastName: true
+                          lastName: true,
+                          userType: true,
                         }
                       }
                     }
@@ -219,25 +222,20 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
 
     const sellingPromoterAmId = promoterWithGroup?.accountManagerId ?? null;
     const parentRef = referral.parentReferral ?? null;
-    const directUplineIsAM =
-      !!parentRef &&
-      !!sellingPromoterAmId &&
-      parentRef.referrerId === sellingPromoterAmId;
+    const parentUplineUserId = parentRef?.referrerId ?? null;
 
-    // When the direct upline is the AM, we pay them using THEIR own
-    // membership campaign's `secondaryRate` (the "UPLINE %" on the hidden
-    // Account-Manager-Campaign card the admin invited them into). We can't
-    // rely on `referral.parentReferral.parentReferral.campaign` because the
-    // AM's own R1 invite has `parentReferralId = null` (see
-    // `referral.controller.ts:487-504` — only PROMOTER inviters get a parent
-    // set), so we look it up directly: the most recent active membership
-    // referral where the AM was the invitee, whose campaign is the hidden
-    // one linked to the sale's public campaign.
+    // If the *direct upline user* (parent tracking row's referrer) was enrolled
+    // by an admin into a hidden campaign linked to this public sale campaign,
+    // they are an account manager for payout purposes — use that campaign's
+    // secondary rate (e.g. 10%), not the public "referral commission %" (e.g. 5%).
+    //
+    // This does not rely on `User.userType` or `accountManagerId`, which are
+    // often missing or still PROMOTER on real AM rows (Leo / Glauca case).
     const amMembershipReferral =
-      directUplineIsAM && sellingPromoterAmId
+      parentUplineUserId != null
         ? await prisma.referral.findFirst({
             where: {
-              referredUserId: sellingPromoterAmId,
+              referredUserId: parentUplineUserId,
               status: 'ACTIVE',
               referrer: {
                 role: 'ADMIN',
@@ -271,28 +269,25 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
 
     // Account-manager-aware upline payout.
     //
-    // The selling promoter's AM is identified by `User.accountManagerId`, NOT
-    // by walking the parent-referral chain. There are two payout shapes:
+    //   1) Direct upline has a hidden (admin-invited) membership campaign
+    //      linked to this public sale campaign → pay that campaign's
+    //      secondaryRate to the upline (AM "Account manager %").
     //
-    //   1) AM is the DIRECT upline of the selling promoter (i.e. the AM is
-    //      the inviter on `parentReferral`). In that case we pay the AM using
-    //      the AM's *own* membership campaign's `secondaryRate` (looked up
-    //      via `amMembershipReferral` above). No additional Acc-Manager-%
-    //      payout is made because the AM is already covered here.
+    //   2) Otherwise the direct upline gets the public campaign's
+    //      secondaryRate (referral commission) unless they are the same user
+    //      as `accountManagerId` — in that case we skip L2 and use (3) so the
+    //      AM never receives the public 5% slot by mistake.
     //
-    //   2) AM is NOT the direct upline (the chain is influencer → influencer
-    //      → ... → friend, with the AM somewhere off-chain). In that case
-    //      the direct upline gets the sale-campaign's `secondaryRate` (the
-    //      "Upline %" slot, e.g. 5%) and the AM separately gets the
-    //      sale-campaign's `recurringRate` (the "Acc Manager %" slot, e.g.
-    //      3%) regardless of how deep the chain is.
+    //   3) Off-chain AM (`User.accountManagerId`) gets `recurringRate` when
+    //      (1) did not apply.
 
-    // (1) AM-as-direct-upline payout (uses the AM Campaign's secondaryRate)
+    // (1) Direct upline has AM membership on a hidden campaign linked to this
+    //     sale → pay that campaign's secondaryRate (not public secondary).
     let amDirectAmount = 0;
     let amDirectRate = 0;
     let amDirectCampaignId: string | null = null;
     let amDirectReferralId: string | null = null;
-    if (directUplineIsAM && amMembershipReferral) {
+    if (amMembershipReferral) {
       const rate = amMembershipReferral.campaign?.secondaryRate ?? 0;
       if (rate > 0) {
         amDirectRate = rate;
@@ -302,15 +297,13 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
       }
     }
 
-    // If the direct upline is the AM but no usable AM-campaign rate is set,
-    // fall back to the off-chain path so the AM still gets paid `recurringRate`
-    // — this avoids silently dropping the AM's commission when their
-    // membership campaign predates the new rate field.
+    // If the upline has no usable hidden-campaign rate, fall back to other
+    // paths (public L2 and/or recurring AM %).
     const amDirectPaid = amDirectAmount > 0;
 
-    // (2) Regular L2 (upline) payout — only when the direct upline is NOT the AM
+    // (2) Regular L2 (upline) payout — only when we did not pay AM membership.
     const level2Amount =
-      !directUplineIsAM && parentRef && (campaign.secondaryRate ?? 0) > 0
+      !amDirectPaid && parentRef && (campaign.secondaryRate ?? 0) > 0
         ? (revenue * campaign.secondaryRate!) / 100
         : 0;
 
@@ -656,19 +649,13 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
     // commissions would have been written for the original sale.
     const refundAmId = promoterWithGroupRefund?.accountManagerId ?? null;
     const refundParentRef = referral.parentReferral ?? null;
-    const refundDirectUplineIsAM =
-      !!refundParentRef &&
-      !!refundAmId &&
-      refundParentRef.referrerId === refundAmId;
+    const refundParentUplineUserId = refundParentRef?.referrerId ?? null;
 
-    // Look up the AM's hidden membership campaign the same way trackSale
-    // does — we cannot rely on the parent-of-parent referral (the AM's R1
-    // invite has no parent).
     const amMembershipReferralRefund =
-      refundDirectUplineIsAM && refundAmId
+      refundParentUplineUserId != null
         ? await prisma.referral.findFirst({
             where: {
-              referredUserId: refundAmId,
+              referredUserId: refundParentUplineUserId,
               status: 'ACTIVE',
               referrer: {
                 role: 'ADMIN',
@@ -703,7 +690,7 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
     let amDirectRefundRate = 0;
     let amDirectRefundCampaignId: string | null = null;
     let amDirectRefundReferralId: string | null = null;
-    if (refundDirectUplineIsAM && amMembershipReferralRefund) {
+    if (amMembershipReferralRefund) {
       const rate = amMembershipReferralRefund.campaign?.secondaryRate ?? 0;
       if (rate > 0) {
         amDirectRefundRate = rate;
@@ -716,7 +703,7 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
     const amDirectRefundPaid = amDirectRefundAmount !== 0;
 
     const level2RefundAmount =
-      !refundDirectUplineIsAM && refundParentRef && (campaign.secondaryRate ?? 0) > 0
+      !amDirectRefundPaid && refundParentRef && (campaign.secondaryRate ?? 0) > 0
         ? -(refundRevenue * campaign.secondaryRate!) / 100
         : 0;
 
