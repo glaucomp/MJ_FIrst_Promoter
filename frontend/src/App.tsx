@@ -1,20 +1,33 @@
+import { lazy, Suspense, type ReactNode } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DashboardLayout } from './components/DashboardLayout';
-import { Dashboard } from './pages/Dashboard';
-import { Models } from './pages/Models';
-import { Reports } from './pages/Reports';
-import { Settings } from './pages/Settings';
-import { Campaigns } from './pages/Campaigns';
-import { Payouts } from './pages/Payouts';
-import { ChatterGroups } from './pages/ChatterGroups';
-import { ChatterDashboard } from './pages/ChatterDashboard';
-import { ChatterGroupToolsPage } from './pages/ChatterGroupToolsPage';
-import { Login } from './pages/Login';
-import { SetPassword } from './pages/SetPassword';
-import { FirstPasswordChange } from './pages/FirstPasswordChange';
-import type { ReactNode } from 'react';
 import type { UserRole } from './types';
+
+const Dashboard = lazy(() => import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })));
+const Models = lazy(() => import('./pages/Models').then((m) => ({ default: m.Models })));
+const Reports = lazy(() => import('./pages/Reports').then((m) => ({ default: m.Reports })));
+const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })));
+const Campaigns = lazy(() => import('./pages/Campaigns').then((m) => ({ default: m.Campaigns })));
+const Payouts = lazy(() => import('./pages/Payouts').then((m) => ({ default: m.Payouts })));
+const ChatterGroups = lazy(() => import('./pages/ChatterGroups').then((m) => ({ default: m.ChatterGroups })));
+const ChatterDashboard = lazy(() =>
+  import('./pages/ChatterDashboard').then((m) => ({ default: m.ChatterDashboard })),
+);
+const ChatterGroupToolsPage = lazy(() =>
+  import('./pages/ChatterGroupToolsPage').then((m) => ({ default: m.ChatterGroupToolsPage })),
+);
+const Login = lazy(() => import('./pages/Login').then((m) => ({ default: m.Login })));
+const SetPassword = lazy(() => import('./pages/SetPassword').then((m) => ({ default: m.SetPassword })));
+const FirstPasswordChange = lazy(() =>
+  import('./pages/FirstPasswordChange').then((m) => ({ default: m.FirstPasswordChange })),
+);
+
+const RouteFallback = () => (
+  <div className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center">
+    <div className="text-white text-[18px]">Loading...</div>
+  </div>
+);
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -25,11 +38,7 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center">
-        <div className="text-white text-[18px]">Loading...</div>
-      </div>
-    );
+    return <RouteFallback />;
   }
 
   if (!user) {
@@ -53,11 +62,7 @@ const PublicRoute = ({ children }: { children: ReactNode }) => {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center">
-        <div className="text-white text-[18px]">Loading...</div>
-      </div>
-    );
+    return <RouteFallback />;
   }
 
   if (user) {
@@ -74,6 +79,7 @@ const ChatterRedirect = () => {
 
 function AppRoutes() {
   return (
+    <Suspense fallback={<RouteFallback />}>
     <Routes>
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
       <Route path="/set-password/:token" element={<SetPassword />} />
@@ -206,6 +212,7 @@ function AppRoutes() {
         }
       />
     </Routes>
+    </Suspense>
   );
 }
 
