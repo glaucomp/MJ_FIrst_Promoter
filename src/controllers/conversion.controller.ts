@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { PrismaClient, UserRole } from '@prisma/client';
+import { PrismaClient, UserRole, UserType } from '@prisma/client';
 import { ApiKeyRequest } from '../middleware/apiKey.middleware';
 
 const prisma = new PrismaClient();
@@ -49,6 +49,69 @@ async function resolveAmMembershipReferralForSale(args: {
     orderBy: { acceptedAt: 'desc' },
     select,
   });
+}
+
+/**
+ * When AM invites an influencer, prod often has only a **public** person referral
+ * (no parallel hidden referral row). `resolveAmMembershipReferralForSale` then
+ * misses and we incorrectly pay public `secondaryRate` (T2). If the upline is an
+ * AM/Admin on the direct parent/inviter line, pay the **linked hidden** program's
+ * `secondaryRate` using the public AM→seller referral id for attribution.
+ */
+async function trySyntheticAmDirectFromLinkedHiddenProgram(args: {
+  publicUplineUserId: string;
+  sellerUserId: string;
+  publicSaleCampaignId: string;
+  inviterReferrerId: string | null;
+  parentUplineUserId: string | null;
+}): Promise<{ hiddenCampaignId: string; secondaryRate: number; referralId: string } | null> {
+  const {
+    publicUplineUserId,
+    sellerUserId,
+    publicSaleCampaignId,
+    inviterReferrerId,
+    parentUplineUserId,
+  } = args;
+
+  const uplineUser = await prisma.user.findUnique({
+    where: { id: publicUplineUserId },
+    select: { userType: true, role: true },
+  });
+  const uplineActsAsAm =
+    uplineUser?.role === UserRole.ADMIN ||
+    uplineUser?.userType === UserType.ACCOUNT_MANAGER;
+  if (!uplineActsAsAm) return null;
+
+  const onDirectLineFromThisUpline =
+    inviterReferrerId === publicUplineUserId ||
+    parentUplineUserId === publicUplineUserId;
+  if (!onDirectLineFromThisUpline) return null;
+
+  const hiddenProgram = await prisma.campaign.findFirst({
+    where: hiddenLinkedCampaignClause(publicSaleCampaignId),
+    orderBy: { createdAt: 'asc' },
+    select: { id: true, secondaryRate: true },
+  });
+  const rate = hiddenProgram?.secondaryRate ?? 0;
+  if (!hiddenProgram || rate <= 0) return null;
+
+  const publicAmToSeller = await prisma.referral.findFirst({
+    where: {
+      referrerId: publicUplineUserId,
+      referredUserId: sellerUserId,
+      campaignId: publicSaleCampaignId,
+      status: 'ACTIVE',
+    },
+    orderBy: { acceptedAt: 'desc' },
+    select: { id: true },
+  });
+  if (!publicAmToSeller) return null;
+
+  return {
+    hiddenCampaignId: hiddenProgram.id,
+    secondaryRate: rate,
+    referralId: publicAmToSeller.id,
+  };
 }
 
 // POST /api/v2/track/sale
@@ -336,6 +399,25 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
         amDirectAmount = (revenue * rate) / 100;
         amDirectCampaignId = amMembershipReferral.campaign.id;
         amDirectReferralId = amMembershipReferral.id;
+      }
+    }
+
+    if (
+      amDirectAmount === 0 &&
+      membershipSubjectUserId
+    ) {
+      const synthetic = await trySyntheticAmDirectFromLinkedHiddenProgram({
+        publicUplineUserId: membershipSubjectUserId,
+        sellerUserId: referral.referrerId,
+        publicSaleCampaignId: campaign.id,
+        inviterReferrerId,
+        parentUplineUserId,
+      });
+      if (synthetic) {
+        amDirectRate = synthetic.secondaryRate;
+        amDirectAmount = (revenue * synthetic.secondaryRate) / 100;
+        amDirectCampaignId = synthetic.hiddenCampaignId;
+        amDirectReferralId = synthetic.referralId;
       }
     }
 
@@ -787,6 +869,25 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
         amDirectRefundAmount = -(refundRevenue * rate) / 100;
         amDirectRefundCampaignId = amMembershipReferralRefund.campaign.id;
         amDirectRefundReferralId = amMembershipReferralRefund.id;
+      }
+    }
+
+    if (
+      amDirectRefundAmount === 0 &&
+      refundPublicUplineUserId
+    ) {
+      const syntheticRefund = await trySyntheticAmDirectFromLinkedHiddenProgram({
+        publicUplineUserId: refundPublicUplineUserId,
+        sellerUserId: referral.referrerId,
+        publicSaleCampaignId: campaign.id,
+        inviterReferrerId: refundInviterReferrerId,
+        parentUplineUserId: refundParentUplineUserId,
+      });
+      if (syntheticRefund) {
+        amDirectRefundRate = syntheticRefund.secondaryRate;
+        amDirectRefundAmount = -(refundRevenue * syntheticRefund.secondaryRate) / 100;
+        amDirectRefundCampaignId = syntheticRefund.hiddenCampaignId;
+        amDirectRefundReferralId = syntheticRefund.referralId;
       }
     }
 
