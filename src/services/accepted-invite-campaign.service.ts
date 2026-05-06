@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client";
+import { type PrismaClient, UserType } from "@prisma/client";
 
 /**
  * When an invitee becomes ACTIVE on a hidden (e.g. AM-only) program, move their
@@ -25,10 +25,10 @@ export async function syncAcceptedInviteReferralToPublicProgram(
 
   const promotedUser = await prisma.user.findUnique({
     where: { id: promotedUserId },
-    select: { role: true },
+    select: { userType: true },
   });
   const shouldPreserveHiddenMembership =
-    promotedUser?.role === "ACCOUNT_MANAGER";
+    promotedUser?.userType === UserType.ACCOUNT_MANAGER;
 
   let assignedCampaignId = referral.campaignId;
   const camp = referral.campaign;
