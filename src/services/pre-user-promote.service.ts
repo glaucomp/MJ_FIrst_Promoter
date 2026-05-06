@@ -10,7 +10,7 @@ import {
   fetchTeasemePreUserStatus,
   syncUserFromTeaseMe,
 } from "./teaseme.service";
-import { syncAcceptedInviteReferralToPublicProgram } from "./accepted-invite-campaign.service";
+import { ensureCustomerTrackingReferralForPromotedUser } from "./referral-membership.service";
 
 // ─── Temporary password generation ───────────────────────────────────────────
 //
@@ -510,17 +510,20 @@ export const promotePreUserToUser = async (
     }
 
     try {
-      await syncAcceptedInviteReferralToPublicProgram(prisma, {
+      await ensureCustomerTrackingReferralForPromotedUser(prisma, {
         inviteReferralId: preUser.referralId,
         promotedUserId: user.id,
+        promotedEmail: user.email,
       });
-    } catch (syncErr) {
-      console.error("[promote-pre-user] public-program sync failed", {
+    } catch (trackingErr) {
+      console.error("[promote-pre-user] customer tracking referral failed", {
         preUserId: preUser.id,
         referralId: preUser.referralId,
         userId: user.id,
         err:
-          syncErr instanceof Error ? syncErr.message : String(syncErr),
+          trackingErr instanceof Error
+            ? trackingErr.message
+            : String(trackingErr),
       });
     }
   }

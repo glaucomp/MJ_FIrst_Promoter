@@ -1537,6 +1537,8 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
   const canOrderLandingPage =
     auth.user?.baseRole === "admin" ||
     auth.user?.baseRole === "account_manager";
+  const isAccountManagerViewer =
+    auth.user?.baseRole === "account_manager";
   const isAdmin =
     isAdminProp ??
     (auth?.user?.baseRole === "admin");
@@ -1999,9 +2001,35 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
               {/* Body: optional "Referred by" (AM view), campaign, invitee email */}
               <div className="flex flex-col min-w-0 gap-[4px]">
                 {showReferredByLine && (
-                  <p className="text-[#ff4d8d] text-sm font-medium truncate">
-                    Referred by {referrerLabel}
-                  </p>
+                  <div className="flex flex-col gap-[6px] min-w-0">
+                    <p className="text-[#ff4d8d] text-sm font-medium truncate">
+                      Referred by {referrerLabel}
+                    </p>
+                    {isAccountManagerViewer && (
+                      <p className="text-[#9e9e9e] text-[12px] font-medium leading-snug">
+                        They were invited through this promoter&apos;s link, not
+                        through your account manager invite.
+                      </p>
+                    )}
+                    {isAccountManagerViewer && referral.inviteUrl ? (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await navigator.clipboard.writeText(
+                              referral.inviteUrl!,
+                            );
+                            showToast("success", "Invite link copied");
+                          } catch {
+                            showToast("error", "Could not copy link");
+                          }
+                        }}
+                        className="self-start text-left text-[12px] font-semibold text-tm-text-color10 hover:text-white underline underline-offset-2"
+                      >
+                        Copy their invite link
+                      </button>
+                    ) : null}
+                  </div>
                 )}
                 <p className="text-tm-text-color09 text-sm truncate">
                   {referral.campaign.name}
@@ -2366,8 +2394,8 @@ const CardActions = ({
       return (
         <div className="flex flex-col gap-[8px]">
           <p className="w-full rounded-[6px] border border-[rgba(255,255,255,0.12)] bg-[#1a1a1a] px-[14px] py-[10px] text-[#9e9e9e] text-[13px] font-medium text-center">
-            Your account manager will order the landing page once onboarding is
-            complete.
+            Onboarding is complete. Your account manager will order the landing
+            page next.
           </p>
           {adminOverride({ showReassign: true })}
         </div>

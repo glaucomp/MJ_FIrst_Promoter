@@ -17,7 +17,7 @@ import {
   validatePasswordResetToken,
 } from "../services/password-reset.service";
 import { resolveOwnership } from "../services/pre-user-promote.service";
-import { syncAcceptedInviteReferralToPublicProgram } from "../services/accepted-invite-campaign.service";
+import { ensureCustomerTrackingReferralForPromotedUser } from "../services/referral-membership.service";
 import { getUserTypeInfo } from "../services/user.service";
 import { buildSetPasswordUrl } from "../utils/frontend-url";
 
@@ -166,17 +166,17 @@ export const register = async (req: AuthRequest, res: Response) => {
         },
       });
 
-      // Evolve the invite row onto the linked public program in place (AM
-      // hidden → public). Do not insert a second Referral for "customer
-      // tracking" — that duplicated the promoter on My Promoters.
+      // Public-program shell referral (`referredUserId` null): keeps the
+      // promoter attributable on the linked visible campaign without moving
+      // the AM invite row off the hidden membership program.
       try {
-        await syncAcceptedInviteReferralToPublicProgram(prisma, {
+        await ensureCustomerTrackingReferralForPromotedUser(prisma, {
           inviteReferralId: referral.id,
           promotedUserId: user.id,
+          promotedEmail: user.email,
         });
       } catch (error) {
-        console.error("❌ Failed to sync invite to public program:", error);
-        // Don't fail registration
+        console.error("❌ Failed to create customer tracking referral:", error);
       }
     }
 
@@ -218,13 +218,14 @@ export const register = async (req: AuthRequest, res: Response) => {
             );
 
             try {
-              await syncAcceptedInviteReferralToPublicProgram(prisma, {
+              await ensureCustomerTrackingReferralForPromotedUser(prisma, {
                 inviteReferralId: newReferral.id,
                 promotedUserId: user.id,
+                promotedEmail: user.email,
               });
             } catch (error) {
               console.error(
-                "❌ Failed to sync refCode referral to public program:",
+                "❌ Failed to create customer tracking referral:",
                 error,
               );
             }
@@ -339,7 +340,11 @@ export const login = async (req: AuthRequest, res: Response) => {
     const token = generateToken(user.id, user.email, user.role);
     res.cookie("auth_token", token, TOKEN_COOKIE_OPTIONS);
 
-    const { password: _, mustChangePassword: __, ...userWithoutPassword } = user;
+    const {
+      password: _,
+      mustChangePassword: __,
+      ...userWithoutPassword
+    } = user;
 
     res.json({ user: userWithoutPassword });
   } catch (error) {
@@ -591,11 +596,9 @@ export const resetPassword = async (req: AuthRequest, res: Response) => {
     // guarantees the FE always gets a response so the Set Password screen
     // surfaces an error instead of hanging on an unresolved fetch.
     const invalidLinkResponse = () =>
-      res
-        .status(400)
-        .json({
-          error: "This link is no longer valid. Please request a new one.",
-        });
+      res.status(400).json({
+        error: "This link is no longer valid. Please request a new one.",
+      });
 
     // Validate and consume the token before doing any expensive work — this
     // prevents CPU-burn attacks that submit many requests with invalid tokens
