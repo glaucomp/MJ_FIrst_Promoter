@@ -1013,19 +1013,6 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
     if (!caller) {
       return res.status(401).json({ error: 'Not authenticated' });
     }
-    const callerIsAdmin = caller.role === UserRole.ADMIN;
-    if (!callerIsAdmin) {
-      if (caller.userType === UserType.ACCOUNT_MANAGER) {
-        console.warn(
-          'createUserByAdmin forbidden for account manager; direct chatter invites must use POST /api/chatters.',
-        );
-        return res.status(403).json({
-          error:
-            'Account managers cannot create users here. Please use the chatter invitation flow.',
-        });
-      }
-      return res.status(403).json({ error: 'Insufficient permissions' });
-    }
 
     // Surface express-validator failures (e.g. malformed email) before any
     // DB work. The route-level validator also lower-cases the address via
@@ -1103,7 +1090,7 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
     // auto-pick (first hidden campaign with a `linkedCampaignId`, then
     // any hidden campaign) so older API callers keep working.
     let adminCampaign = null as Awaited<ReturnType<typeof prisma.campaign.findFirst>>;
-    if (callerIsAdmin && resolvedType === UserType.ACCOUNT_MANAGER) {
+    if (resolvedType === UserType.ACCOUNT_MANAGER) {
       if (campaignId) {
         adminCampaign = await prisma.campaign.findUnique({
           where: { id: campaignId },
@@ -1160,7 +1147,7 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
     // invite on every active campaign — the invite gate in
     // referral.controller.ts gates hidden campaigns on userType only, so we
     // don't need per-campaign referrals here.
-    if (callerIsAdmin && resolvedType === UserType.ACCOUNT_MANAGER) {
+    if (resolvedType === UserType.ACCOUNT_MANAGER) {
       if (adminCampaign && !adminCampaign.linkedCampaignId) {
         const publicCampaigns = await prisma.campaign.findMany({
           where: { isActive: true, visibleToPromoters: true },
