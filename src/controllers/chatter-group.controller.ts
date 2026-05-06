@@ -7,6 +7,9 @@ import { resolveAccountManagersFor } from '../services/ownership.service';
 
 const prisma = new PrismaClient();
 
+/** Upper bound for `ChatterGroup.commissionPercentage` (sale % split among chatters). */
+const MAX_CHATTER_GROUP_COMMISSION_PERCENT = 2;
+
 // Keep this in sync with SYNC_TTL_MS in `chatter.controller.ts`. We re-pull TeaseMe
 // data (voice, photo, video, social_links) when the cached copy is older than this.
 const TEASEME_SYNC_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
@@ -282,8 +285,10 @@ export const createChatterGroup = async (req: AuthRequest, res: Response) => {
     if (commissionPercentage == null || Number.isNaN(pct)) {
       return res.status(400).json({ error: 'commissionPercentage is required and must be a number' });
     }
-    if (pct < 0 || pct > 100) {
-      return res.status(400).json({ error: 'commissionPercentage must be between 0 and 100' });
+    if (pct < 0 || pct > MAX_CHATTER_GROUP_COMMISSION_PERCENT) {
+      return res.status(400).json({
+        error: `commissionPercentage must be between 0 and ${MAX_CHATTER_GROUP_COMMISSION_PERCENT}`,
+      });
     }
 
     const group = await prisma.chatterGroup.create({
@@ -445,8 +450,10 @@ export const updateChatterGroup = async (req: AuthRequest, res: Response) => {
 
     if (commissionPercentage !== undefined) {
       const pct = Number(commissionPercentage);
-      if (Number.isNaN(pct) || pct < 0 || pct > 100) {
-        return res.status(400).json({ error: 'commissionPercentage must be between 0 and 100' });
+      if (Number.isNaN(pct) || pct < 0 || pct > MAX_CHATTER_GROUP_COMMISSION_PERCENT) {
+        return res.status(400).json({
+          error: `commissionPercentage must be between 0 and ${MAX_CHATTER_GROUP_COMMISSION_PERCENT}`,
+        });
       }
       data.commissionPercentage = pct;
     }

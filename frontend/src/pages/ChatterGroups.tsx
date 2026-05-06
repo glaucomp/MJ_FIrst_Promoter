@@ -3,6 +3,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { chattersApi, chatterGroupsApi, modelsApi, type ApiUser } from '../services/api';
 import type { ChatterGroup, Chatter } from '../types';
 
+const MAX_CHATTER_GROUP_COMMISSION_PERCENT = 2;
+
 // ── Create / Edit Group Modal ───────────────────────────────────────────────
 
 interface GroupFormModalProps {
@@ -31,8 +33,8 @@ const GroupFormModal = ({ isOpen, onClose, onSaved, editing }: GroupFormModalPro
   const handleSubmit = async () => {
     if (!name.trim()) { setError('Name is required'); return; }
     const pctNum = Number.parseFloat(pct);
-    if (Number.isNaN(pctNum) || pctNum < 0 || pctNum > 100) {
-      setError('Commission percentage must be between 0 and 100');
+    if (Number.isNaN(pctNum) || pctNum < 0 || pctNum > MAX_CHATTER_GROUP_COMMISSION_PERCENT) {
+      setError(`Commission percentage must be between 0 and ${MAX_CHATTER_GROUP_COMMISSION_PERCENT}`);
       return;
     }
 
@@ -95,15 +97,16 @@ const GroupFormModal = ({ isOpen, onClose, onSaved, editing }: GroupFormModalPro
           <input
             type="number"
             min="0"
-            max="100"
+            max={MAX_CHATTER_GROUP_COMMISSION_PERCENT}
             step="0.1"
             value={pct}
             onChange={e => setPct(e.target.value)}
-            placeholder="e.g. 10"
+            placeholder="e.g. 2"
             className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[14px] py-[11px] text-[15px] text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
           />
           <p className="text-[#9e9e9e] text-[12px]">
-            This percentage of every sale is split equally among all chatters in the group.
+            This percentage of every sale is split equally among all chatters in the group. Maximum{' '}
+            {MAX_CHATTER_GROUP_COMMISSION_PERCENT}%.
           </p>
         </div>
 
