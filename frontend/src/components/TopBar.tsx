@@ -20,7 +20,7 @@ function initialsForUser(name: string, email: string): string {
 
 const roleLabel: Record<UserRole, string> = {
   admin: 'Admin',
-  team_manager: 'Team manager',
+  team_manager: 'PROMOTER +',
   account_manager: 'Account manager',
   promoter: 'Promoter',
   chatter: 'Chatter',
