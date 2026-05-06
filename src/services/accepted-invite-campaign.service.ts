@@ -29,18 +29,26 @@ export async function syncAcceptedInviteReferralToPublicProgram(
     if (camp.linkedCampaignId) {
       assignedCampaignId = camp.linkedCampaignId;
     } else {
-      const visibleCampaign = await prisma.campaign.findFirst({
+      const visibleCampaigns = await prisma.campaign.findMany({
         where: { isActive: true, visibleToPromoters: true },
         orderBy: { createdAt: "asc" },
+        take: 2,
       });
-      if (!visibleCampaign) {
+      if (visibleCampaigns.length === 0) {
         console.warn(
           "[syncAcceptedInviteReferralToPublicProgram] no visible campaign; skipping",
           { inviteReferralId },
         );
         return;
       }
-      assignedCampaignId = visibleCampaign.id;
+      if (visibleCampaigns.length > 1) {
+        console.warn(
+          "[syncAcceptedInviteReferralToPublicProgram] ambiguous visible campaigns; skipping",
+          { inviteReferralId, visibleCampaignIds: visibleCampaigns.map((campaign) => campaign.id) },
+        );
+        return;
+      }
+      assignedCampaignId = visibleCampaigns[0].id;
     }
   }
 
