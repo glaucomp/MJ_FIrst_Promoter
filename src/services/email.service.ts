@@ -1,4 +1,10 @@
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
+import * as fs from 'fs';
+import * as path from 'path';
+
+const _logoPath = path.join(__dirname, '../assets/email/mjpromoLogo.png');
+const _logoBase64 = fs.readFileSync(_logoPath).toString('base64');
+const LOGO_DATA_URL = `data:image/png;base64,${_logoBase64}`;
 
 const AWS_REGION = process.env.AWS_REGION || 'us-east-1';
 const SES_SENDER = process.env.SES_SENDER || 'noreply@yourdomain.com';
@@ -132,7 +138,7 @@ export class EmailService {
           </tr>
           <tr>
             <td align="center" style="padding:28px 40px 0 40px;">
-              <div style="display:inline-block;padding:8px 16px;border:1px solid ${BRAND_PRIMARY};border-radius:999px;color:${BRAND_PRIMARY};font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">TeaseMe HQ</div>
+              <img src="${LOGO_DATA_URL}" alt="MJ Promo" style="height:48px;display:block;margin:0 auto;" />
               <h1 style="font-size:26px;line-height:1.3;color:#ffffff;margin:20px 0 8px 0;font-weight:700;">
                 Welcome ${escapeHtml(name)}!
               </h1>
@@ -374,7 +380,7 @@ This invite link is single-use. If you weren't expecting this email, you can saf
         <table width="540" cellpadding="0" cellspacing="0" border="0" style="background:#1a1a1a;border:1px solid rgba(255,255,255,0.06);border-radius:16px;overflow:hidden;">
           <tr>
             <td align="center" style="padding:36px 32px 16px 32px;">
-              <div style="display:inline-block;padding:8px 16px;border:1px solid ${BRAND_PRIMARY};border-radius:999px;color:${BRAND_PRIMARY};font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">TeaseMe HQ</div>
+              <img src="${LOGO_DATA_URL}" alt="MJ Promo" style="height:48px;display:block;margin:0 auto;" />
             </td>
           </tr>
           <tr>
