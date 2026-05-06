@@ -165,6 +165,49 @@ export const Models = () => {
     });
   }, [allUsers, showUsersView, search]);
 
+  // Account manager /models: group the flat list under headings by userType
+  // (team manager, promoter, chatter, etc.) while preserving search + type filter.
+  const accountManagerUserSections = useMemo(() => {
+    if (!isAccountManager || !isUsersRoute) return [];
+    const typeOrder = USER_TYPE_OPTIONS.filter(
+      (o) => o.value && o.value !== "ACCOUNT_MANAGER",
+    ).map((o) => o.value);
+    const labelFor = (key: string) =>
+      USER_TYPE_OPTIONS.find((o) => o.value === key)?.label ??
+      key
+        .replace(/_/g, " ")
+        .toLowerCase()
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+
+    const buckets = new Map<string, ApiUser[]>();
+    for (const u of visibleAdminUsers) {
+      const key = (u.userType ?? "").toUpperCase() || "UNKNOWN";
+      const arr = buckets.get(key);
+      if (arr) arr.push(u);
+      else buckets.set(key, [u]);
+    }
+
+    const sections: { typeKey: string; label: string; users: ApiUser[] }[] =
+      [];
+    for (const typeKey of typeOrder) {
+      const users = buckets.get(typeKey);
+      if (users?.length) {
+        sections.push({ typeKey, label: labelFor(typeKey), users });
+        buckets.delete(typeKey);
+      }
+    }
+    for (const [typeKey, users] of buckets) {
+      if (users.length) {
+        sections.push({
+          typeKey,
+          label: typeKey === "UNKNOWN" ? "Other" : labelFor(typeKey),
+          users,
+        });
+      }
+    }
+    return sections;
+  }, [isAccountManager, isUsersRoute, visibleAdminUsers]);
+
   // Build one section per account manager, plus a "Needs assignment" bucket
   // for users that don't yet belong to any AM (or whose creator is an admin /
   // a deleted AM). Admins themselves are never shown as owners.
@@ -976,7 +1019,7 @@ export const Models = () => {
           </div>
         ) : null}
 
-        <div className="flex flex-col gap-[12px]">
+        <div className="flex flex-col gap-[20px]">
           {visibleAdminUsers.length === 0 ? (
             <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] text-center">
               <p className="text-[#9e9e9e] text-[16px]">
@@ -986,51 +1029,67 @@ export const Models = () => {
               </p>
             </div>
           ) : (
-            visibleAdminUsers.map((apiUser) => (
-              <div
-                key={apiUser.id}
-                className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[16px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)]"
-              >
-                <div className="flex items-start justify-between gap-[12px] flex-col lg:flex-row">
-                  <div className="flex flex-col gap-[8px] w-full">
-                    <p className="text-white text-[18px] font-semibold">
-                      {apiUser.firstName} {apiUser.lastName}
-                    </p>
-                    <p className="text-[#9e9e9e] text-[14px]">
-                      {apiUser.email}
-                    </p>
-                    <div className="flex items-center gap-[8px] w-full">
-                      <span
-                        className={`px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border ${apiUser.isActive
-                          ? "bg-tm-success-color12 border-[#00d948] text-[#28ff70]"
-                          : "bg-tm-danger-color12 border-[#cc0000] text-[#ff2a2a]"
-                          }`}
-                      >
-                        {apiUser.isActive ? "Active" : "Inactive"}
-                      </span>
-                      <span className="px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]">
-                        {apiUser.userType?.toLowerCase().replace("_", " ")}
-                      </span>
-                    </div>
-                  </div>
+            accountManagerUserSections.map(({ typeKey, label, users }) => (
+              <section key={typeKey} className="flex flex-col gap-[12px]">
+                <div className="flex items-baseline justify-between gap-[12px] border-b border-[rgba(255,255,255,0.08)] pb-[10px]">
+                  <h2 className="text-[16px] font-semibold text-white">
+                    {label}
+                  </h2>
+                  <span className="text-[13px] text-[#9e9e9e] tabular-nums">
+                    {users.length}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-[12px]">
+                  {users.map((apiUser) => (
+                    <div
+                      key={apiUser.id}
+                      className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[16px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)]"
+                    >
+                      <div className="flex items-start justify-between gap-[12px] flex-col lg:flex-row">
+                        <div className="flex flex-col gap-[8px] w-full">
+                          <p className="text-white text-[18px] font-semibold">
+                            {apiUser.firstName} {apiUser.lastName}
+                          </p>
+                          <p className="text-[#9e9e9e] text-[14px]">
+                            {apiUser.email}
+                          </p>
+                          <div className="flex items-center gap-[8px] w-full">
+                            <span
+                              className={`px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border ${apiUser.isActive
+                                ? "bg-tm-success-color12 border-[#00d948] text-[#28ff70]"
+                                : "bg-tm-danger-color12 border-[#cc0000] text-[#ff2a2a]"
+                                }`}
+                            >
+                              {apiUser.isActive ? "Active" : "Inactive"}
+                            </span>
+                            <span className="px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]">
+                              {apiUser.userType
+                                ?.toLowerCase()
+                                .replace("_", " ")}
+                            </span>
+                          </div>
+                        </div>
 
-                  {apiUser.stats && (
-                    <div className="flex flex-col items-start lg:items-end gap-[8px] w-full">
-                      <div className="text-left flex flex-col gap-[4px] w-full lg:text-right">
-                        <p className="text-[#9e9e9e] text-[12px] uppercase">
-                          Earnings
-                        </p>
-                        <p className="text-white text-[20px] font-bold">
-                          ${apiUser.stats.totalEarnings.toFixed(2)}
-                        </p>
-                        <p className="text-[#9e9e9e] text-[12px]">
-                          {apiUser.stats.activeReferrals} active referrals
-                        </p>
+                        {apiUser.stats && (
+                          <div className="flex flex-col items-start lg:items-end gap-[8px] w-full">
+                            <div className="text-left flex flex-col gap-[4px] w-full lg:text-right">
+                              <p className="text-[#9e9e9e] text-[12px] uppercase">
+                                Earnings
+                              </p>
+                              <p className="text-white text-[20px] font-bold">
+                                ${apiUser.stats.totalEarnings.toFixed(2)}
+                              </p>
+                              <p className="text-[#9e9e9e] text-[12px]">
+                                {apiUser.stats.activeReferrals} active referrals
+                              </p>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
-                  )}
+                  ))}
                 </div>
-              </div>
+              </section>
             ))
           )}
         </div>

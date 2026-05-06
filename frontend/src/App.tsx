@@ -2,6 +2,7 @@ import { lazy, Suspense, type ReactNode } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DashboardLayout } from './components/DashboardLayout';
+import { defaultLandingPath } from './components/navConfig';
 import type { UserRole } from './types';
 
 const Dashboard = lazy(() => import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })));
@@ -46,16 +47,10 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   }
 
   if (allowedRoles && !allowedRoles.includes(user.baseRole)) {
-    return <Navigate to={defaultLandingFor(user.baseRole)} replace />;
+    return <Navigate to={defaultLandingPath(user.baseRole)} replace />;
   }
 
   return <>{children}</>;
-};
-
-const defaultLandingFor = (role: UserRole): string => {
-  if (role === 'chatter') return '/chatter-portal';
-  if (role === 'payer') return '/reports';
-  return '/dashboard';
 };
 
 const PublicRoute = ({ children }: { children: ReactNode }) => {
@@ -66,7 +61,7 @@ const PublicRoute = ({ children }: { children: ReactNode }) => {
   }
 
   if (user) {
-    return <Navigate to={defaultLandingFor(user.baseRole)} replace />;
+    return <Navigate to={defaultLandingPath(user.baseRole)} replace />;
   }
 
   return <>{children}</>;
@@ -74,7 +69,7 @@ const PublicRoute = ({ children }: { children: ReactNode }) => {
 
 const ChatterRedirect = () => {
   const { user } = useAuth();
-  return <Navigate to={user ? defaultLandingFor(user.baseRole) : '/login'} replace />;
+  return <Navigate to={user ? defaultLandingPath(user.baseRole) : '/login'} replace />;
 };
 
 function AppRoutes() {
@@ -203,10 +198,10 @@ function AppRoutes() {
             <p className="text-white text-[32px] font-bold">404</p>
             <p className="text-[#9e9e9e] text-[16px]">Page not found</p>
             <Link
-              to="/dashboard"
+              to="/"
               className="mt-[8px] text-[#ff2a71] text-[14px] font-semibold hover:underline"
             >
-              Go to Dashboard
+              Back to app
             </Link>
           </div>
         }
