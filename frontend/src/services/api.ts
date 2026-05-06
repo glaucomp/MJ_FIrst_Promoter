@@ -232,6 +232,15 @@ export interface Referral {
     name: string;
     commissionRate: number;
   };
+  /** Present on getMyReferrals rows — who sent the invite (promoter or AM). */
+  referrer?: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string;
+    username?: string | null;
+    inviteCode?: string | null;
+  };
   referredUser?: {
     id: string;
     email: string;

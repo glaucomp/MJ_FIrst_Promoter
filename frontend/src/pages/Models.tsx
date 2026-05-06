@@ -946,7 +946,7 @@ export const Models = () => {
               onClick={() => setIsCreateUserModalOpen(true)}
               className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
             >
-              + Create User
+              + Create Chatter
             </button>
           </div>
         </div>
@@ -1532,15 +1532,14 @@ type ReferralListProps = {
 type ReferralFilter = "all" | "pending" | "active" | "expired" | "denied";
 
 const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: ReferralListProps) => {
-  const auth = useAuth() as {
-    user?: {
-      role?: string | null;
-      isAdmin?: boolean | null;
-    } | null;
-  };
+  const auth = useAuth();
+  const viewerId = auth.user?.id;
+  const canOrderLandingPage =
+    auth.user?.baseRole === "admin" ||
+    auth.user?.baseRole === "account_manager";
   const isAdmin =
     isAdminProp ??
-    (auth?.user?.isAdmin === true || auth?.user?.role === "admin");
+    (auth?.user?.baseRole === "admin");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [toast, setToast] = useState<{
     kind: "success" | "error";
@@ -1951,6 +1950,14 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
             referral.referredUser?.email ??
             referral.metadata?.inviteeEmail ??
             null;
+          const referrerLabel = referral.referrer
+            ? formatManagerName(referral.referrer)
+            : null;
+          const showReferredByLine = Boolean(
+            referrerLabel &&
+            viewerId &&
+            referral.referrer?.id !== viewerId,
+          );
           const displayName = referral.referredUser
             ? [referral.referredUser.firstName, referral.referredUser.lastName]
               .filter(Boolean)
@@ -1989,15 +1996,18 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
                 </div>
               </div>
 
-              {/* Body: name + campaign */}
-              <div className="flex flex-col min-w-0">
+              {/* Body: optional "Referred by" (AM view), campaign, invitee email */}
+              <div className="flex flex-col min-w-0 gap-[4px]">
+                {showReferredByLine && (
+                  <p className="text-[#ff4d8d] text-sm font-medium truncate">
+                    Referred by {referrerLabel}
+                  </p>
+                )}
                 <p className="text-tm-text-color09 text-sm truncate">
-                  {inviteeEmail && inviteeEmail !== displayName
-                    ? `${inviteeEmail} · ${referral.campaign.name}`
-                    : referral.campaign.name}
+                  {referral.campaign.name}
                 </p>
                 <p className="text-tm-text-color01 text-base font-medium truncate">
-                  {displayName}
+                  {referral.referredUser ? displayName : inviteeEmail ?? displayName}
                 </p>
               </div>
 
@@ -2096,6 +2106,7 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
                 state={chipState}
                 referral={referral}
                 busy={isBusy}
+                canOrderLandingPage={canOrderLandingPage}
                 isAdmin={isAdmin}
                 onDelete={handleDelete}
                 onDeny={handleDeny}
@@ -2143,6 +2154,8 @@ type CardActionsProps = {
   state: ChipState;
   referral: Referral;
   busy: boolean;
+  /** Only admins and account managers may trigger upstream LP approval. */
+  canOrderLandingPage?: boolean;
   // When true, render override Delete + Reassign affordances in every state.
   // Admins need these to reallocate or remove referrals that are past the
   // normal AM window (accepted/active/building/lp_live). Default false keeps
@@ -2262,6 +2275,7 @@ const CardActions = ({
   state,
   referral,
   busy,
+  canOrderLandingPage = false,
   isAdmin = false,
   onDelete,
   onDeny,
@@ -2348,6 +2362,17 @@ const CardActions = ({
   }
 
   if (state === "order_lp") {
+    if (!canOrderLandingPage) {
+      return (
+        <div className="flex flex-col gap-[8px]">
+          <p className="w-full rounded-[6px] border border-[rgba(255,255,255,0.12)] bg-[#1a1a1a] px-[14px] py-[10px] text-[#9e9e9e] text-[13px] font-medium text-center">
+            Your account manager will order the landing page once onboarding is
+            complete.
+          </p>
+          {adminOverride({ showReassign: true })}
+        </div>
+      );
+    }
     return (
       <div className="flex flex-col gap-[8px]">
         <GreenCta onClick={() => onOrderLandingPage(referral)} disabled={busy}>
