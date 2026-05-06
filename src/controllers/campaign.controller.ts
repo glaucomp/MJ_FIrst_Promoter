@@ -267,11 +267,24 @@ export const getCampaignById = async (req: AuthRequest, res: Response) => {
     // Check permissions
     const user = req.user!;
     if (user.role !== UserRole.ADMIN) {
-      const isParticipant = await isUserParticipantOnCampaign(
-        prisma,
-        user.id,
-        campaign.id,
+      const isDirectParticipant = campaign.referrals.some(
+        (referral) =>
+          referral.referrer?.id === user.id || referral.referredUser?.id === user.id
       );
+
+      let isParticipant = isDirectParticipant;
+      if (
+        !isParticipant &&
+        campaign.linkedCampaign &&
+        campaign.linkedCampaign.visibleToPromoters === false
+      ) {
+        isParticipant = await isUserParticipantOnCampaign(
+          prisma,
+          user.id,
+          campaign.id,
+        );
+      }
+
       if (!isParticipant) {
         return res.status(403).json({ error: 'Access denied' });
       }
