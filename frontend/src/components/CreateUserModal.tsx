@@ -33,8 +33,8 @@ const USER_TYPE_META: Record<
     description: "Can invite promoters and manage campaigns",
   },
   team_manager: {
-    label: "Team Manager",
-    description: "Can manage a team and switch to promoter view",
+    label: "PROMOTER +",
+    description: "Can invite and manage a team of promoters",
   },
   promoter: {
     label: "Promoter",

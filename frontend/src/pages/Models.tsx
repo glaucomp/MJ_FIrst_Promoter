@@ -34,7 +34,7 @@ const formatManagerName = (m: {
 const USER_TYPE_OPTIONS: { value: string; label: string }[] = [
   { value: "", label: "All types" },
   { value: "ACCOUNT_MANAGER", label: "Account manager" },
-  { value: "TEAM_MANAGER", label: "Team manager" },
+  { value: "TEAM_MANAGER", label: "PROMOTER +" },
   { value: "PROMOTER", label: "Promoter" },
   { value: "CHATTER", label: "Chatter" },
   { value: "PAYER", label: "Payer" },
@@ -115,7 +115,7 @@ export const Models = () => {
         setAllUsers(users.filter((u) => u.userType?.toLowerCase() !== "admin"));
       } else if (
         user?.baseRole === "account_manager" ||
-        (user?.baseRole === "team_manager" && user?.role === "team_manager") ||
+        user?.baseRole === "team_manager" ||
         user?.baseRole === "promoter"
       ) {
         // Promoters see the same My Promoters list as account managers —
@@ -1149,39 +1149,8 @@ whitespace-nowrap"
     );
   }
 
-  // ── TEAM MANAGER → acting as PROMOTER ─────────────────────────────────────
-  if (user?.baseRole === "team_manager" && user?.role === "promoter") {
-    return (
-      <div className="flex flex-col gap-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">
-            Referral Link
-          </h1>
-        </div>
-
-        <p className="text-[14px] text-[#9e9e9e]">
-          Generate a referral link to invite new promoters to your campaign.
-        </p>
-
-        <button
-          onClick={() => handleOpenInviteModal("referral")}
-          className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[14px] text-white text-[16px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all w-full"
-        >
-          + Create Referral Link
-        </button>
-
-        <InviteModal
-          isOpen={isInviteModalOpen}
-          onClose={handleCloseModal}
-          type="referral"
-          userRole="promoter"
-        />
-      </div>
-    );
-  }
-
-  // ── TEAM MANAGER → acting as TEAM MANAGER ────────────────────────────────
-  if (user?.baseRole === "team_manager" && user?.role === "team_manager") {
+  // ── TEAM MANAGER (PROMOTER +) ─────────────────────────────────────────────
+  if (user?.baseRole === "team_manager") {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
@@ -2135,6 +2104,7 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
                 referral={referral}
                 busy={isBusy}
                 canOrderLandingPage={canOrderLandingPage}
+                canAssignChatters={canOrderLandingPage}
                 isAdmin={isAdmin}
                 onDelete={handleDelete}
                 onDeny={handleDeny}
@@ -2184,6 +2154,8 @@ type CardActionsProps = {
   busy: boolean;
   /** Only admins and account managers may trigger upstream LP approval. */
   canOrderLandingPage?: boolean;
+  /** Only admins and account managers may assign chatter groups. */
+  canAssignChatters?: boolean;
   // When true, render override Delete + Reassign affordances in every state.
   // Admins need these to reallocate or remove referrals that are past the
   // normal AM window (accepted/active/building/lp_live). Default false keeps
@@ -2304,6 +2276,7 @@ const CardActions = ({
   referral,
   busy,
   canOrderLandingPage = false,
+  canAssignChatters = false,
   isAdmin = false,
   onDelete,
   onDeny,
@@ -2465,9 +2438,15 @@ const CardActions = ({
               : "Send Welcome Email"}
         </SecondaryButton>
       )}
-      <PinkCta onClick={() => onAssignChatters(referral)} disabled={busy}>
-        {busy ? "Assigning…" : "Assign Chatters"}
-      </PinkCta>
+      {canAssignChatters ? (
+        <PinkCta onClick={() => onAssignChatters(referral)} disabled={busy}>
+          {busy ? "Assigning…" : "Assign Chatters"}
+        </PinkCta>
+      ) : (
+        <p className="w-full rounded-[6px] border border-[rgba(255,255,255,0.12)] bg-[#1a1a1a] px-[14px] py-[10px] text-[#9e9e9e] text-[13px] font-medium text-center">
+          Your account manager will assign chatters.
+        </p>
+      )}
       {adminOverride({ showReassign: true })}
     </div>
   );

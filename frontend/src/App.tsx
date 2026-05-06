@@ -12,6 +12,7 @@ const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m
 const Campaigns = lazy(() => import('./pages/Campaigns').then((m) => ({ default: m.Campaigns })));
 const Payouts = lazy(() => import('./pages/Payouts').then((m) => ({ default: m.Payouts })));
 const ChatterGroups = lazy(() => import('./pages/ChatterGroups').then((m) => ({ default: m.ChatterGroups })));
+const Network = lazy(() => import('./pages/Network').then((m) => ({ default: m.Network })));
 const ChatterDashboard = lazy(() =>
   import('./pages/ChatterDashboard').then((m) => ({ default: m.ChatterDashboard })),
 );
@@ -147,6 +148,16 @@ function AppRoutes() {
           <ProtectedRoute allowedRoles={['account_manager']}>
             <DashboardLayout>
               <ChatterGroups />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/network"
+        element={
+          <ProtectedRoute allowedRoles={['account_manager']}>
+            <DashboardLayout>
+              <Network />
             </DashboardLayout>
           </ProtectedRoute>
         }

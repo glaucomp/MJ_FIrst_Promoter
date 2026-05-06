@@ -50,7 +50,7 @@ const mapApiUserToUser = (apiUser: any): User => {
     username: apiUser.username ?? null,
     role: role,
     baseRole: role,
-    canSwitchToPromoter: role === 'team_manager',
+    canSwitchToPromoter: false,
     wiseEmail: apiUser.wiseEmail ?? null,
     wiseRecipientId: apiUser.wiseRecipientId ?? null,
     wiseRecipientType: apiUser.wiseRecipientType ?? null,
@@ -125,12 +125,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser({ ...user, ...patch });
   };
 
-  const switchRole = (role: UserRole) => {
-    if (user && user.canSwitchToPromoter) {
-      if (role === 'team_manager' || role === 'promoter') {
-        setUser({ ...user, role });
-      }
-    }
+  const switchRole = (_role: UserRole) => {
+    // Role switching is disabled; PROMOTER + users are always in their base role.
   };
 
   return (

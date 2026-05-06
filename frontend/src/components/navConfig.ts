@@ -8,6 +8,7 @@ import {
   IconReport,
   IconPayout,
   IconSettings,
+  IconNetwork,
 } from './NavIcons';
 
 export type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
@@ -27,6 +28,7 @@ export const navItems: NavItem[] = [
   // Team managers / promoters see the same page as "Referrals" (their own list).
   { id: 'users', Icon: IconModels, label: 'Users', path: '/models', allowedRoles: ['admin', 'account_manager'] },
   { id: 'referrals', Icon: IconModels, label: 'Referrals', path: '/referrals', allowedRoles: ['team_manager', 'account_manager', 'promoter'] },
+  { id: 'network', Icon: IconNetwork, label: 'Network', path: '/network', allowedRoles: ['account_manager'] },
   { id: 'chatter-portal', Icon: IconPersona, label: 'Persona', path: '/chatter-portal', allowedRoles: ['chatter'] },
   { id: 'chatter-groups', Icon: IconChatterGroups, label: 'Chatter Groups', path: '/chatter-groups', allowedRoles: ['account_manager'] },
   { id: 'campaigns', Icon: IconCampaign, label: 'Campaigns', path: '/campaigns', adminOnly: true },

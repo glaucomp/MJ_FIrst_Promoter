@@ -4,6 +4,62 @@ import { ApiKeyRequest } from '../middleware/apiKey.middleware';
 
 const prisma = new PrismaClient();
 
+/**
+ * When a seller has no direct `accountManagerId` assignment (common when they
+ * joined via the referral invite flow rather than the admin form), walk up the
+ * referral metadata chain to find the account manager email and resolve them.
+ *
+ * Resolution order:
+ *   1. The invite referral that brought the **seller** in (inviterReferral)
+ *      carries `accountManagerEmail` going forward after our recent fix.
+ *   2. The invite referral that brought the **direct upline** in — covers
+ *      existing rows where Leonida's invite still has null accountManagerEmail
+ *      but Glauco's invite (Leo → Glauco) correctly has Leo's email.
+ */
+async function resolveAmFromReferralChain(args: {
+  inviterReferralMetadata: unknown;
+  publicUplineUserId: string | null;
+}): Promise<string | null> {
+  const { inviterReferralMetadata, publicUplineUserId } = args;
+
+  const emailFromMeta = (raw: unknown): string | null => {
+    if (!raw || typeof raw !== 'object') return null;
+    const v = (raw as Record<string, unknown>).accountManagerEmail;
+    return typeof v === 'string' && v.trim() ? v.trim().toLowerCase() : null;
+  };
+
+  const findUserByEmail = async (email: string) => {
+    const u = await prisma.user.findFirst({
+      where: { email: { equals: email, mode: 'insensitive' } },
+      select: { id: true },
+    });
+    return u?.id ?? null;
+  };
+
+  // 1) Seller's own invite metadata
+  const sellerAmEmail = emailFromMeta(inviterReferralMetadata);
+  if (sellerAmEmail) {
+    const id = await findUserByEmail(sellerAmEmail);
+    if (id) return id;
+  }
+
+  // 2) Upline's own invite metadata (covers legacy rows where seller metadata is null)
+  if (publicUplineUserId) {
+    const uplineInvite = await prisma.referral.findFirst({
+      where: { referredUserId: publicUplineUserId, status: 'ACTIVE' },
+      select: { metadata: true },
+      orderBy: { acceptedAt: 'desc' },
+    });
+    const uplineAmEmail = emailFromMeta(uplineInvite?.metadata);
+    if (uplineAmEmail) {
+      const id = await findUserByEmail(uplineAmEmail);
+      if (id) return id;
+    }
+  }
+
+  return null;
+}
+
 const hiddenLinkedCampaignClause = (publicSaleCampaignId: string) => ({
   visibleToPromoters: false,
   isActive: true,
@@ -338,7 +394,7 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
         status: 'ACTIVE',
       },
       orderBy: { acceptedAt: 'desc' },
-      select: { id: true, referrerId: true },
+      select: { id: true, referrerId: true, metadata: true },
     });
     const inviterReferrerId = inviterOnCampaign?.referrerId ?? null;
 
@@ -347,6 +403,16 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
     // - AM → influencer: usually inviter = AM (parent often null) → AM path.
     // - Influencer → friend: parent or inviter = influencer → public referral %.
     const publicUplineUserId = parentUplineUserId ?? inviterReferrerId ?? null;
+
+    // When the seller has no DB-level AM assignment (joined via referral invite
+    // flow rather than admin form), resolve the AM from the referral metadata
+    // chain so they still receive the campaign's AM commission %.
+    const effectiveAmId =
+      sellingPromoterAmId ??
+      (await resolveAmFromReferralChain({
+        inviterReferralMetadata: inviterOnCampaign?.metadata ?? null,
+        publicUplineUserId,
+      }));
 
     // Hidden "Account manager campaign" slice: only users with an ACTIVE
     // invitee row on a hidden campaign linked to this public sale campaign.
@@ -428,6 +494,10 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
       ? membershipSubjectUserId
       : null;
 
+    // Only suppress the public L2 slice when the *DB-assigned* AM is the
+    // direct upline (Leo → Glauco directly). Don't skip it based on the
+    // resolved chain AM, because that AM (Leo) may be several hops away and
+    // the upline (Glauco) should still get their public referral %.
     const skipPublicReferralSliceToAssignedAm =
       !!publicUplineUserId &&
       !!sellingPromoterAmId &&
@@ -462,18 +532,21 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
     }
 
     // (3) AM-not-direct payout — recurring % on public campaign (see C above).
+    // Uses `effectiveAmId` so promoters who joined via the referral invite flow
+    // (no DB-level accountManagerId) still generate an AM commission, resolved
+    // from the referral metadata chain (seller's invite → upline's invite).
     let amIndirectAmount = 0;
     let amIndirectRate = 0;
     let amIndirectUserId: string | null = null;
     let amIndirectReferralId: string | null = null;
     if (
       !amDirectPaid &&
-      sellingPromoterAmId &&
+      effectiveAmId &&
       (campaign.recurringRate ?? 0) > 0
     ) {
       amIndirectRate = campaign.recurringRate!;
       amIndirectAmount = (revenue * amIndirectRate) / 100;
-      amIndirectUserId = sellingPromoterAmId;
+      amIndirectUserId = effectiveAmId;
       // Best-effort: pin the AM commission to the closest known referral row
       // (the direct upline's referral if it exists, otherwise the sale row).
       amIndirectReferralId = parentRef?.id ?? referral.id;
@@ -836,11 +909,21 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
         status: 'ACTIVE',
       },
       orderBy: { acceptedAt: 'desc' },
-      select: { id: true, referrerId: true },
+      select: { id: true, referrerId: true, metadata: true },
     });
     const refundInviterReferrerId = inviterOnCampaignRefund?.referrerId ?? null;
     const refundPublicUplineUserId =
       refundParentUplineUserId ?? refundInviterReferrerId ?? null;
+
+    // Mirror the sale-path AM resolution: walk the referral chain when the
+    // seller has no DB-level AM assignment so the refund commission correctly
+    // reverses whatever the sale wrote.
+    const effectiveRefundAmId =
+      refundAmId ??
+      (await resolveAmFromReferralChain({
+        inviterReferralMetadata: inviterOnCampaignRefund?.metadata ?? null,
+        publicUplineUserId: refundPublicUplineUserId,
+      }));
 
     const amMembershipReferralRefund = await resolveAmMembershipReferralForSale({
       publicUplineUserId: refundPublicUplineUserId,
@@ -896,7 +979,7 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
     const refundSkipPublicReferralSliceToAssignedAm =
       !!refundPublicUplineUserId &&
       !!refundAmId &&
-      refundPublicUplineUserId === refundAmId;
+      refundPublicUplineUserId === refundAmId; // intentionally uses raw DB-assigned AM, not effective
 
     const level2RefundAmount =
       !amDirectRefundPaid &&
@@ -931,12 +1014,12 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
     let amIndirectRefundReferralId: string | null = null;
     if (
       !amDirectRefundPaid &&
-      refundAmId &&
+      effectiveRefundAmId &&
       (campaign.recurringRate ?? 0) > 0
     ) {
       amIndirectRefundRate = campaign.recurringRate!;
       amIndirectRefundAmount = -(refundRevenue * amIndirectRefundRate) / 100;
-      amIndirectRefundUserId = refundAmId;
+      amIndirectRefundUserId = effectiveRefundAmId;
       amIndirectRefundReferralId = refundParentRef?.id ?? referral.id;
     }
 
