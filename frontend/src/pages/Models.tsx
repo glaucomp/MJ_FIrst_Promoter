@@ -2275,7 +2275,7 @@ const CardActions = ({
   state,
   referral,
   busy,
-  canOrderLandingPage = true,
+  canOrderLandingPage = false,
   isAdmin = false,
   onDelete,
   onDeny,
