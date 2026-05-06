@@ -1,0 +1,164 @@
+import type { PrismaClient } from "@prisma/client";
+
+/**
+ * True if the user has an ACTIVE referral on this campaign, or is the invitee
+ * on a hidden AM membership campaign whose `linkedCampaignId` points here.
+ * Promoters invited under a hidden program only had a row on that program
+ * until we also create their public "customer tracking" referral — this covers
+ * the gap so invite / permissions logic still works.
+ */
+export async function isUserParticipantOnCampaign(
+  prisma: PrismaClient,
+  userId: string,
+  campaignId: string,
+): Promise<boolean> {
+  const direct = await prisma.referral.findFirst({
+    where: {
+      status: "ACTIVE",
+      campaignId,
+      OR: [{ referrerId: userId }, { referredUserId: userId }],
+    },
+    select: { id: true },
+  });
+  if (direct) return true;
+
+  const viaHiddenLink = await prisma.referral.findFirst({
+    where: {
+      status: "ACTIVE",
+      referredUserId: userId,
+      campaign: {
+        isActive: true,
+        visibleToPromoters: false,
+        linkedCampaignId: campaignId,
+      },
+    },
+    select: { id: true },
+  });
+  return !!viaHiddenLink;
+}
+
+/**
+ * The invitee's membership row for building level-2 invites: either on the
+ * public campaign or on a hidden campaign linked to it.
+ */
+export async function findMembershipReferralForPublicCampaign(
+  prisma: PrismaClient,
+  userId: string,
+  publicCampaignId: string,
+) {
+  return prisma.referral.findFirst({
+    where: {
+      status: "ACTIVE",
+      referredUserId: userId,
+      OR: [
+        { campaignId: publicCampaignId },
+        {
+          campaign: {
+            visibleToPromoters: false,
+            linkedCampaignId: publicCampaignId,
+          },
+        },
+      ],
+    },
+    orderBy: { acceptedAt: "desc" },
+  });
+}
+
+const defaultSanitizeLocalPart = (raw: string): string => {
+  const cleaned = raw
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, "")
+    .replace(/[._-]{2,}/g, "-")
+    .replace(/^[._-]+|[._-]+$/g, "");
+  return cleaned || "user";
+};
+
+/**
+ * Ensures a second ACTIVE referral on the *public* program (`referredUserId`
+ * null) so sales/attribution and `isParticipant` on the linked public campaign
+ * keep working while the original AM invite row can stay on the hidden
+ * membership campaign.
+ */
+export async function ensureCustomerTrackingReferralForPromotedUser(
+  prisma: PrismaClient,
+  args: {
+    inviteReferralId: string;
+    promotedUserId: string;
+    promotedEmail: string;
+  },
+): Promise<void> {
+  const { inviteReferralId, promotedUserId, promotedEmail } = args;
+  const sanitizeLocalPart = defaultSanitizeLocalPart;
+
+  const referral = await prisma.referral.findUnique({
+    where: { id: inviteReferralId },
+    include: { campaign: true },
+  });
+  if (!referral || referral.referredUserId !== promotedUserId) return;
+  if (referral.status !== "ACTIVE") return;
+
+  let assignedCampaignId = referral.campaignId;
+  const camp = referral.campaign;
+  if (!camp.visibleToPromoters) {
+    if (camp.linkedCampaignId) {
+      assignedCampaignId = camp.linkedCampaignId;
+    } else {
+      const visibleCampaign = await prisma.campaign.findFirst({
+        where: { isActive: true, visibleToPromoters: true },
+        orderBy: { createdAt: "asc" },
+      });
+      if (!visibleCampaign) {
+        console.warn(
+          "[ensureCustomerTrackingReferral] no visible campaign; skipping",
+          { inviteReferralId },
+        );
+        return;
+      }
+      assignedCampaignId = visibleCampaign.id;
+    }
+  }
+
+  const existing = await prisma.referral.findFirst({
+    where: {
+      referrerId: promotedUserId,
+      referredUserId: null,
+      status: "ACTIVE",
+      campaignId: assignedCampaignId,
+    },
+    select: { id: true },
+  });
+  if (existing) return;
+
+  const referrerTracking = await prisma.referral.findFirst({
+    where: {
+      referrerId: referral.referrerId,
+      referredUserId: null,
+      status: "ACTIVE",
+      campaignId: assignedCampaignId,
+    },
+    select: { id: true },
+  });
+
+  const { nanoid } = await import("nanoid");
+  const localPart = promotedEmail.split("@")[0] ?? "user";
+  const local = sanitizeLocalPart(localPart) || "user";
+  const customerTrackingCode = `${local}_${nanoid(8)}`;
+
+  await prisma.referral.create({
+    data: {
+      inviteCode: customerTrackingCode,
+      campaignId: assignedCampaignId,
+      referrerId: promotedUserId,
+      referredUserId: null,
+      parentReferralId: referrerTracking?.id ?? null,
+      status: "ACTIVE",
+      level: referral.level + 1,
+      acceptedAt: new Date(),
+    },
+  });
+
+  console.info("[ensureCustomerTrackingReferral] created", {
+    userId: promotedUserId,
+    campaignId: assignedCampaignId,
+  });
+}

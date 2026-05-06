@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { PrismaClient, UserRole, UserType } from '@prisma/client';
 import { validationResult } from 'express-validator';
 import { AuthRequest } from '../middleware/auth.middleware';
+import { isUserParticipantOnCampaign } from '../services/referral-membership.service';
 
 const prisma = new PrismaClient();
 
@@ -266,9 +267,10 @@ export const getCampaignById = async (req: AuthRequest, res: Response) => {
     // Check permissions
     const user = req.user!;
     if (user.role !== UserRole.ADMIN) {
-      // Promoter must be part of the campaign
-      const isParticipant = campaign.referrals.some(
-        r => r.referrerId === user.id || r.referredUserId === user.id
+      const isParticipant = await isUserParticipantOnCampaign(
+        prisma,
+        user.id,
+        campaign.id,
       );
       if (!isParticipant) {
         return res.status(403).json({ error: 'Access denied' });
