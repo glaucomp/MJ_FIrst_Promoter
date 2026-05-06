@@ -19,7 +19,7 @@ interface CreateUserModalProps {
   onCreated: (user: ApiUser) => void;
   /**
    * Which user types the current caller is allowed to create. Defaults to the
-   * admin set. Account managers should pass ["promoter", "chatter"].
+   * admin set. Account managers should pass ["chatter"] only.
    */
   allowedTypes?: UserType[];
 }
@@ -70,6 +70,11 @@ export const CreateUserModal = ({
         : DEFAULT_ALLOWED,
     [allowedTypes],
   );
+
+  const modalTitle =
+    types.length === 1 && types[0] === "chatter"
+      ? "Create New Chatter"
+      : "Create New User";
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -209,7 +214,7 @@ export const CreateUserModal = ({
           {/* Header */}
           <div className="flex items-center justify-between">
             <h2 className="text-[20px] leading-[1.4] font-bold text-white">
-              Create New User
+              {modalTitle}
             </h2>
             <button
               onClick={handleClose}

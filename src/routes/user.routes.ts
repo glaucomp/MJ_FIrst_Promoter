@@ -32,8 +32,8 @@ router.post(
   userController.createAccountManager
 );
 
-// Create a non-admin user. Admins can create AMs/TMs/promoters; account
-// managers can create promoters only. Controller enforces the role rules.
+// Create a non-admin user (admin only). Account managers must use the chatter
+// invitation flow (POST /api/chatters) instead.
 //
 // Normalize the email here so the row gets stored in the same canonical form
 // (lower-cased, dots preserved) that `/login`, `/forgot-password`, etc use
@@ -42,6 +42,7 @@ router.post(
 router.post(
   '/create',
   authenticate,
+  authorize(UserRole.ADMIN),
   [body('email').isEmail().normalizeEmail(EMAIL_NORMALIZE_OPTIONS)],
   userController.createUserByAdmin
 );

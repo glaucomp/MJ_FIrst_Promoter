@@ -17,6 +17,7 @@ import {
   validatePasswordResetToken,
 } from "../services/password-reset.service";
 import { resolveOwnership } from "../services/pre-user-promote.service";
+import { syncAcceptedInviteReferralToPublicProgram } from "../services/accepted-invite-campaign.service";
 import { getUserTypeInfo } from "../services/user.service";
 import { buildSetPasswordUrl } from "../utils/frontend-url";
 
@@ -165,83 +166,17 @@ export const register = async (req: AuthRequest, res: Response) => {
         },
       });
 
-      // AUTO-CREATE: Customer tracking referral for the new promoter
-      // This allows them to track their own customer sales
+      // Evolve the invite row onto the linked public program in place (AM
+      // hidden → public). Do not insert a second Referral for "customer
+      // tracking" — that duplicated the promoter on My Promoters.
       try {
-        // Find the referrer's customer tracking referral (to link as parent)
-        const referrerTracking = await prisma.referral.findFirst({
-          where: {
-            referrerId: referral.referrerId,
-            referredUserId: null, // Customer tracking referral
-            status: "ACTIVE",
-          },
+        await syncAcceptedInviteReferralToPublicProgram(prisma, {
+          inviteReferralId: referral.id,
+          promotedUserId: user.id,
         });
-
-        // Determine the appropriate campaign for the new promoter
-        // Regular promoters (level 2+) should only get campaigns visible to promoters
-        // They should NOT inherit hidden campaigns like "Account Manager"
-        let assignedCampaignId = referral.campaignId;
-
-        // If the parent campaign is hidden from promoters, use the linked campaign
-        if (!referral.campaign.visibleToPromoters) {
-          // Check if there's a linked campaign configured
-          if (referral.campaign.linkedCampaignId) {
-            assignedCampaignId = referral.campaign.linkedCampaignId;
-            const linkedCampaign = await prisma.campaign.findUnique({
-              where: { id: referral.campaign.linkedCampaignId },
-              select: { name: true },
-            });
-            console.log(
-              `✅ Assigning new promoter ${user.email} to linked campaign: ${linkedCampaign?.name}`,
-            );
-          } else {
-            // Fallback: find any visible campaign
-            const visibleCampaign = await prisma.campaign.findFirst({
-              where: {
-                isActive: true,
-                visibleToPromoters: true,
-              },
-              orderBy: { createdAt: "asc" },
-            });
-
-            if (visibleCampaign) {
-              assignedCampaignId = visibleCampaign.id;
-              console.log(
-                `⚠️ No linked campaign configured. Assigning new promoter ${user.email} to first visible campaign: ${visibleCampaign.name}`,
-              );
-            } else {
-              console.warn(
-                `❌ No visible campaigns found for new promoter ${user.email}`,
-              );
-              return; // Skip customer tracking creation if no visible campaign exists
-            }
-          }
-        }
-
-        // Generate a unique invite code for customer tracking
-        const { nanoid } = await import("nanoid");
-        const customerTrackingCode = `${user.email.split("@")[0]}_${nanoid(8)}`;
-
-        // Create customer tracking referral for the new user with the appropriate campaign
-        await prisma.referral.create({
-          data: {
-            inviteCode: customerTrackingCode,
-            campaignId: assignedCampaignId,
-            referrerId: user.id,
-            referredUserId: null, // NULL means this is for tracking customers
-            parentReferralId: referrerTracking?.id || null, // Link to referrer's tracking
-            status: "ACTIVE",
-            level: referral.level + 1,
-            acceptedAt: new Date(),
-          },
-        });
-
-        console.log(
-          `✅ Customer tracking referral created for ${user.email} (invite code: ${customerTrackingCode})`,
-        );
       } catch (error) {
-        console.error("❌ Failed to create customer tracking referral:", error);
-        // Don't fail the registration if customer tracking creation fails
+        console.error("❌ Failed to sync invite to public program:", error);
+        // Don't fail registration
       }
     }
 
@@ -282,82 +217,14 @@ export const register = async (req: AuthRequest, res: Response) => {
               `✅ Referral created: ${user.email} referred by ${referrer.username || referrer.email}`,
             );
 
-            // AUTO-CREATE: Customer tracking referral for the new user
             try {
-              // Find the referrer's customer tracking referral
-              const referrerTracking = await prisma.referral.findFirst({
-                where: {
-                  referrerId: referrer.id,
-                  referredUserId: null,
-                  status: "ACTIVE",
-                },
+              await syncAcceptedInviteReferralToPublicProgram(prisma, {
+                inviteReferralId: newReferral.id,
+                promotedUserId: user.id,
               });
-
-              // Ensure the campaign is suitable for regular promoters
-              // If the found campaign is hidden, use the linked campaign
-              let assignedCampaignId = campaign.id;
-              if (!campaign.visibleToPromoters) {
-                // Check if there's a linked campaign configured
-                const fullCampaign = await prisma.campaign.findUnique({
-                  where: { id: campaign.id },
-                  select: { linkedCampaignId: true },
-                });
-
-                if (fullCampaign?.linkedCampaignId) {
-                  assignedCampaignId = fullCampaign.linkedCampaignId;
-                  const linkedCampaign = await prisma.campaign.findUnique({
-                    where: { id: fullCampaign.linkedCampaignId },
-                    select: { name: true },
-                  });
-                  console.log(
-                    `✅ Assigning new promoter ${user.email} to linked campaign: ${linkedCampaign?.name}`,
-                  );
-                } else {
-                  // Fallback: find any visible campaign
-                  const visibleCampaign = await prisma.campaign.findFirst({
-                    where: {
-                      isActive: true,
-                      visibleToPromoters: true,
-                    },
-                    orderBy: { createdAt: "asc" },
-                  });
-
-                  if (visibleCampaign) {
-                    assignedCampaignId = visibleCampaign.id;
-                    console.log(
-                      `⚠️ No linked campaign configured. Assigning new promoter ${user.email} to first visible campaign: ${visibleCampaign.name}`,
-                    );
-                  } else {
-                    console.warn(
-                      `❌ No visible campaigns found for new promoter ${user.email}`,
-                    );
-                    return; // Skip if no visible campaign exists
-                  }
-                }
-              }
-
-              const { nanoid } = await import("nanoid");
-              const customerTrackingCode = `${user.email.split("@")[0]}_${nanoid(8)}`;
-
-              await prisma.referral.create({
-                data: {
-                  inviteCode: customerTrackingCode,
-                  campaignId: assignedCampaignId,
-                  referrerId: user.id,
-                  referredUserId: null,
-                  parentReferralId: referrerTracking?.id || null,
-                  status: "ACTIVE",
-                  level: newReferral.level + 1,
-                  acceptedAt: new Date(),
-                },
-              });
-
-              console.log(
-                `✅ Customer tracking referral created for ${user.email}`,
-              );
             } catch (error) {
               console.error(
-                "❌ Failed to create customer tracking referral:",
+                "❌ Failed to sync refCode referral to public program:",
                 error,
               );
             }
