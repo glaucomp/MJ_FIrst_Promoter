@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { modelsApi } from '../services/api';
 import type { Referral, ReferralCommission } from '../services/api';
@@ -105,7 +105,7 @@ const PersonRow = ({
   statusColor?: string;
   isT2?: boolean;
   isLastT2?: boolean;
-  expandButton?: React.ReactNode;
+  expandButton?: ReactNode;
 }) => (
   <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
     {/* tree connector lines for T2 */}
