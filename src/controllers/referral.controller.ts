@@ -276,6 +276,36 @@ const readReferralMetadata = (raw: Prisma.JsonValue | null | undefined): Referra
   return raw as ReferralMetadata;
 };
 
+const normalizeEmail = (value: string | null | undefined) =>
+  (value ?? "").trim().toLowerCase();
+
+/** True when this user is the assigned AM recorded on the referral metadata. */
+const assignedAccountManagerMatchesUser = (
+  metadata: Prisma.JsonValue | null | undefined,
+  userEmail: string,
+): boolean => {
+  const am = normalizeEmail(readReferralMetadata(metadata).accountManagerEmail ?? null);
+  const me = normalizeEmail(userEmail);
+  return Boolean(am && me && am === me);
+};
+
+/**
+ * Inviter, admin, or the referral's assigned account manager (metadata
+ * `accountManagerEmail`). Used anywhere a promoter-owned invite should still
+ * be visible/actionable for the AM who owns that promoter line.
+ */
+const canAccessReferralLifecycle = (
+  user: NonNullable<AuthRequest["user"]>,
+  referral: { referrerId: string; metadata?: Prisma.JsonValue | null },
+): boolean => {
+  if (user.role === UserRole.ADMIN) return true;
+  if (referral.referrerId === user.id) return true;
+  return (
+    user.userType === UserType.ACCOUNT_MANAGER &&
+    assignedAccountManagerMatchesUser(referral.metadata, user.email)
+  );
+};
+
 const computeIsExpired = (
   status: string,
   createdAt: Date,
@@ -539,8 +569,8 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
       inviter.role === UserRole.ADMIN ||
       inviter.userType === UserType.ACCOUNT_MANAGER;
     const accountManagerEmail: string | null = inviterIsAmOrAdmin
-      ? inviter.email
-      : inviter.accountManager?.email ?? null;
+      ? normalizeEmail(inviter.email) || null
+      : normalizeEmail(inviter.accountManager?.email ?? null) || null;
 
     const now = new Date();
     const expiresAt = new Date(now.getTime() + REFERRAL_INVITE_TTL_MS);
@@ -702,10 +732,8 @@ export const resendReferralInvite = async (
       return res.status(404).json({ error: "Referral not found" });
     }
 
-    // Only the original inviter or an admin can resend. AMs can only resend
-    // invites they themselves sent; we intentionally don't let arbitrary AMs
-    // re-mail strangers on behalf of their promoters.
-    if (user.role !== UserRole.ADMIN && referral.referrerId !== user.id) {
+    // Inviter, admin, or the promoter line's assigned AM (metadata) may resend.
+    if (!canAccessReferralLifecycle(user, referral)) {
       return res.status(403).json({ error: "Access denied" });
     }
 
@@ -848,6 +876,7 @@ export const deleteReferralInvite = async (
         referrerId: true,
         referredUserId: true,
         status: true,
+        metadata: true,
         _count: { select: { childReferrals: true } },
       },
     });
@@ -858,8 +887,8 @@ export const deleteReferralInvite = async (
 
     const isAdminCaller = user.role === UserRole.ADMIN;
 
-    // Only the original inviter or an admin can delete. Same rule as resend.
-    if (!isAdminCaller && referral.referrerId !== user.id) {
+    // Inviter, admin, or assigned account manager (same boundary as resend).
+    if (!isAdminCaller && !canAccessReferralLifecycle(user, referral)) {
       return res.status(403).json({ error: "Access denied" });
     }
 
@@ -936,8 +965,9 @@ export const deleteReferralInvite = async (
 // non-2xx so the UI can toast without losing local state.
 
 // Shared lookup that loads a referral + its preUser + permission-checks the
-// caller. Only the original inviter (referrer) or an admin can act on these
-// endpoints, matching the rule used by resend/delete.
+// caller. Inviter, admin, or assigned account manager (metadata) may act —
+// aligned with getMyReferrals / resend / delete so AMs can approve LPs for
+// their promoters' invites.
 const loadReferralForAction = async (
   id: string,
   user: NonNullable<AuthRequest["user"]>,
@@ -973,7 +1003,7 @@ const loadReferralForAction = async (
     },
   });
   if (!referral) return { error: { code: 404, message: "Referral not found" } };
-  if (user.role !== UserRole.ADMIN && referral.referrerId !== user.id) {
+  if (!canAccessReferralLifecycle(user, referral)) {
     return { error: { code: 403, message: "Access denied" } };
   }
   return { referral };
@@ -1138,7 +1168,7 @@ export const reassignReferralInvite = async (
     const metadata = readReferralMetadata(referral.metadata);
     const nextMetadata = {
       ...metadata,
-      accountManagerEmail: newReferrer.email,
+      accountManagerEmail: normalizeEmail(newReferrer.email) || newReferrer.email,
     } satisfies Prisma.InputJsonValue;
 
     const updated = await prisma.referral.update({
@@ -1601,8 +1631,29 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
       select: { username: true, inviteCode: true },
     });
 
+    const isAccountManager = user.userType === UserType.ACCOUNT_MANAGER;
+
+    let referralScopeIds: string[] | null = null;
+    if (isAccountManager) {
+      const idRows = await prisma.$queryRaw<Array<{ id: string }>>(
+        Prisma.sql`
+          SELECT DISTINCT r.id
+          FROM referrals r
+          WHERE r."referrerId" = ${user.id}
+             OR (
+               r.metadata IS NOT NULL
+               AND LOWER(TRIM(r.metadata::jsonb->>'accountManagerEmail')) = LOWER(TRIM(${user.email}))
+             )
+        `,
+      );
+      referralScopeIds = idRows.map((r) => r.id);
+    }
+
     const allReferrals = await prisma.referral.findMany({
-      where: { referrerId: user.id },
+      where:
+        referralScopeIds === null
+          ? { referrerId: user.id }
+          : { id: { in: referralScopeIds } },
       include: {
         campaign: {
           select: {
@@ -1611,6 +1662,16 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
             websiteUrl: true,
             defaultReferralUrl: true,
             commissionRate: true,
+          },
+        },
+        referrer: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            username: true,
+            inviteCode: true,
           },
         },
         preUser: {
@@ -1739,6 +1800,13 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
     const hydratedReferrals = referrals.map((ref) => {
       const metadata = readReferralMetadata(ref.metadata);
       const isExpired = computeIsExpired(ref.status, ref.createdAt, metadata);
+      const refCodeForInvite =
+        ref.referrerId === user.id
+          ? callerRefCode
+          : ref.referrer?.username ||
+            ref.referrer?.inviteCode ||
+            ref.referrer?.id ||
+            callerRefCode;
       // Only pending rows need an inviteUrl — accepted rows already have a
       // `referredUser` so the UI wouldn't show the "Copy link" action. We
       // skip rows missing inviteeEmail (legacy invites created before the
@@ -1746,7 +1814,7 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
       const inviteUrl =
         ref.status === "PENDING" && metadata.inviteeEmail && metadata.inviterEmail
           ? buildInviteUrl(ref.campaign, {
-              refCode: callerRefCode,
+              refCode: refCodeForInvite,
               inviteCode: ref.inviteCode,
               inviteeEmail: metadata.inviteeEmail,
               inviterEmail: metadata.inviterEmail,
@@ -1854,11 +1922,15 @@ export const getReferralById = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: "Referral not found" });
     }
 
-    // Check permissions
+    // Inviter, invitee, admin, or assigned account manager.
     if (
       user.role !== UserRole.ADMIN &&
       referral.referrerId !== user.id &&
-      referral.referredUserId !== user.id
+      referral.referredUserId !== user.id &&
+      !(
+        user.userType === UserType.ACCOUNT_MANAGER &&
+        assignedAccountManagerMatchesUser(referral.metadata, user.email)
+      )
     ) {
       return res.status(403).json({ error: "Access denied" });
     }
