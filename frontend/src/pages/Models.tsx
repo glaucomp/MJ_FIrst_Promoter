@@ -2135,6 +2135,7 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
                 referral={referral}
                 busy={isBusy}
                 canOrderLandingPage={canOrderLandingPage}
+                canAssignChatters={canOrderLandingPage}
                 isAdmin={isAdmin}
                 onDelete={handleDelete}
                 onDeny={handleDeny}
@@ -2184,6 +2185,8 @@ type CardActionsProps = {
   busy: boolean;
   /** Only admins and account managers may trigger upstream LP approval. */
   canOrderLandingPage?: boolean;
+  /** Only admins and account managers may assign chatter groups. */
+  canAssignChatters?: boolean;
   // When true, render override Delete + Reassign affordances in every state.
   // Admins need these to reallocate or remove referrals that are past the
   // normal AM window (accepted/active/building/lp_live). Default false keeps
@@ -2304,6 +2307,7 @@ const CardActions = ({
   referral,
   busy,
   canOrderLandingPage = false,
+  canAssignChatters = false,
   isAdmin = false,
   onDelete,
   onDeny,
@@ -2465,9 +2469,15 @@ const CardActions = ({
               : "Send Welcome Email"}
         </SecondaryButton>
       )}
-      <PinkCta onClick={() => onAssignChatters(referral)} disabled={busy}>
-        {busy ? "Assigning…" : "Assign Chatters"}
-      </PinkCta>
+      {canAssignChatters ? (
+        <PinkCta onClick={() => onAssignChatters(referral)} disabled={busy}>
+          {busy ? "Assigning…" : "Assign Chatters"}
+        </PinkCta>
+      ) : (
+        <p className="w-full rounded-[6px] border border-[rgba(255,255,255,0.12)] bg-[#1a1a1a] px-[14px] py-[10px] text-[#9e9e9e] text-[13px] font-medium text-center">
+          Your account manager will assign chatters.
+        </p>
+      )}
       {adminOverride({ showReassign: true })}
     </div>
   );
