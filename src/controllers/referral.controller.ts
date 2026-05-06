@@ -1168,7 +1168,7 @@ export const reassignReferralInvite = async (
     const metadata = readReferralMetadata(referral.metadata);
     const nextMetadata = {
       ...metadata,
-      accountManagerEmail: normalizeEmail(newReferrer.email) || newReferrer.email,
+      accountManagerEmail: normalizeEmail(newReferrer.email) || null,
     } satisfies Prisma.InputJsonValue;
 
     const updated = await prisma.referral.update({
