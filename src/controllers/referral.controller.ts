@@ -523,15 +523,18 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
     // Generate unique invite code
     const inviteCode = nanoid(10);
 
-    // Determine referral level
+    // Determine referral level. Also hoist `userReferral` so we can later
+    // inherit `accountManagerEmail` from the promoter's own invite metadata
+    // when they don't have a direct accountManagerId on their User row.
     let level = 1;
     let parentReferralId = null;
+    let userReferral: Awaited<ReturnType<typeof findMembershipReferralForPublicCampaign>> = null;
 
     // If the user is an influencer, this is a second-level referral
     if (user.role === UserRole.PROMOTER) {
       // Find the referral where this user was referred (public campaign or
       // hidden membership program linked to this public campaign).
-      const userReferral = await findMembershipReferralForPublicCampaign(
+      userReferral = await findMembershipReferralForPublicCampaign(
         prisma,
         user.id,
         campaignId,
@@ -570,9 +573,24 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
     const inviterIsAmOrAdmin =
       inviter.role === UserRole.ADMIN ||
       inviter.userType === UserType.ACCOUNT_MANAGER;
-    const accountManagerEmail: string | null = inviterIsAmOrAdmin
+
+    // Resolve accountManagerEmail in priority order:
+    //   1. AM/admin inviter → their own email IS the AM email.
+    //   2. Promoter with a direct accountManagerId → that AM's email.
+    //   3. Promoter without a DB-level AM assignment → inherit from the
+    //      accountManagerEmail stored on *their own* invite (userReferral).
+    //      This covers the common case where a promoter was brought in by an
+    //      AM via the referral flow rather than the admin "create user" form,
+    //      so their accountManagerId column is null but the chain is clear.
+    let accountManagerEmail: string | null = inviterIsAmOrAdmin
       ? normalizeEmail(inviter.email) || null
       : normalizeEmail(inviter.accountManager?.email ?? null) || null;
+
+    if (!accountManagerEmail && !inviterIsAmOrAdmin && userReferral) {
+      const parentMeta = readReferralMetadata(userReferral.metadata);
+      accountManagerEmail =
+        normalizeEmail(parentMeta.accountManagerEmail ?? null) || null;
+    }
 
     const now = new Date();
     const expiresAt = new Date(now.getTime() + REFERRAL_INVITE_TTL_MS);
