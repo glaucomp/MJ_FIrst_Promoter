@@ -1016,9 +1016,12 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
     const callerIsAdmin = caller.role === UserRole.ADMIN;
     if (!callerIsAdmin) {
       if (caller.userType === UserType.ACCOUNT_MANAGER) {
+        console.warn(
+          'createUserByAdmin forbidden for account manager; direct chatter invites must use POST /api/chatters.',
+        );
         return res.status(403).json({
           error:
-            'Account managers invite chatters via POST /api/chatters only.',
+            'Account managers cannot create users here. Please use the chatter invitation flow.',
         });
       }
       return res.status(403).json({ error: 'Insufficient permissions' });
