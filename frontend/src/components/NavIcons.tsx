@@ -53,6 +53,18 @@ export const IconSettings = (props: IconProps) => (
   </svg>
 );
 
+export const IconNetwork = (props: IconProps) => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+    <circle cx="9" cy="2.5" r="2" stroke="currentColor" strokeWidth="1.4"/>
+    <circle cx="2.5" cy="14.5" r="2" stroke="currentColor" strokeWidth="1.4"/>
+    <circle cx="15.5" cy="14.5" r="2" stroke="currentColor" strokeWidth="1.4"/>
+    <line x1="9" y1="4.5" x2="9" y2="8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+    <line x1="9" y1="8" x2="2.5" y2="12.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+    <line x1="9" y1="8" x2="15.5" y2="12.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+    <circle cx="9" cy="8" r="1.2" fill="currentColor"/>
+  </svg>
+);
+
 export const IconLogout = (props: IconProps) => (
   <svg width="20" height="19" viewBox="0 0 20 19" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
     <path d="M18.7487 9.38506H7.65308" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
