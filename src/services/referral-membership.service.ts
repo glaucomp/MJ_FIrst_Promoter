@@ -103,18 +103,14 @@ export async function ensureCustomerTrackingReferralForPromotedUser(
     if (camp.linkedCampaignId) {
       assignedCampaignId = camp.linkedCampaignId;
     } else {
-      const visibleCampaign = await prisma.campaign.findFirst({
-        where: { isActive: true, visibleToPromoters: true },
-        orderBy: { createdAt: "asc" },
-      });
-      if (!visibleCampaign) {
-        console.warn(
-          "[ensureCustomerTrackingReferral] no visible campaign; skipping",
-          { inviteReferralId },
-        );
-        return;
-      }
-      assignedCampaignId = visibleCampaign.id;
+      console.warn(
+        "[ensureCustomerTrackingReferral] hidden campaign missing linkedCampaignId; skipping",
+        {
+          inviteReferralId,
+          campaignId: camp.id,
+        },
+      );
+      return;
     }
   }
 
