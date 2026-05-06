@@ -71,6 +71,11 @@ export const CreateUserModal = ({
     [allowedTypes],
   );
 
+  const modalTitle =
+    types.length === 1 && types[0] === "chatter"
+      ? "Create New Chatter"
+      : "Create New User";
+
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -209,7 +214,7 @@ export const CreateUserModal = ({
           {/* Header */}
           <div className="flex items-center justify-between">
             <h2 className="text-[20px] leading-[1.4] font-bold text-white">
-              Create New User
+              {modalTitle}
             </h2>
             <button
               onClick={handleClose}
