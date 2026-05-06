@@ -26,10 +26,11 @@ import { downloadObjectBuffer } from "./s3.service";
 
 const [HEADER_W, HEADER_H] = EMAIL_HEADER_SIZE;
 
-// Diameter of the circular photo crop.  Should match (or slightly exceed)
-// the alpha-hole diameter in influencer_header_background.png so the photo
-// fully covers the hole.  Increase here if the hole ever gets larger.
-const PHOTO_DIAMETER = 160;
+// Desired diameter of the circular photo crop. The effective diameter is
+// clamped to the header bounds so a centred composite never overflows the
+// base canvas.
+const DESIRED_PHOTO_DIAMETER = 160;
+const PHOTO_DIAMETER = Math.min(DESIRED_PHOTO_DIAMETER, HEADER_W, HEADER_H);
 const PHOTO_CENTRE_X = Math.round(HEADER_W / 2);
 const PHOTO_CENTRE_Y = Math.round(HEADER_H / 2);
 
