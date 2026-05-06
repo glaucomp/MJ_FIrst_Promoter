@@ -1,4 +1,5 @@
-import type { PrismaClient } from "@prisma/client";
+import { createHash } from "node:crypto";
+import type { Prisma, PrismaClient } from "@prisma/client";
 
 /**
  * True if the user has an ACTIVE referral on this campaign, or is the invitee
@@ -114,16 +115,19 @@ export async function ensureCustomerTrackingReferralForPromotedUser(
     }
   }
 
-  const existing = await prisma.referral.findFirst({
-    where: {
-      referrerId: promotedUserId,
-      referredUserId: null,
-      status: "ACTIVE",
-      campaignId: assignedCampaignId,
-    },
-    select: { id: true },
-  });
-  if (existing) return;
+  // Build a deterministic inviteCode so that concurrent calls racing past the
+  // findFirst guard still collapse into one row: if two writes land at the
+  // same moment they both try to insert the same inviteCode and Postgres
+  // raises a unique-constraint violation (P2002) on the second one, which
+  // we treat as "already created, nothing to do". Without this the only
+  // guard was a non-atomic check-then-insert pair.
+  const localPart = promotedEmail.split("@")[0] ?? "user";
+  const local = sanitizeLocalPart(localPart) || "user";
+  const hashSuffix = createHash("sha256")
+    .update(`${promotedUserId}:${assignedCampaignId}`)
+    .digest("hex")
+    .slice(0, 8);
+  const customerTrackingCode = `${local}_${hashSuffix}`;
 
   const referrerTracking = await prisma.referral.findFirst({
     where: {
@@ -135,26 +139,28 @@ export async function ensureCustomerTrackingReferralForPromotedUser(
     select: { id: true },
   });
 
-  const { nanoid } = await import("nanoid");
-  const localPart = promotedEmail.split("@")[0] ?? "user";
-  const local = sanitizeLocalPart(localPart) || "user";
-  const customerTrackingCode = `${local}_${nanoid(8)}`;
+  try {
+    await prisma.referral.create({
+      data: {
+        inviteCode: customerTrackingCode,
+        campaignId: assignedCampaignId,
+        referrerId: promotedUserId,
+        referredUserId: null,
+        parentReferralId: referrerTracking?.id ?? null,
+        status: "ACTIVE",
+        level: referral.level + 1,
+        acceptedAt: new Date(),
+      },
+    });
 
-  await prisma.referral.create({
-    data: {
-      inviteCode: customerTrackingCode,
+    console.info("[ensureCustomerTrackingReferral] created", {
+      userId: promotedUserId,
       campaignId: assignedCampaignId,
-      referrerId: promotedUserId,
-      referredUserId: null,
-      parentReferralId: referrerTracking?.id ?? null,
-      status: "ACTIVE",
-      level: referral.level + 1,
-      acceptedAt: new Date(),
-    },
-  });
-
-  console.info("[ensureCustomerTrackingReferral] created", {
-    userId: promotedUserId,
-    campaignId: assignedCampaignId,
-  });
+    });
+  } catch (err) {
+    // P2002 = unique constraint violation — a concurrent call already inserted
+    // the same deterministic inviteCode, so the row exists and we're done.
+    if ((err as Prisma.PrismaClientKnownRequestError)?.code === "P2002") return;
+    throw err;
+  }
 }
