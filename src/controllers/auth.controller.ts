@@ -18,7 +18,7 @@ import {
 } from "../services/password-reset.service";
 import { resolveOwnership } from "../services/pre-user-promote.service";
 import { ensureCustomerTrackingReferralForPromotedUser } from "../services/referral-membership.service";
-import { getUserTypeInfo } from "../services/user.service";
+import { getUserTypeInfo, syncUserType } from "../services/user.service";
 import { buildSetPasswordUrl } from "../utils/frontend-url";
 
 const prisma = new PrismaClient();
@@ -155,6 +155,10 @@ export const register = async (req: AuthRequest, res: Response) => {
         },
       });
 
+      await syncUserType(referral.referrerId).catch((e) =>
+        console.error("Failed to sync referrer type after join:", e),
+      );
+
       // Drop the TeaseMe lifecycle tracker — once the invitee registers on
       // our side the Referral itself becomes the source of truth and the
       // "Step N" chip should disappear. The OR covers the canonical link
@@ -215,6 +219,10 @@ export const register = async (req: AuthRequest, res: Response) => {
 
             console.log(
               `✅ Referral created: ${user.email} referred by ${referrer.username || referrer.email}`,
+            );
+
+            await syncUserType(referrer.id).catch((e) =>
+              console.error("Failed to sync referrer type after ref join:", e),
             );
 
             try {

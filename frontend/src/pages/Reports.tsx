@@ -1277,10 +1277,8 @@ export const Reports = () => {
   const isAdmin = user?.baseRole === "admin" || user?.baseRole === "payer";
   const isManager =
     user?.baseRole === "account_manager" ||
-    (user?.baseRole === "team_manager" && user?.role === "team_manager");
-  const isPromoter =
-    user?.baseRole === "promoter" ||
-    (user?.baseRole === "team_manager" && user?.role === "promoter");
+    user?.baseRole === "team_manager";
+  const isPromoter = user?.baseRole === "promoter";
 
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [allUsers, setAllUsers] = useState<ApiUser[]>([]);

@@ -128,7 +128,7 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
   // they get the same modal heading. Team managers keep the "Team Member"
   // wording since they're inviting teammates, not downstream promoters.
   const title = type === 'referral'
-    ? (userRole === 'team_manager' ? 'Invite Team Member' : 'Invite New Promoter')
+    ? 'Invite New Promoter'
     : 'Create Tracking Link';
 
   return (
