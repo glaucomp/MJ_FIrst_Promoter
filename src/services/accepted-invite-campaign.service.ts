@@ -23,9 +23,16 @@ export async function syncAcceptedInviteReferralToPublicProgram(
   if (!referral || referral.referredUserId !== promotedUserId) return;
   if (referral.status !== "ACTIVE") return;
 
+  const promotedUser = await prisma.user.findUnique({
+    where: { id: promotedUserId },
+    select: { role: true },
+  });
+  const shouldPreserveHiddenMembership =
+    promotedUser?.role === "ACCOUNT_MANAGER";
+
   let assignedCampaignId = referral.campaignId;
   const camp = referral.campaign;
-  if (!camp.visibleToPromoters) {
+  if (!camp.visibleToPromoters && !shouldPreserveHiddenMembership) {
     if (camp.linkedCampaignId) {
       assignedCampaignId = camp.linkedCampaignId;
     } else {
