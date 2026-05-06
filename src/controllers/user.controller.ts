@@ -1013,11 +1013,6 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
     if (!caller) {
       return res.status(401).json({ error: 'Not authenticated' });
     }
-    const callerIsAdmin = caller.role === UserRole.ADMIN;
-    const callerIsAm = caller.userType === UserType.ACCOUNT_MANAGER;
-    if (!callerIsAdmin && !callerIsAm) {
-      return res.status(403).json({ error: 'Insufficient permissions' });
-    }
 
     // Surface express-validator failures (e.g. malformed email) before any
     // DB work. The route-level validator also lower-cases the address via
@@ -1040,17 +1035,16 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'Email is required' });
     }
 
-    // Admins can create AMs, TMs, promoters and payers. AMs can only create
-    // promoters (chatters go through POST /api/chatters). Payers are an
-    // admin-only role that sees Reports / Payouts / Settings and nothing else.
-    const allowedTypes: UserType[] = callerIsAdmin
-      ? [
-          UserType.ACCOUNT_MANAGER,
-          UserType.TEAM_MANAGER,
-          UserType.PROMOTER,
-          UserType.PAYER,
-        ]
-      : [UserType.PROMOTER];
+    // Admins can create AMs, TMs, promoters and payers. Account managers
+    // invite chatters only through POST /api/chatters (not this endpoint).
+    // Payers are an admin-only role that sees Reports / Payouts / Settings
+    // and nothing else.
+    const allowedTypes: UserType[] = [
+      UserType.ACCOUNT_MANAGER,
+      UserType.TEAM_MANAGER,
+      UserType.PROMOTER,
+      UserType.PAYER,
+    ];
     const requestedType = userType as UserType | undefined;
     if (requestedType && !allowedTypes.includes(requestedType)) {
       return res.status(403).json({
@@ -1082,12 +1076,9 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
 
     // Stamp provenance + ownership separately now that the two concerns are
     // distinct columns:
-    //   • `createdById`      — always the caller. Immutable once written.
-    //   • `accountManagerId` — the caller only when they're an active AM.
-    //                          Admin-created users start unassigned and the
-    //                          admin can drop them onto an AM via the
-    //                          PATCH /api/users/:id/account-manager flow.
-    const accountManagerId = callerIsAm ? caller.id : null;
+    //   • `createdById`      — always the caller (admin). Immutable once written.
+    //   • `accountManagerId` — null here; assign via PATCH /api/users/:id/account-manager.
+    const accountManagerId = null;
 
     // For account managers created by admin: validate and look up the hidden
     // membership campaign BEFORE creating the user so that an invalid
@@ -1099,7 +1090,7 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
     // auto-pick (first hidden campaign with a `linkedCampaignId`, then
     // any hidden campaign) so older API callers keep working.
     let adminCampaign = null as Awaited<ReturnType<typeof prisma.campaign.findFirst>>;
-    if (callerIsAdmin && resolvedType === UserType.ACCOUNT_MANAGER) {
+    if (resolvedType === UserType.ACCOUNT_MANAGER) {
       if (campaignId) {
         adminCampaign = await prisma.campaign.findUnique({
           where: { id: campaignId },
@@ -1156,7 +1147,7 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
     // invite on every active campaign — the invite gate in
     // referral.controller.ts gates hidden campaigns on userType only, so we
     // don't need per-campaign referrals here.
-    if (callerIsAdmin && resolvedType === UserType.ACCOUNT_MANAGER) {
+    if (resolvedType === UserType.ACCOUNT_MANAGER) {
       if (adminCampaign && !adminCampaign.linkedCampaignId) {
         const publicCampaigns = await prisma.campaign.findMany({
           where: { isActive: true, visibleToPromoters: true },
@@ -1193,155 +1184,6 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
             acceptedAt: new Date(),
           },
         });
-      }
-    }
-
-    // When an AM creates a promoter directly (no pre-existing invite
-    // flow), mirror the admin → AM behavior: create an ACTIVE referral on
-    // the AM's public `linkedCampaign` so the new user (a) shows up in the
-    // AM's My Promoters list — which is sourced by `referrerId = AM` in
-    // `getMyReferrals` — and (b) carries proper campaign attribution for
-    // commissions.
-    //
-    // If the AM had already sent an email-invite to this address and the
-    // invite is still orphaned (`referredUserId = NULL`,
-    // `metadata.inviteeEmail = email`), adopt it in place rather than
-    // creating a fresh row. Same dedup guard `assignAccountManager`
-    // uses; without it the AM ends up with two cards on My Promoters.
-    if (callerIsAm && resolvedType !== UserType.ACCOUNT_MANAGER) {
-      try {
-        // Resolve the AM's hidden membership referral to find their public
-        // linkedCampaign. Mirrors the lookup in `assignAccountManager`
-        // (lines 634-647) — kept inline rather than extracted so the two
-        // paths stay visually parallel; lift this if a third caller needs
-        // the same shape.
-        const amMembership = await prisma.referral.findFirst({
-          where: {
-            referredUserId: caller.id,
-            status: 'ACTIVE',
-            campaign: {
-              isActive: true,
-              visibleToPromoters: false,
-              linkedCampaignId: { not: null },
-            },
-          },
-          orderBy: { acceptedAt: 'desc' },
-          select: { campaign: { select: { linkedCampaignId: true } } },
-        });
-        const linkedCampaignId =
-          amMembership?.campaign?.linkedCampaignId ?? null;
-
-        if (linkedCampaignId) {
-          const orphanInvites = await prisma.referral.findMany({
-            where: {
-              referrerId: caller.id,
-              referredUserId: null,
-              status: { in: ['PENDING', 'ACTIVE'] },
-              metadata: { path: ['inviteeEmail'], equals: newUser.email },
-            },
-            orderBy: { createdAt: 'desc' },
-            select: { id: true, campaignId: true, metadata: true },
-          });
-
-          const orphanInvite =
-            orphanInvites.find((invite) => invite.campaignId === linkedCampaignId) ??
-            null;
-          const otherCampaignOrphanInvites = orphanInvites.filter(
-            (invite) => invite.campaignId !== linkedCampaignId,
-          );
-
-          const adoptionTimestamp = new Date();
-          const tx: Prisma.PrismaPromise<unknown>[] = [];
-
-          if (orphanInvite) {
-            const orphanMeta =
-              typeof orphanInvite.metadata === 'object' &&
-              orphanInvite.metadata !== null
-                ? (orphanInvite.metadata as Record<string, unknown>)
-                : {};
-            tx.push(
-              prisma.referral.update({
-                where: { id: orphanInvite.id },
-                data: {
-                  referredUserId: newUser.id,
-                  status: 'ACTIVE',
-                  acceptedAt: adoptionTimestamp,
-                  metadata: {
-                    ...orphanMeta,
-                    source: 'am-assign-adopted',
-                    adoptedAt: adoptionTimestamp.toISOString(),
-                  } as Prisma.InputJsonValue,
-                },
-              }),
-            );
-          } else {
-            tx.push(
-              prisma.referral.create({
-                data: {
-                  inviteCode: nanoid(10),
-                  campaignId: linkedCampaignId,
-                  referrerId: caller.id,
-                  referredUserId: newUser.id,
-                  status: 'ACTIVE',
-                  level: 1,
-                  acceptedAt: adoptionTimestamp,
-                  metadata: {
-                    source: 'am-direct-create',
-                    createdAt: adoptionTimestamp.toISOString(),
-                  } as Prisma.InputJsonValue,
-                },
-              }),
-            );
-          }
-
-          for (const otherOrphanInvite of otherCampaignOrphanInvites) {
-            const otherOrphanMeta =
-              typeof otherOrphanInvite.metadata === 'object' &&
-              otherOrphanInvite.metadata !== null
-                ? (otherOrphanInvite.metadata as Record<string, unknown>)
-                : {};
-            tx.push(
-              prisma.referral.update({
-                where: { id: otherOrphanInvite.id },
-                data: {
-                  status: 'CANCELLED',
-                  metadata: {
-                    ...otherOrphanMeta,
-                    source: 'am-assign-swept',
-                    sweptAt: adoptionTimestamp.toISOString(),
-                    sweptBecause: 'linked-campaign-referral-created-or-adopted',
-                    adoptedUserId: newUser.id,
-                  } as Prisma.InputJsonValue,
-                },
-              }),
-            );
-          }
-
-          await prisma.$transaction(tx);
-        } else {
-          // No usable hidden membership campaign yet — usually means the
-          // AM was promoted but never bound to a public campaign. Don't
-          // block user creation; just leave the new user without a
-          // campaign attribution and warn so the operator can fix it.
-          console.warn(
-            '[createUserByAdmin] AM has no linked public campaign; skipping referral creation',
-            { accountManagerId: caller.id, userId: newUser.id },
-          );
-        }
-      } catch (err) {
-        // Non-fatal: the user row already exists and can log in. Worst
-        // case the AM doesn't see them on My Promoters until an admin
-        // drags them onto an AM (which re-runs the same adoption logic
-        // via `assignAccountManager`). Logged so this doesn't fail
-        // silently.
-        console.error(
-          '[createUserByAdmin] failed to create/adopt referral for AM-created user',
-          {
-            accountManagerId: caller.id,
-            userId: newUser.id,
-            err: err instanceof Error ? err.message : String(err),
-          },
-        );
       }
     }
 
