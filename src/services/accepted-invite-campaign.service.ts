@@ -47,6 +47,7 @@ export async function syncAcceptedInviteReferralToPublicProgram(
   const referrerTracking = await prisma.referral.findFirst({
     where: {
       referrerId: referral.referrerId,
+      campaignId: assignedCampaignId,
       referredUserId: null,
       status: "ACTIVE",
     },
