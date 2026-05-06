@@ -1097,7 +1097,7 @@ export const Models = () => {
         <CreateUserModal
           isOpen={isCreateUserModalOpen}
           onClose={() => setIsCreateUserModalOpen(false)}
-          allowedTypes={["promoter", "chatter"]}
+          allowedTypes={["chatter"]}
           onCreated={() => {
             // Reload from server so the new user lands in the right spot with
             // full stats + accountManager resolution.

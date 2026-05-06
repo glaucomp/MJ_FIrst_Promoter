@@ -19,7 +19,7 @@ interface CreateUserModalProps {
   onCreated: (user: ApiUser) => void;
   /**
    * Which user types the current caller is allowed to create. Defaults to the
-   * admin set. Account managers should pass ["promoter", "chatter"].
+   * admin set. Account managers should pass ["chatter"] only.
    */
   allowedTypes?: UserType[];
 }
