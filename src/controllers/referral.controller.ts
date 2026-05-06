@@ -13,6 +13,10 @@ import {
   notifyChattersAssigned,
   reassignPreInfluencer,
 } from "../services/teaseme.service";
+import {
+  findMembershipReferralForPublicCampaign,
+  isUserParticipantOnCampaign,
+} from "../services/referral-membership.service";
 
 const prisma = new PrismaClient();
 
@@ -501,13 +505,11 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
 
     // Promoters can invite for any active campaign they're participating in
     if (user.role === UserRole.PROMOTER) {
-      // Check if promoter is already part of this campaign (has been referred to it)
-      const isParticipant = await prisma.referral.findFirst({
-        where: {
-          campaignId,
-          OR: [{ referrerId: user.id }, { referredUserId: user.id }],
-        },
-      });
+      const isParticipant = await isUserParticipantOnCampaign(
+        prisma,
+        user.id,
+        campaignId,
+      );
 
       // If not a participant yet and campaign requires approval, block
       if (!isParticipant && !campaign.autoApprove) {
@@ -527,13 +529,13 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
 
     // If the user is an influencer, this is a second-level referral
     if (user.role === UserRole.PROMOTER) {
-      // Find the referral where this user was referred
-      const userReferral = await prisma.referral.findFirst({
-        where: {
-          campaignId,
-          referredUserId: user.id,
-        },
-      });
+      // Find the referral where this user was referred (public campaign or
+      // hidden membership program linked to this public campaign).
+      const userReferral = await findMembershipReferralForPublicCampaign(
+        prisma,
+        user.id,
+        campaignId,
+      );
 
       if (userReferral) {
         level = userReferral.level + 1;
@@ -1649,11 +1651,17 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
       referralScopeIds = idRows.map((r) => r.id);
     }
 
+    let referralWhere: Prisma.ReferralWhereInput;
+    if (referralScopeIds === null) {
+      referralWhere = { referrerId: user.id };
+    } else if (referralScopeIds.length > 0) {
+      referralWhere = { id: { in: referralScopeIds } };
+    } else {
+      referralWhere = { referrerId: user.id };
+    }
+
     const allReferrals = await prisma.referral.findMany({
-      where:
-        referralScopeIds === null
-          ? { referrerId: user.id }
-          : { id: { in: referralScopeIds } },
+      where: referralWhere,
       include: {
         campaign: {
           select: {
@@ -1754,13 +1762,28 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
     // Filter out:
     // 1. Self-referrals (referredUserId === own id, e.g. username-based tracking records)
     // 2. Customer tracking referrals (inviteCode === username or starts with username_)
-    const referrals = allReferrals.filter(ref => {
+    const referrals = allReferrals.filter((ref) => {
       // Remove self-referrals entirely
       if (ref.referredUserId === user.id) return false;
 
+      // Hide public "customer tracking" shell rows from My Promoters — they are
+      // ACTIVE rows with `referredUserId: null` and no person invite in
+      // metadata. Keep legacy pending invites visible even if they predate the
+      // email-required flow and therefore have no `inviteeEmail`.
+      const meta = readReferralMetadata(ref.metadata);
+      if (
+        ref.status === "ACTIVE" &&
+        ref.referredUserId === null &&
+        !meta.inviteeEmail
+      )
+        return false;
+
       // Remove username-based tracking records that are still pending
       if (ref.referredUserId === null && userDetails?.username) {
-        return ref.inviteCode !== userDetails.username && !ref.inviteCode.startsWith(`${userDetails.username}_`);
+        return (
+          ref.inviteCode !== userDetails.username &&
+          !ref.inviteCode.startsWith(`${userDetails.username}_`)
+        );
       }
       return true;
     });
