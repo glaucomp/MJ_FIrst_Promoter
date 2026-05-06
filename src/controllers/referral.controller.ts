@@ -1767,10 +1767,16 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
       if (ref.referredUserId === user.id) return false;
 
       // Hide public "customer tracking" shell rows from My Promoters — they are
-      // `referredUserId: null` without a person invite in metadata (not pending
-      // email invites, which always carry `inviteeEmail`).
+      // ACTIVE rows with `referredUserId: null` and no person invite in
+      // metadata. Keep legacy pending invites visible even if they predate the
+      // email-required flow and therefore have no `inviteeEmail`.
       const meta = readReferralMetadata(ref.metadata);
-      if (ref.referredUserId === null && !meta.inviteeEmail) return false;
+      if (
+        ref.status === "ACTIVE" &&
+        ref.referredUserId === null &&
+        !meta.inviteeEmail
+      )
+        return false;
 
       // Remove username-based tracking records that are still pending
       if (ref.referredUserId === null && userDetails?.username) {
