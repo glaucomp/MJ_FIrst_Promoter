@@ -221,7 +221,7 @@ export const register = async (req: AuthRequest, res: Response) => {
               `✅ Referral created: ${user.email} referred by ${referrer.username || referrer.email}`,
             );
 
-            await syncUserType(referrer.id).catch((e) =>
+            void syncUserType(referrer.id).catch((e) =>
               console.error("Failed to sync referrer type after ref join:", e),
             );
 
