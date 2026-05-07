@@ -2,9 +2,24 @@ import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 import * as fs from 'fs';
 import * as path from 'path';
 
+import { PUBLIC_EMAIL_BUCKET_URL, uploadPublicEmailAsset } from './s3.service';
+
+// Logo: read bytes once at startup, then upload to the public S3 bucket on
+// first email send so it's reachable via a plain HTTPS URL.
+// Gmail and most email clients block data: URIs in <img> tags.
 const _logoPath = path.join(__dirname, '../assets/email/mjpromoLogo.png');
-const _logoBase64 = fs.readFileSync(_logoPath).toString('base64');
-const LOGO_DATA_URL = `data:image/png;base64,${_logoBase64}`;
+const _logoBytes = fs.readFileSync(_logoPath);
+const _logoS3Key = 'email-assets/mjpromoLogo.png';
+const LOGO_PUBLIC_URL = `${PUBLIC_EMAIL_BUCKET_URL}/${_logoS3Key}`;
+
+// Upload is best-effort and only runs once. If it fails the first send will
+// show a broken logo image — subsequent sends re-attempt automatically.
+let _logoUploaded = false;
+const ensureLogoUploaded = async (): Promise<void> => {
+  if (_logoUploaded) return;
+  const url = await uploadPublicEmailAsset(_logoS3Key, _logoBytes, 'image/png');
+  if (url) _logoUploaded = true;
+};
 
 const AWS_REGION = process.env.AWS_REGION || 'us-east-1';
 const SES_SENDER = process.env.SES_SENDER || 'noreply@yourdomain.com';
@@ -115,6 +130,10 @@ export class EmailService {
     const name = firstName || username;
     const currentYear = new Date().getFullYear();
 
+    // Ensure the logo PNG is available at a public HTTPS URL before
+    // building the HTML — email clients block data: URI images.
+    await ensureLogoUploaded();
+
     const subject = '🎉 Welcome to MJ First Promoter Program!';
 
     // Branded header banner. When the caller provides a per-promoter
@@ -138,7 +157,7 @@ export class EmailService {
           </tr>
           <tr>
             <td align="center" style="padding:28px 40px 0 40px;">
-              <img src="${LOGO_DATA_URL}" alt="MJ Promo" style="height:48px;display:block;margin:0 auto;" />
+              <img src="${LOGO_PUBLIC_URL}" alt="MJ Promo" style="height:48px;display:block;margin:0 auto;" />
               <h1 style="font-size:26px;line-height:1.3;color:#ffffff;margin:20px 0 8px 0;font-weight:700;">
                 Welcome ${escapeHtml(name)}!
               </h1>
@@ -380,7 +399,7 @@ This invite link is single-use. If you weren't expecting this email, you can saf
         <table width="540" cellpadding="0" cellspacing="0" border="0" style="background:#1a1a1a;border:1px solid rgba(255,255,255,0.06);border-radius:16px;overflow:hidden;">
           <tr>
             <td align="center" style="padding:36px 32px 16px 32px;">
-              <img src="${LOGO_DATA_URL}" alt="MJ Promo" style="height:48px;display:block;margin:0 auto;" />
+              <img src="${LOGO_PUBLIC_URL}" alt="MJ Promo" style="height:48px;display:block;margin:0 auto;" />
             </td>
           </tr>
           <tr>
@@ -461,3 +480,10 @@ This invite link is single-use. If you weren't expecting this email, you can saf
 }
 
 export const emailService = new EmailService();
+
+// Pre-upload the logo to the public S3 bucket at module load so it is ready
+// before the first email is sent.  Fire-and-forget — ensureLogoUploaded will
+// retry on each sendPromoterWelcomeEmail call if this initial attempt fails.
+ensureLogoUploaded().catch((err) => {
+  console.warn('[email.service] initial logo S3 upload failed — will retry on next send', err);
+});
