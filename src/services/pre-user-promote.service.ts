@@ -11,6 +11,7 @@ import {
   syncUserFromTeaseMe,
 } from "./teaseme.service";
 import { ensureCustomerTrackingReferralForPromotedUser } from "./referral-membership.service";
+import { syncUserType } from "./user.service";
 
 // ─── Temporary password generation ───────────────────────────────────────────
 //
@@ -496,6 +497,21 @@ export const promotePreUserToUser = async (
           referralId: preUser.referralId,
           userId: user.id,
         });
+
+        // Upgrade the referrer's userType to TEAM_MANAGER (PROMOTER+) now that
+        // they have an ACTIVE downline referral. Mirrors the syncUserType call
+        // in auth.controller /register — that path fires when the invitee
+        // self-registers, but the TeaseMe promotion path skips it, leaving the
+        // referrer stuck at plain PROMOTER until something else triggers a sync.
+        const referralRow = await prisma.referral.findUnique({
+          where: { id: preUser.referralId },
+          select: { referrerId: true },
+        });
+        if (referralRow?.referrerId) {
+          void syncUserType(referralRow.referrerId).catch((e) =>
+            console.error("[promote-pre-user] failed to sync referrer user type:", e),
+          );
+        }
       }
     } catch (err) {
       // Non-fatal: the user row exists and can log in. Worst case the
