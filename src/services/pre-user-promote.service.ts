@@ -11,6 +11,7 @@ import {
   syncUserFromTeaseMe,
 } from "./teaseme.service";
 import { ensureCustomerTrackingReferralForPromotedUser } from "./referral-membership.service";
+import { syncUserType } from "./user.service";
 
 // ─── Temporary password generation ───────────────────────────────────────────
 //
@@ -84,6 +85,10 @@ export interface PromotePreUserInput {
   // account manager so the newly-promoted User does not land in the
   // "Needs assignment" bucket on the Users page.
   referralId: string | null;
+  // Referrer user id from the originating referral. Threaded through by the
+  // caller so we can sync userType after acceptance without another referral
+  // lookup in this hot path.
+  referrerId?: string | null;
   // Stamped after the welcome email has been sent successfully. The
   // promotion helper short-circuits when this is non-null so the email
   // is delivered at most once per PreUser row, even if the underlying
@@ -496,6 +501,17 @@ export const promotePreUserToUser = async (
           referralId: preUser.referralId,
           userId: user.id,
         });
+
+        // Recompute the referrer's userType now that they have an ACTIVE
+        // downline referral. This mirrors the syncUserType call in
+        // auth.controller /register — that path fires when the invitee
+        // self-registers, but the TeaseMe promotion path skips it, so the
+        // referrer's userType would otherwise remain stale until a later sync.
+        if (preUser.referrerId) {
+          void syncUserType(preUser.referrerId).catch((e) =>
+            console.error("[promote-pre-user] failed to sync referrer user type:", e),
+          );
+        }
       }
     } catch (err) {
       // Non-fatal: the user row exists and can log in. Worst case the

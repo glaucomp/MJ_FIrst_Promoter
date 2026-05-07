@@ -3,6 +3,7 @@ import { PrismaClient, UserRole } from '@prisma/client';
 import { ApiKeyRequest } from '../middleware/apiKey.middleware';
 import bcrypt from 'bcryptjs';
 import { nanoid } from 'nanoid';
+import { syncUserType } from '../services/user.service';
 
 const prisma = new PrismaClient();
 
@@ -153,6 +154,10 @@ export const createPromoter = async (req: ApiKeyRequest, res: Response) => {
 
           console.log(`[CREATE PROMOTER] ✅ Referral created: ${parentPromoter.username || parentPromoter.email} -> ${promoter.username || promoter.email}`);
           console.log(`[CREATE PROMOTER] Referral ID: ${referral.id}, Campaign: ${campaign.name}`);
+
+          void syncUserType(parentPromoter.id).catch((e) =>
+            console.error('[CREATE PROMOTER] failed to sync parent promoter user type:', e),
+          );
         } else {
           console.log(`[CREATE PROMOTER] ⚠️ No active campaign found for referral`);
         }
