@@ -1530,6 +1530,7 @@ export const sendReferralWelcomeEmail = async (
       email: referral.preUser.email,
       inviteCode: referral.preUser.inviteCode,
       referralId: referral.preUser.referralId,
+      referrerId: referral.referrerId,
       welcomeEmailSentAt: referral.preUser.welcomeEmailSentAt,
       // Operator-initiated send / resend. Bypasses BOTH the in-memory and
       // DB-side anti-double-email guards inside the helper so a click on

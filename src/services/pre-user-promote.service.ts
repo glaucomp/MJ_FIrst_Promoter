@@ -4,13 +4,14 @@ import { Prisma, PrismaClient, UserRole, UserType } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 import { getFrontendUrl } from "../utils/frontend-url";
-import { composeWelcomeHeaderDataUrl } from "./email-compose.service";
+import { composeWelcomeHeaderImageUrl } from "./email-compose.service";
 import { emailService } from "./email.service";
 import {
   fetchTeasemePreUserStatus,
   syncUserFromTeaseMe,
 } from "./teaseme.service";
 import { ensureCustomerTrackingReferralForPromotedUser } from "./referral-membership.service";
+import { syncUserType } from "./user.service";
 
 // ─── Temporary password generation ───────────────────────────────────────────
 //
@@ -84,6 +85,10 @@ export interface PromotePreUserInput {
   // account manager so the newly-promoted User does not land in the
   // "Needs assignment" bucket on the Users page.
   referralId: string | null;
+  // Referrer user id from the originating referral. Threaded through by the
+  // caller so we can sync userType after acceptance without another referral
+  // lookup in this hot path.
+  referrerId?: string | null;
   // Stamped after the welcome email has been sent successfully. The
   // promotion helper short-circuits when this is non-null so the email
   // is delivered at most once per PreUser row, even if the underlying
@@ -496,6 +501,17 @@ export const promotePreUserToUser = async (
           referralId: preUser.referralId,
           userId: user.id,
         });
+
+        // Recompute the referrer's userType now that they have an ACTIVE
+        // downline referral. This mirrors the syncUserType call in
+        // auth.controller /register — that path fires when the invitee
+        // self-registers, but the TeaseMe promotion path skips it, so the
+        // referrer's userType would otherwise remain stale until a later sync.
+        if (preUser.referrerId) {
+          void syncUserType(preUser.referrerId).catch((e) =>
+            console.error("[promote-pre-user] failed to sync referrer user type:", e),
+          );
+        }
       }
     } catch (err) {
       // Non-fatal: the user row exists and can log in. Worst case the
@@ -656,7 +672,7 @@ export const promotePreUserToUser = async (
   // image composition fails (for example if sharp throws), in which case
   // the email falls back to the static verify-header banner as a graceful
   // degradation rather than a user-visible failure.
-  const headerImageOverrideUrl = await composeWelcomeHeaderDataUrl({
+  const headerImageOverrideUrl = await composeWelcomeHeaderImageUrl({
     photoKey: photoKeyForCompose ?? "",
     identifier: user.id,
   });
@@ -717,11 +733,10 @@ interface WelcomeEmailContext {
   firstName: string | null;
   refId: string;
   tempPassword: string;
-  // Optional override for the welcome-email banner — typically a
-  // `data:image/png;base64,…` URL produced by
-  // `composeWelcomeHeaderDataUrl` containing the promoter's profile
-  // photo composited onto the heart background. Null falls back to the
-  // static verify-header banner.
+  // Optional override for the welcome-email banner — a public HTTPS URL
+  // produced by `composeWelcomeHeaderImageUrl` pointing to the composed
+  // PNG in S3 (promoter photo through the influencer_header_background
+  // alpha hole). Null falls back to the static verify-header banner.
   headerImageOverrideUrl: string | null;
   userId: string;
   preUserId: string;
