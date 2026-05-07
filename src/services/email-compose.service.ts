@@ -1,7 +1,7 @@
 import sharp from "sharp";
 
 import { EMAIL_HEADER_SIZE, EMAIL_INFLUENCER_HEADER_BG_URL } from "./email.service";
-import { downloadObjectBuffer } from "./s3.service";
+import { downloadObjectBuffer, uploadPublicEmailAsset } from "./s3.service";
 
 // ─── Email header composition ────────────────────────────────────────────────
 //
@@ -52,30 +52,28 @@ interface ComposeInput {
 let cachedOverlayPromise: Promise<Buffer | null> | null = null;
 
 const readOverlayBuffer = async (): Promise<Buffer | null> => {
-  if (!cachedOverlayPromise) {
-    cachedOverlayPromise = (async () => {
-      try {
-        const response = await fetch(EMAIL_INFLUENCER_HEADER_BG_URL);
-        if (!response.ok) {
-          console.warn(
-            "[email-compose] failed to fetch overlay asset from S3",
-            { url: EMAIL_INFLUENCER_HEADER_BG_URL, status: response.status },
-          );
-          cachedOverlayPromise = null;
-          return null;
-        }
-        const arrayBuffer = await response.arrayBuffer();
-        return Buffer.from(arrayBuffer);
-      } catch (err) {
+  cachedOverlayPromise ??= (async () => {
+    try {
+      const response = await fetch(EMAIL_INFLUENCER_HEADER_BG_URL);
+      if (!response.ok) {
         console.warn(
           "[email-compose] failed to fetch overlay asset from S3",
-          { url: EMAIL_INFLUENCER_HEADER_BG_URL, err: err instanceof Error ? err.message : String(err) },
+          { url: EMAIL_INFLUENCER_HEADER_BG_URL, status: response.status },
         );
         cachedOverlayPromise = null;
         return null;
       }
-    })();
-  }
+      const arrayBuffer = await response.arrayBuffer();
+      return Buffer.from(arrayBuffer);
+    } catch (err) {
+      console.warn(
+        "[email-compose] failed to fetch overlay asset from S3",
+        { url: EMAIL_INFLUENCER_HEADER_BG_URL, err: err instanceof Error ? err.message : String(err) },
+      );
+      cachedOverlayPromise = null;
+      return null;
+    }
+  })();
   return cachedOverlayPromise;
 };
 
@@ -103,19 +101,37 @@ const buildCircularPhotoBuffer = async (
     .toBuffer();
 };
 
+// Upload the composed PNG buffer to the public email-assets bucket and
+// return its public URL.  Falls back to null so the caller can degrade to
+// the static header.
+const uploadComposedBanner = async (
+  buffer: Buffer,
+  identifier: string,
+): Promise<string | null> => {
+  // Key is deterministic per user — re-sending the welcome email
+  // overwrites the previous banner automatically.
+  const key = `email-assets/welcome-headers/${identifier}.png`;
+  return uploadPublicEmailAsset(key, buffer, "image/png");
+};
+
 /**
- * Builds the composed welcome-email banner and returns it as a
- * `data:image/png;base64` URL ready to drop straight into an `<img src>`.
+ * Builds the composed welcome-email banner and uploads it to the public
+ * S3 bucket, returning a plain HTTPS URL suitable for use in `<img src>`.
+ *
+ * Gmail and other clients block data: URIs — the result MUST be a real URL.
  *
  * Layer order (bottom → top):
  *   1. Solid base canvas
  *   2. Circular profile photo centred at the alpha-hole position
- *   3. influencer_header_background.png overlay (alpha hole reveals the photo)
+ *   3. influencer_header_background.png overlay (alpha hole reveals photo)
+ *
+ * Returns null if the overlay asset is unavailable or composition fails,
+ * so the caller can fall back to the static header image.
  */
-export const composeWelcomeHeaderDataUrl = async (
+export const composeWelcomeHeaderImageUrl = async (
   input: ComposeInput,
 ): Promise<string | null> => {
-  const { photoKey, identifier } = input;
+  const { photoKey, identifier = "unknown" } = input;
   const trimmedPhotoKey = photoKey?.trim() || "";
 
   try {
@@ -150,9 +166,35 @@ export const composeWelcomeHeaderDataUrl = async (
       .png()
       .toBuffer();
 
-    if (!photoBytes) {
+    let composed: Buffer;
+
+    if (photoBytes) {
+      // Circular photo crop sized to fill the alpha hole in the overlay PNG.
+      const circularPhoto = await buildCircularPhotoBuffer(photoBytes, PHOTO_DIAMETER);
+
+      // Layer 1 → base canvas
+      // Layer 2 → circular photo centred at the alpha-hole position
+      // Layer 3 → overlay frame (alpha hole reveals the photo)
+      composed = await sharp(baseCanvas)
+        .composite([
+          {
+            input: circularPhoto,
+            top: PHOTO_CENTRE_Y - Math.round(PHOTO_DIAMETER / 2),
+            left: PHOTO_CENTRE_X - Math.round(PHOTO_DIAMETER / 2),
+          },
+          { input: resizedOverlay, top: 0, left: 0 },
+        ])
+        .png()
+        .toBuffer();
+
+      console.info("[email-compose] built composed welcome banner", {
+        identifier,
+        photoKey: trimmedPhotoKey,
+        bytes: composed.length,
+      });
+    } else {
       // No photo — overlay on base colour only.
-      const composed = await sharp(baseCanvas)
+      composed = await sharp(baseCanvas)
         .composite([{ input: resizedOverlay, top: 0, left: 0 }])
         .png()
         .toBuffer();
@@ -163,33 +205,11 @@ export const composeWelcomeHeaderDataUrl = async (
         bytes: composed.length,
         reason: trimmedPhotoKey ? "photo download failed" : "no photo key",
       });
-      return `data:image/png;base64,${composed.toString("base64")}`;
     }
 
-    // Circular photo crop sized to fill the alpha hole in the overlay PNG.
-    const circularPhoto = await buildCircularPhotoBuffer(photoBytes, PHOTO_DIAMETER);
-
-    // Layer 1 → base canvas
-    // Layer 2 → circular photo centred at the alpha-hole position
-    // Layer 3 → overlay frame (alpha hole reveals the photo)
-    const composed = await sharp(baseCanvas)
-      .composite([
-        {
-          input: circularPhoto,
-          top: PHOTO_CENTRE_Y - Math.round(PHOTO_DIAMETER / 2),
-          left: PHOTO_CENTRE_X - Math.round(PHOTO_DIAMETER / 2),
-        },
-        { input: resizedOverlay, top: 0, left: 0 },
-      ])
-      .png()
-      .toBuffer();
-
-    console.info("[email-compose] built composed welcome banner", {
-      identifier,
-      photoKey: trimmedPhotoKey,
-      bytes: composed.length,
-    });
-    return `data:image/png;base64,${composed.toString("base64")}`;
+    // Upload to S3 — email clients block data: URIs so the image MUST be
+    // served from a real HTTPS URL.
+    return uploadComposedBanner(composed, identifier);
   } catch (err) {
     console.warn(
       "[email-compose] failed to build composed welcome banner",
@@ -202,3 +222,6 @@ export const composeWelcomeHeaderDataUrl = async (
     return null;
   }
 };
+
+/** @deprecated Use composeWelcomeHeaderImageUrl — data: URIs are blocked by Gmail. */
+export const composeWelcomeHeaderDataUrl = composeWelcomeHeaderImageUrl;

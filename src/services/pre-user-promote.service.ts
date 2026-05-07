@@ -4,7 +4,7 @@ import { Prisma, PrismaClient, UserRole, UserType } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 import { getFrontendUrl } from "../utils/frontend-url";
-import { composeWelcomeHeaderDataUrl } from "./email-compose.service";
+import { composeWelcomeHeaderImageUrl } from "./email-compose.service";
 import { emailService } from "./email.service";
 import {
   fetchTeasemePreUserStatus,
@@ -656,7 +656,7 @@ export const promotePreUserToUser = async (
   // image composition fails (for example if sharp throws), in which case
   // the email falls back to the static verify-header banner as a graceful
   // degradation rather than a user-visible failure.
-  const headerImageOverrideUrl = await composeWelcomeHeaderDataUrl({
+  const headerImageOverrideUrl = await composeWelcomeHeaderImageUrl({
     photoKey: photoKeyForCompose ?? "",
     identifier: user.id,
   });
@@ -717,11 +717,10 @@ interface WelcomeEmailContext {
   firstName: string | null;
   refId: string;
   tempPassword: string;
-  // Optional override for the welcome-email banner — typically a
-  // `data:image/png;base64,…` URL produced by
-  // `composeWelcomeHeaderDataUrl` containing the promoter's profile
-  // photo composited onto the heart background. Null falls back to the
-  // static verify-header banner.
+  // Optional override for the welcome-email banner — a public HTTPS URL
+  // produced by `composeWelcomeHeaderImageUrl` pointing to the composed
+  // PNG in S3 (promoter photo through the influencer_header_background
+  // alpha hole). Null falls back to the static verify-header banner.
   headerImageOverrideUrl: string | null;
   userId: string;
   preUserId: string;

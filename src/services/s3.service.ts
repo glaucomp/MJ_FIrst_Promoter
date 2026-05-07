@@ -1,4 +1,4 @@
-import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 const region = process.env.TEASEME_S3_REGION;
@@ -17,13 +17,35 @@ if (!bucket) {
 const accessKeyId = process.env.SES_AWS_ACCESS_KEY_ID;
 const secretAccessKey = process.env.SES_AWS_SECRET_ACCESS_KEY;
 
-const s3Client = new S3Client({
-  region,
-  credentials:
-    accessKeyId && secretAccessKey
-      ? { accessKeyId, secretAccessKey }
-      : undefined,
-});
+const credentials =
+  accessKeyId && secretAccessKey
+    ? { accessKeyId, secretAccessKey }
+    : undefined;
+
+const s3Client = new S3Client({ region, credentials });
+
+// ─── Public email-assets bucket ──────────────────────────────────────────────
+// Email clients (Gmail, Outlook, etc.) block data: URIs in <img> tags.
+// Composed images must be uploaded to a publicly accessible S3 bucket so
+// they are reachable via a plain HTTPS URL.
+//
+// The public bucket URL is parsed from BUCKET_PUBLIC_URL.
+// Format: https://{bucket}.s3.{region}.amazonaws.com[/optional-prefix]
+// We use the same IAM credentials — they are expected to have PutObject
+// permission on this bucket (they already have GetObject for email assets).
+const _rawPublicUrl = (
+  process.env.BUCKET_PUBLIC_URL?.trim() ||
+  'https://bucket-image-tease-me.s3.us-east-1.amazonaws.com'
+).replace(/\/+$/, '');
+
+const _publicBucketMatch = /https:\/\/([^.]+)\.s3\.([^.]+)\.amazonaws\.com/.exec(_rawPublicUrl);
+const PUBLIC_EMAIL_BUCKET = _publicBucketMatch?.[1] ?? '';
+const PUBLIC_EMAIL_REGION = _publicBucketMatch?.[2] ?? 'us-east-1';
+export const PUBLIC_EMAIL_BUCKET_URL = _rawPublicUrl;
+
+const publicS3Client = PUBLIC_EMAIL_BUCKET
+  ? new S3Client({ region: PUBLIC_EMAIL_REGION, credentials })
+  : null;
 
 /**
  * Returns a presigned GET URL for the given S3 key in the TeaseMe bucket.
@@ -65,6 +87,48 @@ export const downloadObjectBuffer = async (
     return Buffer.from(bytes);
   } catch (error) {
     console.error('[s3.service] Failed to download key', key, error);
+    return null;
+  }
+};
+
+/**
+ * Uploads `buffer` to the public email-assets S3 bucket at `key` with the
+ * given `contentType`, then returns the public HTTPS URL.
+ *
+ * Returns null if the public bucket could not be determined (misconfigured
+ * BUCKET_PUBLIC_URL) or if the upload fails, so callers can degrade
+ * gracefully (e.g. fall back to the static header image).
+ */
+export const uploadPublicEmailAsset = async (
+  key: string,
+  buffer: Buffer,
+  contentType: string,
+): Promise<string | null> => {
+  if (!publicS3Client || !PUBLIC_EMAIL_BUCKET) {
+    console.warn('[s3.service] uploadPublicEmailAsset: public bucket not configured', {
+      BUCKET_PUBLIC_URL: process.env.BUCKET_PUBLIC_URL,
+    });
+    return null;
+  }
+  try {
+    await publicS3Client.send(
+      new PutObjectCommand({
+        Bucket: PUBLIC_EMAIL_BUCKET,
+        Key: key,
+        Body: buffer,
+        ContentType: contentType,
+        // Public-read so email clients can fetch without auth.
+        ACL: 'public-read',
+      }),
+    );
+    const url = `${PUBLIC_EMAIL_BUCKET_URL}/${key}`;
+    console.info('[s3.service] uploadPublicEmailAsset ok', { key, url, bytes: buffer.length });
+    return url;
+  } catch (err) {
+    console.error('[s3.service] uploadPublicEmailAsset failed', {
+      key,
+      err: err instanceof Error ? err.message : String(err),
+    });
     return null;
   }
 };
