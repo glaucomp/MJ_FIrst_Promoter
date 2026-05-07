@@ -498,11 +498,11 @@ export const promotePreUserToUser = async (
           userId: user.id,
         });
 
-        // Upgrade the referrer's userType to TEAM_MANAGER (PROMOTER+) now that
-        // they have an ACTIVE downline referral. Mirrors the syncUserType call
-        // in auth.controller /register — that path fires when the invitee
-        // self-registers, but the TeaseMe promotion path skips it, leaving the
-        // referrer stuck at plain PROMOTER until something else triggers a sync.
+        // Recompute the referrer's userType now that they have an ACTIVE
+        // downline referral. This mirrors the syncUserType call in
+        // auth.controller /register — that path fires when the invitee
+        // self-registers, but the TeaseMe promotion path skips it, so the
+        // referrer's userType would otherwise remain stale until a later sync.
         const referralRow = await prisma.referral.findUnique({
           where: { id: preUser.referralId },
           select: { referrerId: true },
