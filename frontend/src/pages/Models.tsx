@@ -828,9 +828,9 @@ export const Models = () => {
                                     {apiUser.isActive ? "Active" : "Inactive"}
                                   </span>
                                   <span className="px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]">
-                                    {apiUser.userType
-                                      ?.toLowerCase()
-                                      .replace("_", " ")}
+                                    {apiUser.userType?.toUpperCase() === "TEAM_MANAGER"
+                                      ? "PROMOTER +"
+                                      : apiUser.userType?.toLowerCase().replace("_", " ")}
                                   </span>
                                 </div>
                               </div>
@@ -1063,9 +1063,9 @@ export const Models = () => {
                               {apiUser.isActive ? "Active" : "Inactive"}
                             </span>
                             <span className="px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]">
-                              {apiUser.userType
-                                ?.toLowerCase()
-                                .replace("_", " ")}
+                              {apiUser.userType?.toUpperCase() === "TEAM_MANAGER"
+                                ? "PROMOTER +"
+                                : apiUser.userType?.toLowerCase().replace("_", " ")}
                             </span>
                           </div>
                         </div>
