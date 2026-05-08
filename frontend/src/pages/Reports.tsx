@@ -1412,6 +1412,20 @@ export const Reports = () => {
 
   const currRefunded = useMemo(() => sumRefunded(curr), [curr]);
   const prevRefunded = useMemo(() => sumRefunded(prev), [prev]);
+
+  const currTotalSales = useMemo(() => {
+    const seenTxIds = new Set<string>();
+    return curr.reduce((sum, c) => {
+      if (c.amount < 0) return sum;
+      const txId = c.transaction?.id;
+      const amt = c.saleAmount ?? c.transaction?.saleAmount ?? 0;
+      if (txId) {
+        if (seenTxIds.has(txId)) return sum;
+        seenTxIds.add(txId);
+      }
+      return sum + amt;
+    }, 0);
+  }, [curr]);
   const refundChange = useMemo(
     () => pctChange(currRefunded, prevRefunded),
     [currRefunded, prevRefunded],
@@ -2144,18 +2158,26 @@ export const Reports = () => {
           </Card>
         </div>
 
-        {/* Refunded */}
-        <Card radius="var(--radius-m)">
-          <div className="flex flex-col gap-0" style={{ padding: 'var(--space-20)' }}>
-            <span className="stat-label">Refunded</span>
-            <div className="flex items-center justify-between">
-              <span className="stat-value">${money(currRefunded)}</span>
-              {refundChange !== null && refundChange !== 0 && (
-                <ChangeBadge value={refundChange} positive={refundChange < 0} />
-              )}
+        {/* Refunded / Total Sales */}
+        <div className="grid grid-cols-2 gap-4">
+          <Card radius="var(--radius-m)">
+            <div className="flex flex-col gap-0" style={{ padding: 'var(--space-20)' }}>
+              <span className="stat-label">Refunded</span>
+              <div className="flex items-center justify-between">
+                <span className="stat-value">${money(currRefunded)}</span>
+                {refundChange !== null && refundChange !== 0 && (
+                  <ChangeBadge value={refundChange} positive={refundChange < 0} />
+                )}
+              </div>
             </div>
-          </div>
-        </Card>
+          </Card>
+          <Card radius="var(--radius-m)">
+            <div className="flex flex-col gap-0" style={{ padding: 'var(--space-20)' }}>
+              <span className="stat-label">Total Sales</span>
+              <span className="stat-value">${money(currTotalSales)}</span>
+            </div>
+          </Card>
+        </div>
 
         {/* Promoters / Users — manager only */}
         {isManager && (
