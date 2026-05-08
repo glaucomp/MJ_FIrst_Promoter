@@ -117,8 +117,6 @@ export const uploadPublicEmailAsset = async (
         Key: key,
         Body: buffer,
         ContentType: contentType,
-        // Public-read so email clients can fetch without auth.
-        ACL: 'public-read',
       }),
     );
     const url = `${PUBLIC_EMAIL_BUCKET_URL}/${key}`;
