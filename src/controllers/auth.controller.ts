@@ -45,6 +45,7 @@ const TOKEN_COOKIE_BASE = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
   sameSite: "strict" as const,
+  ...(process.env.COOKIE_DOMAIN ? { domain: process.env.COOKIE_DOMAIN } : {}),
 };
 
 const TOKEN_COOKIE_OPTIONS = {
