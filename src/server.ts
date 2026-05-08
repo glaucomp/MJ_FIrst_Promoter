@@ -35,8 +35,30 @@ const trustProxyHops = Number.parseInt(process.env.TRUST_PROXY_HOPS ?? '1', 10);
 app.set('trust proxy', Number.isFinite(trustProxyHops) && trustProxyHops >= 0 ? trustProxyHops : 1);
 
 // Middleware
+const allowedOrigins = (() => {
+  const base = process.env.FRONTEND_URL || 'http://localhost:5173';
+  try {
+    const url = new URL(base);
+    const hostname = url.hostname; // e.g. "www.mjpromoter.com"
+    const apex = hostname.startsWith('www.') ? hostname.slice(4) : null;
+    const origins = new Set([base]);
+    if (apex) {
+      origins.add(`${url.protocol}//${apex}`);
+    }
+    return [...origins];
+  } catch {
+    return [base];
+  }
+})();
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error(`CORS: origin ${origin} not allowed`));
+    }
+  },
   credentials: true,
 }));
 app.use(cookieParser());
