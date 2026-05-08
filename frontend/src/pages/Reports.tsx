@@ -1483,9 +1483,16 @@ export const Reports = () => {
     // covering both direct referrals and their children (full network)
     const earningsMap = new Map<string, { name: string; revenue: number; photoUrl: string | null }>();
 
+    // Track commission IDs already counted to prevent double-counting.
+    // For Account Managers, a referral can appear both as a top-level entry in
+    // myReferrals AND nested inside another referral's childReferrals (because
+    // the AM scope matches by referrerId OR by metadata.accountManagerEmail).
+    // Without deduplication the same commission would be summed twice.
+    const countedCommissionIds = new Set<string>();
+
     const accumulateCommissions = (
       person: { id: string; firstName: string; lastName: string; photoUrl?: string | null },
-      commissions: Array<{ amount: number; userId: string; createdAt: string }>,
+      commissions: Array<{ id: string; amount: number; userId: string; createdAt: string }>,
     ) => {
       const entry = earningsMap.get(person.id) ?? {
         name: `${person.firstName} ${person.lastName}`,
@@ -1497,10 +1504,14 @@ export const Reports = () => {
       const earned = commissions
         .filter((c) => {
           if (c.amount <= 0 || c.userId !== person.id) return false;
+          if (countedCommissionIds.has(c.id)) return false;
           const t = new Date(c.createdAt).getTime();
           return t >= fromMs && t <= toMs;
         })
-        .reduce((sum, c) => sum + c.amount, 0);
+        .reduce((sum, c) => {
+          countedCommissionIds.add(c.id);
+          return sum + c.amount;
+        }, 0);
       entry.revenue += earned;
       earningsMap.set(person.id, entry);
     };
