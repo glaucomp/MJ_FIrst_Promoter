@@ -116,8 +116,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = async () => {
-    await authApi.logout();
+    try {
+      await authApi.logout();
+    } catch {
+      // Ignore network errors — the server cookie will expire naturally.
+    }
     setUser(null);
+    // Hard redirect so the browser discards all in-memory state and the
+    // re-initialised AuthProvider calls /auth/me against the now-cleared cookie.
+    globalThis.location.replace('/login');
   };
 
   const updateUser = (patch: Partial<User>) => {

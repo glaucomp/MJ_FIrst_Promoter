@@ -127,7 +127,7 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
             className="flex items-center justify-start px-[12px] rounded-[4px] hover:bg-[#292929]/50 h-[40px] w-full"
             aria-label="Log out"
           >
-            <div style={{ color: 'white' }} className="flex items-center justify-center">
+            <div style={{ color: '#ff0f5f' }} className="flex items-center justify-center">
               <IconLogout width={20} height={19} />
             </div>
           </button>
