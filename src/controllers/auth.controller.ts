@@ -45,6 +45,7 @@ const TOKEN_COOKIE_BASE = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
   sameSite: "strict" as const,
+  path: '/' as const,
   ...(process.env.COOKIE_DOMAIN ? { domain: process.env.COOKIE_DOMAIN } : {}),
 };
 
@@ -686,7 +687,14 @@ export const resetPassword = async (req: AuthRequest, res: Response) => {
 };
 
 export const logout = (_req: AuthRequest, res: Response) => {
-  res.clearCookie("auth_token", TOKEN_COOKIE_BASE);
+  const clearBase = { ...TOKEN_COOKIE_BASE, path: '/' };
+  res.clearCookie("auth_token", clearBase);
+  // Also clear without the domain in case the cookie was originally set
+  // without one (e.g. during development or before COOKIE_DOMAIN was added).
+  if (clearBase.domain) {
+    const { domain: _domain, ...withoutDomain } = clearBase;
+    res.clearCookie("auth_token", withoutDomain);
+  }
   res.json({ success: true });
 };
 
