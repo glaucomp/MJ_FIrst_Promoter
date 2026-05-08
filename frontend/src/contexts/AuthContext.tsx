@@ -63,6 +63,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const init = async () => {
+      // If the user explicitly logged out in this browser, skip the /me call
+      // so a still-valid cookie doesn't silently re-authenticate them.
+      if (sessionStorage.getItem('logged_out') === '1') {
+        sessionStorage.removeItem('logged_out');
+        setIsLoading(false);
+        return;
+      }
       try {
         const apiUser = await authApi.getCurrentUser();
         setUser(mapApiUserToUser(apiUser));
@@ -121,9 +128,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch {
       // Ignore network errors — the server cookie will expire naturally.
     }
+    // Signal the next page-load to skip /auth/me even if the cookie is
+    // still present (belt-and-suspenders alongside the server clearCookie).
+    sessionStorage.setItem('logged_out', '1');
     setUser(null);
-    // Hard redirect so the browser discards all in-memory state and the
-    // re-initialised AuthProvider calls /auth/me against the now-cleared cookie.
+    // Hard redirect to tear down all in-memory React state cleanly.
     globalThis.location.replace('/login');
   };
 
