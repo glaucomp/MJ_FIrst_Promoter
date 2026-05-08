@@ -1,25 +1,8 @@
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
-import * as fs from 'fs';
-import * as path from 'path';
 
-import { PUBLIC_EMAIL_BUCKET_URL, uploadPublicEmailAsset } from './s3.service';
+import { PUBLIC_EMAIL_BUCKET_URL } from './s3.service';
 
-// Logo: read bytes once at startup, then upload to the public S3 bucket on
-// first email send so it's reachable via a plain HTTPS URL.
-// Gmail and most email clients block data: URIs in <img> tags.
-const _logoPath = path.join(__dirname, '../assets/email/mjpromoLogo.png');
-const _logoBytes = fs.readFileSync(_logoPath);
-const _logoS3Key = 'email-assets/mjpromoLogo.png';
-const LOGO_PUBLIC_URL = `${PUBLIC_EMAIL_BUCKET_URL}/${_logoS3Key}`;
-
-// Upload is best-effort and only runs once. If it fails the first send will
-// show a broken logo image — subsequent sends re-attempt automatically.
-let _logoUploaded = false;
-const ensureLogoUploaded = async (): Promise<void> => {
-  if (_logoUploaded) return;
-  const url = await uploadPublicEmailAsset(_logoS3Key, _logoBytes, 'image/png');
-  if (url) _logoUploaded = true;
-};
+const LOGO_PUBLIC_URL = `${PUBLIC_EMAIL_BUCKET_URL}/mjpromoLogo.png`;
 
 const AWS_REGION = process.env.AWS_REGION || 'us-east-1';
 const SES_SENDER = process.env.SES_SENDER || 'noreply@yourdomain.com';
@@ -111,7 +94,7 @@ const BUCKET_PUBLIC_URL = (
 export const EMAIL_VERIFY_HEADER_URL = `${BUCKET_PUBLIC_URL}/email_verify_header.png`;
 export const EMAIL_RESET_HEADER_URL = `${BUCKET_PUBLIC_URL}/email-assets/reset_password_header.jpg`;
 export const EMAIL_INFLUENCER_HEADER_BG_URL = `${BUCKET_PUBLIC_URL}/influencer_header_background.png`;
-export const EMAIL_WELCOME_HEADER_BG_URL = `${BUCKET_PUBLIC_URL}/welcome-email-header-bg.png`;
+export const EMAIL_WELCOME_HEADER_BG_URL = `${BUCKET_PUBLIC_URL}/influencer_header_background.png`;
 
 // Native pixel size of the banners hosted in the bucket (width, height).
 // Mirrors the upstream Python EMAIL_HEADER_SIZE = (520, 150) so HTML
@@ -129,10 +112,6 @@ export class EmailService {
     const headerOverride = data.headerImageOverrideUrl?.trim() || '';
     const name = firstName || username;
     const currentYear = new Date().getFullYear();
-
-    // Ensure the logo PNG is available at a public HTTPS URL before
-    // building the HTML — email clients block data: URI images.
-    await ensureLogoUploaded();
 
     const subject = '🎉 Welcome to MJ First Promoter Program!';
 
@@ -480,10 +459,3 @@ This invite link is single-use. If you weren't expecting this email, you can saf
 }
 
 export const emailService = new EmailService();
-
-// Pre-upload the logo to the public S3 bucket at module load so it is ready
-// before the first email is sent.  Fire-and-forget — ensureLogoUploaded will
-// retry on each sendPromoterWelcomeEmail call if this initial attempt fails.
-ensureLogoUploaded().catch((err) => {
-  console.warn('[email.service] initial logo S3 upload failed — will retry on next send', err);
-});
