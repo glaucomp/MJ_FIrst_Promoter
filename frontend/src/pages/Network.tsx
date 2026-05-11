@@ -155,11 +155,9 @@ const PersonRow = ({
       <div style={{ flex: 1, minWidth: 0 }}>
         <p
           style={{
-            fontSize: isT2 ? '12px' : '14px',
-            fontWeight: 500,
+            fontSize: isT2 ? '14px' : '16px',
+            fontWeight: 400,
             color: 'var(--color-text-primary)',
-            letterSpacing: '0.2px',
-            lineHeight: 1.3,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
@@ -179,9 +177,9 @@ const PersonRow = ({
               }}
             />
           )}
-          <span
+          <span className='text-sm'
             style={{
-              fontSize: '11px',
+             
               color: 'var(--color-text-muted)',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
@@ -196,8 +194,8 @@ const PersonRow = ({
       {earned > 0 ? (
         <span
           style={{
-            fontSize: isT2 ? '11px' : '12px',
-            fontWeight: 600,
+            fontSize: isT2 ? '12px' : '14px',
+            fontWeight: 400,
             color: 'var(--color-accent-bright)',
             flexShrink: 0,
             fontVariantNumeric: 'tabular-nums',
@@ -206,7 +204,7 @@ const PersonRow = ({
           ${money(earned)}
         </span>
       ) : (
-        <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.18)', flexShrink: 0 }}>—</span>
+        <span style={{ fontSize: '14px', color: 'rgba(255,255,255,0.18)', flexShrink: 0 }}>—</span>
       )}
 
       {expandButton}
@@ -255,7 +253,7 @@ const T1Entry = ({ referral, colorIdx }: { referral: Referral; colorIdx: number 
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                background: open ? 'rgba(255,42,113,0.15)' : 'rgba(255,255,255,0.05)',
+                background: '#24252A',
                 color: open ? 'var(--color-accent-bright)' : 'var(--color-text-muted)',
                 border: 'none',
                 cursor: 'pointer',
@@ -264,10 +262,9 @@ const T1Entry = ({ referral, colorIdx }: { referral: Referral; colorIdx: number 
                 transition: 'background 0.15s',
               }}
             >
-              <span
+              <span 
                 style={{
-                  fontSize: 8,
-                  fontWeight: 900,
+                  fontSize: 10,
                   display: 'block',
                   transform: open ? 'rotate(90deg)' : undefined,
                   transition: 'transform 0.15s',
@@ -371,7 +368,7 @@ export const Network = () => {
 
       {/* loading skeleton */}
       {loading && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div className='grid grid-cols-2 gap-4'>
           {[1, 2, 3].map((i) => (
             <div
               key={i}
@@ -405,7 +402,7 @@ export const Network = () => {
       {!loading && !error && (
         <>
           {/* stat row */}
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div className='grid grid-cols-2 gap-4'>
             {(
               [
                 {
@@ -487,21 +484,13 @@ export const Network = () => {
                 <div
                   style={{ flex: 1, height: 1, background: 'rgba(255,42,113,0.2)' }}
                 />
-                <span
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 600,
-                    color: 'var(--color-accent-bright)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.8px',
-                  }}
+                <span className='text-base'
                 >
                   Direct Invites
                 </span>
-                <span
+                <span className='text-sm'
                   style={{
-                    fontSize: 10,
-                    fontWeight: 600,
+     
                     padding: '2px 7px',
                     borderRadius: 100,
                     background: 'rgba(255,42,113,0.15)',

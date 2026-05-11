@@ -143,8 +143,8 @@ export const Login = () => {
                 </div>
 
                 {error && (
-                  <div className="bg-tm-danger-color12 border border-[#cc0000] rounded-[8px] px-[16px] py-[12px]">
-                    <p className="text-[#ff2a2a] text-[14px] leading-[1.4] font-medium">
+                  <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-[8px] px-[16px] py-[12px]">
+                    <p className="text-tm-danger-color05 text-[14px] leading-[1.4] font-medium">
                       {error}
                     </p>
                   </div>
@@ -188,16 +188,16 @@ export const Login = () => {
                 </div>
 
                 {error && (
-                  <div className="bg-tm-danger-color12 border border-[#cc0000] rounded-[8px] px-[16px] py-[12px]">
-                    <p className="text-[#ff2a2a] text-[14px] leading-[1.4] font-medium">
+                  <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-[8px] px-[16px] py-[12px]">
+                    <p className="text-tm-danger-color05 text-[14px] leading-[1.4] font-medium">
                       {error}
                     </p>
                   </div>
                 )}
 
                 {forgotMessage && (
-                  <div className="bg-[#1f3d29] border border-[#00d948] rounded-[8px] px-[16px] py-[12px]">
-                    <p className="text-[#28ff70] text-[14px] leading-[1.4] font-medium">
+                  <div className="bg-[#1f3d29] border border-tm-success-color09 rounded-[8px] px-[16px] py-[12px]">
+                    <p className="text-tm-success-color05 text-[14px] leading-[1.4] font-medium">
                       {forgotMessage}
                     </p>
                   </div>

@@ -116,7 +116,7 @@ export const SetPassword = () => {
                 <h2 className="text-white text-[20px] font-bold text-center">
                   Link expired or invalid
                 </h2>
-                <p className="text-[#9e9e9e] text-[14px] leading-[1.5] text-center">
+                <p className="text-[#9e9e9e] text-[14px] leading-normal text-center">
                   This invite / reset link is no longer valid. Ask whoever
                   invited you for a new link, or request a password reset from
                   the login page.
@@ -135,7 +135,7 @@ export const SetPassword = () => {
               <form onSubmit={handleSubmit} className="flex flex-col gap-[20px]">
                 <div className="flex flex-col gap-[4px]">
                   <h2 className="text-white text-[20px] font-bold">{heading}</h2>
-                  <p className="text-[#9e9e9e] text-[14px] leading-[1.5]">
+                  <p className="text-[#9e9e9e] text-[14px] leading-normal">
                     {intro}
                   </p>
                 </div>
@@ -181,8 +181,8 @@ export const SetPassword = () => {
                 </div>
 
                 {error && (
-                  <div className="bg-tm-danger-color12 border border-[#cc0000] rounded-[8px] px-[16px] py-[12px]">
-                    <p className="text-[#ff2a2a] text-[14px] leading-[1.4] font-medium">
+                  <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-[8px] px-[16px] py-[12px]">
+                    <p className="text-tm-danger-color05 text-[14px] leading-[1.4] font-medium">
                       {error}
                     </p>
                   </div>

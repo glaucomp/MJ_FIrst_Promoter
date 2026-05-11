@@ -548,7 +548,7 @@ export const ChatterGroups = () => {
   return (
     <div className="flex flex-col gap-[24px] py-[24px]">
       {/* Header */}
-      <div className="flex items-start justify-between gap-[16px]">
+      <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h1 className="text-[24px] font-bold text-white leading-[1.3]">Chatter Groups</h1>
           <p className="text-[#9e9e9e] text-[14px] mt-[4px]">

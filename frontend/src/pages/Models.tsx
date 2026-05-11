@@ -439,7 +439,7 @@ export const Models = () => {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
         <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">
           Models
         </h1>
@@ -455,7 +455,7 @@ export const Models = () => {
 
     return (
       <div className="flex flex-col gap-6">
-        <div className="flex items-start justify-between flex-col lg:flex-row gap-3">
+        <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
           <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">
             All Users
           </h1>
@@ -933,7 +933,7 @@ export const Models = () => {
 
     return (
       <div className="flex flex-col gap-6">
-        <div className="flex items-start justify-between flex-col lg:flex-row gap-3">
+        <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
           <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">
             My Users
           </h1>
@@ -1112,7 +1112,7 @@ export const Models = () => {
   if (user?.baseRole === "account_manager") {
     return (
       <div className="flex flex-col gap-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
           <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">
             My Promoters
           </h1>
@@ -1153,7 +1153,7 @@ whitespace-nowrap"
   if (user?.baseRole === "team_manager") {
     return (
       <div className="flex flex-col gap-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
           <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">
             My Team
           </h1>
@@ -1197,7 +1197,7 @@ whitespace-nowrap"
   if (user?.baseRole === "promoter") {
     return (
       <div className="flex flex-col gap-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
           <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">
             My Promoters
           </h1>
@@ -1234,7 +1234,7 @@ whitespace-nowrap"
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
       <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">
         Models
       </h1>
