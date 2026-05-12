@@ -41,8 +41,8 @@ const USER_TYPE_OPTIONS: { value: string; label: string }[] = [
 ];
 
 const SessionExpiredBanner = ({ onLogout }: { onLogout: () => void }) => (
-  <div className="bg-tm-danger-color12 border border-[#cc0000] rounded-[8px] p-[16px] flex flex-col gap-[12px]">
-    <p className="text-[#ff2a2a] text-sm font-bold">Session expired</p>
+  <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-[8px] p-[16px] flex flex-col gap-[12px]">
+    <p className="text-tm-danger-color05 text-sm font-bold">Session expired</p>
     <p className="text-[#ff8080] text-base">
       Your login session is no longer valid. This usually happens after the
       server restarts. Please log out and log back in to continue.
@@ -651,7 +651,7 @@ export const Models = () => {
                       )}
                     </div>
                   </button>
-                  <div className="flex items-center gap-[12px] flex-shrink-0">
+                  <div className="flex items-center gap-[12px] shrink-0">
                     <span
                       className={`text-base ${isNeeds ? "text-[#d9b26a]" : "text-tm-text-color09"
                         }`}
@@ -680,7 +680,7 @@ export const Models = () => {
                               disabled={
                                 deletingManagerId === section.manager.id
                               }
-                              className="px-[10px] py-[4px] rounded-[6px] text-xs font-bold bg-tm-danger-color12 border border-[#cc0000] text-[#ff2a2a] hover:bg-[#880000] disabled:opacity-50 transition-colors"
+                              className="px-[10px] py-[4px] rounded-[6px] text-xs font-bold bg-tm-danger-color12 border border-tm-danger-color09 text-tm-danger-color05 hover:bg-[#880000] disabled:opacity-50 transition-colors"
                             >
                               {deletingManagerId === section.manager.id
                                 ? "..."
@@ -713,7 +713,7 @@ export const Models = () => {
                                 if (section.manager)
                                   setConfirmDeleteManagerId(section.manager.id);
                               }}
-                              className="px-[10px] py-[4px] rounded-[6px] text-xs font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-tm-danger-color04 hover:text-tm-danger-color05 hover:border-[#cc0000]/50 transition-colors"
+                              className="px-[10px] py-[4px] rounded-[6px] text-xs font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-tm-danger-color04 hover:text-tm-danger-color05 hover:border-tm-danger-color09/50 transition-colors"
                               title="Delete account manager"
                             >
                               Delete
@@ -821,8 +821,8 @@ export const Models = () => {
                                 <div className="flex items-center gap-[8px] w-full">
                                   <span
                                     className={`px-[12px] py-[4px] rounded-full text-xs font-bold border ${apiUser.isActive
-                                      ? "bg-tm-success-color12 border-[#00d948] text-[#28ff70]"
-                                      : "bg-tm-danger-color12 border-[#cc0000] text-[#ff2a2a]"
+                                      ? "bg-tm-success-color12 border-tm-success-color09 text-tm-success-color05"
+                                      : "bg-tm-danger-color12 border-tm-danger-color09 text-tm-danger-color05"
                                       }`}
                                   >
                                     {apiUser.isActive ? "Active" : "Inactive"}
@@ -861,7 +861,7 @@ export const Models = () => {
                                         handleDeleteUser(apiUser.id)
                                       }
                                       disabled={deletingUserId === apiUser.id}
-                                      className="px-[10px] py-[4px] rounded-[6px] text-xs font-bold bg-tm-danger-color12 border border-[#cc0000] text-[#ff2a2a] hover:bg-[#880000] disabled:opacity-50 transition-colors"
+                                      className="px-[10px] py-[4px] rounded-[6px] text-xs font-bold bg-tm-danger-color12 border border-tm-danger-color09 text-tm-danger-color05 hover:bg-[#880000] disabled:opacity-50 transition-colors"
                                     >
                                       {deletingUserId === apiUser.id
                                         ? "..."
@@ -1056,8 +1056,8 @@ export const Models = () => {
                           <div className="flex items-center gap-[8px] w-full">
                             <span
                               className={`px-[12px] py-[4px] rounded-full text-xs font-bold border ${apiUser.isActive
-                                ? "bg-tm-success-color12 border-[#00d948] text-[#28ff70]"
-                                : "bg-tm-danger-color12 border-[#cc0000] text-[#ff2a2a]"
+                                ? "bg-tm-success-color12 border-tm-success-color09 text-tm-success-color05"
+                                : "bg-tm-danger-color12 border-tm-danger-color09 text-tm-danger-color05"
                                 }`}
                             >
                               {apiUser.isActive ? "Active" : "Inactive"}
@@ -1871,8 +1871,8 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
       {toast && (
         <div
           className={`rounded-[8px] px-[16px] py-[12px] border text-sm font-medium ${toast.kind === "success"
-            ? "bg-tm-success-color12 border-[#00d948] text-[#28ff70]"
-            : "bg-tm-danger-color12 border-[#cc0000] text-[#ff2a2a]"
+            ? "bg-tm-success-color12 border-tm-success-color09 text-tm-success-color05"
+            : "bg-tm-danger-color12 border-tm-danger-color09 text-tm-danger-color05"
             }`}
         >
           {toast.text}
@@ -2206,7 +2206,7 @@ const AdminOverrideRow = ({
       <button
         onClick={() => onDelete(referral)}
         disabled={busy}
-        className="bg-transparent border border-[rgba(255,255,255,0.14)] rounded-[6px] px-[10px] py-[6px] text-[#d0d0d0] text-xs font-bold hover:text-[#ff2a2a] hover:border-[#cc0000] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        className="bg-transparent border border-[rgba(255,255,255,0.14)] rounded-[6px] px-[10px] py-[6px] text-[#d0d0d0] text-xs font-bold hover:text-tm-danger-color05 hover:border-tm-danger-color09 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
       >
         Delete
       </button>
@@ -2247,7 +2247,7 @@ const GreenCta = ({
   <button
     onClick={onClick}
     disabled={disabled}
-    className="w-full bg-linear-to-b from-[#28ff70] to-[#00aa3c] rounded-[6px] px-[14px] py-[10px] text-black text-base font-bold hover:from-[#3aff82] hover:to-[#00bc43] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+    className="w-full bg-linear-to-b from-tm-success-color05 to-[#00aa3c] rounded-[6px] px-[14px] py-[10px] text-black text-base font-bold hover:from-[#3aff82] hover:to-[#00bc43] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
   >
     {children}
   </button>
@@ -2317,7 +2317,7 @@ const CardActions = ({
         <button
           onClick={() => onDelete(referral)}
           disabled={busy}
-          className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[6px] px-[14px] py-[8px] text-[#9e9e9e] text-base font-bold hover:text-[#ff2a2a] hover:border-[#cc0000] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[6px] px-[14px] py-[8px] text-[#9e9e9e] text-base font-bold hover:text-tm-danger-color05 hover:border-tm-danger-color09 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           Delete
         </button>
@@ -2332,7 +2332,7 @@ const CardActions = ({
           <SecondaryButton
             onClick={() => onDeny(referral)}
             disabled={busy}
-            className="hover:text-[#ff2a2a] hover:border-[#cc0000]"
+            className="hover:text-tm-danger-color05 hover:border-tm-danger-color09"
           >
             <span className="inline-flex items-center justify-center gap-[6px]">
               <DenyIcon className="w-[14px] h-[14px]" />
@@ -2351,7 +2351,7 @@ const CardActions = ({
         <button
           disabled
           title="Waiting for the promoter to finish onboarding before a landing page can be ordered."
-          className="w-full rounded-full px-[14px] py-[10px] text-base font-medium border border-[#28ff70] text-[#28ff70] opacity-40 cursor-not-allowed"
+          className="w-full rounded-full px-[14px] py-[10px] text-base font-medium border border-tm-success-color05 text-tm-success-color05 opacity-40 cursor-not-allowed"
         >
           Order Landing Page
         </button>
@@ -2549,7 +2549,7 @@ const ReassignModal = ({
       {loading ? (
         <p className="text-[#9e9e9e] text-sm">Loading account managers…</p>
       ) : error ? (
-        <p className="text-[#ff2a2a] text-sm">{error}</p>
+        <p className="text-tm-danger-color05 text-sm">{error}</p>
       ) : managers.length === 0 ? (
         <p className="text-[#9e9e9e] text-sm">
           No account managers available to reassign to.
@@ -2651,7 +2651,7 @@ const AssignChattersModal = ({
       {loading ? (
         <p className="text-[#9e9e9e] text-sm">Loading chatter groups…</p>
       ) : error ? (
-        <p className="text-[#ff2a2a] text-sm">{error}</p>
+        <p className="text-tm-danger-color05 text-sm">{error}</p>
       ) : groups.length === 0 ? (
         <p className="text-[#9e9e9e] text-sm">
           No chatter groups yet. Create one on the Chatters page first.
