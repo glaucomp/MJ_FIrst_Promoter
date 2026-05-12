@@ -119,12 +119,22 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
 
           <button
             onClick={logout}
-            className="flex items-center justify-start px-[12px] rounded-[4px] hover:bg-[#292929]/50 h-[40px] w-full"
+            className={`flex items-center justify-start rounded-[4px] hover:bg-[#292929]/50 h-[44px] w-full transition-all ${
+              isOpen ? 'gap-[8px] px-[12px]' : 'px-[12px]'
+            }`}
             aria-label="Log out"
           >
-            <div style={{ color: '#ff0f5f' }} className="flex items-center justify-center">
+            <div style={{ color: '#ff0f5f' }} className="shrink-0 flex items-center justify-center">
               <IconLogout width={20} height={19} />
             </div>
+            {isOpen && (
+              <span
+                className="text-base font-medium leading-[1.4] tracking-[0.2px] flex-1 text-left whitespace-nowrap"
+                style={{ color: '#ff0f5f' }}
+              >
+                Log Out
+              </span>
+            )}
           </button>
         </div>
       </div>
