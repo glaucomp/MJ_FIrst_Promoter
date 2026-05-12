@@ -2157,17 +2157,17 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
                     is disabled (cursor-not-allowed, no onClick) but the pill
                     keeps its full visual treatment so it looks identical
                     across every card state. */}
-                <div className="glass-button-outer">
+                <div className="absolute bottom-3 right-4 flex items-center gap-2">
+                  {/* Copy link (left) */}
                   <OnboardingIconPill
                     title={assetLinkTooltip}
                     ariaLabel={assetLinkTooltip}
-                    className={`absolute bottom-3 right-4 glass-button-inner ${canCopyAssetLink ? "" : "cursor-not-allowed"
-                      }`}
+                    className={`h-7 w-12 transition-all select-none ${canCopyAssetLink ? "cursor-pointer hover:-translate-y-0.5" : "cursor-not-allowed opacity-50"}`}
                     onClick={
                       canCopyAssetLink
                         ? async () => {
                           try {
-                            await navigator.clipboard.writeText(assetLink!);
+                            await navigator.clipboard.writeText(assetLink!.replace(/^"|"$/g, ""));
                             showToast("success", "Landing page link copied!");
                           } catch {
                             showToast(
@@ -2179,7 +2179,20 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
                         : undefined
                     }
                   >
-                    <OnboardingCopyIcon className="w-[14px] h-[14px]" />
+                    <OnboardingCopyIcon className="w-4 h-4" />
+                  </OnboardingIconPill>
+                  {/* Open in browser (right) */}
+                  <OnboardingIconPill
+                    title={canCopyAssetLink ? "Open landing page" : "Landing page not available yet"}
+                    ariaLabel={canCopyAssetLink ? "Open landing page" : "Landing page not available yet"}
+                    className={`h-7 w-12 transition-all select-none ${canCopyAssetLink ? "cursor-pointer hover:-translate-y-0.5" : "cursor-not-allowed opacity-50"}`}
+                    onClick={
+                      canCopyAssetLink
+                        ? () => window.open(assetLink!.replace(/^"|"$/g, ""), "_blank", "noopener,noreferrer")
+                        : undefined
+                    }
+                  >
+                    <OnboardingOpenIcon className="w-4 h-4" />
                   </OnboardingIconPill>
                 </div>
               </div>
