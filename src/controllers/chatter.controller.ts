@@ -15,12 +15,12 @@ import { createPasswordResetToken } from "../services/password-reset.service";
 import { buildSetPasswordUrl } from "../utils/frontend-url";
 import { getPresignedUrl } from "../services/s3.service";
 import { syncUserFromTeaseMe } from "../services/teaseme.service";
+import { getMjfpToken } from "../lib/mjfp-credentials";
 
 const prisma = new PrismaClient();
 const PREREGISTER_URL =
   process.env.PREREGISTER_VIP_TEASEME_USER ||
   process.env.VITE_PREREGISTER_VIP_TEASEME_USER;
-const PREREGISTER_TOKEN = process.env.MJFP_TOKEN || process.env.VITE_MJFP_TOKEN;
 
 const isAccountManagerOrAdmin = (req: AuthRequest): boolean => {
   if (!req.user) return false;
@@ -183,13 +183,14 @@ type PreregisterUpstream =
 const callPreregisterUpstream = async (
   payload: PreregisterPayload,
 ): Promise<PreregisterUpstream> => {
+  const preregisterToken = await getMjfpToken();
   let upstream: globalThis.Response;
   try {
     upstream = await fetch(PREREGISTER_URL!, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Internal-Token": PREREGISTER_TOKEN!,
+        "X-Internal-Token": preregisterToken!,
       },
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(10_000),
@@ -250,7 +251,8 @@ export const preregisterVipUser = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    if (!PREREGISTER_URL || !PREREGISTER_TOKEN) {
+    const mjfpToken = await getMjfpToken();
+    if (!PREREGISTER_URL || !mjfpToken) {
       return res
         .status(503)
         .json({ error: "Preregistration service is not configured" });

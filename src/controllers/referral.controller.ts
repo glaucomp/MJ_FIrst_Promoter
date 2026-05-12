@@ -1,8 +1,9 @@
 import { Prisma, PrismaClient, UserRole, UserType } from "@prisma/client";
-import { Response } from "express";
+import { Request, Response } from "express";
 import { validationResult } from "express-validator";
 import { nanoid } from "nanoid";
 import { AuthRequest } from "../middleware/auth.middleware";
+import { stepEmitter } from "../lib/step-emitter";
 import { emailService } from "../services/email.service";
 import { promotePreUserToUser } from "../services/pre-user-promote.service";
 import { getPresignedUrl } from "../services/s3.service";
@@ -2292,5 +2293,190 @@ export const checkInviteQuota = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error("Check invite quota error:", error);
     res.status(500).json({ error: "Failed to check invite quota" });
+  }
+};
+
+// ─── Webhook: receive step-change push from TeaseMe ──────────────────────────
+
+/**
+ * POST /api/webhooks/teaseme-step
+ *
+ * Called by the TeaseMe app whenever a pre-influencer's step changes.
+ * Validates the shared secret, updates the PreUser row in DB, then fires
+ * the in-memory stepEmitter so any open SSE stream for that referral
+ * receives the update immediately. No JWT auth — the secret header is the
+ * sole authentication mechanism for this endpoint.
+ */
+export const receiveTeasemeStepWebhook = async (
+  req: Request,
+  res: Response,
+) => {
+  const secret = req.headers["x-webhook-secret"];
+  if (!secret || secret !== process.env.TEASEME_WEBHOOK_SECRET) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const { email, inviteCode, currentStep, status, referralId } = req.body as {
+    email?: string;
+    inviteCode?: string;
+    currentStep?: number;
+    status?: string;
+    referralId?: string;
+  };
+
+  if (!email || typeof currentStep !== "number") {
+    return res
+      .status(400)
+      .json({ error: "email and currentStep are required" });
+  }
+
+  try {
+    // Find the PreUser by email (or inviteCode as fallback)
+    const preUser = await prisma.preUser.findFirst({
+      where: inviteCode
+        ? { OR: [{ email }, { inviteCode }] }
+        : { email },
+      include: { referral: { select: { id: true } } },
+    });
+
+    if (!preUser) {
+      // No matching PreUser — log and return 200 so TeaseMe doesn't retry
+      console.warn("[teaseme-webhook] no PreUser found", { email, inviteCode });
+      return res.status(200).json({ ok: true, matched: false });
+    }
+
+    const resolvedReferralId = referralId ?? preUser.referral?.id ?? null;
+
+    await prisma.preUser.update({
+      where: { id: preUser.id },
+      data: {
+        currentStep,
+        ...(status ? { status } : {}),
+        lastCheckedAt: new Date(),
+      },
+    });
+
+    console.info("[teaseme-webhook] step updated", {
+      preUserId: preUser.id,
+      email,
+      currentStep,
+      status,
+      referralId: resolvedReferralId,
+    });
+
+    if (resolvedReferralId) {
+      stepEmitter.emit(`step:${resolvedReferralId}`, {
+        currentStep,
+        status: status ?? preUser.status,
+        done: currentStep >= 5,
+      });
+    }
+
+    return res.status(200).json({ ok: true, matched: true });
+  } catch (error) {
+    console.error("[teaseme-webhook] error", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// ─── SSE: stream step-progress updates to the browser ────────────────────────
+
+/**
+ * GET /api/referrals/:id/status-stream
+ *
+ * Opens a Server-Sent Events stream for a specific referral. The browser
+ * keeps this connection open; when the TeaseMe webhook fires and updates the
+ * stepEmitter, this handler pushes the new step data instantly. No polling.
+ *
+ * Auth: cookie-based JWT (authenticate middleware). The browser must pass
+ * `withCredentials: true` when creating the EventSource.
+ */
+export const streamReferralStatus = async (
+  req: AuthRequest,
+  res: Response,
+) => {
+  const { id } = req.params;
+  const user = req.user!;
+
+  try {
+    const referral = await prisma.referral.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        referrerId: true,
+        referredUserId: true,
+        metadata: true,
+        preUser: {
+          select: {
+            id: true,
+            currentStep: true,
+            status: true,
+          },
+        },
+      },
+    });
+
+    if (!referral) {
+      return res.status(404).json({ error: "Referral not found" });
+    }
+
+    if (
+      user.role !== UserRole.ADMIN &&
+      referral.referrerId !== user.id &&
+      referral.referredUserId !== user.id &&
+      !(
+        user.userType === UserType.ACCOUNT_MANAGER &&
+        assignedAccountManagerMatchesUser(referral.metadata, user.email)
+      )
+    ) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    // Set SSE headers — disable any compression middleware so chunks are
+    // flushed immediately rather than buffered.
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no"); // disable nginx buffering
+    res.flushHeaders();
+
+    const currentStep = referral.preUser?.currentStep ?? 0;
+    const currentStatus = referral.preUser?.status ?? "pending";
+
+    // Send the current step immediately so the browser has a starting value
+    res.write(
+      `data: ${JSON.stringify({ connected: true, currentStep, status: currentStatus, done: currentStep >= 5 })}\n\n`,
+    );
+
+    if (currentStep >= 5) {
+      return res.end();
+    }
+
+    const eventKey = `step:${referral.id}`;
+
+    const onStep = (payload: {
+      currentStep: number;
+      status: string;
+      done: boolean;
+    }) => {
+      res.write(`data: ${JSON.stringify(payload)}\n\n`);
+      if (payload.done) {
+        res.end();
+      }
+    };
+
+    stepEmitter.on(eventKey, onStep);
+
+    // Cleanup when the browser closes the connection
+    req.on("close", () => {
+      stepEmitter.off(eventKey, onStep);
+    });
+  } catch (error) {
+    console.error("Stream referral status error:", error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Failed to open status stream" });
+    } else {
+      res.end();
+    }
   }
 };
