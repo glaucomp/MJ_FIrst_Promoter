@@ -128,150 +128,227 @@ const GroupFormModal = ({ isOpen, onClose, onSaved, editing }: GroupFormModalPro
   );
 };
 
-// ── Manage Members Modal ────────────────────────────────────────────────────
+// ── Create Chatter Panel (page-level) ───────────────────────────────────────
 
-interface ManageMembersModalProps {
-  isOpen: boolean;
-  onClose: () => void;
+interface CreateChatterPanelProps {
+  onChatterCreated: (chatter: Chatter) => void;
+  allChatters: Chatter[];
+}
+
+const CreateChatterPanel = ({ onChatterCreated, allChatters }: CreateChatterPanelProps) => {
+  const [email, setEmail] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const handleCreate = async () => {
+    if (!email.trim()) { setError('Email is required'); return; }
+    setIsCreating(true);
+    setError('');
+    setSuccess('');
+    try {
+      const { chatter } = await chattersApi.create({
+        email: email.trim(),
+        firstName: firstName.trim() || undefined,
+        lastName: lastName.trim() || undefined,
+      });
+      onChatterCreated(chatter);
+      const name = [chatter.firstName, chatter.lastName].filter(Boolean).join(' ') || chatter.email;
+      setSuccess(`${name} created — an invite email has been sent. They can now be added to any group.`);
+      setEmail('');
+      setFirstName('');
+      setLastName('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create chatter');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  return (
+    <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-[14px] p-[20px] flex flex-col gap-[12px]">
+      <p className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.3px]">Create New Chatter</p>
+
+      {success && (
+        <div className="bg-[#0d2b1a] border border-[#1a5c35] rounded-[8px] px-[12px] py-[9px]">
+          <p className="text-tm-success-color05 text-xs font-medium">{success}</p>
+        </div>
+      )}
+      {error && (
+        <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-[8px] px-[12px] py-[9px]">
+          <p className="text-tm-danger-color05 text-xs font-medium">{error}</p>
+        </div>
+      )}
+
+      <div className="flex flex-col sm:flex-row gap-[8px]">
+        <input
+          type="email"
+          value={email}
+          onChange={e => { setEmail(e.target.value); setError(''); setSuccess(''); }}
+          placeholder="Email address *"
+          className="flex-1 bg-[#141416] border border-[rgba(255,255,255,0.08)] rounded-[8px] px-[12px] py-[9px] text-white text-sm placeholder-[#555] outline-none focus:border-[#ff0f5f] transition-colors"
+        />
+        <input
+          type="text"
+          value={firstName}
+          onChange={e => setFirstName(e.target.value)}
+          placeholder="First name"
+          className="w-full sm:w-[140px] bg-[#141416] border border-[rgba(255,255,255,0.08)] rounded-[8px] px-[12px] py-[9px] text-white text-sm placeholder-[#555] outline-none focus:border-[rgba(255,255,255,0.18)] transition-colors"
+        />
+        <input
+          type="text"
+          value={lastName}
+          onChange={e => setLastName(e.target.value)}
+          placeholder="Last name"
+          className="w-full sm:w-[140px] bg-[#141416] border border-[rgba(255,255,255,0.08)] rounded-[8px] px-[12px] py-[9px] text-white text-sm placeholder-[#555] outline-none focus:border-[rgba(255,255,255,0.18)] transition-colors"
+        />
+        <button
+          onClick={handleCreate}
+          disabled={isCreating || !email.trim()}
+          className="shrink-0 bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[9px] text-white text-sm font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isCreating ? 'Creating…' : '+ Create Chatter'}
+        </button>
+      </div>
+
+      {/* Existing chatters — horizontal list */}
+      {allChatters.length > 0 && (
+        <div className="border-t border-[rgba(255,255,255,0.06)] pt-[12px] flex flex-col gap-[10px]">
+          <p className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.3px]">
+            Existing Chatters ({allChatters.length})
+          </p>
+          <div className="flex flex-wrap gap-[8px]">
+            {allChatters.map(c => {
+              const name = [c.firstName, c.lastName].filter(Boolean).join(' ') || c.email;
+              const initials = name
+                .split(' ')
+                .slice(0, 2)
+                .map(w => w[0]?.toUpperCase() ?? '')
+                .join('') || name.slice(0, 2).toUpperCase();
+              return (
+                <div
+                  key={c.id}
+                  title={c.email}
+                  className="flex items-center gap-[8px] bg-[#141416] border border-[rgba(255,255,255,0.07)] rounded-full pl-[4px] pr-[12px] py-[4px]"
+                >
+                  <div className="w-[26px] h-[26px] rounded-full bg-[#2e2e32] border border-[#3a3a3e] flex items-center justify-center shrink-0">
+                    <span className="text-[10px] font-semibold text-[#aaa] leading-none">{initials}</span>
+                  </div>
+                  <span className="text-white text-sm font-medium">{name}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── Inline Member Manager (per-group: add existing chatters) ─────────────────
+
+interface InlineMemberManagerProps {
   group: ChatterGroup;
   allChatters: Chatter[];
   onGroupUpdated: (group: ChatterGroup) => void;
 }
 
-const ManageMembersModal = ({ isOpen, onClose, group, allChatters, onGroupUpdated }: ManageMembersModalProps) => {
+const InlineMemberManager = ({ group, allChatters, onGroupUpdated }: InlineMemberManagerProps) => {
   const [isAdding, setIsAdding] = useState<string | null>(null);
-  const [isRemoving, setIsRemoving] = useState<string | null>(null);
-  const [error, setError] = useState('');
+  const [addError, setAddError] = useState('');
   const [search, setSearch] = useState('');
 
   const memberIds = new Set(group.members.map(m => m.chatterId));
   const nonMembers = allChatters.filter(c => !memberIds.has(c.id));
 
-  const matchesSearch = (name: string, email: string) => {
+  const chatterName = (c: Chatter) => {
+    const parts = [c.firstName, c.lastName].filter(Boolean).join(' ');
+    return parts || c.email;
+  };
+
+  const filteredNonMembers = nonMembers.filter(c => {
     if (!search.trim()) return true;
     const q = search.toLowerCase();
-    return name.toLowerCase().includes(q) || email.toLowerCase().includes(q);
-  };
+    return chatterName(c).toLowerCase().includes(q) || c.email.toLowerCase().includes(q);
+  });
 
   const handleAdd = async (chatterId: string) => {
     setIsAdding(chatterId);
-    setError('');
+    setAddError('');
     try {
       await chatterGroupsApi.addMember(group.id, chatterId);
       const res = await chatterGroupsApi.get(group.id);
       onGroupUpdated(res.group);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add member');
+      setAddError(err instanceof Error ? err.message : 'Failed to add member');
     } finally {
       setIsAdding(null);
     }
   };
 
-  const handleRemove = async (chatterId: string) => {
-    setIsRemoving(chatterId);
-    setError('');
-    try {
-      await chatterGroupsApi.removeMember(group.id, chatterId);
-      const res = await chatterGroupsApi.get(group.id);
-      onGroupUpdated(res.group);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to remove member');
-    } finally {
-      setIsRemoving(null);
-    }
-  };
-
-  const chatterName = (c: Chatter | { email: string; firstName: string | null; lastName: string | null }) => {
-    const parts = [c.firstName, c.lastName].filter(Boolean).join(' ');
-    return parts || c.email;
-  };
-
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] w-full max-w-[520px] flex flex-col gap-[20px] max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-white">Manage Members — {group.name}</h2>
-          <button onClick={onClose} className="text-[#9e9e9e] hover:text-white text-xl leading-none">×</button>
+    <div className="border-t border-[rgba(255,255,255,0.06)] pt-[16px] flex flex-col gap-[12px]">
+      <p className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.3px]">
+        Add Chatters ({nonMembers.length} available)
+      </p>
+
+      {addError && (
+        <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-[8px] px-[12px] py-[9px]">
+          <p className="text-tm-danger-color05 text-xs font-medium">{addError}</p>
         </div>
+      )}
 
-        {/* Search */}
-        <input
-          type="text"
-          placeholder="Search by name or email…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="w-full bg-[#1a1a1a] border border-[rgba(255,255,255,0.08)] rounded-[8px] px-[14px] py-[10px] text-white text-sm placeholder-[#9e9e9e] outline-none focus:border-[rgba(255,255,255,0.2)] transition-colors"
-        />
+      <input
+        type="text"
+        placeholder="Search by name or email…"
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        className="w-full bg-[#141416] border border-[rgba(255,255,255,0.08)] rounded-[8px] px-[12px] py-[9px] text-white text-sm placeholder-[#555] outline-none focus:border-[rgba(255,255,255,0.18)] transition-colors"
+      />
 
-        {error && (
-          <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-[8px] px-[16px] py-[12px]">
-            <p className="text-tm-danger-color05 text-sm font-medium">{error}</p>
-          </div>
-        )}
-
-        {/* Current members */}
-        <div>
-          <p className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.2px] mb-[10px]">
-            Current Members ({group.members.length})
-          </p>
-          {group.members.length === 0 ? (
-            <p className="text-[#9e9e9e] text-sm">No chatters in this group yet.</p>
-          ) : (
-            <div className="flex flex-col gap-[8px]">
-              {group.members.filter(m => matchesSearch(chatterName(m.chatter), m.chatter.email)).map(m => (
-                <div key={m.id} className="flex items-center justify-between bg-[#1a1a1a] border border-[rgba(255,255,255,0.08)] rounded-[8px] px-[14px] py-[10px]">
-                  <div>
-                    <p className="text-white text-sm font-medium">{chatterName(m.chatter)}</p>
-                    <p className="text-[#9e9e9e] text-xs">{m.chatter.email}</p>
-                  </div>
-                  <button
-                    onClick={() => handleRemove(m.chatterId)}
-                    disabled={isRemoving === m.chatterId}
-                    className="text-tm-danger-color05 text-xs font-bold hover:text-[#ff4444] disabled:opacity-50"
-                  >
-                    {isRemoving === m.chatterId ? 'Removing...' : 'Remove'}
-                  </button>
+      {filteredNonMembers.length === 0 ? (
+        <p className="text-[#555] text-sm">
+          {search
+            ? 'No chatters match search.'
+            : nonMembers.length === 0
+            ? 'All chatters are already in this group.'
+            : 'No results.'}
+        </p>
+      ) : (
+        <div className="flex flex-wrap gap-[8px]">
+          {filteredNonMembers.map(c => {
+            const name = chatterName(c);
+            const initials = name
+              .split(' ')
+              .slice(0, 2)
+              .map(w => w[0]?.toUpperCase() ?? '')
+              .join('') || name.slice(0, 2).toUpperCase();
+            return (
+              <button
+                key={c.id}
+                onClick={() => handleAdd(c.id)}
+                disabled={isAdding === c.id}
+                title={c.email}
+                className="flex items-center gap-[8px] bg-[#141416] border border-[rgba(255,255,255,0.08)] hover:border-tm-success-color05 rounded-full pl-[4px] pr-[12px] py-[4px] text-white text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
+              >
+                <div className="w-[26px] h-[26px] rounded-full bg-[#2e2e32] border border-[#3a3a3e] flex items-center justify-center shrink-0">
+                  <span className="text-[10px] font-semibold text-[#aaa] group-hover:text-white transition-colors leading-none">
+                    {isAdding === c.id ? '…' : initials}
+                  </span>
                 </div>
-              ))}
-            </div>
-          )}
+                <span className="font-medium group-hover:text-tm-success-color05 transition-colors">
+                  {name}
+                </span>
+                {isAdding !== c.id && (
+                  <span className="text-[#555] text-xs group-hover:text-tm-success-color05 transition-colors">+</span>
+                )}
+              </button>
+            );
+          })}
         </div>
-
-        {/* Available chatters to add */}
-        {nonMembers.filter(c => matchesSearch(chatterName(c), c.email)).length > 0 && (
-          <div>
-            <p className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.2px] mb-[10px]">
-              Add Chatter
-            </p>
-            <div className="flex flex-col gap-[8px]">
-              {nonMembers.filter(c => matchesSearch(chatterName(c), c.email)).map(c => (
-                <div key={c.id} className="flex items-center justify-between bg-[#1a1a1a] border border-[rgba(255,255,255,0.05)] rounded-[8px] px-[14px] py-[10px]">
-                  <div>
-                    <p className="text-white text-sm font-medium">{chatterName(c)}</p>
-                    <p className="text-[#9e9e9e] text-xs">{c.email}</p>
-                  </div>
-                  <button
-                    onClick={() => handleAdd(c.id)}
-                    disabled={isAdding === c.id}
-                    className="text-tm-success-color05 text-xs font-bold hover:text-tm-success-color09 disabled:opacity-50"
-                  >
-                    {isAdding === c.id ? 'Adding...' : '+ Add'}
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <button
-          onClick={onClose}
-          className="self-end bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[16px] py-[10px] text-white text-sm font-bold hover:bg-[#252525] transition-all"
-        >
-          Close
-        </button>
-      </div>
+      )}
     </div>
   );
 };
@@ -440,20 +517,33 @@ const LinkPromoterModal = ({ isOpen, onClose, group, allPromoters, onGroupUpdate
 
 interface ChatterAvatarCardProps {
   member: ChatterGroup['members'][number];
+  onRemove?: (chatterId: string) => void;
+  isRemoving?: boolean;
 }
 
-const ChatterAvatarCard = ({ member }: ChatterAvatarCardProps) => {
+const ChatterAvatarCard = ({ member, onRemove, isRemoving }: ChatterAvatarCardProps) => {
   const firstName = member.chatter.firstName ?? '';
   const lastName = member.chatter.lastName ?? '';
   const displayName = [firstName, lastName].filter(Boolean).join(' ') || member.chatter.email.split('@')[0];
   const initials = [firstName[0], lastName[0]].filter(Boolean).join('').toUpperCase() || displayName.slice(0, 2).toUpperCase();
 
   return (
-    <div className="flex items-center gap-[12px] bg-[#202022] border border-[rgba(255,255,255,0.06)] rounded-[14px] px-[16px] py-[14px]">
+    <div className="relative flex items-center gap-[12px] bg-[#202022] border border-[rgba(255,255,255,0.06)] rounded-[14px] px-[16px] py-[14px]">
       <div className="w-[44px] h-[44px] rounded-full bg-[#2e2e32] border-2 border-[#3a3a3e] flex items-center justify-center shrink-0">
-        <span className="text-[#aaa] text-sm font-semibold">{initials}</span>
+        <span className="text-[#aaa] text-sm font-semibold">{isRemoving ? '…' : initials}</span>
       </div>
       <span className="text-white text-sm font-medium flex-1 truncate">{displayName}</span>
+      {onRemove && (
+        <button
+          onClick={() => onRemove(member.chatterId)}
+          disabled={isRemoving}
+          title={`Remove ${displayName}`}
+          aria-label={`Remove ${displayName} from group`}
+          className="absolute top-[5px] right-[7px] w-[16px] h-[16px] flex items-center justify-center text-[#555] hover:text-tm-danger-color05 disabled:opacity-40 transition-colors text-sm leading-none"
+        >
+          ×
+        </button>
+      )}
     </div>
   );
 };
@@ -476,7 +566,8 @@ export const ChatterGroups = () => {
 
   const [isGroupFormOpen, setIsGroupFormOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<ChatterGroup | null>(null);
-  const [managingGroup, setManagingGroup] = useState<ChatterGroup | null>(null);
+  const [expandedMembersId, setExpandedMembersId] = useState<string | null>(null);
+  const [removingChatter, setRemovingChatter] = useState<string | null>(null);
   const [linkingGroup, setLinkingGroup] = useState<ChatterGroup | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -534,8 +625,24 @@ export const ChatterGroups = () => {
 
   const handleGroupUpdated = (group: ChatterGroup) => {
     setGroups(prev => prev.map(g => g.id === group.id ? group : g));
-    if (managingGroup?.id === group.id) setManagingGroup(group);
     if (linkingGroup?.id === group.id) setLinkingGroup(group);
+  };
+
+  const handleChatterCreated = (chatter: Chatter) => {
+    setChatters(prev => [...prev, chatter]);
+  };
+
+  const handleRemoveMember = async (groupId: string, chatterId: string) => {
+    setRemovingChatter(chatterId);
+    try {
+      await chatterGroupsApi.removeMember(groupId, chatterId);
+      const res = await chatterGroupsApi.get(groupId);
+      handleGroupUpdated(res.group);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to remove member');
+    } finally {
+      setRemovingChatter(null);
+    }
   };
 
   const sortedGroups = [...groups].sort((a, b) => {
@@ -588,6 +695,14 @@ export const ChatterGroups = () => {
           )}
         </div>
       </div>
+
+      {/* Create Chatter — always visible at top for account managers */}
+      {canManage && (
+        <CreateChatterPanel
+          onChatterCreated={handleChatterCreated}
+          allChatters={chatters}
+        />
+      )}
 
       {error && (
         <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-[8px] px-[16px] py-[12px]">
@@ -704,10 +819,14 @@ export const ChatterGroups = () => {
                     <p className="text-[#9e9e9e] text-base font-semibold">Team Members</p>
                     {canManage && (
                       <button
-                        onClick={() => setManagingGroup(group)}
+                        onClick={() => setExpandedMembersId(prev => prev === group.id ? null : group.id)}
                         className="bg-tm-neutral-color05 px-4 py-2 text-tm-text-color08 hover:text-tm-text-color10 text-base transition-colors rounded-lg"
                       >
-                        {group.members.length === 0 ? '+ Add members' : 'Manage'}
+                        {expandedMembersId === group.id
+                          ? 'Done'
+                          : group.members.length === 0
+                          ? '+ Add Chatters'
+                          : 'Manage Chatters'}
                       </button>
                     )}
                   </div>
@@ -716,11 +835,25 @@ export const ChatterGroups = () => {
                   ) : (
                     <div className="grid grid-cols-3 gap-[10px]">
                       {group.members.map(m => (
-                        <ChatterAvatarCard key={m.id} member={m} />
+                        <ChatterAvatarCard
+                          key={m.id}
+                          member={m}
+                          onRemove={canManage ? (chatterId) => void handleRemoveMember(group.id, chatterId) : undefined}
+                          isRemoving={removingChatter === m.chatterId}
+                        />
                       ))}
                     </div>
                   )}
                 </div>
+
+                {/* Inline chatter manager — account managers only */}
+                {canManage && expandedMembersId === group.id && (
+                  <InlineMemberManager
+                    group={group}
+                    allChatters={chatters}
+                    onGroupUpdated={handleGroupUpdated}
+                  />
+                )}
               </div>
 
               {/* Linked Promoter — subtle footer row */}
@@ -754,17 +887,6 @@ export const ChatterGroups = () => {
         onSaved={handleGroupSaved}
         editing={editingGroup}
       />
-
-      {/* Manage Members Modal */}
-      {managingGroup && (
-        <ManageMembersModal
-          isOpen={!!managingGroup}
-          onClose={() => setManagingGroup(null)}
-          group={managingGroup}
-          allChatters={chatters}
-          onGroupUpdated={handleGroupUpdated}
-        />
-      )}
 
       {/* Link Promoter Modal */}
       {linkingGroup && (
