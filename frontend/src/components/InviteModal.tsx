@@ -153,7 +153,7 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
                 <select
                   value={selectedCampaignId}
                   onChange={(e) => setSelectedCampaignId(e.target.value)}
-                  disabled={campaigns.length === 0}
+                  disabled={campaigns.length === 0 || userRole === 'account_manager'}
                   className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[16px] py-[12px] text-base text-white focus:outline-none focus:border-[#ff0f5f] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {campaigns.map((campaign) => (
