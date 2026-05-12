@@ -609,14 +609,14 @@ export const ChatterGroups = () => {
           )}
         </div>
       ) : (
-        <div className="flex flex-col gap-[16px]">
+        <div className="flex flex-col gap-8">
           {sortedGroups.map(group => (
             <div
               key={group.id}
               className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-[18px] flex flex-col overflow-hidden"
             >
               {/* Card header — static */}
-              <div className="p-[28px] flex items-start justify-between gap-[16px]">
+              <div className="p-[28px] flex flex-col-reverse lg:flex-row lg:items-start justify-between gap-[16px]">
                 {/* Left: avatar + name + tag */}
                 <div className="flex items-center gap-[14px] min-w-0">
                   {(() => {
@@ -653,8 +653,8 @@ export const ChatterGroups = () => {
                 </div>
 
                 {/* Right: referral bonus + admin actions */}
-                <div className="flex flex-col items-end gap-[6px] shrink-0">
-                  <div className="flex items-baseline gap-[5px]">
+                <div className="flex flex-row justify-between gap-4">
+                  <div className="flex items-baseline gap-[5px] self-end">
                     <span className="text-[#9e9e9e] text-base">Referral Bonus</span>
                     <span className="text-white text-sm font-bold">{group.commissionPercentage}%</span>
                   </div>
