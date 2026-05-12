@@ -2353,7 +2353,16 @@ export const receiveTeasemeStepWebhook = async (
       return res.status(200).json({ ok: true, matched: false });
     }
 
-    const resolvedReferralId = referralId ?? preUser.referral?.id ?? null;
+    const resolvedReferralId = preUser.referral?.id ?? null;
+
+    if (referralId && referralId !== resolvedReferralId) {
+      console.warn("[teaseme-webhook] ignoring mismatched referralId from request", {
+        preUserId: preUser.id,
+        email,
+        requestReferralId: referralId,
+        dbReferralId: resolvedReferralId,
+      });
+    }
 
     await prisma.preUser.update({
       where: { id: preUser.id },

@@ -47,6 +47,7 @@ export async function getMjfpCredentials(): Promise<MjfpCredentials | null> {
       token: { startsWith: "fp_token_" },
       isActive: true,
     },
+    orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
     select: { token: true, accountId: true },
   });
 
