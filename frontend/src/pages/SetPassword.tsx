@@ -106,17 +106,17 @@ export const SetPassword = () => {
 
           <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-[20px]">
             {tokenState.status === 'loading' && (
-              <p className="text-[#9e9e9e] text-[14px] text-center py-[24px]">
+              <p className="text-[#9e9e9e] text-sm text-center py-[24px]">
                 Checking your link…
               </p>
             )}
 
             {tokenState.status === 'invalid' && (
               <div className="flex flex-col gap-[16px]">
-                <h2 className="text-white text-[20px] font-bold text-center">
+                <h2 className="text-white text-lg font-bold text-center">
                   Link expired or invalid
                 </h2>
-                <p className="text-[#9e9e9e] text-[14px] leading-normal text-center">
+                <p className="text-[#9e9e9e] text-sm leading-normal text-center">
                   This invite / reset link is no longer valid. Ask whoever
                   invited you for a new link, or request a password reset from
                   the login page.
@@ -134,8 +134,8 @@ export const SetPassword = () => {
             {tokenState.status === 'valid' && (
               <form onSubmit={handleSubmit} className="flex flex-col gap-[20px]">
                 <div className="flex flex-col gap-[4px]">
-                  <h2 className="text-white text-[20px] font-bold">{heading}</h2>
-                  <p className="text-[#9e9e9e] text-[14px] leading-normal">
+                  <h2 className="text-white text-lg font-bold">{heading}</h2>
+                  <p className="text-[#9e9e9e] text-sm leading-normal">
                     {intro}
                   </p>
                 </div>
@@ -143,7 +143,7 @@ export const SetPassword = () => {
                 <div className="flex flex-col gap-[8px]">
                   <label
                     htmlFor="new-password"
-                    className="text-[#9e9e9e] text-[12px] leading-[1.4] font-bold uppercase tracking-[0.2px]"
+                    className="text-[#9e9e9e] text-xs leading-[1.4] font-bold uppercase tracking-[0.2px]"
                   >
                     New Password
                   </label>
@@ -163,7 +163,7 @@ export const SetPassword = () => {
                 <div className="flex flex-col gap-[8px]">
                   <label
                     htmlFor="confirm-password"
-                    className="text-[#9e9e9e] text-[12px] leading-[1.4] font-bold uppercase tracking-[0.2px]"
+                    className="text-[#9e9e9e] text-xs leading-[1.4] font-bold uppercase tracking-[0.2px]"
                   >
                     Confirm Password
                   </label>
@@ -182,7 +182,7 @@ export const SetPassword = () => {
 
                 {error && (
                   <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-[8px] px-[16px] py-[12px]">
-                    <p className="text-tm-danger-color05 text-[14px] leading-[1.4] font-medium">
+                    <p className="text-tm-danger-color05 text-sm leading-[1.4] font-medium">
                       {error}
                     </p>
                   </div>

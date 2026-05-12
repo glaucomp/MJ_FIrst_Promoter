@@ -142,7 +142,7 @@ const PersonRow = ({
         flex: 1,
         marginLeft: isT2 ? 36 : 0,
         display: 'flex',
-        alignItems: 'center',
+        alignItems: 'start',
         gap: 10,
         padding: isT2 ? '8px 16px 8px 12px' : '10px 16px',
         background: isT2 ? 'rgba(255,255,255,0.025)' : undefined,
@@ -169,8 +169,8 @@ const PersonRow = ({
           {statusColor && (
             <span
               style={{
-                width: 5,
-                height: 5,
+                width: 8,
+                height: 8,
                 borderRadius: '50%',
                 background: statusColor,
                 flexShrink: 0,
@@ -348,20 +348,14 @@ export const Network = () => {
   } as const;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, paddingBottom: 40 }}>
+   <div className="flex flex-col gap-5 pb-10">
       {/* heading */}
       <div>
-        <h1
-          style={{
-            fontSize: 22,
-            fontWeight: 600,
-            color: 'var(--color-text-primary)',
-            lineHeight: 1.2,
-          }}
-        >
+        <h1 className='text-3xl leading-[36px] font-semibold text-white lg:w-full'
+                 >
           My Network
         </h1>
-        <p style={{ fontSize: 14, color: 'var(--color-text-muted)', marginTop: 4 }}>
+        <p className="text-base text-tm-text-color08 mt-1">
           T1 — influencers you invited · T2 — people they referred
         </p>
       </div>
@@ -385,16 +379,7 @@ export const Network = () => {
 
       {/* error */}
       {error && (
-        <div
-          style={{
-            borderRadius: 8,
-            padding: '10px 14px',
-            fontSize: 13,
-            background: 'rgba(239,68,68,0.1)',
-            color: '#f87171',
-            border: '1px solid rgba(239,68,68,0.25)',
-          }}
-        >
+   <div className="rounded-lg py-4 px-5 text-sm bg-[rgba(239,68,68,0.1)] text-tm-danger-color01 border border-tm-danger-color12">
           {error}
         </div>
       )}
@@ -402,7 +387,7 @@ export const Network = () => {
       {!loading && !error && (
         <>
           {/* stat row */}
-          <div className='grid grid-cols-2 gap-4'>
+          <div className='grid grid-cols-2 lg:grid-cols-[1fr_1fr_2fr] gap-4'>
             {(
               [
                 {
@@ -415,7 +400,7 @@ export const Network = () => {
                   value: allT2.length,
                   sub: allT2.length > 0 ? 'via T1' : 'none yet',
                 },
-                {
+                { 
                   label: 'Total Earned',
                   value: t1Earnings + t2Earnings > 0 ? `$${money(t1Earnings + t2Earnings)}` : '—',
                   sub: (() => {
@@ -426,35 +411,23 @@ export const Network = () => {
                 },
               ] as const
             ).map(({ label, value, sub }) => (
-              <div
-                key={label}
-                style={{
-                  flex: 1,
-                  borderRadius: 10,
-                  padding: '12px 14px',
-                  background: 'var(--color-surface-end)',
-                  boxShadow: '0 -1px 0 0 rgba(255,255,255,0.10)',
-                }}
+             <div
+  key={label}
+  className={`flex-1 rounded-lg px-4 py-5 bg-tm-neutral-color05 ${
+    label === 'Total Earned' ? 'col-span-full lg:col-span-1' : ''
+  }`}
               >
-                <p
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 600,
-                    color: 'var(--color-text-muted)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.6px',
-                    marginBottom: 4,
-                  }}
-                >
+              <p className="text-sm lg:text-lg text-tm-text-color10 mb-1">
+
                   {label}
                 </p>
                 <p
-                  className="stat-value"
-                  style={{ lineHeight: 1, marginBottom: 4 }}
+                  className="stat-value mb-2 text-base"
+             
                 >
                   {value}
                 </p>
-                <p style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{sub}</p>
+                <p className='text-sm text-tm-text-color09'>{sub}</p>
               </div>
             ))}
           </div>
@@ -505,19 +478,11 @@ export const Network = () => {
               </div>
 
               {/* all T1 rows */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div className='grid lg:grid-cols-2 gap-4'>
                 {t1.map((ref, idx) => (
                   <div key={ref.id}>
                     {/* divider between T1 entries (not before first) */}
-                    {idx > 0 && (
-                      <div
-                        style={{
-                          height: 1,
-                          background: 'rgba(255,255,255,0.05)',
-                          margin: '4px 0',
-                        }}
-                      />
-                    )}
+               
                     <T1Entry referral={ref} colorIdx={idx} />
                   </div>
                 ))}

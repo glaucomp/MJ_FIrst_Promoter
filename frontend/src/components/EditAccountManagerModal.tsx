@@ -126,12 +126,12 @@ export const EditAccountManagerModal = ({
       <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-5 shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] w-full lg:max-w-[640px] lg:p-12">
         <div className="flex flex-col gap-[20px]">
           <div className="flex items-center justify-between">
-            <h2 className="text-[20px] leading-[1.4] font-bold text-white">
+            <h2 className="text-lg leading-[1.4] font-bold text-white">
               Edit Account Manager
             </h2>
             <button
               onClick={handleClose}
-              className="text-[#9e9e9e] hover:text-white text-[24px] leading-none"
+              className="text-[#9e9e9e] hover:text-white text-xl leading-none"
             >
               ×
             </button>
@@ -139,7 +139,7 @@ export const EditAccountManagerModal = ({
 
           {success && (
             <div className="bg-tm-success-color12 border border-tm-success-color09 rounded-[8px] px-[16px] py-[12px]">
-              <p className="text-tm-success-color05 text-[14px] font-medium">
+              <p className="text-tm-success-color05 text-sm font-medium">
                 Account manager updated.
               </p>
             </div>
@@ -149,7 +149,7 @@ export const EditAccountManagerModal = ({
             <div className="flex flex-col gap-[8px] flex-1">
               <label
                 htmlFor="edit-am-first-name"
-                className="text-[#9e9e9e] text-[12px] font-bold uppercase tracking-[0.2px]"
+                className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.2px]"
               >
                 First Name
               </label>
@@ -159,13 +159,13 @@ export const EditAccountManagerModal = ({
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 autoComplete="off"
-                className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[14px] py-[11px] text-[15px] text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
+                className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[14px] py-[11px] text-base text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
               />
             </div>
             <div className="flex flex-col gap-[8px] flex-1">
               <label
                 htmlFor="edit-am-last-name"
-                className="text-[#9e9e9e] text-[12px] font-bold uppercase tracking-[0.2px]"
+                className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.2px]"
               >
                 Last Name
               </label>
@@ -175,7 +175,7 @@ export const EditAccountManagerModal = ({
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 autoComplete="off"
-                className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[14px] py-[11px] text-[15px] text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
+                className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[14px] py-[11px] text-base text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
               />
             </div>
           </div>
@@ -183,7 +183,7 @@ export const EditAccountManagerModal = ({
           <div className="flex flex-col gap-[8px]">
             <label
               htmlFor="edit-am-email"
-              className="text-[#9e9e9e] text-[12px] font-bold uppercase tracking-[0.2px]"
+              className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.2px]"
             >
               Email
             </label>
@@ -197,9 +197,9 @@ export const EditAccountManagerModal = ({
               readOnly
               disabled
               autoComplete="off"
-              className="bg-[#141414] border border-[rgba(255,255,255,0.06)] rounded-[8px] px-[14px] py-[11px] text-[15px] text-[#9e9e9e] cursor-not-allowed select-text"
+              className="bg-[#141414] border border-[rgba(255,255,255,0.06)] rounded-[8px] px-[14px] py-[11px] text-base text-[#9e9e9e] cursor-not-allowed select-text"
             />
-            <p className="text-[#9e9e9e] text-[12px] leading-[1.4]">
+            <p className="text-[#9e9e9e] text-xs leading-[1.4]">
               Email can't be changed from here yet.
             </p>
           </div>
@@ -207,15 +207,15 @@ export const EditAccountManagerModal = ({
           <div className="flex flex-col gap-[8px]">
             <label
               htmlFor="edit-am-campaign"
-              className="text-[#9e9e9e] text-[12px] font-bold uppercase tracking-[0.2px]"
+              className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.2px]"
             >
               Campaign
             </label>
             {campaignsLoading && (
-              <p className="text-[#9e9e9e] text-[14px]">Loading campaigns…</p>
+              <p className="text-[#9e9e9e] text-sm">Loading campaigns…</p>
             )}
             {!campaignsLoading && campaigns.length === 0 && (
-              <p className="text-[#ffcc33] text-[13px] leading-[1.4]">
+              <p className="text-[#ffcc33] text-sm leading-[1.4]">
                 No hidden Account Manager campaigns exist. Create one on the
                 Campaigns page (toggle "Visible to Promoters" off and link it
                 to a public campaign), then come back here.
@@ -227,7 +227,7 @@ export const EditAccountManagerModal = ({
                   id="edit-am-campaign"
                   value={campaignId}
                   onChange={(e) => setCampaignId(e.target.value)}
-                  className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[14px] py-[11px] text-[15px] text-white focus:outline-none focus:border-[#ff0f5f]"
+                  className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[14px] py-[11px] text-base text-white focus:outline-none focus:border-[#ff0f5f]"
                 >
                   <option value="">— Select a campaign —</option>
                   {campaigns.map((c) => (
@@ -240,14 +240,14 @@ export const EditAccountManagerModal = ({
                   ))}
                 </select>
                 {selectedCampaign && !selectedCampaign.linkedCampaign && (
-                  <p className="text-[#ffcc33] text-[12px] leading-[1.4]">
+                  <p className="text-[#ffcc33] text-xs leading-[1.4]">
                     This campaign isn't linked to a public campaign yet, so
                     the AM won't have anything to invite into. Set the linked
                     campaign on the Campaigns page first.
                   </p>
                 )}
                 {selectedCampaign?.linkedCampaign && (
-                  <p className="text-[#9e9e9e] text-[12px] leading-[1.4]">
+                  <p className="text-[#9e9e9e] text-xs leading-[1.4]">
                     The AM will be able to invite promoters into{" "}
                     <span className="text-white font-medium">
                       {selectedCampaign.linkedCampaign.name}
@@ -257,7 +257,7 @@ export const EditAccountManagerModal = ({
               </>
             )}
             {campaignsError && (
-              <p className="text-tm-danger-color05 text-[12px] leading-[1.4]">
+              <p className="text-tm-danger-color05 text-xs leading-[1.4]">
                 {campaignsError}
               </p>
             )}
@@ -265,7 +265,7 @@ export const EditAccountManagerModal = ({
 
           {error && (
             <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-[8px] px-[16px] py-[12px]">
-              <p className="text-tm-danger-color05 text-[14px] font-medium">
+              <p className="text-tm-danger-color05 text-sm font-medium">
                 {error}
               </p>
             </div>
@@ -274,14 +274,14 @@ export const EditAccountManagerModal = ({
           <div className="flex gap-[12px]">
             <button
               onClick={handleClose}
-              className="flex-1 bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[16px] py-[12px] text-white text-[14px] font-bold hover:bg-[#252525] transition-all"
+              className="flex-1 bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[16px] py-[12px] text-white text-sm font-bold hover:bg-[#252525] transition-all"
             >
               Cancel
             </button>
             <button
               onClick={handleSubmit}
               disabled={isLoading || !campaignId}
-              className="flex-1 bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[12px] text-white text-[14px] font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[12px] text-white text-sm font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? "Saving..." : "Save Changes"}
             </button>

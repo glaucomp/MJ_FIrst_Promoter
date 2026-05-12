@@ -18,9 +18,9 @@ const ChatterAvatarCard = ({ member }: ChatterAvatarCardProps) => {
   return (
     <div className="flex items-center gap-[12px] bg-[#202022] border border-[rgba(255,255,255,0.06)] rounded-[14px] px-[16px] py-[14px]">
       <div className="w-[44px] h-[44px] rounded-full bg-[#2e2e32] border-2 border-[#3a3a3e] flex items-center justify-center shrink-0">
-        <span className="text-[#aaa] text-[13px] font-semibold">{initials}</span>
+        <span className="text-[#aaa] text-sm font-semibold">{initials}</span>
       </div>
-      <span className="text-white text-[14px] font-medium flex-1 truncate">{displayName}</span>
+      <span className="text-white text-sm font-medium flex-1 truncate">{displayName}</span>
     </div>
   );
 };
@@ -54,8 +54,8 @@ export const ChatterDashboard = () => {
     <div className="flex flex-col gap-[24px] py-[24px]">
       {/* Header */}
       <div>
-        <h1 className="text-[24px] font-bold text-white leading-[1.3]">My Groups</h1>
-        <p className="text-[#9e9e9e] text-[14px] mt-[4px]">
+        <h1 className="text-xl font-bold text-white leading-[1.3]">My Groups</h1>
+        <p className="text-[#9e9e9e] text-sm mt-[4px]">
           {groups.length === 0
             ? 'Your assigned chatter groups'
             : `${groups.length} group${groups.length === 1 ? '' : 's'} — commissions split equally among group members`}
@@ -69,14 +69,14 @@ export const ChatterDashboard = () => {
       )}
 
       {!isLoading && error && (
-        <div className="bg-[#660000] border border-[#cc0000] rounded-[8px] px-[16px] py-[12px]">
-          <p className="text-[#ff2a2a] text-[14px]">{error}</p>
+        <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-[8px] px-[16px] py-[12px]">
+          <p className="text-tm-danger-color05 text-sm">{error}</p>
         </div>
       )}
 
       {!isLoading && !error && groups.length === 0 && (
         <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-[18px] p-[32px] text-center">
-          <p className="text-[#9e9e9e] text-[15px]">You are not assigned to any group yet.</p>
+          <p className="text-[#9e9e9e] text-base">You are not assigned to any group yet.</p>
         </div>
       )}
 
@@ -114,15 +114,15 @@ export const ChatterDashboard = () => {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <span className="text-white text-[16px] font-bold leading-none">
+                      <span className="text-white text-base font-bold leading-none">
                         {avatarInitials}
                       </span>
                     )}
                   </div>
                   <div className="flex flex-col gap-[6px] min-w-0">
-                    <h3 className="text-white text-[22px] font-bold leading-[1.2] truncate">{group.name}</h3>
+                    <h3 className="text-white text-lg font-bold leading-[1.2] truncate">{group.name}</h3>
                     {group.tag && (
-                      <span className="self-start px-[10px] py-[3px] rounded-[100px] text-[12px] font-semibold text-[#ff2a71]">
+                      <span className="self-start px-[10px] py-[3px] rounded-full text-xs font-semibold text-[#ff2a71]">
                         {group.tag}
                       </span>
                     )}
@@ -130,11 +130,11 @@ export const ChatterDashboard = () => {
                 </div>
                 <div className="flex flex-col items-end gap-[12px] shrink-0">
                   <div className="flex items-baseline gap-[5px]">
-                    <span className="text-[#9e9e9e] text-[13px]">Referral Bonus</span>
-                    <span className="text-white text-[14px] font-bold">{group.commissionPercentage}%</span>
+                    <span className="text-[#9e9e9e] text-sm">Referral Bonus</span>
+                    <span className="text-white text-sm font-bold">{group.commissionPercentage}%</span>
                   </div>
                   <span
-                    className="inline-flex items-center justify-center px-[28px] py-[10px] rounded-[100px] bg-linear-to-b from-[#2a2a2e] to-[#151517] border border-[rgba(255,255,255,0.08)] text-white text-[13px] font-semibold shadow-[0_2px_6px_rgba(0,0,0,0.35)] group-hover/card:border-[rgba(255,42,113,0.5)] transition-colors"
+                    className="inline-flex items-center justify-center px-[28px] py-[10px] rounded-full bg-linear-to-b from-[#2a2a2e] to-[#151517] border border-[rgba(255,255,255,0.08)] text-white text-sm font-semibold shadow-[0_2px_6px_rgba(0,0,0,0.35)] group-hover/card:border-[rgba(255,42,113,0.5)] transition-colors"
                     aria-hidden="true"
                   >
                     View Tools
@@ -145,9 +145,9 @@ export const ChatterDashboard = () => {
               {/* Card body — team members */}
               <div className="px-[28px] pb-[24px] flex flex-col gap-[16px]">
                 <div className="flex flex-col gap-[12px]">
-                  <p className="text-[#9e9e9e] text-[14px] font-semibold">Team Members</p>
+                  <p className="text-[#9e9e9e] text-sm font-semibold">Team Members</p>
                   {(group.members ?? []).length === 0 ? (
-                    <p className="text-[#555] text-[13px]">No chatters assigned yet.</p>
+                    <p className="text-[#555] text-sm">No chatters assigned yet.</p>
                   ) : (
                     <div className="grid grid-cols-3 gap-[10px]">
                       {(group.members ?? []).map(m => (
@@ -160,8 +160,8 @@ export const ChatterDashboard = () => {
 
               {/* Linked promoter footer */}
               <div className="flex items-center gap-[6px] px-[28px] py-[14px] border-t border-[rgba(255,255,255,0.04)]">
-                <span className="text-[#444] text-[11px] font-semibold uppercase tracking-[0.3px]">Linked Promoter</span>
-                <span className="text-[#666] text-[12px]">
+                <span className="text-[#444] text-xs font-semibold uppercase tracking-[0.3px]">Linked Promoter</span>
+                <span className="text-[#666] text-xs">
                   {group.promoter
                     ? [group.promoter.firstName, group.promoter.lastName].filter(Boolean).join(' ') || group.promoter.username || 'Unknown'
                     : 'None'}

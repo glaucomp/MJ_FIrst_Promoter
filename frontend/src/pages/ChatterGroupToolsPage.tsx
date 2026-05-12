@@ -27,7 +27,7 @@ const InitialsAvatar = ({
 
   return (
     <div className="w-[36px] h-[36px] rounded-full bg-linear-to-br from-[#ff0f5f] to-[#cc0047] flex items-center justify-center shrink-0">
-      <span className="text-white text-[13px] font-bold leading-none">
+      <span className="text-white text-sm font-bold leading-none">
         {initials}
       </span>
     </div>
@@ -219,10 +219,10 @@ export const ChatterGroupToolsPage = () => {
   if (!group) {
     return (
       <div className="flex flex-col items-center justify-center py-[64px] gap-[16px]">
-        <p className="text-[#9e9e9e] text-[15px]">Group not found.</p>
+        <p className="text-[#9e9e9e] text-base">Group not found.</p>
         <button
           onClick={() => navigate("/chatter-portal")}
-          className="text-[#ff2a71] text-[14px] font-semibold hover:underline"
+          className="text-[#ff2a71] text-sm font-semibold hover:underline"
         >
           ← Back to groups
         </button>
@@ -269,7 +269,7 @@ export const ChatterGroupToolsPage = () => {
             </svg>
           </button>
           <InitialsAvatar name={promoterName} photoUrl={photoUrl} />
-          <h1 className="text-[24px] font-bold text-white leading-[1.2]">
+          <h1 className="text-xl font-bold text-white leading-[1.2]">
             {promoterName} Tools
           </h1>
         </div>
@@ -297,11 +297,11 @@ export const ChatterGroupToolsPage = () => {
                     d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
                   />
                 </svg>
-                <p className="text-[11px] font-bold uppercase tracking-[0.3px] text-[#9e9e9e]">
+                <p className="text-xs font-bold uppercase tracking-[0.3px] text-[#9e9e9e]">
                   Invite Link
                 </p>
               </div>
-              <p className="text-[#555] text-[13px]">
+              <p className="text-[#555] text-sm">
                 Link generation unavailable — this group's promoter has no
                 username set.
               </p>
@@ -331,7 +331,7 @@ export const ChatterGroupToolsPage = () => {
               <rect x="12" y="4" width="2" height="6" rx="1" />
               <rect x="15" y="5" width="2" height="4" rx="1" />
             </svg>
-            <p className="text-[13px] font-bold uppercase tracking-[0.3px] text-white">
+            <p className="text-sm font-bold uppercase tracking-[0.3px] text-white">
               {promoterName} Info
             </p>
           </div>
@@ -348,7 +348,7 @@ export const ChatterGroupToolsPage = () => {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <span className="text-white text-[22px] font-bold leading-none">
+                  <span className="text-white text-lg font-bold leading-none">
                     {promoterName
                       .split(" ")
                       .slice(0, 2)
@@ -357,7 +357,7 @@ export const ChatterGroupToolsPage = () => {
                   </span>
                 )}
               </div>
-              <p className="text-[#555] text-[13px]">Current Profile Picture</p>
+              <p className="text-[#555] text-sm">Current Profile Picture</p>
             </div>
 
             {/* Social icon grid — click to copy the URL to clipboard */}

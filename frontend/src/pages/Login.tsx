@@ -93,7 +93,7 @@ export const Login = () => {
                 <div className="flex flex-col gap-[8px]">
                   <label
                     htmlFor="email"
-                    className="text-[#9e9e9e] text-[14px] leading-[1.4] font-bold uppercase tracking-[0.2px]"
+                    className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase tracking-[0.2px]"
                   >
                     Email
                   </label>
@@ -113,7 +113,7 @@ export const Login = () => {
                   <div className="flex items-center justify-between">
                     <label
                       htmlFor="password"
-                      className="text-[#9e9e9e] text-[14px] leading-[1.4] font-bold uppercase tracking-[0.2px]"
+                      className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase tracking-[0.2px]"
                     >
                       Password
                     </label>
@@ -125,7 +125,7 @@ export const Login = () => {
                         setError('');
                         setForgotMessage('');
                       }}
-                      className="text-[13px] leading-[1.4] text-[#ff0f5f] hover:underline font-semibold"
+                      className="text-sm leading-[1.4] text-[#ff0f5f] hover:underline font-semibold"
                     >
                       Forgot password?
                     </button>
@@ -144,7 +144,7 @@ export const Login = () => {
 
                 {error && (
                   <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-[8px] px-[16px] py-[12px]">
-                    <p className="text-tm-danger-color05 text-[14px] leading-[1.4] font-medium">
+                    <p className="text-tm-danger-color05 text-sm leading-[1.4] font-medium">
                       {error}
                     </p>
                   </div>
@@ -160,7 +160,7 @@ export const Login = () => {
                 </button>
               </div>
 
-              <p className="text-center text-[14px] leading-[1.4] text-[#9e9e9e] tracking-[0.2px]">
+              <p className="text-center text-sm leading-[1.4] text-[#9e9e9e] tracking-[0.2px]">
                 Need help? Contact support
               </p>
             </form>
@@ -172,7 +172,7 @@ export const Login = () => {
                 <div className="flex flex-col gap-[8px]">
                   <label
                     htmlFor="forgot-email"
-                    className="text-[#9e9e9e] text-[14px] leading-[1.4] font-bold uppercase tracking-[0.2px]"
+                    className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase tracking-[0.2px]"
                   >
                     Email
                   </label>
@@ -189,7 +189,7 @@ export const Login = () => {
 
                 {error && (
                   <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-[8px] px-[16px] py-[12px]">
-                    <p className="text-tm-danger-color05 text-[14px] leading-[1.4] font-medium">
+                    <p className="text-tm-danger-color05 text-sm leading-[1.4] font-medium">
                       {error}
                     </p>
                   </div>
@@ -197,7 +197,7 @@ export const Login = () => {
 
                 {forgotMessage && (
                   <div className="bg-[#1f3d29] border border-tm-success-color09 rounded-[8px] px-[16px] py-[12px]">
-                    <p className="text-tm-success-color05 text-[14px] leading-[1.4] font-medium">
+                    <p className="text-tm-success-color05 text-sm leading-[1.4] font-medium">
                       {forgotMessage}
                     </p>
                   </div>
@@ -218,7 +218,7 @@ export const Login = () => {
                     setError('');
                     setForgotMessage('');
                   }}
-                  className="text-center text-[13px] leading-[1.4] text-[#9e9e9e] hover:text-white tracking-[0.2px]"
+                  className="text-center text-sm leading-[1.4] text-[#9e9e9e] hover:text-white tracking-[0.2px]"
                 >
                   ← Back to sign in
                 </button>
