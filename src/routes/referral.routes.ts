@@ -91,6 +91,14 @@ router.post(
   referralController.sendReferralWelcomeEmail,
 );
 
+// SSE stream: push TeaseMe step-progress updates to the browser in real time.
+// Must be registered before the generic /:id GET to avoid route shadowing.
+router.get(
+  "/:id/status-stream",
+  authenticate,
+  referralController.streamReferralStatus,
+);
+
 // Get referral details
 router.get("/:id", authenticate, referralController.getReferralById);
 

@@ -20,6 +20,7 @@ import { resolveOwnership } from "../services/pre-user-promote.service";
 import { ensureCustomerTrackingReferralForPromotedUser } from "../services/referral-membership.service";
 import { getUserTypeInfo, syncUserType } from "../services/user.service";
 import { buildSetPasswordUrl } from "../utils/frontend-url";
+import { clearMjfpCredentialsCache, getMjfpCredentials, MJFP_API_URL } from "../lib/mjfp-credentials";
 
 const prisma = new PrismaClient();
 
@@ -245,17 +246,15 @@ export const register = async (req: AuthRequest, res: Response) => {
         }
 
         // Also track in MJ Promoter Python service
-        const mjfpUrl = process.env.MJFP_API_URL;
-        const mjfpToken = process.env.MJFP_TOKEN;
-        const mjfpAccountId = process.env.MJFP_ACCOUNT_ID;
+        const mjfpCreds = await getMjfpCredentials();
 
-        if (mjfpToken && mjfpAccountId) {
-          const trackResponse = await fetch(`${mjfpUrl}/v2/track/signup`, {
+        if (mjfpCreds) {
+          const trackResponse = await fetch(`${MJFP_API_URL}/v2/track/signup`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${mjfpToken}`,
-              "Account-ID": mjfpAccountId,
+              Authorization: `Bearer ${mjfpCreds.token}`,
+              "Account-ID": mjfpCreds.accountId,
             },
             body: JSON.stringify({
               email: user.email,
@@ -269,6 +268,7 @@ export const register = async (req: AuthRequest, res: Response) => {
               `✅ MJ Promoter signup tracked: ${email} -> ${refCode}`,
             );
           } else {
+            if (trackResponse.status === 401) clearMjfpCredentialsCache();
             console.warn(
               `⚠️ MJ Promoter signup tracking failed: ${trackResponse.status}`,
             );

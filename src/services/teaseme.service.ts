@@ -2,6 +2,7 @@ import http from "node:http";
 import https from "node:https";
 
 import { PrismaClient } from "@prisma/client";
+import { clearMjfpCredentialsCache, getMjfpToken } from "../lib/mjfp-credentials";
 
 const prisma = new PrismaClient();
 
@@ -63,9 +64,7 @@ export const fetchTeasemePreUserStatus = async (params: {
     throw new Error("fetchTeasemePreUserStatus requires email or inviteCode");
   }
 
-  // Use the server-only MJFP_TOKEN. Never fall back to VITE_-prefixed vars:
-  // Vite exposes those to the frontend bundle, which would leak the secret.
-  const token = process.env.MJFP_TOKEN;
+  const token = await getMjfpToken();
   if (!token) {
     // Without the shared token the upstream will refuse every request — fail
     // open so the list still renders instead of looping on 401s.
@@ -92,7 +91,10 @@ export const fetchTeasemePreUserStatus = async (params: {
     return null;
   }
 
-  if (!res.ok) return null;
+  if (!res.ok) {
+    if (res.status === 401) clearMjfpCredentialsCache();
+    return null;
+  }
 
   let body: unknown = null;
   try {
@@ -306,7 +308,7 @@ const postToTeaseme = async (
   url: string,
   body: Record<string, unknown>,
 ): Promise<TeasemeActionResult | null> => {
-  const token = process.env.MJFP_TOKEN;
+  const token = await getMjfpToken();
   if (!token) return null;
   let res: Response;
   try {
@@ -329,7 +331,10 @@ const postToTeaseme = async (
   } catch {
     /* non-JSON response is still valid for 2xx; fall through */
   }
-  if (!res.ok) return null;
+  if (!res.ok) {
+    if (res.status === 401) clearMjfpCredentialsCache();
+    return null;
+  }
   const raw =
     parsed && typeof parsed === "object"
       ? (parsed as Record<string, unknown>)
@@ -413,7 +418,7 @@ export const approvePreInfluencer = async (params: {
   if (!params.email) {
     throw new Error("approvePreInfluencer requires invitee_email");
   }
-  const token = process.env.MJFP_TOKEN;
+  const token = await getMjfpToken();
   if (!token) return null;
 
   const result = await postRawJson(
@@ -431,6 +436,7 @@ export const approvePreInfluencer = async (params: {
     "mjfp.approve",
   );
   if (!result) return null;
+  if (result.status === 401) clearMjfpCredentialsCache();
   if (result.status < 200 || result.status >= 300) return null;
 
   const raw =

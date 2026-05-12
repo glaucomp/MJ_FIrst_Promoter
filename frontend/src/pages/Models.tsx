@@ -1498,6 +1498,85 @@ type ReferralListProps = {
   isAdmin?: boolean;
 };
 
+type StepStreamPayload = {
+  connected?: boolean;
+  currentStep: number;
+  status: string;
+  done: boolean;
+};
+
+/**
+ * Mounts an EventSource for a single referral's step-progress stream.
+ * Renders a pulsing "Live" dot while the connection is open, nothing once
+ * the stream closes (step >= 5 or browser disconnects). Uses a proper
+ * component so the useEffect hook is valid inside the referral card map.
+ */
+const ReferralStepStream = ({
+  referralId,
+  setReferrals,
+  active,
+}: {
+  referralId: string;
+  setReferrals?: React.Dispatch<React.SetStateAction<Referral[]>>;
+  active: boolean;
+}) => {
+  const [isConnected, setIsConnected] = useState(false);
+
+  useEffect(() => {
+    if (!active) return;
+
+    const source = new EventSource(
+      `/api/referrals/${referralId}/status-stream`,
+      { withCredentials: true },
+    );
+
+    source.onopen = () => setIsConnected(true);
+
+    source.onmessage = (e: MessageEvent) => {
+      try {
+        const data = JSON.parse(e.data as string) as StepStreamPayload;
+        setReferrals?.((prev) =>
+          prev.map((r) =>
+            r.id === referralId && r.preUser
+              ? {
+                  ...r,
+                  preUser: { ...r.preUser, currentStep: data.currentStep },
+                }
+              : r,
+          ),
+        );
+        if (data.done) {
+          source.close();
+          setIsConnected(false);
+        }
+      } catch {
+        // ignore malformed frames
+      }
+    };
+
+    source.onerror = () => {
+      setIsConnected(false);
+    };
+
+    return () => {
+      source.close();
+      setIsConnected(false);
+    };
+  }, [referralId, active, setReferrals]);
+
+  if (!isConnected) return null;
+
+  return (
+    <span
+      title="Receiving live step updates"
+      className="inline-flex items-center gap-1 text-[11px] text-green-400 font-medium"
+    >
+      <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+      Live
+    </span>
+  );
+};
+
 type ReferralFilter = "all" | "pending" | "active" | "expired" | "denied";
 
 const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: ReferralListProps) => {
@@ -2016,9 +2095,16 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
                   className={`flex items-center justify-between mb-[8px] ${isLive ? "opacity-20" : ""
                     }`}
                 >
-                  <span className="text-base text-tm-text-color01 font-medium tracking-tight">
-                    Onboarding
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-base text-tm-text-color01 font-medium tracking-tight">
+                      Onboarding
+                    </span>
+                    <ReferralStepStream
+                      referralId={referral.id}
+                      setReferrals={setReferrals}
+                      active={!isLive && !isTerminalState}
+                    />
+                  </div>
                   <div className="flex items-center gap-[8px]">
                     <span className="text-sm  text-tm-text-color09">
                       {Math.min(step, ONBOARDING_STEPS.length)}/
