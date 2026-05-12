@@ -39,6 +39,32 @@ export const navItems: NavItem[] = [
   { id: 'settings', Icon: IconSettings, label: 'Settings', path: '/settings', allowedRoles: ['admin', 'team_manager', 'account_manager', 'promoter', 'chatter', 'payer'] },
 ];
 
+/** Ordered list of nav item IDs per role — determines display order in the menu. */
+export const navOrderByRole: Partial<Record<UserRole, string[]>> = {
+  admin:           ['users', 'campaigns', 'reports', 'payouts', 'settings'],
+  account_manager: ['users', 'referrals', 'network', 'chatter-groups', 'reports', 'settings'],
+  team_manager:    ['referrals', 'reports', 'settings'],
+  promoter:        ['referrals', 'reports', 'settings'],
+  chatter:         ['chatter-portal', 'settings'],
+  payer:           ['reports', 'payouts', 'settings'],
+};
+
+/** Returns nav items visible to `role`, sorted by that role's preferred order. */
+export function getNavForRole(role: UserRole | undefined): NavItem[] {
+  const filtered = navItems.filter(item => {
+    if (item.adminOnly) return role === 'admin';
+    if (item.allowedRoles) return role != null && item.allowedRoles.includes(role);
+    return true;
+  });
+  if (!role) return filtered;
+  const order = navOrderByRole[role];
+  if (!order) return filtered;
+  return [...filtered].sort(
+    (a, b) => (order.indexOf(a.id) !== -1 ? order.indexOf(a.id) : 99) -
+              (order.indexOf(b.id) !== -1 ? order.indexOf(b.id) : 99)
+  );
+}
+
 /** First meaningful screen per role when Dashboard is not the default entry. */
 export const defaultLandingPath = (role: UserRole): string => {
   if (role === 'chatter') return '/chatter-portal';

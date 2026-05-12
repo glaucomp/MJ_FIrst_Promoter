@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import type { UserRole } from '../types';
 import { IconLogout } from './NavIcons';
 import { LogoLottie } from './LogoLottie';
-import { defaultLandingPath, navItems } from './navConfig';
+import { defaultLandingPath, getNavForRole } from './navConfig';
 
 function initialsForUser(name: string, email: string): string {
   const trimmed = name.trim();
@@ -51,11 +51,7 @@ export const TopBar = () => {
 
         {/* Navigation - Centered */}
         <nav className="flex items-center gap-[8px] absolute left-1/2 -translate-x-1/2">
-          {navItems.filter(item => {
-            if (item.adminOnly) return user?.baseRole === 'admin';
-            if (item.allowedRoles) return item.allowedRoles.includes(user?.baseRole as UserRole);
-            return true;
-          }).map((item) => {
+          {getNavForRole(user?.baseRole).map((item) => {
             const isActive = location.pathname === item.path;
             const iconColor = isActive
               ? 'var(--color-tm-primary-color05, white)'

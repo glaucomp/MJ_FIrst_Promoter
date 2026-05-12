@@ -2,9 +2,8 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import mjLogo from '../assets/mjpromoFavicon.svg';
-import type { UserRole } from '../types';
 import { IconLogout } from './NavIcons';
-import { navItems } from './navConfig';
+import { getNavForRole } from './navConfig';
 
 interface SidebarProps {
   onToggle?: (isOpen: boolean) => void;
@@ -60,11 +59,7 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
           </button>
 
           <nav className="flex-1 flex flex-col gap-[8px]">
-            {navItems.filter(item => {
-              if (item.adminOnly) return user?.baseRole === 'admin';
-              if (item.allowedRoles) return item.allowedRoles.includes(user?.baseRole as UserRole);
-              return true;
-            }).map((item) => {
+            {getNavForRole(user?.baseRole).map((item) => {
               const isActive = location.pathname === item.path;
               const iconColor = isActive
                 ? 'var(--color-tm-primary-color05, white)'
