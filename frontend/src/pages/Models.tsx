@@ -1555,7 +1555,6 @@ const ReferralStepStream = ({
     };
 
     source.onerror = () => {
-      source.close();
       setIsConnected(false);
     };
 
