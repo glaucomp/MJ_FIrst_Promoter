@@ -59,7 +59,7 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
             />
             <div className="h-[24px] w-8 rounded-[4px] flex items-center justify-center">
               <span className={`text-xs transition-transform ${isOpen ? 'rotate-0 ml-3' : '-rotate-90'}`}>
-                <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m6 9l6 6l6-6"/></svg>
+                <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="none" stroke="#ffffff" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m6 9l6 6l6-6"/></svg>
               </span>
             </div>
           </button>
