@@ -17,6 +17,7 @@ import publicRoutes from "./routes/public.routes";
 import referralRoutes from "./routes/referral.routes";
 import userRoutes from "./routes/user.routes";
 import elevenLabsRoutes from "./routes/elevenlabs.routes";
+import webhookRoutes from "./routes/webhook.routes";
 
 dotenv.config();
 
@@ -72,6 +73,9 @@ app.get("/health", (req, res) => {
 
 // Public routes (no authentication)
 app.use("/api/public", publicRoutes);
+
+// Webhook routes (authenticated via shared secret, not JWT)
+app.use("/api/webhooks", webhookRoutes);
 
 // Routes
 app.use("/api/auth", authRoutes);
