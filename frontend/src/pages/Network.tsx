@@ -142,7 +142,7 @@ const PersonRow = ({
         flex: 1,
         marginLeft: isT2 ? 36 : 0,
         display: 'flex',
-        alignItems: 'start',
+        alignItems: 'flex-start',
         gap: 10,
         padding: isT2 ? '8px 16px 8px 12px' : '10px 16px',
         background: isT2 ? 'rgba(255,255,255,0.025)' : undefined,
