@@ -25,8 +25,8 @@ export interface NavItem {
 
 export const navItems: NavItem[] = [
   // { id: 'dashboard', Icon: IconHome, label: 'Dashboard', path: '/dashboard', allowedRoles: ['admin', 'team_manager', 'account_manager', 'promoter'] },
-  // Admins + account managers manage users directly on /models.
-  // Team managers / promoters see the same page as "Referrals" (their own list).
+  // Only admins see /models in the nav as "Users".
+  // Account managers, team managers, and promoters reach the shared Models page via /referrals.
   {
     id: "users",
     Icon: IconModels,

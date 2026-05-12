@@ -47,7 +47,7 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
             className="flex flex-col justify-start gap-[5px]"
           >
             <img
-              alt="TeaseMe"
+              alt="MJ Promoter"
               className="w-[40px] h-auto object-contain"
               src={mjLogo}
             />

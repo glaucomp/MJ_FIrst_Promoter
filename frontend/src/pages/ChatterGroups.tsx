@@ -149,14 +149,18 @@ const CreateChatterPanel = ({ onChatterCreated, allChatters }: CreateChatterPane
     setError('');
     setSuccess('');
     try {
-      const { chatter } = await chattersApi.create({
+      const { chatter, inviteEmailSent } = await chattersApi.create({
         email: email.trim(),
         firstName: firstName.trim() || undefined,
         lastName: lastName.trim() || undefined,
       });
       onChatterCreated(chatter);
       const name = [chatter.firstName, chatter.lastName].filter(Boolean).join(' ') || chatter.email;
-      setSuccess(`${name} created — an invite email has been sent. They can now be added to any group.`);
+      setSuccess(
+        inviteEmailSent
+          ? `${name} created — an invite email has been sent. They can now be added to any group.`
+          : `${name} created. They can now be added to any group.`,
+      );
       setEmail('');
       setFirstName('');
       setLastName('');
