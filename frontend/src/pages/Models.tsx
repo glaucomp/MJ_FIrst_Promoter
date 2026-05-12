@@ -2017,16 +2017,15 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
           const isBusy = busyId === referral.id;
           const step = referral.preUser?.currentStep ?? 0;
           const assetLink = referral.preUser?.assetLink ?? null;
-          const canCopyAssetLink = !!assetLink;
+          const normalizedAssetLink = assetLink?.replace(/^"|"$/g, "").trim() || null;
+          const canCopyAssetLink = !!normalizedAssetLink;
           const assetLinkTooltip = canCopyAssetLink
             ? "Copy landing page link"
             : "Landing page link not available yet";
           // On lp_live the onboarding history is purely informational — the
           // promoter has already finished the survey and the LP is live —
           // so we fade the checklist + header to 20% to push the eye toward
-          // the Assign Chatters CTA. The asset-link copy button stays at
-          // full opacity because it's still the primary affordance inside
-          // this block.
+          // the Assign Chatters CTA.
           const isLive = chipState === "lp_live";
           return (
             <div
@@ -2157,17 +2156,17 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
                     is disabled (cursor-not-allowed, no onClick) but the pill
                     keeps its full visual treatment so it looks identical
                     across every card state. */}
-                <div className="glass-button-outer">
+                <div className="absolute bottom-3 right-4 flex items-center gap-2">
+                  {/* Copy link (left) */}
                   <OnboardingIconPill
                     title={assetLinkTooltip}
                     ariaLabel={assetLinkTooltip}
-                    className={`absolute bottom-3 right-4 glass-button-inner ${canCopyAssetLink ? "" : "cursor-not-allowed"
-                      }`}
+                    className={`h-7 w-12 transition-all select-none ${canCopyAssetLink ? "cursor-pointer hover:-translate-y-0.5" : "cursor-not-allowed opacity-50"}`}
                     onClick={
                       canCopyAssetLink
                         ? async () => {
                           try {
-                            await navigator.clipboard.writeText(assetLink!);
+                            await navigator.clipboard.writeText(normalizedAssetLink!);
                             showToast("success", "Landing page link copied!");
                           } catch {
                             showToast(
@@ -2179,7 +2178,20 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
                         : undefined
                     }
                   >
-                    <OnboardingCopyIcon className="w-[14px] h-[14px]" />
+                    <OnboardingCopyIcon className="w-4 h-4" />
+                  </OnboardingIconPill>
+                  {/* Open in browser (right) */}
+                  <OnboardingIconPill
+                    title={canCopyAssetLink ? "Open landing page" : "Landing page not available yet"}
+                    ariaLabel={canCopyAssetLink ? "Open landing page" : "Landing page not available yet"}
+                    className={`h-7 w-12 transition-all select-none ${canCopyAssetLink ? "cursor-pointer hover:-translate-y-0.5" : "cursor-not-allowed opacity-50"}`}
+                    onClick={
+                      canCopyAssetLink
+                        ? () => window.open(normalizedAssetLink!, "_blank", "noopener,noreferrer")
+                        : undefined
+                    }
+                  >
+                    <OnboardingOpenIcon className="w-4 h-4" />
                   </OnboardingIconPill>
                 </div>
               </div>
