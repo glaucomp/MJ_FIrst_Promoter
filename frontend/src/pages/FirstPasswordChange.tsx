@@ -89,8 +89,8 @@ export const FirstPasswordChange = () => {
           <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-[20px]">
             <form onSubmit={handleSubmit} className="flex flex-col gap-[20px]">
               <div className="flex flex-col gap-[4px]">
-                <h2 className="text-white text-[20px] font-bold">{greeting}</h2>
-                <p className="text-[#9e9e9e] text-[14px] leading-[1.5]">
+                <h2 className="text-white text-lg font-bold">{greeting}</h2>
+                <p className="text-[#9e9e9e] text-sm leading-[1.5]">
                   {intro}
                 </p>
               </div>
@@ -98,7 +98,7 @@ export const FirstPasswordChange = () => {
               <div className="flex flex-col gap-[8px]">
                 <label
                   htmlFor="new-password"
-                  className="text-[#9e9e9e] text-[12px] leading-[1.4] font-bold uppercase tracking-[0.2px]"
+                  className="text-[#9e9e9e] text-xs leading-[1.4] font-bold uppercase tracking-[0.2px]"
                 >
                   New Password
                 </label>
@@ -118,7 +118,7 @@ export const FirstPasswordChange = () => {
               <div className="flex flex-col gap-[8px]">
                 <label
                   htmlFor="confirm-password"
-                  className="text-[#9e9e9e] text-[12px] leading-[1.4] font-bold uppercase tracking-[0.2px]"
+                  className="text-[#9e9e9e] text-xs leading-[1.4] font-bold uppercase tracking-[0.2px]"
                 >
                   Confirm Password
                 </label>
@@ -137,7 +137,7 @@ export const FirstPasswordChange = () => {
 
               {error && (
                 <div className="bg-tm-danger-color12 border border-[#cc0000] rounded-[8px] px-[16px] py-[12px]">
-                  <p className="text-[#ff2a2a] text-[14px] leading-[1.4] font-medium">
+                  <p className="text-[#ff2a2a] text-sm leading-[1.4] font-medium">
                     {error}
                   </p>
                 </div>

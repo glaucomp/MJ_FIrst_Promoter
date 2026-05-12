@@ -27,7 +27,7 @@ const FirstPasswordChange = lazy(() =>
 
 const RouteFallback = () => (
   <div className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center">
-    <div className="text-white text-[18px]">Loading...</div>
+    <div className="text-white text-base">Loading...</div>
   </div>
 );
 
@@ -206,11 +206,11 @@ function AppRoutes() {
         path="*"
         element={
           <div className="min-h-screen bg-[var(--color-bg)] flex flex-col items-center justify-center gap-[16px]">
-            <p className="text-white text-[32px] font-bold">404</p>
-            <p className="text-[#9e9e9e] text-[16px]">Page not found</p>
+            <p className="text-white text-3xl font-bold">404</p>
+            <p className="text-[#9e9e9e] text-base">Page not found</p>
             <Link
               to="/"
-              className="mt-[8px] text-[#ff2a71] text-[14px] font-semibold hover:underline"
+              className="mt-[8px] text-[#ff2a71] text-sm font-semibold hover:underline"
             >
               Back to app
             </Link>

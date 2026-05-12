@@ -9,20 +9,20 @@ const isTier1 = (c: Commission): boolean =>
 const StatusBadge = ({ status }: { status: Commission['status'] }) => {
   if (status === 'paid') {
     return (
-      <span className="inline-flex items-center gap-[4px] px-[8px] py-[3px] rounded-full text-[11px] font-semibold text-[#10b981] bg-[#10b98122] border border-[#10b98133]">
+      <span className="inline-flex items-center gap-[4px] px-[8px] py-[3px] rounded-full text-xs font-semibold text-[#10b981] bg-[#10b98122] border border-[#10b98133]">
         ✓ Paid
       </span>
     );
   }
   if (status === 'pending') {
     return (
-      <span className="inline-flex items-center gap-[4px] px-[8px] py-[3px] rounded-full text-[11px] font-semibold text-[#fbbf24] bg-[#fbbf2422] border border-[#fbbf2433]">
+      <span className="inline-flex items-center gap-[4px] px-[8px] py-[3px] rounded-full text-xs font-semibold text-[#fbbf24] bg-[#fbbf2422] border border-[#fbbf2433]">
         ⏳ Pending
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-[4px] px-[8px] py-[3px] rounded-full text-[11px] font-semibold text-[#9e9e9e] bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.08)]">
+    <span className="inline-flex items-center gap-[4px] px-[8px] py-[3px] rounded-full text-xs font-semibold text-[#9e9e9e] bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.08)]">
       ○ Unpaid
     </span>
   );
@@ -119,7 +119,7 @@ export const Commissions = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-[60px]">
-        <div className="text-[#9e9e9e] text-[16px]">Loading commissions…</div>
+        <div className="text-[#9e9e9e] text-base">Loading commissions…</div>
       </div>
     );
   }
@@ -128,10 +128,10 @@ export const Commissions = () => {
     <div className="flex flex-col gap-6">
       {/* Header */}
       <div>
-        <h1 className="text-[28px] leading-[36px] font-semibold text-white font-['DM_Sans',sans-serif] lg:w-full">
+        <h1 className="text-3xl leading-[36px] font-semibold text-white font-['DM_Sans',sans-serif] lg:w-full">
           Commissions
         </h1>
-        <p className="text-[14px] text-[#9e9e9e] mt-[4px]">
+        <p className="text-sm text-[#9e9e9e] mt-[4px]">
           {user?.baseRole === 'admin' ? 'All promoters' : 'Your earnings'} — tier 1 &amp; tier 2
         </p>
       </div>
@@ -146,9 +146,9 @@ export const Commissions = () => {
             border: '1px solid rgba(251,191,36,0.2)',
           }}
         >
-          <span className="text-[12px] text-[#fbbf24] font-medium uppercase tracking-[0.08em]">Pending Earnings</span>
-          <span className="text-[26px] font-bold text-white leading-none">${pendingEarnings.toFixed(2)}</span>
-          <span className="text-[11px] text-[#9e9e9e]">Tier 1 sales revenue</span>
+          <span className="text-xs text-[#fbbf24] font-medium uppercase tracking-[0.08em]">Pending Earnings</span>
+          <span className="text-xl font-bold text-white leading-none">${pendingEarnings.toFixed(2)}</span>
+          <span className="text-xs text-[#9e9e9e]">Tier 1 sales revenue</span>
         </div>
 
         {/* Pending Commissions */}
@@ -159,9 +159,9 @@ export const Commissions = () => {
             border: '1px solid rgba(139,92,246,0.25)',
           }}
         >
-          <span className="text-[12px] text-[#a78bfa] font-medium uppercase tracking-[0.08em]">Pending Commissions</span>
-          <span className="text-[26px] font-bold text-white leading-none">${pendingCommissions.toFixed(2)}</span>
-          <span className="text-[11px] text-[#9e9e9e]">Tier 1 + tier 2 total</span>
+          <span className="text-xs text-[#a78bfa] font-medium uppercase tracking-[0.08em]">Pending Commissions</span>
+          <span className="text-xl font-bold text-white leading-none">${pendingCommissions.toFixed(2)}</span>
+          <span className="text-xs text-[#9e9e9e]">Tier 1 + tier 2 total</span>
         </div>
 
         {/* Completed Earnings */}
@@ -172,9 +172,9 @@ export const Commissions = () => {
             border: '1px solid rgba(16,185,129,0.2)',
           }}
         >
-          <span className="text-[12px] text-[#10b981] font-medium uppercase tracking-[0.08em]">Completed Earnings</span>
-          <span className="text-[26px] font-bold text-white leading-none">${completedEarnings.toFixed(2)}</span>
-          <span className="text-[11px] text-[#9e9e9e]">Tier 1 sales paid</span>
+          <span className="text-xs text-[#10b981] font-medium uppercase tracking-[0.08em]">Completed Earnings</span>
+          <span className="text-xl font-bold text-white leading-none">${completedEarnings.toFixed(2)}</span>
+          <span className="text-xs text-[#9e9e9e]">Tier 1 sales paid</span>
         </div>
 
         {/* Completed Commissions */}
@@ -185,14 +185,14 @@ export const Commissions = () => {
             border: '1px solid rgba(5,150,105,0.2)',
           }}
         >
-          <span className="text-[12px] text-[#059669] font-medium uppercase tracking-[0.08em]">Completed Commissions</span>
-          <span className="text-[26px] font-bold text-white leading-none">${completedCommissions.toFixed(2)}</span>
-          <span className="text-[11px] text-[#9e9e9e]">Tier 1 + tier 2 paid</span>
+          <span className="text-xs text-[#059669] font-medium uppercase tracking-[0.08em]">Completed Commissions</span>
+          <span className="text-xl font-bold text-white leading-none">${completedCommissions.toFixed(2)}</span>
+          <span className="text-xs text-[#9e9e9e]">Tier 1 + tier 2 paid</span>
         </div>
       </div>
 
       {error && (
-        <div className="bg-[#3a0000] border border-[#cc0000] rounded-[8px] p-[12px] text-[#ff8080] text-[13px]">
+        <div className="bg-[#3a0000] border border-tm-danger-color09 rounded-[8px] p-[12px] text-[#ff8080] text-sm">
           {error}
         </div>
       )}
@@ -212,7 +212,7 @@ export const Commissions = () => {
             <button
               key={tab}
               onClick={() => setFilter(tab)}
-              className={`px-[16px] py-[14px] text-[13px] font-medium border-b-2 transition-colors capitalize -mb-px ${
+              className={`px-[16px] py-[14px] text-sm font-medium border-b-2 transition-colors capitalize -mb-px ${
                 filter === tab
                   ? 'border-[#ff0f5f] text-[#ff0f5f]'
                   : 'border-transparent text-[#9e9e9e] hover:text-white'
@@ -226,13 +226,13 @@ export const Commissions = () => {
         {/* Search */}
         <div className="px-[16px] py-[12px] border-b border-[rgba(255,255,255,0.05)]">
           <div className="relative">
-            <span className="absolute left-[10px] top-1/2 -translate-y-1/2 text-[#9e9e9e] text-[14px]">🔍</span>
+            <span className="absolute left-[10px] top-1/2 -translate-y-1/2 text-[#9e9e9e] text-sm">🔍</span>
             <input
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search by name, email, campaign…"
-              className="w-full bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-[8px] pl-[34px] pr-[12px] py-[8px] text-[13px] text-white placeholder-[#9e9e9e] focus:outline-none focus:border-[rgba(255,15,95,0.4)]"
+              className="w-full bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-[8px] pl-[34px] pr-[12px] py-[8px] text-sm text-white placeholder-[#9e9e9e] focus:outline-none focus:border-[rgba(255,15,95,0.4)]"
             />
           </div>
         </div>
@@ -256,7 +256,7 @@ export const Commissions = () => {
                 ).map(({ label, align }) => (
                   <th
                     key={label || 'actions'}
-                    className="px-[16px] py-[10px] text-[11px] font-semibold text-[#666] uppercase tracking-[0.06em] whitespace-nowrap"
+                    className="px-[16px] py-[10px] text-xs font-semibold text-[#666] uppercase tracking-[0.06em] whitespace-nowrap"
                     style={{ textAlign: align as 'left' | 'right' }}
                   >
                     {label}
@@ -278,16 +278,16 @@ export const Commissions = () => {
                     <td className="px-[16px] py-[14px]">
                       <div className="flex items-center gap-[10px]">
                         <div
-                          className="w-[32px] h-[32px] rounded-full flex items-center justify-center text-[13px] font-bold text-white shrink-0"
+                          className="w-[32px] h-[32px] rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0"
                           style={{ background: tier1 ? '#3b82f6' : '#f59e0b' }}
                         >
                           {commission.user.firstName[0]}{commission.user.lastName[0]}
                         </div>
                         <div>
-                          <div className="text-[13px] font-medium text-white">
+                          <div className="text-sm font-medium text-white">
                             {commission.user.firstName} {commission.user.lastName}
                           </div>
-                          <div className="text-[11px] text-[#9e9e9e]">{commission.user.email}</div>
+                          <div className="text-xs text-[#9e9e9e]">{commission.user.email}</div>
                         </div>
                       </div>
                     </td>
@@ -295,11 +295,11 @@ export const Commissions = () => {
                     {/* Sale */}
                     <td className="px-[16px] py-[14px]">
                       <div className="flex items-center gap-[6px]">
-                        <span className="text-[13px] text-white font-medium">
+                        <span className="text-sm text-white font-medium">
                           ${commission.customer?.revenue?.toFixed(2) ?? '—'}
                         </span>
                         <span
-                          className="inline-flex items-center justify-center w-[16px] h-[16px] rounded-full text-[9px] font-bold text-white"
+                          className="inline-flex items-center justify-center w-[16px] h-[16px] rounded-full text-xs font-bold text-white"
                           style={{ background: tier1 ? '#3b82f6' : '#f59e0b' }}
                         >
                           {tier1 ? '1' : '2'}
@@ -308,7 +308,7 @@ export const Commissions = () => {
                       {!tier1 && commission.description && (() => {
                         const match = /From (.+?)'s sale/.exec(commission.description ?? '');
                         return (
-                          <div className="text-[11px] text-[#9e9e9e] mt-[2px]">
+                          <div className="text-xs text-[#9e9e9e] mt-[2px]">
                             {match?.[1] ? `from ${match[1]}` : commission.description}
                           </div>
                         );
@@ -318,27 +318,27 @@ export const Commissions = () => {
                     {/* Commission Amount */}
                     <td className="px-[16px] py-[14px] text-right">
                       <div className="flex items-center justify-end gap-[6px]">
-                        <span className="text-[13px] text-white font-medium">
+                        <span className="text-sm text-white font-medium">
                           ${commission.amount.toFixed(2)}
                         </span>
                         <span
-                          className="inline-flex items-center justify-center w-[16px] h-[16px] rounded-full text-[9px] font-bold text-white"
+                          className="inline-flex items-center justify-center w-[16px] h-[16px] rounded-full text-xs font-bold text-white"
                           style={{ background: tier1 ? '#3b82f6' : '#f59e0b' }}
                         >
                           {tier1 ? '1' : '2'}
                         </span>
                       </div>
-                      <div className="text-[11px] text-[#9e9e9e] text-right">{commission.percentage}%</div>
+                      <div className="text-xs text-[#9e9e9e] text-right">{commission.percentage}%</div>
                     </td>
 
                     {/* Date */}
                     <td className="px-[16px] py-[14px]">
-                      <div className="text-[13px] text-white">
+                      <div className="text-sm text-white">
                         {new Date(commission.createdAt).toLocaleDateString('en-US', {
                           day: 'numeric', month: 'short', year: 'numeric',
                         })}
                       </div>
-                      <div className="text-[11px] text-[#9e9e9e]">
+                      <div className="text-xs text-[#9e9e9e]">
                         {new Date(commission.createdAt).toLocaleTimeString('en-US', {
                           hour: '2-digit', minute: '2-digit', hour12: true,
                         })}
@@ -347,17 +347,17 @@ export const Commissions = () => {
 
                     {/* Customer */}
                     <td className="px-[16px] py-[14px]">
-                      <div className="text-[13px] text-white">{commission.customer?.name || '—'}</div>
-                      <div className="text-[11px] text-[#9e9e9e]">{commission.customer?.email || ''}</div>
+                      <div className="text-sm text-white">{commission.customer?.name || '—'}</div>
+                      <div className="text-xs text-[#9e9e9e]">{commission.customer?.email || ''}</div>
                     </td>
 
                     {/* Campaign */}
                     <td className="px-[16px] py-[14px]">
                       <span
-                        className="inline-flex items-center gap-[4px] px-[8px] py-[3px] rounded-full text-[11px] font-semibold text-white"
+                        className="inline-flex items-center gap-[4px] px-[8px] py-[3px] rounded-full text-xs font-semibold text-white"
                         style={{ background: '#ff0f5f33', border: '1px solid rgba(255,15,95,0.3)' }}
                       >
-                        <span className="text-[8px]">●</span>
+                        <span className="text-xs">●</span>
                         {commission.campaign?.name ?? 'N/A'}
                       </span>
                     </td>
@@ -374,7 +374,7 @@ export const Commissions = () => {
                           <button
                             onClick={() => setOpenMenuId(openMenuId === commission.id ? null : commission.id)}
                             disabled={isUpdating}
-                            className="w-[28px] h-[28px] flex items-center justify-center rounded-[6px] text-[#9e9e9e] hover:bg-[rgba(255,255,255,0.08)] hover:text-white transition-all text-[16px] disabled:opacity-40"
+                            className="w-[28px] h-[28px] flex items-center justify-center rounded-[6px] text-[#9e9e9e] hover:bg-[rgba(255,255,255,0.08)] hover:text-white transition-all text-base disabled:opacity-40"
                           >
                             {isUpdating ? '…' : '⋮'}
                           </button>
@@ -399,7 +399,7 @@ export const Commissions = () => {
                                     key={s}
                                     onClick={() => handleStatusUpdate(commission.id, s)}
                                     disabled={commission.status === s}
-                                    className="w-full text-left px-[14px] py-[8px] text-[13px] capitalize transition-colors disabled:opacity-30 disabled:cursor-default"
+                                    className="w-full text-left px-[14px] py-[8px] text-sm capitalize transition-colors disabled:opacity-30 disabled:cursor-default"
                                     style={{
                                       color: commission.status === s ? '#9e9e9e' : 'white',
                                     }}
@@ -427,9 +427,9 @@ export const Commissions = () => {
 
           {filtered.length === 0 && (
             <div className="flex flex-col items-center justify-center py-[60px] gap-[12px]">
-              <span className="text-[40px]">💰</span>
-              <p className="text-[16px] font-medium text-white">No commissions found</p>
-              <p className="text-[13px] text-[#9e9e9e]">
+              <span className="text-3xl">💰</span>
+              <p className="text-base font-medium text-white">No commissions found</p>
+              <p className="text-sm text-[#9e9e9e]">
                 {filter === 'all'
                   ? 'Commissions will appear here once sales are made.'
                   : `No ${filter} commissions right now.`}

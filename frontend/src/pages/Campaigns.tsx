@@ -170,14 +170,14 @@ export const Campaigns = () => {
     <div className="flex flex-col gap-6">
       {/* Header */}
       <div className="flex items-start justify-between flex-col lg:flex-row gap-3">
-        <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">
+        <h1 className="text-3xl leading-[36px] font-semibold text-white lg:w-full">
           Campaigns
         </h1>
         <div className="flex items-center  justify-between lg:justify-end lg:gap-4 w-full">
-          <p className="text-[16px] text-[#9e9e9e]">{campaigns.length} total</p>
+          <p className="text-base text-[#9e9e9e]">{campaigns.length} total</p>
           <button
             onClick={openCreate}
-            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-sm font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
           >
             + Create Campaign
           </button>
@@ -186,12 +186,12 @@ export const Campaigns = () => {
 
       {error && (
         <div className="bg-red-500/10 border border-red-500/30 rounded-[8px] p-[16px]">
-          <p className="text-red-400 text-[14px] font-semibold">{error}</p>
+          <p className="text-red-400 text-sm font-semibold">{error}</p>
         </div>
       )}
 
       {isLoading ? (
-        <p className="text-[#9e9e9e] text-[16px]">Loading...</p>
+        <p className="text-[#9e9e9e] text-base">Loading...</p>
       ) : (
         <div className="flex flex-col gap-[12px]">
           {campaigns.map((c) => (
@@ -221,7 +221,7 @@ export const Campaigns = () => {
                     <button
                       onClick={() => handleToggleActive(c)}
                       disabled={togglingId === c.id}
-                      className={`px-[12px] py-[4px] rounded-[100px] text-xs font-bold border transition-all ${
+                      className={`px-[12px] py-[4px] rounded-full text-xs font-bold border transition-all ${
                         c.isActive
                           ? "bg-tm-success-color12 border-[#00d948] text-[#28ff70] hover:bg-[#005518] hover:scale-95"
                           : "bg-[#333] border-[#555] text-[#9e9e9e] hover:bg-[#3a3a3a]"
@@ -236,7 +236,7 @@ export const Campaigns = () => {
 
                     {/* Visibility badge */}
                     <span
-                      className={`px-[12px] py-[6px] rounded-[100px] text-xs font-bold border ${
+                      className={`px-[12px] py-[6px] rounded-full text-xs font-bold border ${
                         c.visibleToPromoters
                           ? "bg-tm-secondary-color11 border-tm-secondary-color05 text-tm-secondary-color03"
                           : "bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]"
@@ -250,7 +250,7 @@ export const Campaigns = () => {
                     {!c.visibleToPromoters && c.linkedCampaign && (
                       <span
                         title={`Linked to ${c.linkedCampaign.name}`}
-                        className="px-[12px] py-[6px] rounded-[100px] text-xs font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e] max-w-[220px] truncate"
+                        className="px-[12px] py-[6px] rounded-full text-xs font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e] max-w-[220px] truncate"
                       >
                         Linked → {c.linkedCampaign.name}
                       </span>
@@ -258,7 +258,7 @@ export const Campaigns = () => {
                     {!c.visibleToPromoters && !c.linkedCampaign && (
                       <span
                         title="No public campaign linked. AMs enrolled here can't invite anyone."
-                        className="px-[12px] py-[6px] rounded-[100px] text-xs font-bold border bg-[#332200] border-[#cc9900] text-[#ffcc33]"
+                        className="px-[12px] py-[6px] rounded-full text-xs font-bold border bg-[#332200] border-[#cc9900] text-[#ffcc33]"
                       >
                         Not linked
                       </span>
@@ -369,7 +369,7 @@ export const Campaigns = () => {
 
           {campaigns.length === 0 && (
             <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] text-center">
-              <p className="text-[#9e9e9e] text-[16px]">
+              <p className="text-[#9e9e9e] text-base">
                 No campaigns yet. Create the first one.
               </p>
             </div>
@@ -384,12 +384,12 @@ export const Campaigns = () => {
             <div className="flex flex-col gap-[18px]">
               {/* Modal header */}
               <div className="flex items-center justify-between">
-                <h2 className="text-[20px] font-bold text-white">
+                <h2 className="text-lg font-bold text-white">
                   {editingCampaign ? "Edit Campaign" : "Create Campaign"}
                 </h2>
                 <button
                   onClick={() => setIsModalOpen(false)}
-                  className="text-[#9e9e9e] hover:text-white text-[24px] leading-none"
+                  className="text-[#9e9e9e] hover:text-white text-xl leading-none"
                 >
                   ×
                 </button>
@@ -612,7 +612,7 @@ export const Campaigns = () => {
               <button
                 onClick={handleSave}
                 disabled={isSaving}
-                className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[24px] py-[14px] text-white text-[16px] font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[24px] py-[14px] text-white text-base font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSaving
                   ? "Saving..."
@@ -636,7 +636,7 @@ function secondaryRateLabelForCampaign(visibleToPromoters: boolean): string {
 }
 
 const inputCls =
-  "bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[14px] py-[11px] text-[14px] text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555] w-full";
+  "bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[14px] py-[11px] text-sm text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555] w-full";
 
 const Field = ({
   label,

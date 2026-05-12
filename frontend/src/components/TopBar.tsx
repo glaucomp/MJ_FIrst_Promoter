@@ -65,7 +65,7 @@ export const TopBar = () => {
               <button
                 key={item.id}
                 onClick={() => navigate(item.path)}
-                className={`flex items-center gap-[6px] px-[16px] py-[8px] rounded-[6px] hover:-translate-y-0.5 transition-all select-none ${
+                className={`flex items-center gap-[6px] px-[16px] py-[8px] rounded-[6px] hover:-translate-y-0.5 transition-all select-none whitespace-nowrap ${
                   isActive
                     ? 'bg-[#660022] border border-[#ff2a71]'
                     : 'hover:bg-[#292929]/50'
@@ -75,7 +75,7 @@ export const TopBar = () => {
                   <item.Icon width={16} height={16} />
                 </div>
                 <span
-                  className="text-[13px] font-medium"
+                  className="text-sm font-medium"
                   style={{ color: iconColor }}
                 >
                   {item.label}
@@ -95,7 +95,7 @@ export const TopBar = () => {
               aria-label="Open account settings"
             >
               <span
-                className="flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full text-[12px] font-semibold tracking-[0.02em]"
+                className="flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full text-xs font-semibold tracking-[0.02em]"
                 style={{
                   background: 'linear-gradient(145deg, #660022 0%, #3d0014 100%)',
                   color: '#ffb3cc',
@@ -105,8 +105,8 @@ export const TopBar = () => {
                 {initialsForUser(user.name, user.email)}
               </span>
               <span className="flex min-w-0 flex-col gap-px">
-                <span className="truncate text-[13px] font-semibold text-white leading-tight">{user.name}</span>
-                <span className="truncate text-[11px] font-medium text-white/50 leading-tight">
+                <span className="truncate text-sm font-semibold text-white leading-tight">{user.name}</span>
+                <span className="truncate text-xs font-medium text-white/50 leading-tight">
                   {user.role === user.baseRole
                     ? roleLabel[user.baseRole]
                     : `${roleLabel[user.role]} · ${roleLabel[user.baseRole]}`}

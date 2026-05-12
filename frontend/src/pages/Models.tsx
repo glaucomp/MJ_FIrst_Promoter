@@ -41,15 +41,15 @@ const USER_TYPE_OPTIONS: { value: string; label: string }[] = [
 ];
 
 const SessionExpiredBanner = ({ onLogout }: { onLogout: () => void }) => (
-  <div className="bg-tm-danger-color12 border border-[#cc0000] rounded-[8px] p-[16px] flex flex-col gap-[12px]">
-    <p className="text-[#ff2a2a] text-[14px] font-bold">Session expired</p>
-    <p className="text-[#ff8080] text-[13px]">
+  <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-[8px] p-[16px] flex flex-col gap-[12px]">
+    <p className="text-tm-danger-color05 text-sm font-bold">Session expired</p>
+    <p className="text-[#ff8080] text-base">
       Your login session is no longer valid. This usually happens after the
       server restarts. Please log out and log back in to continue.
     </p>
     <button
       onClick={onLogout}
-      className="self-start bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+      className="self-start bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-sm font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
     >
       Log out &amp; log back in
     </button>
@@ -439,11 +439,11 @@ export const Models = () => {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col gap-6">
-        <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">
+      <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
+        <h1 className="text-3xl leading-[36px] font-semibold text-white lg:w-full">
           Models
         </h1>
-        <p className="text-[16px] text-[#9e9e9e]">Loading...</p>
+        <p className="text-base text-[#9e9e9e]">Loading...</p>
       </div>
     );
   }
@@ -455,8 +455,8 @@ export const Models = () => {
 
     return (
       <div className="flex flex-col gap-6">
-        <div className="flex items-start justify-between flex-col lg:flex-row gap-3">
-          <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">
+        <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
+          <h1 className="text-3xl leading-[36px] font-semibold text-white lg:w-full">
             All Users
           </h1>
           <div className="flex items-center  justify-between lg:justify-end lg:gap-4 w-full">
@@ -467,7 +467,7 @@ export const Models = () => {
             </p>
             <button
               onClick={() => setIsCreateUserModalOpen(true)}
-              className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+              className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-sm font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
             >
               + Create User
             </button>
@@ -479,7 +479,7 @@ export const Models = () => {
           <div className="flex flex-col gap-[6px] flex-1 min-w-[200px]">
             <label
               htmlFor="admin-users-search"
-              className="text-[#9e9e9e] text-[11px] font-bold uppercase tracking-[0.2px]"
+              className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.2px]"
             >
               Search
             </label>
@@ -496,7 +496,7 @@ export const Models = () => {
           <div className="flex flex-col gap-[6px] min-w-[160px]">
             <label
               htmlFor="admin-users-type"
-              className="text-[#9e9e9e] text-[11px] font-bold uppercase tracking-[0.2px]"
+              className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.2px]"
             >
               User Type
             </label>
@@ -526,7 +526,7 @@ export const Models = () => {
                 setSelectedUserType("");
                 setSearch("");
               }}
-              className="text-[#9e9e9e] hover:text-white text-[12px] underline self-start lg:self-center "
+              className="text-[#9e9e9e] hover:text-white text-xs underline self-start lg:self-center "
             >
               Clear filters
             </button>
@@ -537,14 +537,14 @@ export const Models = () => {
           <SessionExpiredBanner onLogout={logout} />
         ) : error ? (
           <div className="bg-red-500/10 border border-red-500/30 rounded-[8px] p-[16px]">
-            <p className="text-red-400 text-[14px] font-semibold">{error}</p>
+            <p className="text-red-400 text-sm font-semibold">{error}</p>
           </div>
         ) : null}
 
         {needsAssignmentCount > 0 && (
           <div className="bg-[#3a2a0a] border border-[#b8860b]/50 rounded-[8px] px-[14px] py-[10px] flex items-center gap-[10px]">
-            <span className="text-[#ffb84d] text-[14px]">⚠</span>
-            <p className="text-[#ffd27a] text-[13px]">
+            <span className="text-[#ffb84d] text-sm">⚠</span>
+            <p className="text-[#ffd27a] text-base">
               {needsAssignmentCount} user{needsAssignmentCount !== 1 ? "s" : ""}{" "}
               need
               {needsAssignmentCount === 1 ? "s" : ""} to be assigned. Drag them
@@ -651,7 +651,7 @@ export const Models = () => {
                       )}
                     </div>
                   </button>
-                  <div className="flex items-center gap-[12px] flex-shrink-0">
+                  <div className="flex items-center gap-[12px] shrink-0">
                     <span
                       className={`text-base ${isNeeds ? "text-[#d9b26a]" : "text-tm-text-color09"
                         }`}
@@ -660,7 +660,7 @@ export const Models = () => {
                       {section.users.length !== 1 ? "s" : ""}
                     </span>
                     {sectionTotal > 0 && !isNeeds && !isPayers && (
-                      <span className="text-white text-[13px] font-semibold">
+                      <span className="text-white text-base font-semibold">
                         ${sectionTotal.toFixed(2)}
                       </span>
                     )}
@@ -668,7 +668,7 @@ export const Models = () => {
                       <div className="flex items-center gap-[6px] pl-[8px] ml-[4px] border-l border-[rgba(255,255,255,0.08)]">
                         {confirmDeleteManagerId === section.manager.id ? (
                           <>
-                            <span className="text-[#9e9e9e] text-[12px] hidden lg:inline">
+                            <span className="text-[#9e9e9e] text-xs hidden lg:inline">
                               Delete?
                             </span>
                             <button
@@ -680,7 +680,7 @@ export const Models = () => {
                               disabled={
                                 deletingManagerId === section.manager.id
                               }
-                              className="px-[10px] py-[4px] rounded-[6px] text-[12px] font-bold bg-tm-danger-color12 border border-[#cc0000] text-[#ff2a2a] hover:bg-[#880000] disabled:opacity-50 transition-colors"
+                              className="px-[10px] py-[4px] rounded-[6px] text-xs font-bold bg-tm-danger-color12 border border-tm-danger-color09 text-tm-danger-color05 hover:bg-[#880000] disabled:opacity-50 transition-colors"
                             >
                               {deletingManagerId === section.manager.id
                                 ? "..."
@@ -689,7 +689,7 @@ export const Models = () => {
                             <button
                               type="button"
                               onClick={() => setConfirmDeleteManagerId(null)}
-                              className="px-[10px] py-[4px] rounded-[6px] text-[12px] font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white transition-colors"
+                              className="px-[10px] py-[4px] rounded-[6px] text-xs font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white transition-colors"
                             >
                               No
                             </button>
@@ -702,7 +702,7 @@ export const Models = () => {
                                 if (section.manager)
                                   setEditingManager(section.manager);
                               }}
-                              className="px-[10px] py-[4px] rounded-[6px] text-[12px] font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white hover:border-[rgba(255,255,255,0.2)] transition-colors"
+                              className="px-[10px] py-[4px] rounded-[6px] text-xs font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white hover:border-[rgba(255,255,255,0.2)] transition-colors"
                               title="Edit account manager"
                             >
                               Edit
@@ -713,7 +713,7 @@ export const Models = () => {
                                 if (section.manager)
                                   setConfirmDeleteManagerId(section.manager.id);
                               }}
-                              className="px-[10px] py-[4px] rounded-[6px] text-[12px] font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-tm-danger-color04 hover:text-tm-danger-color05 hover:border-[#cc0000]/50 transition-colors"
+                              className="px-[10px] py-[4px] rounded-[6px] text-xs font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-tm-danger-color04 hover:text-tm-danger-color05 hover:border-tm-danger-color09/50 transition-colors"
                               title="Delete account manager"
                             >
                               Delete
@@ -752,7 +752,7 @@ export const Models = () => {
                           </svg>
                         )}
 
-                        <p className="text-tm-text-color10 text-center text-lg px-4 py-3">
+                        <p className="text-tm-text-color10 text-center text-lg px-4 py-2">
                           {canDrop
                             ? "Drop a user here to assign them to this Account Manager."
                             : "No users in this bucket."}
@@ -811,23 +811,23 @@ export const Models = () => {
                               )}
                               <div className="flex flex-col gap-[8px] w-full">
                                 <div className="flex items-center gap-[8px]">
-                                  <p className="text-white text-[18px] font-semibold">
+                                  <p className="text-white text-base font-semibold">
                                     {apiUser.firstName} {apiUser.lastName}
                                   </p>
                                 </div>
-                                <p className="text-[#9e9e9e] text-[14px]">
+                                <p className="text-[#9e9e9e] text-sm">
                                   {apiUser.email}
                                 </p>
                                 <div className="flex items-center gap-[8px] w-full">
                                   <span
-                                    className={`px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border ${apiUser.isActive
-                                      ? "bg-tm-success-color12 border-[#00d948] text-[#28ff70]"
-                                      : "bg-tm-danger-color12 border-[#cc0000] text-[#ff2a2a]"
+                                    className={`px-[12px] py-[4px] rounded-full text-xs font-bold border ${apiUser.isActive
+                                      ? "bg-tm-success-color12 border-tm-success-color09 text-tm-success-color05"
+                                      : "bg-tm-danger-color12 border-tm-danger-color09 text-tm-danger-color05"
                                       }`}
                                   >
                                     {apiUser.isActive ? "Active" : "Inactive"}
                                   </span>
-                                  <span className="px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]">
+                                  <span className="px-[12px] py-[4px] rounded-full text-xs font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]">
                                     {apiUser.userType?.toUpperCase() === "TEAM_MANAGER"
                                       ? "PROMOTER +"
                                       : apiUser.userType?.toLowerCase().replace("_", " ")}
@@ -853,7 +853,7 @@ export const Models = () => {
 
                                 {confirmDeleteId === apiUser.id ? (
                                   <div className="flex items-center gap-[8px] mt-[4px]">
-                                    <span className="text-[#9e9e9e] text-[12px]">
+                                    <span className="text-[#9e9e9e] text-xs">
                                       Delete?
                                     </span>
                                     <button
@@ -861,7 +861,7 @@ export const Models = () => {
                                         handleDeleteUser(apiUser.id)
                                       }
                                       disabled={deletingUserId === apiUser.id}
-                                      className="px-[10px] py-[4px] rounded-[6px] text-[12px] font-bold bg-tm-danger-color12 border border-[#cc0000] text-[#ff2a2a] hover:bg-[#880000] disabled:opacity-50 transition-colors"
+                                      className="px-[10px] py-[4px] rounded-[6px] text-xs font-bold bg-tm-danger-color12 border border-tm-danger-color09 text-tm-danger-color05 hover:bg-[#880000] disabled:opacity-50 transition-colors"
                                     >
                                       {deletingUserId === apiUser.id
                                         ? "..."
@@ -869,7 +869,7 @@ export const Models = () => {
                                     </button>
                                     <button
                                       onClick={() => setConfirmDeleteId(null)}
-                                      className="px-[10px] py-[4px] rounded-[6px] text-[12px] font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white transition-colors"
+                                      className="px-[10px] py-[4px] rounded-[6px] text-xs font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white transition-colors"
                                     >
                                       No
                                     </button>
@@ -898,7 +898,7 @@ export const Models = () => {
 
           {adminSections.length === 0 && (
             <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] text-center">
-              <p className="text-[#9e9e9e] text-[16px]">
+              <p className="text-[#9e9e9e] text-base">
                 {allUsers.length === 0
                   ? "No users found."
                   : "No users match your filters."}
@@ -933,8 +933,8 @@ export const Models = () => {
 
     return (
       <div className="flex flex-col gap-6">
-        <div className="flex items-start justify-between flex-col lg:flex-row gap-3">
-          <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">
+        <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
+          <h1 className="text-3xl leading-[36px] font-semibold text-white lg:w-full">
             My Users
           </h1>
           <div className="flex items-center justify-between lg:justify-end lg:gap-4 w-full">
@@ -944,7 +944,7 @@ export const Models = () => {
             </p>
             <button
               onClick={() => setIsCreateUserModalOpen(true)}
-              className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+              className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-sm font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
             >
               + Create Chatter
             </button>
@@ -955,7 +955,7 @@ export const Models = () => {
           <div className="flex flex-col gap-[6px] flex-1 min-w-[200px]">
             <label
               htmlFor="am-users-search"
-              className="text-[#9e9e9e] text-[11px] font-bold uppercase tracking-[0.2px]"
+              className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.2px]"
             >
               Search
             </label>
@@ -965,14 +965,14 @@ export const Models = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Name or email…"
-              className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.08)] rounded-[8px] px-[12px] py-[9px] text-[14px] text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
+              className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.08)] rounded-[8px] px-[12px] py-[9px] text-sm text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
             />
           </div>
 
           <div className="flex flex-col gap-[6px] min-w-[160px]">
             <label
               htmlFor="am-users-type"
-              className="text-[#9e9e9e] text-[11px] font-bold uppercase tracking-[0.2px]"
+              className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.2px]"
             >
               User Type
             </label>
@@ -980,7 +980,7 @@ export const Models = () => {
               id="am-users-type"
               value={selectedUserType}
               onChange={(e) => setSelectedUserType(e.target.value)}
-              className="bg-[#1c1c1e] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[12px] py-[9px] text-white text-[14px] focus:outline-none focus:border-[#ff0f5f] appearance-none cursor-pointer pr-[28px]"
+              className="bg-[#1c1c1e] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[12px] py-[9px] text-white text-sm focus:outline-none focus:border-[#ff0f5f] appearance-none cursor-pointer pr-[28px]"
               style={{
                 backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239e9e9e' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
                 backgroundRepeat: "no-repeat",
@@ -1004,7 +1004,7 @@ export const Models = () => {
                 setSelectedUserType("");
                 setSearch("");
               }}
-              className="text-[#9e9e9e] hover:text-white text-[12px] underline self-start lg:self-end lg:mb-[10px]"
+              className="text-[#9e9e9e] hover:text-white text-xs underline self-start lg:self-end lg:mb-[10px]"
             >
               Clear filters
             </button>
@@ -1015,14 +1015,14 @@ export const Models = () => {
           <SessionExpiredBanner onLogout={logout} />
         ) : error ? (
           <div className="bg-red-500/10 border border-red-500/30 rounded-[8px] p-[16px]">
-            <p className="text-red-400 text-[14px] font-semibold">{error}</p>
+            <p className="text-red-400 text-sm font-semibold">{error}</p>
           </div>
         ) : null}
 
         <div className="flex flex-col gap-[20px]">
           {visibleAdminUsers.length === 0 ? (
             <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] text-center">
-              <p className="text-[#9e9e9e] text-[16px]">
+              <p className="text-[#9e9e9e] text-base">
                 {allUsers.length === 0
                   ? "You have no users yet."
                   : "No users match your filters."}
@@ -1032,10 +1032,10 @@ export const Models = () => {
             accountManagerUserSections.map(({ typeKey, label, users }) => (
               <section key={typeKey} className="flex flex-col gap-[12px]">
                 <div className="flex items-baseline justify-between gap-[12px] border-b border-[rgba(255,255,255,0.08)] pb-[10px]">
-                  <h2 className="text-[16px] font-semibold text-white">
+                  <h2 className="text-base font-semibold text-white">
                     {label}
                   </h2>
-                  <span className="text-[13px] text-[#9e9e9e] tabular-nums">
+                  <span className="text-base text-tm-text-color07 tabular-nums">
                     {users.length}
                   </span>
                 </div>
@@ -1047,22 +1047,22 @@ export const Models = () => {
                     >
                       <div className="flex items-start justify-between gap-[12px] flex-col lg:flex-row">
                         <div className="flex flex-col gap-[8px] w-full">
-                          <p className="text-white text-[18px] font-semibold">
+                          <p className="text-white text-base font-semibold">
                             {apiUser.firstName} {apiUser.lastName}
                           </p>
-                          <p className="text-[#9e9e9e] text-[14px]">
+                          <p className="text-[#9e9e9e] text-sm">
                             {apiUser.email}
                           </p>
                           <div className="flex items-center gap-[8px] w-full">
                             <span
-                              className={`px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border ${apiUser.isActive
-                                ? "bg-tm-success-color12 border-[#00d948] text-[#28ff70]"
-                                : "bg-tm-danger-color12 border-[#cc0000] text-[#ff2a2a]"
+                              className={`px-[12px] py-[4px] rounded-full text-xs font-bold border ${apiUser.isActive
+                                ? "bg-tm-success-color12 border-tm-success-color09 text-tm-success-color05"
+                                : "bg-tm-danger-color12 border-tm-danger-color09 text-tm-danger-color05"
                                 }`}
                             >
                               {apiUser.isActive ? "Active" : "Inactive"}
                             </span>
-                            <span className="px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]">
+                            <span className="px-[12px] py-[4px] rounded-full text-xs font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]">
                               {apiUser.userType?.toUpperCase() === "TEAM_MANAGER"
                                 ? "PROMOTER +"
                                 : apiUser.userType?.toLowerCase().replace("_", " ")}
@@ -1073,13 +1073,13 @@ export const Models = () => {
                         {apiUser.stats && (
                           <div className="flex flex-col items-start lg:items-end gap-[8px] w-full">
                             <div className="text-left flex flex-col gap-[4px] w-full lg:text-right">
-                              <p className="text-[#9e9e9e] text-[12px] uppercase">
+                              <p className="text-[#9e9e9e] text-xs uppercase">
                                 Earnings
                               </p>
-                              <p className="text-white text-[20px] font-bold">
+                              <p className="text-white text-lg font-bold">
                                 ${apiUser.stats.totalEarnings.toFixed(2)}
                               </p>
-                              <p className="text-[#9e9e9e] text-[12px]">
+                              <p className="text-[#9e9e9e] text-xs">
                                 {apiUser.stats.activeReferrals} active referrals
                               </p>
                             </div>
@@ -1112,13 +1112,13 @@ export const Models = () => {
   if (user?.baseRole === "account_manager") {
     return (
       <div className="flex flex-col gap-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">
+        <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
+          <h1 className="text-3xl leading-[36px] font-semibold text-white lg:w-full">
             My Promoters
           </h1>
           <button
             onClick={() => handleOpenInviteModal("referral")}
-            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all 
+            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-2 text-white text-base font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all 
 whitespace-nowrap"
           >
             + Create Referral Link
@@ -1129,11 +1129,11 @@ whitespace-nowrap"
           <SessionExpiredBanner onLogout={logout} />
         ) : error ? (
           <div className="bg-red-500/10 border border-red-500/30 rounded-[8px] p-[16px]">
-            <p className="text-red-400 text-[14px] font-semibold">{error}</p>
+            <p className="text-red-400 text-sm font-semibold">{error}</p>
           </div>
         ) : null}
 
-        <p className="text-[14px] text-[#9e9e9e]">
+        <p className="text-sm text-[#9e9e9e]">
           {myReferrals.length} total referrals
         </p>
 
@@ -1153,13 +1153,13 @@ whitespace-nowrap"
   if (user?.baseRole === "team_manager") {
     return (
       <div className="flex flex-col gap-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">
+        <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
+          <h1 className="text-3xl leading-[36px] font-semibold text-white lg:w-full">
             My Team
           </h1>
           <button
             onClick={() => handleOpenInviteModal("referral")}
-            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-sm font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
           >
             + Create Referral Link
           </button>
@@ -1169,11 +1169,11 @@ whitespace-nowrap"
           <SessionExpiredBanner onLogout={logout} />
         ) : error ? (
           <div className="bg-red-500/10 border border-red-500/30 rounded-[8px] p-[16px]">
-            <p className="text-red-400 text-[14px] font-semibold">{error}</p>
+            <p className="text-red-400 text-sm font-semibold">{error}</p>
           </div>
         ) : null}
 
-        <p className="text-[14px] text-[#9e9e9e]">
+        <p className="text-sm text-[#9e9e9e]">
           {myReferrals.length} total referrals
         </p>
 
@@ -1197,13 +1197,13 @@ whitespace-nowrap"
   if (user?.baseRole === "promoter") {
     return (
       <div className="flex flex-col gap-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">
+        <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
+          <h1 className="text-3xl leading-[36px] font-semibold text-white lg:w-full">
             My Promoters
           </h1>
           <button
             onClick={() => handleOpenInviteModal("referral")}
-            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all whitespace-nowrap"
+            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-base font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all whitespace-nowrap"
           >
             + Create Referral Link
           </button>
@@ -1213,11 +1213,11 @@ whitespace-nowrap"
           <SessionExpiredBanner onLogout={logout} />
         ) : error ? (
           <div className="bg-red-500/10 border border-red-500/30 rounded-[8px] p-[16px]">
-            <p className="text-red-400 text-[14px] font-semibold">{error}</p>
+            <p className="text-red-400 text-sm font-semibold">{error}</p>
           </div>
         ) : null}
 
-        <p className="text-[14px] text-[#9e9e9e]">
+        <p className="text-sm text-[#9e9e9e]">
           {myReferrals.length} total referrals
         </p>
 
@@ -1234,11 +1234,11 @@ whitespace-nowrap"
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">
+    <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
+      <h1 className="text-3xl leading-[36px] font-semibold text-white lg:w-full">
         Models
       </h1>
-      <p className="text-[#9e9e9e] text-[16px]">Access denied</p>
+      <p className="text-[#9e9e9e] text-base">Access denied</p>
     </div>
   );
 };
@@ -1331,7 +1331,7 @@ const CHIP_CLASS: Record<ChipState, string> = {
 
 const StatusChip = ({ state }: { state: ChipState }) => (
   <span
-    className={`inline-flex items-center px-4 py-1 rounded-[100px] text-sm font-medium border ${CHIP_CLASS[state]}`}
+    className={`inline-flex items-center px-4 py-1 rounded-full text-sm font-medium border ${CHIP_CLASS[state]}`}
   >
     {CHIP_LABEL[state]}
   </span>
@@ -1423,10 +1423,10 @@ const OnboardingIconPill = ({
   ariaLabel?: string;
 }) => {
   const base =
-    "inline-flex items-center justify-center rounded-[100px] bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-white px-[10px] py-[4px]";
+    "inline-flex items-center justify-center rounded-full bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-white px-5 py-2";
   if (onClick) {
     return (
-      <div className="glass-button-outer rounded-[100px]">
+      <div className="glass-button-outer rounded-full">
         <button
           type="button"
           onClick={onClick}
@@ -1467,7 +1467,7 @@ const OnboardingChecklist = ({
   dimmed?: boolean;
 }) => (
   <ul
-    className={`flex flex-col gap-[6px] text-[13px] ${dimmed ? "opacity-60" : ""
+    className={`flex flex-col gap-[6px] text-base ${dimmed ? "opacity-60" : ""
       }`}
   >
     {ONBOARDING_STEPS.map(({ idx, label }) => {
@@ -1903,7 +1903,7 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
   if (referrals.length === 0) {
     return (
       <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] text-center">
-        <p className="text-[#9e9e9e] text-[16px]">
+        <p className="text-[#9e9e9e] text-base">
           No referrals yet. Create a referral link to get started.
         </p>
       </div>
@@ -1924,15 +1924,15 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
 
   return (
     <div className="flex flex-col gap-[12px]">
-      <div className="flex items-center gap-[8px] flex-wrap">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 items-center gap-[8px] flex-wrap">
         {filterOptions.map((opt) => {
           const isSelected = filter === opt.id;
           return (
             <button
               key={opt.id}
               onClick={() => setFilter(opt.id)}
-              className={`px-[14px] py-[6px] rounded-[100px] text-[12px] font-bold border transition-colors ${isSelected
-                ? "bg-[#ff0f5f] border-[#ff0f5f] text-white"
+              className={`px-[14px] py-[6px] rounded-lg text-sm  border transition-colors ${isSelected
+                ? "bg-tm-primary-color12 border-tm-primary-color10 text-tm-primary-color02"
                 : "bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white hover:border-[rgba(255,255,255,0.3)]"
                 }`}
             >
@@ -1949,9 +1949,9 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
 
       {toast && (
         <div
-          className={`rounded-[8px] px-[16px] py-[12px] border text-[14px] font-medium ${toast.kind === "success"
-            ? "bg-tm-success-color12 border-[#00d948] text-[#28ff70]"
-            : "bg-tm-danger-color12 border-[#cc0000] text-[#ff2a2a]"
+          className={`rounded-[8px] px-[16px] py-[12px] border text-sm font-medium ${toast.kind === "success"
+            ? "bg-tm-success-color12 border-tm-success-color09 text-tm-success-color05"
+            : "bg-tm-danger-color12 border-tm-danger-color09 text-tm-danger-color05"
             }`}
         >
           {toast.text}
@@ -1960,7 +1960,7 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
 
       {visibleReferrals.length === 0 && (
         <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] text-center">
-          <p className="text-[#9e9e9e] text-[14px]">
+          <p className="text-[#9e9e9e] text-sm">
             No {filter === "all" ? "active or pending" : filter} referrals
             {filter === "all" && (counts.expired > 0 || counts.denied > 0)
               ? ` — ${[
@@ -2054,7 +2054,7 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
                       Referred by {referrerLabel}
                     </p>
                     {isAccountManagerViewer && (
-                      <p className="text-[#9e9e9e] text-[12px] font-medium leading-snug">
+                      <p className="text-[#9e9e9e] text-xs font-medium leading-snug">
                         They were invited through this promoter&apos;s link, not
                         through your account manager invite.
                       </p>
@@ -2072,7 +2072,7 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
                             showToast("error", "Could not copy link");
                           }
                         }}
-                        className="self-start text-left text-[12px] font-semibold text-tm-text-color10 hover:text-white underline underline-offset-2"
+                        className="self-start text-left text-xs font-semibold text-tm-text-color10 hover:text-white underline underline-offset-2"
                       >
                         Copy their invite link
                       </button>
@@ -2274,7 +2274,7 @@ const AdminOverrideRow = ({
 }) => (
   <div className="flex items-center justify-between gap-[8px] pt-[6px] mt-[2px] border-t border-[rgba(255,255,255,0.06)]">
     <span
-      className="text-[#9e9e9e] text-[11px] uppercase tracking-[0.3px]"
+      className="text-[#9e9e9e] text-xs uppercase tracking-[0.3px]"
       title="Admin-only overrides"
     >
       Admin
@@ -2284,7 +2284,7 @@ const AdminOverrideRow = ({
         <button
           onClick={() => onReassign(referral)}
           disabled={busy}
-          className="bg-transparent border border-[rgba(255,255,255,0.14)] rounded-[6px] px-[10px] py-[6px] text-[#d0d0d0] text-[12px] font-bold hover:text-white hover:border-[rgba(255,255,255,0.3)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="bg-transparent border border-[rgba(255,255,255,0.14)] rounded-[6px] px-[10px] py-[6px] text-[#d0d0d0] text-xs font-bold hover:text-white hover:border-[rgba(255,255,255,0.3)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           Reassign
         </button>
@@ -2292,7 +2292,7 @@ const AdminOverrideRow = ({
       <button
         onClick={() => onDelete(referral)}
         disabled={busy}
-        className="bg-transparent border border-[rgba(255,255,255,0.14)] rounded-[6px] px-[10px] py-[6px] text-[#d0d0d0] text-[12px] font-bold hover:text-[#ff2a2a] hover:border-[#cc0000] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        className="bg-transparent border border-[rgba(255,255,255,0.14)] rounded-[6px] px-[10px] py-[6px] text-[#d0d0d0] text-xs font-bold hover:text-tm-danger-color05 hover:border-tm-danger-color09 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
       >
         Delete
       </button>
@@ -2314,7 +2314,7 @@ const SecondaryButton = ({
   <div className="glass-button-outer rounded-full">  <button
     onClick={onClick}
     disabled={disabled}
-    className={`glass-button-inner flex-1 bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-full px-[12px] py-[10px] text-white text-[13px] font-bold hover:bg-[#252525] disabled:opacity-40 disabled:cursor-not-allowed transition-colors ${className}`}
+    className={`glass-button-inner flex-1 bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-full px-[12px] py-[10px] text-white text-base font-bold hover:bg-[#252525] disabled:opacity-40 disabled:cursor-not-allowed transition-colors ${className}`}
   >
     {children}
   </button>
@@ -2333,7 +2333,7 @@ const GreenCta = ({
   <button
     onClick={onClick}
     disabled={disabled}
-    className="w-full bg-linear-to-b from-[#28ff70] to-[#00aa3c] rounded-[6px] px-[14px] py-[10px] text-black text-[13px] font-bold hover:from-[#3aff82] hover:to-[#00bc43] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+    className="w-full bg-linear-to-b from-tm-success-color05 to-[#00aa3c] rounded-[6px] px-[14px] py-[10px] text-black text-base font-bold hover:from-[#3aff82] hover:to-[#00bc43] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
   >
     {children}
   </button>
@@ -2351,7 +2351,7 @@ const PinkCta = ({
   <button
     onClick={onClick}
     disabled={disabled}
-    className="w-full bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[6px] px-[14px] py-[10px] text-white text-[13px] font-bold hover:from-[#ff1f69] hover:to-[#d10050] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+    className="w-full bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-full px-8 py-3 text-white text-base font-bold hover:from-[#ff1f69] hover:to-[#d10050] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
   >
     {children}
   </button>
@@ -2399,11 +2399,11 @@ const CardActions = ({
         : "This invite has been denied.";
     return (
       <div className="flex items-center justify-between gap-[8px]">
-        <span className="text-[#9e9e9e] text-[13px]">{message}</span>
+        <span className="text-[#9e9e9e] text-base">{message}</span>
         <button
           onClick={() => onDelete(referral)}
           disabled={busy}
-          className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[6px] px-[14px] py-[8px] text-[#9e9e9e] text-[13px] font-bold hover:text-[#ff2a2a] hover:border-[#cc0000] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[6px] px-[14px] py-[8px] text-[#9e9e9e] text-base font-bold hover:text-tm-danger-color05 hover:border-tm-danger-color09 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           Delete
         </button>
@@ -2418,7 +2418,7 @@ const CardActions = ({
           <SecondaryButton
             onClick={() => onDeny(referral)}
             disabled={busy}
-            className="hover:text-[#ff2a2a] hover:border-[#cc0000]"
+            className="hover:text-tm-danger-color05 hover:border-tm-danger-color09"
           >
             <span className="inline-flex items-center justify-center gap-[6px]">
               <DenyIcon className="w-[14px] h-[14px]" />
@@ -2437,7 +2437,7 @@ const CardActions = ({
         <button
           disabled
           title="Waiting for the promoter to finish onboarding before a landing page can be ordered."
-          className="w-full rounded-full px-[14px] py-[10px] text-[13px] font-medium border border-[#28ff70] text-[#28ff70] opacity-40 cursor-not-allowed"
+          className="w-full rounded-full px-[14px] py-[10px] text-base font-medium border border-tm-success-color05 text-tm-success-color05 opacity-40 cursor-not-allowed"
         >
           Order Landing Page
         </button>
@@ -2452,7 +2452,7 @@ const CardActions = ({
     if (!canOrderLandingPage) {
       return (
         <div className="flex flex-col gap-[8px]">
-          <p className="w-full rounded-[6px] border border-[rgba(255,255,255,0.12)] bg-[#1a1a1a] px-[14px] py-[10px] text-[#9e9e9e] text-[13px] font-medium text-center">
+          <p className="w-full rounded-[6px] border border-[rgba(255,255,255,0.12)] bg-[#1a1a1a] px-[14px] py-[10px] text-[#9e9e9e] text-base font-medium text-center">
             Onboarding is complete. Your account manager will order the landing
             page next.
           </p>
@@ -2473,7 +2473,7 @@ const CardActions = ({
   if (state === "building") {
     return (
       <div className="flex flex-col gap-[8px]">
-        <div className="flex items-center gap-[8px] w-full rounded-[6px] border border-dashed border-tm-success-color06 bg-[rgba(34,191,86,0.05)] px-[14px] py-[10px] text-tm-success-color06 text-[13px] font-semibold">
+        <div className="flex items-center gap-[8px] w-full rounded-[6px] border border-dashed border-tm-success-color06 bg-[rgba(34,191,86,0.05)] px-[14px] py-[10px] text-tm-success-color06 text-base font-semibold">
           <span
             aria-hidden
             className="h-[10px] w-[10px] rounded-full bg-tm-success-color06 animate-pulse"
@@ -2529,7 +2529,7 @@ const CardActions = ({
           {busy ? "Assigning…" : "Assign Chatters"}
         </PinkCta>
       ) : (
-        <p className="w-full rounded-[6px] border border-[rgba(255,255,255,0.12)] bg-[#1a1a1a] px-[14px] py-[10px] text-[#9e9e9e] text-[13px] font-medium text-center">
+        <p className="w-full rounded-[6px] border border-[rgba(255,255,255,0.12)] bg-[#1a1a1a] px-[14px] py-[10px] text-[#9e9e9e] text-base font-medium text-center">
           Your account manager will assign chatters.
         </p>
       )}
@@ -2561,15 +2561,15 @@ const ModalShell = ({
     >
       <div className="flex items-start justify-between gap-[12px]">
         <div className="flex flex-col gap-[2px] min-w-0">
-          <h3 className="text-white text-[18px] font-bold">{title}</h3>
+          <h3 className="text-white text-base font-bold">{title}</h3>
           {subtitle ? (
-            <p className="text-[#9e9e9e] text-[13px] truncate">{subtitle}</p>
+            <p className="text-[#9e9e9e] text-base truncate">{subtitle}</p>
           ) : null}
         </div>
         <button
           onClick={onClose}
           aria-label="Close"
-          className="text-[#9e9e9e] hover:text-white text-[20px] leading-none px-[6px]"
+          className="text-[#9e9e9e] hover:text-white text-lg leading-none px-[6px]"
         >
           &#x2715;
         </button>
@@ -2633,22 +2633,22 @@ const ReassignModal = ({
       onClose={onClose}
     >
       {loading ? (
-        <p className="text-[#9e9e9e] text-[14px]">Loading account managers…</p>
+        <p className="text-[#9e9e9e] text-sm">Loading account managers…</p>
       ) : error ? (
-        <p className="text-[#ff2a2a] text-[14px]">{error}</p>
+        <p className="text-tm-danger-color05 text-sm">{error}</p>
       ) : managers.length === 0 ? (
-        <p className="text-[#9e9e9e] text-[14px]">
+        <p className="text-[#9e9e9e] text-sm">
           No account managers available to reassign to.
         </p>
       ) : (
         <label className="flex flex-col gap-[6px]">
-          <span className="text-[12px] uppercase tracking-[0.08em] text-[#9e9e9e] font-bold">
+          <span className="text-xs uppercase tracking-[0.08em] text-[#9e9e9e] font-bold">
             New account manager
           </span>
           <select
             value={selectedId}
             onChange={(e) => setSelectedId(e.target.value)}
-            className="bg-[#0f0f0f] border border-[rgba(255,255,255,0.1)] rounded-[6px] px-[12px] py-[10px] text-white text-[14px] focus:outline-none focus:border-[#ff0f5f]"
+            className="bg-[#0f0f0f] border border-[rgba(255,255,255,0.1)] rounded-[6px] px-[12px] py-[10px] text-white text-sm focus:outline-none focus:border-[#ff0f5f]"
           >
             <option value="" disabled>
               Select…
@@ -2665,14 +2665,14 @@ const ReassignModal = ({
         <button
           onClick={onClose}
           disabled={busy}
-          className="px-[14px] py-[8px] rounded-[6px] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] text-[13px] font-bold hover:text-white"
+          className="px-[14px] py-[8px] rounded-[6px] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] text-base font-bold hover:text-white"
         >
           Cancel
         </button>
         <button
           onClick={() => selectedId && onSubmit(selectedId)}
           disabled={busy || !selectedId}
-          className="px-[14px] py-[8px] rounded-[6px] bg-linear-to-b from-[#ff0f5f] to-[#cc0047] text-white text-[13px] font-bold hover:from-[#ff1f69] hover:to-[#d10050] disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-[14px] py-[8px] rounded-[6px] bg-linear-to-b from-[#ff0f5f] to-[#cc0047] text-white text-base font-bold hover:from-[#ff1f69] hover:to-[#d10050] disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {busy ? "Reassigning…" : "Reassign"}
         </button>
@@ -2735,22 +2735,22 @@ const AssignChattersModal = ({
       onClose={onClose}
     >
       {loading ? (
-        <p className="text-[#9e9e9e] text-[14px]">Loading chatter groups…</p>
+        <p className="text-[#9e9e9e] text-sm">Loading chatter groups…</p>
       ) : error ? (
-        <p className="text-[#ff2a2a] text-[14px]">{error}</p>
+        <p className="text-tm-danger-color05 text-sm">{error}</p>
       ) : groups.length === 0 ? (
-        <p className="text-[#9e9e9e] text-[14px]">
+        <p className="text-[#9e9e9e] text-sm">
           No chatter groups yet. Create one on the Chatters page first.
         </p>
       ) : (
         <label className="flex flex-col gap-[6px]">
-          <span className="text-[12px] uppercase tracking-[0.08em] text-[#9e9e9e] font-bold">
+          <span className="text-xs uppercase tracking-[0.08em] text-[#9e9e9e] font-bold">
             Chatter group
           </span>
           <select
             value={selectedId}
             onChange={(e) => setSelectedId(e.target.value)}
-            className="bg-[#0f0f0f] border border-[rgba(255,255,255,0.1)] rounded-[6px] px-[12px] py-[10px] text-white text-[14px] focus:outline-none focus:border-[#ff0f5f]"
+            className="bg-[#0f0f0f] border border-[rgba(255,255,255,0.1)] rounded-[6px] px-[12px] py-[10px] text-white text-sm focus:outline-none focus:border-[#ff0f5f]"
           >
             <option value="" disabled>
               Select…
@@ -2768,14 +2768,14 @@ const AssignChattersModal = ({
         <button
           onClick={onClose}
           disabled={busy}
-          className="px-[14px] py-[8px] rounded-[6px] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] text-[13px] font-bold hover:text-white"
+          className="px-[14px] py-[8px] rounded-[6px] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] text-base font-bold hover:text-white"
         >
           Cancel
         </button>
         <button
           onClick={() => selectedId && onSubmit(selectedId)}
           disabled={busy || !selectedId}
-          className="px-[14px] py-[8px] rounded-[6px] bg-linear-to-b from-[#ff0f5f] to-[#cc0047] text-white text-[13px] font-bold hover:from-[#ff1f69] hover:to-[#d10050] disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-[14px] py-[8px] rounded-[6px] bg-linear-to-b from-[#ff0f5f] to-[#cc0047] text-white text-base font-bold hover:from-[#ff1f69] hover:to-[#d10050] disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {busy ? "Assigning…" : "Assign"}
         </button>

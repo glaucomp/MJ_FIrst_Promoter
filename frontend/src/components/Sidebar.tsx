@@ -57,9 +57,9 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
               src={tmLogo1x}
               srcSet={`${tmLogo1x} 1x, ${tmLogo2x} 2x`}
             />
-            <div className="bg-[#101010] h-[24px] w-[40px] rounded-[4px] flex items-center justify-center">
-              <span className={`text-[12px] transition-transform ${isOpen ? '-rotate-90' : 'rotate-90'}`}>
-                ▶
+            <div className="h-[24px] w-8 rounded-[4px] flex items-center justify-center">
+              <span className={`text-xs transition-transform ${isOpen ? 'rotate-0 ml-3' : '-rotate-90'}`}>
+                <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="none" stroke="#ffffff" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m6 9l6 6l6-6"/></svg>
               </span>
             </div>
           </button>
@@ -92,7 +92,7 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
                       <item.Icon width={18} height={18} aria-hidden="true" focusable="false" />
                     </div>
                     <span
-                      className="text-[16px] font-medium leading-[1.4] tracking-[0.2px] flex-1 text-left"
+                      className="text-base font-medium leading-[1.4] tracking-[0.2px] flex-1 text-left whitespace-nowrap text-ellipsis"
                       style={{ color: iconColor }}
                     >
                       {item.label}
@@ -139,8 +139,8 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
           aria-label="Close navigation"
           className="fixed inset-0 z-40 w-full cursor-default"
           style={{
-            backdropFilter: 'blur(18px)',
-            background: 'linear-gradient(180deg, rgba(0,0,0,0.4) 37.983%, rgba(12,0,4,0.58) 82.696%, #2d000f 100%)'
+            backdropFilter: 'blur(8px)',            
+            background: 'linear-gradient(180deg, rgba(0,0,0,0.8) 37.983%, rgba(12,0,4,0.58) 50%, #2d000f 100%)'
           }}
           onClick={() => {
             setIsOpen(false);
