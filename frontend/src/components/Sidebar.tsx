@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import tmLogo1x from '../assets/tmlogo.png';
-import tmLogo2x from '../assets/tmlogo@2x.png';
+import mjLogo from '../assets/mjpromoFavicon.svg';
 import type { UserRole } from '../types';
 import { IconLogout } from './NavIcons';
 import { navItems } from './navConfig';
@@ -51,11 +50,7 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
             <img
               alt="TeaseMe"
               className="w-[40px] h-auto object-contain"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
-              }}
-              src={tmLogo1x}
-              srcSet={`${tmLogo1x} 1x, ${tmLogo2x} 2x`}
+              src={mjLogo}
             />
             <div className="h-[24px] w-8 rounded-[4px] flex items-center justify-center">
               <span className={`text-xs transition-transform ${isOpen ? 'rotate-0 ml-3' : '-rotate-90'}`}>
