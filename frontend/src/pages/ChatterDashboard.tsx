@@ -16,7 +16,7 @@ const ChatterAvatarCard = ({ member }: ChatterAvatarCardProps) => {
   const initials = [firstName[0], lastName[0]].filter(Boolean).join('').toUpperCase() || displayName.slice(0, 2).toUpperCase();
 
   return (
-    <div className="flex items-center gap-[12px] bg-[#202022] border border-[rgba(255,255,255,0.06)] rounded-[14px] px-[16px] py-[14px]">
+    <div className="flex items-center gap-[12px] bg-[#202022] border border-[rgba(255,255,255,0.06)] rounded-lg px-4 py-2">
       <div className="w-[44px] h-[44px] rounded-full bg-[#2e2e32] border-2 border-[#3a3a3e] flex items-center justify-center shrink-0">
         <span className="text-[#aaa] text-sm font-semibold">{initials}</span>
       </div>
@@ -100,11 +100,16 @@ export const ChatterDashboard = () => {
             <button
               key={group.id}
               onClick={() => openTools(group)}
-              className="w-full text-left bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-[18px] flex flex-col hover:border-[rgba(255,42,113,0.3)] hover:bg-[#1e1820] transition-all group/card"
+              className="w-full text-left bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-[18px] flex flex-col  transition-all group/card"
             >
               {/* Card header */}
-              <div className="p-[28px] flex items-start justify-between gap-[16px]">
-                <div className="flex items-center gap-[14px] min-w-0">
+              <div className="p-[28px] flex flex-col items-start justify-between gap-[16px]">
+                    <div className="flex items-baseline gap-[5px] self-end">
+                    <span className="text-[#9e9e9e] text-sm">Referral Bonus</span>
+                    <span className="text-white text-sm font-bold">{group.commissionPercentage}%</span>
+                  </div>
+          <div className="flex flex-col lg:flex-row justify-between w-full gap-6">      
+            <div className="flex items-center gap-[14px]">
                   {/* Promoter avatar */}
                   <div className="w-[56px] h-[56px] rounded-full bg-linear-to-br from-[#ff0f5f] to-[#cc0047] flex items-center justify-center shrink-0 overflow-hidden border border-[rgba(255,255,255,0.08)]">
                     {promoterPhoto ? (
@@ -119,37 +124,34 @@ export const ChatterDashboard = () => {
                       </span>
                     )}
                   </div>
-                  <div className="flex flex-col gap-[6px] min-w-0">
+                  <div className="flex flex-col gap-[6px]">
                     <h3 className="text-white text-lg font-bold leading-[1.2] truncate">{group.name}</h3>
                     {group.tag && (
-                      <span className="self-start px-[10px] py-[3px] rounded-full text-xs font-semibold text-[#ff2a71]">
+                      <span className="self-start px-[10px] py-[3px] rounded-full text-sm border text-tm-primary-color05">
                         {group.tag}
                       </span>
                     )}
                   </div>
                 </div>
-                <div className="flex flex-col items-end gap-[12px] shrink-0">
-                  <div className="flex items-baseline gap-[5px]">
-                    <span className="text-[#9e9e9e] text-sm">Referral Bonus</span>
-                    <span className="text-white text-sm font-bold">{group.commissionPercentage}%</span>
-                  </div>
-                  <span
-                    className="inline-flex items-center justify-center px-[28px] py-[10px] rounded-full bg-linear-to-b from-[#2a2a2e] to-[#151517] border border-[rgba(255,255,255,0.08)] text-white text-sm font-semibold shadow-[0_2px_6px_rgba(0,0,0,0.35)] group-hover/card:border-[rgba(255,42,113,0.5)] transition-colors"
+                <div className="flex flex-col items-end gap-[12px] ">
+              
+                  <button onClick={() => openTools(group)} 
+                    className="inline-flex items-center justify-center px-6 py-3 rounded-full bg-linear-to-b from-tm-primary-color08 to-tm-primary-color12 border border-tm-primary-color04 text-white text-base font-semibold  group-hover/card:-translate-y-0.5 transition-all w-full"
                     aria-hidden="true"
                   >
-                    View Tools
-                  </span>
-                </div>
+                    View Tools 💬
+                  </button >
+                </div></div>
               </div>
 
               {/* Card body — team members */}
               <div className="px-[28px] pb-[24px] flex flex-col gap-[16px]">
-                <div className="flex flex-col gap-[12px]">
+                <div className="flex flex-col gap-4">
                   <p className="text-[#9e9e9e] text-sm font-semibold">Team Members</p>
                   {(group.members ?? []).length === 0 ? (
                     <p className="text-[#555] text-sm">No chatters assigned yet.</p>
                   ) : (
-                    <div className="grid grid-cols-3 gap-[10px]">
+                    <div className="grid lg:grid-cols-3 gap-6">
                       {(group.members ?? []).map(m => (
                         <ChatterAvatarCard key={m.id} member={m} />
                       ))}
@@ -159,9 +161,9 @@ export const ChatterDashboard = () => {
               </div>
 
               {/* Linked promoter footer */}
-              <div className="flex items-center gap-[6px] px-[28px] py-[14px] border-t border-[rgba(255,255,255,0.04)]">
+              <div className="flex flex-col lg:flex-row lg:justify-between items-start gap-[6px] px-[28px] py-[14px] border-t border-tm-neutral-color04">
                 <span className="text-[#444] text-xs font-semibold uppercase tracking-[0.3px]">Linked Promoter</span>
-                <span className="text-[#666] text-xs">
+                <span className="text-tm-primary-color04 text-lg">
                   {group.promoter
                     ? [group.promoter.firstName, group.promoter.lastName].filter(Boolean).join(' ') || group.promoter.username || 'Unknown'
                     : 'None'}

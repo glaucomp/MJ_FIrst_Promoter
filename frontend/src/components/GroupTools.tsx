@@ -816,7 +816,7 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
                   ? undefined
                   : "No voice configured for this model — ask an admin to sync from TeaseMe"
               }
-              className="flex items-center justify-center gap-[7px] bg-linear-to-b from-[#ff0f5f] to-[#cc0047]  px-[18px] py-[11px] text-white text-sm font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center justify-center gap-[7px] rounded-lg bg-linear-to-b from-[#ff0f5f] to-[#cc0047]  px-[18px] py-[11px] text-white text-sm font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {isGenerating ? (
                 <span className="w-[13px] h-[13px] border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -847,7 +847,7 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
               <button
                 onClick={handlePlaySound}
                 disabled={!audioUrl || countdown !== null}
-                className={`flex items-center justify-center gap-[8px] rounded-[8px] px-[18px] py-[10px] text-sm font-bold active:scale-[0.98] transition-all ${audioUrl
+                className={`flex items-center justify-center gap-[8px] rounded-lg px-[18px] py-[10px] text-sm font-bold active:scale-[0.98] w-full transition-all ${audioUrl
                   ? "bg-[#1e1e20] border border-[rgba(255,255,255,0.12)] text-white hover:bg-[#252528]"
                   : "bg-[#141414] border border-[rgba(255,255,255,0.06)] text-[#444] cursor-not-allowed"
                   }`}

@@ -1,11 +1,9 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import tmLogo1x from '../assets/tmlogo.png';
-import tmLogo2x from '../assets/tmlogo@2x.png';
-import type { UserRole } from '../types';
+import mjLogo from '../assets/mjpromoFavicon.svg';
 import { IconLogout } from './NavIcons';
-import { navItems } from './navConfig';
+import { getNavForRole } from './navConfig';
 
 interface SidebarProps {
   onToggle?: (isOpen: boolean) => void;
@@ -49,13 +47,9 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
             className="flex flex-col justify-start gap-[5px]"
           >
             <img
-              alt="TeaseMe"
+              alt="MJ Promoter"
               className="w-[40px] h-auto object-contain"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
-              }}
-              src={tmLogo1x}
-              srcSet={`${tmLogo1x} 1x, ${tmLogo2x} 2x`}
+              src={mjLogo}
             />
             <div className="h-[24px] w-8 rounded-[4px] flex items-center justify-center">
               <span className={`text-xs transition-transform ${isOpen ? 'rotate-0 ml-3' : '-rotate-90'}`}>
@@ -65,11 +59,7 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
           </button>
 
           <nav className="flex-1 flex flex-col gap-[8px]">
-            {navItems.filter(item => {
-              if (item.adminOnly) return user?.baseRole === 'admin';
-              if (item.allowedRoles) return item.allowedRoles.includes(user?.baseRole as UserRole);
-              return true;
-            }).map((item) => {
+            {getNavForRole(user?.baseRole).map((item) => {
               const isActive = location.pathname === item.path;
               const iconColor = isActive
                 ? 'var(--color-tm-primary-color05, white)'
@@ -124,12 +114,22 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
 
           <button
             onClick={logout}
-            className="flex items-center justify-start px-[12px] rounded-[4px] hover:bg-[#292929]/50 h-[40px] w-full"
+            className={`flex items-center justify-start rounded-[4px] hover:bg-[#292929]/50 h-[44px] w-full transition-all ${
+              isOpen ? 'gap-[8px] px-[12px]' : 'px-[12px]'
+            }`}
             aria-label="Log out"
           >
-            <div style={{ color: '#ff0f5f' }} className="flex items-center justify-center">
+            <div style={{ color: '#ff0f5f' }} className="shrink-0 flex items-center justify-center">
               <IconLogout width={20} height={19} />
             </div>
+            {isOpen && (
+              <span
+                className="text-base font-medium leading-[1.4] tracking-[0.2px] flex-1 text-left whitespace-nowrap"
+                style={{ color: '#ff0f5f' }}
+              >
+                Log Out
+              </span>
+            )}
           </button>
         </div>
       </div>
