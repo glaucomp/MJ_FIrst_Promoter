@@ -227,8 +227,8 @@ export const CreateUserModal = ({
           {success ? (
             <>
               {inviteEmailSent ? (
-                <div className="bg-tm-success-color12 border border-tm-success-color09s-color09 rounded-[8px] px-[16px] py-[12px]">
-                  <p className="text-tm-success-color05s-color05 text-sm font-medium">
+                <div className="bg-tm-success-color12 border border-tm-success-color09 rounded-[8px] px-[16px] py-[12px]">
+                  <p className="text-tm-success-color05 text-sm font-medium">
                     Invite email sent to {success.email}. They can use the
                     invite email to set their password and activate the
                     account.
