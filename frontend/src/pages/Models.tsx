@@ -2017,16 +2017,15 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
           const isBusy = busyId === referral.id;
           const step = referral.preUser?.currentStep ?? 0;
           const assetLink = referral.preUser?.assetLink ?? null;
-          const canCopyAssetLink = !!assetLink;
+          const normalizedAssetLink = assetLink?.replace(/^"|"$/g, "").trim() || null;
+          const canCopyAssetLink = !!normalizedAssetLink;
           const assetLinkTooltip = canCopyAssetLink
             ? "Copy landing page link"
             : "Landing page link not available yet";
           // On lp_live the onboarding history is purely informational — the
           // promoter has already finished the survey and the LP is live —
           // so we fade the checklist + header to 20% to push the eye toward
-          // the Assign Chatters CTA. The asset-link copy button stays at
-          // full opacity because it's still the primary affordance inside
-          // this block.
+          // the Assign Chatters CTA.
           const isLive = chipState === "lp_live";
           return (
             <div
@@ -2167,7 +2166,7 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
                       canCopyAssetLink
                         ? async () => {
                           try {
-                            await navigator.clipboard.writeText(assetLink!.replace(/^"|"$/g, ""));
+                            await navigator.clipboard.writeText(normalizedAssetLink!);
                             showToast("success", "Landing page link copied!");
                           } catch {
                             showToast(
@@ -2188,7 +2187,7 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
                     className={`h-7 w-12 transition-all select-none ${canCopyAssetLink ? "cursor-pointer hover:-translate-y-0.5" : "cursor-not-allowed opacity-50"}`}
                     onClick={
                       canCopyAssetLink
-                        ? () => window.open(assetLink!.replace(/^"|"$/g, ""), "_blank", "noopener,noreferrer")
+                        ? () => window.open(normalizedAssetLink!, "_blank", "noopener,noreferrer")
                         : undefined
                     }
                   >
