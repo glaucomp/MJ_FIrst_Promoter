@@ -14,17 +14,33 @@ interface MjfpCredentials {
   accountId: string;
 }
 
+/** Re-fetch from the DB at most once every 5 minutes. */
+const CACHE_TTL_MS = 5 * 60 * 1_000;
+
 let cached: MjfpCredentials | null = null;
+let cachedAt = 0;
+
+/**
+ * Invalidates the in-process credentials cache.
+ * Call this whenever an upstream request returns 401 so the next call
+ * to getMjfpCredentials() re-reads from the DB rather than reusing a
+ * stale/rotated token.
+ */
+export function clearMjfpCredentialsCache(): void {
+  cached = null;
+  cachedAt = 0;
+}
 
 /**
  * Returns the active MJFP Bearer token and Account-ID from the api_keys table.
- * Results are cached in-process for the lifetime of the server to avoid
- * repeated DB round-trips on hot paths.
+ * Results are cached in-process for up to CACHE_TTL_MS to avoid repeated DB
+ * round-trips on hot paths.  The cache is also invalidated via
+ * clearMjfpCredentialsCache() when an upstream 401 is detected.
  *
  * Returns null if no active MJFP api key is found in the database.
  */
 export async function getMjfpCredentials(): Promise<MjfpCredentials | null> {
-  if (cached) return cached;
+  if (cached && Date.now() - cachedAt < CACHE_TTL_MS) return cached;
 
   const row = await prisma.apiKey.findFirst({
     where: {
@@ -37,6 +53,7 @@ export async function getMjfpCredentials(): Promise<MjfpCredentials | null> {
   if (!row?.token || !row?.accountId) return null;
 
   cached = { token: row.token, accountId: row.accountId };
+  cachedAt = Date.now();
   return cached;
 }
 

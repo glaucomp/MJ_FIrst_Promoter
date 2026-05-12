@@ -20,7 +20,7 @@ import { resolveOwnership } from "../services/pre-user-promote.service";
 import { ensureCustomerTrackingReferralForPromotedUser } from "../services/referral-membership.service";
 import { getUserTypeInfo, syncUserType } from "../services/user.service";
 import { buildSetPasswordUrl } from "../utils/frontend-url";
-import { getMjfpCredentials, MJFP_API_URL } from "../lib/mjfp-credentials";
+import { clearMjfpCredentialsCache, getMjfpCredentials, MJFP_API_URL } from "../lib/mjfp-credentials";
 
 const prisma = new PrismaClient();
 
@@ -268,6 +268,7 @@ export const register = async (req: AuthRequest, res: Response) => {
               `✅ MJ Promoter signup tracked: ${email} -> ${refCode}`,
             );
           } else {
+            if (trackResponse.status === 401) clearMjfpCredentialsCache();
             console.warn(
               `⚠️ MJ Promoter signup tracking failed: ${trackResponse.status}`,
             );

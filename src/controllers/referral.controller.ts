@@ -1,4 +1,5 @@
 import { Prisma, PrismaClient, UserRole, UserType } from "@prisma/client";
+import { timingSafeEqual } from "node:crypto";
 import { Request, Response } from "express";
 import { validationResult } from "express-validator";
 import { nanoid } from "nanoid";
@@ -2311,8 +2312,15 @@ export const receiveTeasemeStepWebhook = async (
   req: Request,
   res: Response,
 ) => {
-  const secret = req.headers["x-webhook-secret"];
-  if (!secret || secret !== process.env.TEASEME_WEBHOOK_SECRET) {
+  const expectedSecret = process.env.TEASEME_WEBHOOK_SECRET;
+  const rawHeader = req.headers["x-webhook-secret"];
+  const receivedSecret = Array.isArray(rawHeader) ? rawHeader[0] : rawHeader;
+  const isValid =
+    !!expectedSecret &&
+    !!receivedSecret &&
+    expectedSecret.length === receivedSecret.length &&
+    timingSafeEqual(Buffer.from(expectedSecret), Buffer.from(receivedSecret));
+  if (!isValid) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 

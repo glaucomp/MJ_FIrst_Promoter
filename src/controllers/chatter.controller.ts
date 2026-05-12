@@ -15,7 +15,7 @@ import { createPasswordResetToken } from "../services/password-reset.service";
 import { buildSetPasswordUrl } from "../utils/frontend-url";
 import { getPresignedUrl } from "../services/s3.service";
 import { syncUserFromTeaseMe } from "../services/teaseme.service";
-import { getMjfpToken } from "../lib/mjfp-credentials";
+import { clearMjfpCredentialsCache, getMjfpToken } from "../lib/mjfp-credentials";
 
 const prisma = new PrismaClient();
 const PREREGISTER_URL =
@@ -182,15 +182,15 @@ type PreregisterUpstream =
 
 const callPreregisterUpstream = async (
   payload: PreregisterPayload,
+  token: string,
 ): Promise<PreregisterUpstream> => {
-  const preregisterToken = await getMjfpToken();
   let upstream: globalThis.Response;
   try {
     upstream = await fetch(PREREGISTER_URL!, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Internal-Token": preregisterToken!,
+        "X-Internal-Token": token,
       },
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(10_000),
@@ -210,6 +210,9 @@ const callPreregisterUpstream = async (
     raw && typeof raw === "object" ? (raw as Record<string, unknown>) : null;
 
   if (!upstream.ok) {
+    if (upstream.status === 401) {
+      clearMjfpCredentialsCache();
+    }
     const detail =
       parsed && typeof parsed.detail === "string" ? parsed.detail : "";
     return {
@@ -272,7 +275,7 @@ export const preregisterVipUser = async (req: AuthRequest, res: Response) => {
       full_name: String(req.body.full_name).trim(),
     };
 
-    const result = await callPreregisterUpstream(payload);
+    const result = await callPreregisterUpstream(payload, mjfpToken);
     if (!result.ok) {
       return res.status(result.status).json({ error: result.error });
     }

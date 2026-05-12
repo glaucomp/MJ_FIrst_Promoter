@@ -2,7 +2,7 @@ import http from "node:http";
 import https from "node:https";
 
 import { PrismaClient } from "@prisma/client";
-import { getMjfpToken } from "../lib/mjfp-credentials";
+import { clearMjfpCredentialsCache, getMjfpToken } from "../lib/mjfp-credentials";
 
 const prisma = new PrismaClient();
 
@@ -91,7 +91,10 @@ export const fetchTeasemePreUserStatus = async (params: {
     return null;
   }
 
-  if (!res.ok) return null;
+  if (!res.ok) {
+    if (res.status === 401) clearMjfpCredentialsCache();
+    return null;
+  }
 
   let body: unknown = null;
   try {
@@ -328,7 +331,10 @@ const postToTeaseme = async (
   } catch {
     /* non-JSON response is still valid for 2xx; fall through */
   }
-  if (!res.ok) return null;
+  if (!res.ok) {
+    if (res.status === 401) clearMjfpCredentialsCache();
+    return null;
+  }
   const raw =
     parsed && typeof parsed === "object"
       ? (parsed as Record<string, unknown>)
@@ -430,6 +436,7 @@ export const approvePreInfluencer = async (params: {
     "mjfp.approve",
   );
   if (!result) return null;
+  if (result.status === 401) clearMjfpCredentialsCache();
   if (result.status < 200 || result.status >= 300) return null;
 
   const raw =
