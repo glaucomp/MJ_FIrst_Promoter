@@ -41,7 +41,7 @@ const USER_TYPE_OPTIONS: { value: string; label: string }[] = [
 ];
 
 const SessionExpiredBanner = ({ onLogout }: { onLogout: () => void }) => (
-  <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-[8px] p-[16px] flex flex-col gap-[12px]">
+  <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-lg p-4 flex flex-col gap-3">
     <p className="text-tm-danger-color05 text-sm font-bold">Session expired</p>
     <p className="text-[#ff8080] text-base">
       Your login session is no longer valid. This usually happens after the
@@ -49,7 +49,7 @@ const SessionExpiredBanner = ({ onLogout }: { onLogout: () => void }) => (
     </p>
     <button
       onClick={onLogout}
-      className="self-start bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-sm font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+      className="self-start bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-3 text-white text-sm font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
     >
       Log out &amp; log back in
     </button>
@@ -440,7 +440,7 @@ export const Models = () => {
   if (isLoading) {
     return (
       <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
-        <h1 className="text-3xl leading-[36px] font-semibold text-white lg:w-full">
+        <h1 className="text-3xl leading-9 font-semibold text-white lg:w-full">
           Models
         </h1>
         <p className="text-base text-[#9e9e9e]">Loading...</p>
@@ -456,7 +456,7 @@ export const Models = () => {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
-          <h1 className="text-3xl leading-[36px] font-semibold text-white lg:w-full">
+          <h1 className="text-3xl leading-9 font-semibold text-white lg:w-full">
             All Users
           </h1>
           <div className="flex items-center  justify-between lg:justify-end lg:gap-4 w-full">
@@ -467,7 +467,7 @@ export const Models = () => {
             </p>
             <button
               onClick={() => setIsCreateUserModalOpen(true)}
-              className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-sm font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+              className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-3 text-white text-sm font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
             >
               + Create User
             </button>
@@ -475,8 +475,8 @@ export const Models = () => {
         </div>
 
         {/* Filter bar (search + user-type). Grouping by AM is always on. */}
-        <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[12px] flex flex-col lg:flex-row lg:items-end gap-[12px]">
-          <div className="flex flex-col gap-[6px] flex-1 min-w-[200px]">
+        <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-lg p-3 flex flex-col lg:flex-row lg:items-end gap-3">
+          <div className="flex flex-col gap-2 flex-1 min-w-50">
             <label
               htmlFor="admin-users-search"
               className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.2px]"
@@ -489,11 +489,11 @@ export const Models = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Name, email, or account manager…"
-              className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.08)] rounded-[8px] px-4 py-4 text-base text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
+              className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.08)] rounded-lg px-4 py-4 text-base text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
             />
           </div>
 
-          <div className="flex flex-col gap-[6px] min-w-[160px]">
+          <div className="flex flex-col gap-2 min-w-40">
             <label
               htmlFor="admin-users-type"
               className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.2px]"
@@ -504,7 +504,7 @@ export const Models = () => {
               id="admin-users-type"
               value={selectedUserType}
               onChange={(e) => setSelectedUserType(e.target.value)}
-              className="bg-[#1c1c1e] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-4 py-4 text-white text-base focus:outline-none focus:border-[#ff0f5f] appearance-none cursor-pointer pr-[28px]"
+              className="bg-[#1c1c1e] border border-[rgba(255,255,255,0.1)] rounded-lg px-4 py-4 text-white text-base focus:outline-none focus:border-[#ff0f5f] appearance-none cursor-pointer "
               style={{
                 backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239e9e9e' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
                 backgroundRepeat: "no-repeat",
@@ -536,13 +536,13 @@ export const Models = () => {
         {error === "SESSION_EXPIRED" ? (
           <SessionExpiredBanner onLogout={logout} />
         ) : error ? (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-[8px] p-[16px]">
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
             <p className="text-red-400 text-sm font-semibold">{error}</p>
           </div>
         ) : null}
 
         {needsAssignmentCount > 0 && (
-          <div className="bg-[#3a2a0a] border border-[#b8860b]/50 rounded-[8px] px-[14px] py-[10px] flex items-center gap-[10px]">
+          <div className="bg-[#3a2a0a] border border-[#b8860b]/50 rounded-lg px-4 py-3 flex items-center gap-3">
             <span className="text-[#ffb84d] text-sm">⚠</span>
             <p className="text-[#ffd27a] text-base">
               {needsAssignmentCount} user{needsAssignmentCount !== 1 ? "s" : ""}{" "}
@@ -555,7 +555,7 @@ export const Models = () => {
 
         {/* Sections grouped by Account Manager. Drag a user card onto any
             manager section to reassign them. */}
-        <div className="flex flex-col gap-[20px]">
+        <div className="flex flex-col gap-5">
           {adminSections.map((section) => {
             const isNeeds = section.variant === "needs";
             const isPayers = section.variant === "payers";
@@ -617,7 +617,7 @@ export const Models = () => {
                   }`}
               >
                 <div
-                  className={`flex items-center justify-between gap-[12px] border rounded-[10px] px-[16px] py-[12px] transition-colors ${isNeeds
+                  className={`flex items-center justify-between gap-3 border rounded-[10px] px-4 py-3 transition-colors ${isNeeds
                     ? "bg-[#2a1f0a] border-[#b8860b]/40 hover:border-[#b8860b]/70"
                     : "bg-[#1a1a1a] border-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.16)]"
                     }`}
@@ -625,7 +625,7 @@ export const Models = () => {
                   <button
                     type="button"
                     onClick={() => toggleSection(section.key)}
-                    className="flex items-start gap-[12px] min-w-0 text-left flex-1"
+                    className="flex items-start gap-3 min-w-0 text-left flex-1"
                   >
                     <span
                       className={`inline-block text-2xl transition-transform ${isCollapsed ? "" : "rotate-90"
@@ -651,7 +651,7 @@ export const Models = () => {
                       )}
                     </div>
                   </button>
-                  <div className="flex items-center gap-[12px] shrink-0">
+                  <div className="flex items-center gap-3 shrink-0">
                     <span
                       className={`text-base ${isNeeds ? "text-[#d9b26a]" : "text-tm-text-color09"
                         }`}
@@ -665,7 +665,7 @@ export const Models = () => {
                       </span>
                     )}
                     {section.variant === "manager" && section.manager && (
-                      <div className="flex items-center gap-[6px] pl-[8px] ml-[4px] border-l border-[rgba(255,255,255,0.08)]">
+                      <div className="flex items-center gap-2 pl-2 ml-1 border-l border-[rgba(255,255,255,0.08)]">
                         {confirmDeleteManagerId === section.manager.id ? (
                           <>
                             <span className="text-[#9e9e9e] text-xs hidden lg:inline">
@@ -680,7 +680,7 @@ export const Models = () => {
                               disabled={
                                 deletingManagerId === section.manager.id
                               }
-                              className="px-[10px] py-[4px] rounded-[6px] text-xs font-bold bg-tm-danger-color12 border border-tm-danger-color09 text-tm-danger-color05 hover:bg-[#880000] disabled:opacity-50 transition-colors"
+                              className="px-3 py-1 rounded-md text-xs font-bold bg-tm-danger-color12 border border-tm-danger-color09 text-tm-danger-color05 hover:bg-[#880000] disabled:opacity-50 transition-colors"
                             >
                               {deletingManagerId === section.manager.id
                                 ? "..."
@@ -689,7 +689,7 @@ export const Models = () => {
                             <button
                               type="button"
                               onClick={() => setConfirmDeleteManagerId(null)}
-                              className="px-[10px] py-[4px] rounded-[6px] text-xs font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white transition-colors"
+                              className="px-3 py-1 rounded-md text-xs font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white transition-colors"
                             >
                               No
                             </button>
@@ -702,7 +702,7 @@ export const Models = () => {
                                 if (section.manager)
                                   setEditingManager(section.manager);
                               }}
-                              className="px-[10px] py-[4px] rounded-[6px] text-xs font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white hover:border-[rgba(255,255,255,0.2)] transition-colors"
+                              className="px-3 py-1 rounded-md text-xs font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white hover:border-[rgba(255,255,255,0.2)] transition-colors"
                               title="Edit account manager"
                             >
                               Edit
@@ -713,7 +713,7 @@ export const Models = () => {
                                 if (section.manager)
                                   setConfirmDeleteManagerId(section.manager.id);
                               }}
-                              className="px-[10px] py-[4px] rounded-[6px] text-xs font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-tm-danger-color04 hover:text-tm-danger-color05 hover:border-tm-danger-color09/50 transition-colors"
+                              className="px-3 py-1 rounded-md text-xs font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-tm-danger-color04 hover:text-tm-danger-color05 hover:border-tm-danger-color09/50 transition-colors"
                               title="Delete account manager"
                             >
                               Delete
@@ -727,7 +727,7 @@ export const Models = () => {
 
                 {!isCollapsed && (
                   <div
-                    className={`flex flex-col justify-center align-center gap-[12px]  min-h-[32px] bg-tm-neutral-color08 px-6 py-8 rounded-b-xl overflow-clip  ${isDropTarget
+                    className={`flex flex-col justify-center align-center gap-3  min-h-8 bg-tm-neutral-color08 px-6 py-8 rounded-b-xl overflow-clip  ${isDropTarget
                       ? "border-[#ff0f5f]"
                       : isNeeds
                         ? "border-[#b8860b]/40"
@@ -786,7 +786,7 @@ export const Models = () => {
                                 }
                                 : undefined
                             }
-                            className={`bg-linear-to-t from-[#212121] to-[#23252a] border rounded-[8px] p-[16px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] transition-all ${isDraggable
+                            className={`bg-linear-to-t from-[#212121] to-[#23252a] border rounded-lg p-4 shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] transition-all ${isDraggable
                               ? "cursor-grab active:cursor-grabbing"
                               : ""
                               } ${draggingUserId === apiUser.id
@@ -799,7 +799,7 @@ export const Models = () => {
                                 : undefined
                             }
                           >
-                            <div className="flex items-start justify-between gap-[12px] flex-col lg:flex-row">
+                            <div className="flex items-start justify-between gap-3 flex-col lg:flex-row">
                               {isDraggable && (
                                 <span
                                   className="text-[#666] text-xl font-bold select-none"
@@ -809,8 +809,8 @@ export const Models = () => {
                                   ⋮⋮
                                 </span>
                               )}
-                              <div className="flex flex-col gap-[8px] w-full">
-                                <div className="flex items-center gap-[8px]">
+                              <div className="flex flex-col gap-2 w-full">
+                                <div className="flex items-center gap-2">
                                   <p className="text-white text-base font-semibold">
                                     {apiUser.firstName} {apiUser.lastName}
                                   </p>
@@ -818,16 +818,16 @@ export const Models = () => {
                                 <p className="text-[#9e9e9e] text-sm">
                                   {apiUser.email}
                                 </p>
-                                <div className="flex items-center gap-[8px] w-full">
+                                <div className="flex items-center gap-2 w-full">
                                   <span
-                                    className={`px-[12px] py-[4px] rounded-full text-xs font-bold border ${apiUser.isActive
+                                    className={`px-3 py-1 rounded-full text-xs font-bold border ${apiUser.isActive
                                       ? "bg-tm-success-color12 border-tm-success-color09 text-tm-success-color05"
                                       : "bg-tm-danger-color12 border-tm-danger-color09 text-tm-danger-color05"
                                       }`}
                                   >
                                     {apiUser.isActive ? "Active" : "Inactive"}
                                   </span>
-                                  <span className="px-[12px] py-[4px] rounded-full text-xs font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]">
+                                  <span className="px-3 py-1 rounded-full text-xs font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]">
                                     {apiUser.userType?.toUpperCase() === "TEAM_MANAGER"
                                       ? "PROMOTER +"
                                       : apiUser.userType?.toLowerCase().replace("_", " ")}
@@ -835,9 +835,9 @@ export const Models = () => {
                                 </div>
                               </div>
 
-                              <div className="flex flex-col items-start lg:items-end gap-[8px] w-full">
+                              <div className="flex flex-col items-start lg:items-end gap-2 w-full">
                                 {apiUser.stats && !isPayers && (
-                                  <div className="text-left flex flex-col gap-[4px] w-full lg:text-right">
+                                  <div className="text-left flex flex-col gap-1 w-full lg:text-right">
                                     <p className="text-[#9e9e9e] text-xs uppercase">
                                       Earnings
                                     </p>
@@ -852,7 +852,7 @@ export const Models = () => {
                                 )}
 
                                 {confirmDeleteId === apiUser.id ? (
-                                  <div className="flex items-center gap-[8px] mt-[4px]">
+                                  <div className="flex items-center gap-2 mt-1">
                                     <span className="text-[#9e9e9e] text-xs">
                                       Delete?
                                     </span>
@@ -861,7 +861,7 @@ export const Models = () => {
                                         handleDeleteUser(apiUser.id)
                                       }
                                       disabled={deletingUserId === apiUser.id}
-                                      className="px-[10px] py-[4px] rounded-[6px] text-xs font-bold bg-tm-danger-color12 border border-tm-danger-color09 text-tm-danger-color05 hover:bg-[#880000] disabled:opacity-50 transition-colors"
+                                      className="px-3 py-1 rounded-md text-xs font-bold bg-tm-danger-color12 border border-tm-danger-color09 text-tm-danger-color05 hover:bg-[#880000] disabled:opacity-50 transition-colors"
                                     >
                                       {deletingUserId === apiUser.id
                                         ? "..."
@@ -869,7 +869,7 @@ export const Models = () => {
                                     </button>
                                     <button
                                       onClick={() => setConfirmDeleteId(null)}
-                                      className="px-[10px] py-[4px] rounded-[6px] text-xs font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white transition-colors"
+                                      className="px-3 py-1 rounded-md text-xs font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white transition-colors"
                                     >
                                       No
                                     </button>
@@ -897,7 +897,7 @@ export const Models = () => {
           })}
 
           {adminSections.length === 0 && (
-            <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] text-center">
+            <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-lg p-6 text-center">
               <p className="text-[#9e9e9e] text-base">
                 {allUsers.length === 0
                   ? "No users found."
@@ -934,7 +934,7 @@ export const Models = () => {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
-          <h1 className="text-3xl leading-[36px] font-semibold text-white lg:w-full">
+          <h1 className="text-3xl leading-9 font-semibold text-white lg:w-full">
             My Users
           </h1>
           <div className="flex items-center justify-between lg:justify-end lg:gap-4 w-full">
@@ -944,15 +944,15 @@ export const Models = () => {
             </p>
             <button
               onClick={() => setIsCreateUserModalOpen(true)}
-              className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-sm font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+              className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-3 text-white text-sm font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
             >
               + Create Chatter
             </button>
           </div>
         </div>
 
-        <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[12px] flex flex-col lg:flex-row lg:items-end gap-[12px]">
-          <div className="flex flex-col gap-[6px] flex-1 min-w-[200px]">
+        <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-lg p-3 flex flex-col lg:flex-row lg:items-end gap-3">
+          <div className="flex flex-col gap-1.5 flex-1 min-w-50">
             <label
               htmlFor="am-users-search"
               className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.2px]"
@@ -965,11 +965,11 @@ export const Models = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Name or email…"
-              className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.08)] rounded-[8px] px-[12px] py-[9px] text-sm text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
+              className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.08)] rounded-lg px-3 py-3 text-sm text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
             />
           </div>
 
-          <div className="flex flex-col gap-[6px] min-w-[160px]">
+          <div className="flex flex-col gap-2 min-w-40">
             <label
               htmlFor="am-users-type"
               className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.2px]"
@@ -980,7 +980,7 @@ export const Models = () => {
               id="am-users-type"
               value={selectedUserType}
               onChange={(e) => setSelectedUserType(e.target.value)}
-              className="bg-[#1c1c1e] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[12px] py-[9px] text-white text-sm focus:outline-none focus:border-[#ff0f5f] appearance-none cursor-pointer pr-[28px]"
+              className="bg-[#1c1c1e] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-3 text-white text-sm focus:outline-none focus:border-[#ff0f5f] appearance-none cursor-pointer pr-7"
               style={{
                 backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239e9e9e' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
                 backgroundRepeat: "no-repeat",
@@ -1004,7 +1004,7 @@ export const Models = () => {
                 setSelectedUserType("");
                 setSearch("");
               }}
-              className="text-[#9e9e9e] hover:text-white text-xs underline self-start lg:self-end lg:mb-[10px]"
+              className="text-[#9e9e9e] hover:text-white text-xs underline self-start lg:self-end lg:mb-3"
             >
               Clear filters
             </button>
@@ -1014,14 +1014,14 @@ export const Models = () => {
         {error === "SESSION_EXPIRED" ? (
           <SessionExpiredBanner onLogout={logout} />
         ) : error ? (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-[8px] p-[16px]">
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
             <p className="text-red-400 text-sm font-semibold">{error}</p>
           </div>
         ) : null}
 
-        <div className="flex flex-col gap-[20px]">
+        <div className="flex flex-col gap-5">
           {visibleAdminUsers.length === 0 ? (
-            <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] text-center">
+            <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-lg p-6 text-center">
               <p className="text-[#9e9e9e] text-base">
                 {allUsers.length === 0
                   ? "You have no users yet."
@@ -1030,8 +1030,8 @@ export const Models = () => {
             </div>
           ) : (
             accountManagerUserSections.map(({ typeKey, label, users }) => (
-              <section key={typeKey} className="flex flex-col gap-[12px]">
-                <div className="flex items-baseline justify-between gap-[12px] border-b border-[rgba(255,255,255,0.08)] pb-[10px]">
+              <section key={typeKey} className="flex flex-col gap-3">
+                <div className="flex items-baseline justify-between gap-3 border-b border-[rgba(255,255,255,0.08)] pb-3">
                   <h2 className="text-base font-semibold text-white">
                     {label}
                   </h2>
@@ -1039,30 +1039,30 @@ export const Models = () => {
                     {users.length}
                   </span>
                 </div>
-                <div className="flex flex-col gap-[12px]">
+                <div className="flex flex-col gap-3">
                   {users.map((apiUser) => (
                     <div
                       key={apiUser.id}
-                      className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[16px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)]"
+                      className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-lg p-4 shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)]"
                     >
-                      <div className="flex items-start justify-between gap-[12px] flex-col lg:flex-row">
-                        <div className="flex flex-col gap-[8px] w-full">
+                      <div className="flex items-start justify-between gap-3 flex-col lg:flex-row">
+                        <div className="flex flex-col gap-2 w-full">
                           <p className="text-white text-base font-semibold">
                             {apiUser.firstName} {apiUser.lastName}
                           </p>
                           <p className="text-[#9e9e9e] text-sm">
                             {apiUser.email}
                           </p>
-                          <div className="flex items-center gap-[8px] w-full">
+                          <div className="flex items-center gap-2 w-full">
                             <span
-                              className={`px-[12px] py-[4px] rounded-full text-xs font-bold border ${apiUser.isActive
+                              className={`px-3 py-1 rounded-full text-xs font-bold border ${apiUser.isActive
                                 ? "bg-tm-success-color12 border-tm-success-color09 text-tm-success-color05"
                                 : "bg-tm-danger-color12 border-tm-danger-color09 text-tm-danger-color05"
                                 }`}
                             >
                               {apiUser.isActive ? "Active" : "Inactive"}
                             </span>
-                            <span className="px-[12px] py-[4px] rounded-full text-xs font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]">
+                            <span className="px-3 py-1 rounded-full text-xs font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]">
                               {apiUser.userType?.toUpperCase() === "TEAM_MANAGER"
                                 ? "PROMOTER +"
                                 : apiUser.userType?.toLowerCase().replace("_", " ")}
@@ -1071,8 +1071,8 @@ export const Models = () => {
                         </div>
 
                         {apiUser.stats && (
-                          <div className="flex flex-col items-start lg:items-end gap-[8px] w-full">
-                            <div className="text-left flex flex-col gap-[4px] w-full lg:text-right">
+                          <div className="flex flex-col items-start lg:items-end gap-2 w-full">
+                            <div className="text-left flex flex-col gap-1 w-full lg:text-right">
                               <p className="text-[#9e9e9e] text-xs uppercase">
                                 Earnings
                               </p>
@@ -1113,7 +1113,7 @@ export const Models = () => {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
-          <h1 className="text-3xl leading-[36px] font-semibold text-white lg:w-full">
+          <h1 className="text-3xl leading-9 font-semibold text-white lg:w-full">
             My Promoters
           </h1>
           <button
@@ -1128,7 +1128,7 @@ whitespace-nowrap"
         {error === "SESSION_EXPIRED" ? (
           <SessionExpiredBanner onLogout={logout} />
         ) : error ? (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-[8px] p-[16px]">
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
             <p className="text-red-400 text-sm font-semibold">{error}</p>
           </div>
         ) : null}
@@ -1154,12 +1154,12 @@ whitespace-nowrap"
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
-          <h1 className="text-3xl leading-[36px] font-semibold text-white lg:w-full">
+          <h1 className="text-3xl leading-9 font-semibold text-white lg:w-full">
             My Team
           </h1>
           <button
             onClick={() => handleOpenInviteModal("referral")}
-            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-sm font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-3 text-white text-sm font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
           >
             + Create Referral Link
           </button>
@@ -1168,7 +1168,7 @@ whitespace-nowrap"
         {error === "SESSION_EXPIRED" ? (
           <SessionExpiredBanner onLogout={logout} />
         ) : error ? (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-[8px] p-[16px]">
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
             <p className="text-red-400 text-sm font-semibold">{error}</p>
           </div>
         ) : null}
@@ -1198,12 +1198,12 @@ whitespace-nowrap"
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
-          <h1 className="text-3xl leading-[36px] font-semibold text-white lg:w-full">
+          <h1 className="text-3xl leading-9 font-semibold text-white lg:w-full">
             My Promoters
           </h1>
           <button
             onClick={() => handleOpenInviteModal("referral")}
-            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-base font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all whitespace-nowrap"
+            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-3 text-white text-base font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all whitespace-nowrap"
           >
             + Create Referral Link
           </button>
@@ -1212,7 +1212,7 @@ whitespace-nowrap"
         {error === "SESSION_EXPIRED" ? (
           <SessionExpiredBanner onLogout={logout} />
         ) : error ? (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-[8px] p-[16px]">
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
             <p className="text-red-400 text-sm font-semibold">{error}</p>
           </div>
         ) : null}
@@ -1235,7 +1235,7 @@ whitespace-nowrap"
 
   return (
     <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
-      <h1 className="text-3xl leading-[36px] font-semibold text-white lg:w-full">
+      <h1 className="text-3xl leading-9 font-semibold text-white lg:w-full">
         Models
       </h1>
       <p className="text-[#9e9e9e] text-base">Access denied</p>
@@ -1467,7 +1467,7 @@ const OnboardingChecklist = ({
   dimmed?: boolean;
 }) => (
   <ul
-    className={`flex flex-col gap-[6px] text-base ${dimmed ? "opacity-60" : ""
+    className={`flex flex-col gap-2 text-base ${dimmed ? "opacity-60" : ""
       }`}
   >
     {ONBOARDING_STEPS.map(({ idx, label }) => {
@@ -1475,7 +1475,7 @@ const OnboardingChecklist = ({
       return (
         <li
           key={idx}
-          className={`flex items-center gap-[8px] tracking-tight ${done ? "text-tm-text-color01 line-through opacity-30" : "text-tm-text-color01"
+          className={`flex items-center gap-2 tracking-tight ${done ? "text-tm-text-color01 line-through opacity-30" : "text-tm-text-color01"
             }`}
         >
           <span className="text-tm-text-color08 text-sm w-4">
@@ -1902,7 +1902,7 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
 
   if (referrals.length === 0) {
     return (
-      <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] text-center">
+      <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-lg p-6 text-center">
         <p className="text-[#9e9e9e] text-base">
           No referrals yet. Create a referral link to get started.
         </p>
@@ -1923,22 +1923,22 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
     ];
 
   return (
-    <div className="flex flex-col gap-[12px]">
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 items-center gap-[8px] flex-wrap">
+    <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 items-center gap-2 flex-wrap">
         {filterOptions.map((opt) => {
           const isSelected = filter === opt.id;
           return (
             <button
               key={opt.id}
               onClick={() => setFilter(opt.id)}
-              className={`px-[14px] py-[6px] rounded-lg text-sm  border transition-colors ${isSelected
+              className={`px-4 py-2 rounded-lg text-sm  border transition-colors ${isSelected
                 ? "bg-tm-primary-color12 border-tm-primary-color10 text-tm-primary-color02"
                 : "bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white hover:border-[rgba(255,255,255,0.3)]"
                 }`}
             >
               {opt.label}
               <span
-                className={`ml-[6px] font-normal ${isSelected ? "opacity-80" : ""}`}
+                className={`ml-2 font-normal ${isSelected ? "opacity-80" : ""}`}
               >
                 {opt.count}
               </span>
@@ -1949,7 +1949,7 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
 
       {toast && (
         <div
-          className={`rounded-[8px] px-[16px] py-[12px] border text-sm font-medium ${toast.kind === "success"
+          className={`rounded-lg px-4 py-3 border text-sm font-medium ${toast.kind === "success"
             ? "bg-tm-success-color12 border-tm-success-color09 text-tm-success-color05"
             : "bg-tm-danger-color12 border-tm-danger-color09 text-tm-danger-color05"
             }`}
@@ -1959,7 +1959,7 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
       )}
 
       {visibleReferrals.length === 0 && (
-        <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] text-center">
+        <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-lg p-6 text-center">
           <p className="text-[#9e9e9e] text-sm">
             No {filter === "all" ? "active or pending" : filter} referrals
             {filter === "all" && (counts.expired > 0 || counts.denied > 0)
@@ -1975,7 +1975,7 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
         </div>
       )}
 
-      <div className="grid gap-[16px] lg:grid-cols-2 grid-cols-1">
+      <div className="grid gap-4 lg:grid-cols-2 grid-cols-1">
         {visibleReferrals.map((referral) => {
           const chipState = deriveChipState(referral);
           // The Onboarding "Open" icon always points at the in-flight survey
@@ -2030,12 +2030,12 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
           return (
             <div
               key={referral.id}
-              className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[16px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-[14px]"
+              className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-lg p-4 shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-4"
             >
               {/* Header: chip on the left, LEVEL N on the right */}
               <div className="flex flex-row items-center justify-between">
                 <StatusChip state={chipState} />
-                <div className="flex items-center gap-[6px] text-[#9e9e9e]">
+                <div className="flex items-center gap-2 text-[#9e9e9e]">
                   <span className="text-sm uppercase tracking-tight font-bold">
                     Level
                   </span>
@@ -2046,9 +2046,9 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
               </div>
 
               {/* Body: optional "Referred by" (AM view), campaign, invitee email */}
-              <div className="flex flex-col min-w-0 gap-[4px]">
+              <div className="flex flex-col min-w-0 gap-1">
                 {showReferredByLine && (
-                  <div className="flex flex-col gap-[6px] min-w-0">
+                  <div className="flex flex-col gap-2 min-w-0">
                     <p className="text-[#ff4d8d] text-sm font-medium truncate">
                       Referred by {referrerLabel}
                     </p>
@@ -2089,9 +2089,9 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
               {/* Onboarding checklist — always shown so the user sees survey
                   progress even on `building` / `lp_live` (a gentle history
                   cue rather than an interactive checklist). */}
-              <div className="relative px-[14px] py-[12px]">
+              <div className="relative px-4 py-3">
                 <div
-                  className={`flex items-center justify-between mb-[8px] ${isLive ? "opacity-20" : ""
+                  className={`flex items-center justify-between mb-2 ${isLive ? "opacity-20" : ""
                     }`}
                 >
                   <div className="flex items-center gap-2">
@@ -2104,7 +2104,7 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
                       active={!isLive && !isTerminalState}
                     />
                   </div>
-                  <div className="flex items-center gap-[8px]">
+                  <div className="flex items-center gap-2">
                     <span className="text-sm  text-tm-text-color09">
                       {Math.min(step, ONBOARDING_STEPS.length)}/
                       {ONBOARDING_STEPS.length}
@@ -2284,19 +2284,19 @@ const AdminOverrideRow = ({
   onReassign: (r: Referral) => void;
   showReassign: boolean;
 }) => (
-  <div className="flex items-center justify-between gap-[8px] pt-[6px] mt-[2px] border-t border-[rgba(255,255,255,0.06)]">
+  <div className="flex items-center justify-between gap-2 pt-2 mt-1 border-t border-[rgba(255,255,255,0.06)]">
     <span
       className="text-[#9e9e9e] text-xs uppercase tracking-[0.3px]"
       title="Admin-only overrides"
     >
       Admin
     </span>
-    <div className="flex items-center gap-[8px]">
+    <div className="flex items-center gap-2">
       {showReassign && (
         <button
           onClick={() => onReassign(referral)}
           disabled={busy}
-          className="bg-transparent border border-[rgba(255,255,255,0.14)] rounded-[6px] px-[10px] py-[6px] text-[#d0d0d0] text-xs font-bold hover:text-white hover:border-[rgba(255,255,255,0.3)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="bg-transparent border border-[rgba(255,255,255,0.14)] rounded-md px-3 py-2 text-[#d0d0d0] text-xs font-bold hover:text-white hover:border-[rgba(255,255,255,0.3)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           Reassign
         </button>
@@ -2304,7 +2304,7 @@ const AdminOverrideRow = ({
       <button
         onClick={() => onDelete(referral)}
         disabled={busy}
-        className="bg-transparent border border-[rgba(255,255,255,0.14)] rounded-[6px] px-[10px] py-[6px] text-[#d0d0d0] text-xs font-bold hover:text-tm-danger-color05 hover:border-tm-danger-color09 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        className="bg-transparent border border-[rgba(255,255,255,0.14)] rounded-md px-3 py-2 text-[#d0d0d0] text-xs font-bold hover:text-tm-danger-color05 hover:border-tm-danger-color09 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
       >
         Delete
       </button>
@@ -2326,7 +2326,7 @@ const SecondaryButton = ({
   <div className="glass-button-outer rounded-full">  <button
     onClick={onClick}
     disabled={disabled}
-    className={`glass-button-inner flex-1 bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-full px-[12px] py-[10px] text-white text-base font-bold hover:bg-[#252525] disabled:opacity-40 disabled:cursor-not-allowed transition-colors ${className}`}
+    className={`glass-button-inner flex-1 bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-full px-3 py-3 text-white text-base font-bold hover:bg-[#252525] disabled:opacity-40 disabled:cursor-not-allowed transition-colors ${className}`}
   >
     {children}
   </button>
@@ -2345,7 +2345,7 @@ const GreenCta = ({
   <button
     onClick={onClick}
     disabled={disabled}
-    className="w-full bg-linear-to-b from-tm-success-color05 to-[#00aa3c] rounded-[6px] px-[14px] py-[10px] text-black text-base font-bold hover:from-[#3aff82] hover:to-[#00bc43] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+    className="w-full bg-linear-to-b from-tm-success-color05 to-[#00aa3c] rounded-md px-4 py-3 text-black text-base font-bold hover:from-[#3aff82] hover:to-[#00bc43] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
   >
     {children}
   </button>
@@ -2410,12 +2410,12 @@ const CardActions = ({
         ? "This invite has expired."
         : "This invite has been denied.";
     return (
-      <div className="flex items-center justify-between gap-[8px]">
+      <div className="flex items-center justify-between gap-2">
         <span className="text-[#9e9e9e] text-base">{message}</span>
         <button
           onClick={() => onDelete(referral)}
           disabled={busy}
-          className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[6px] px-[14px] py-[8px] text-[#9e9e9e] text-base font-bold hover:text-tm-danger-color05 hover:border-tm-danger-color09 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-md px-4 py-2 text-[#9e9e9e] text-base font-bold hover:text-tm-danger-color05 hover:border-tm-danger-color09 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           Delete
         </button>
@@ -2425,21 +2425,21 @@ const CardActions = ({
 
   if (state === "waiting") {
     return (
-      <div className="flex flex-col gap-[8px]">
-        <div className="grid grid-cols-2 items-center gap-[8px]">
+      <div className="flex flex-col gap-2">
+        <div className="grid grid-cols-2 items-center gap-2">
           <SecondaryButton
             onClick={() => onDeny(referral)}
             disabled={busy}
             className="hover:text-tm-danger-color05 hover:border-tm-danger-color09"
           >
-            <span className="inline-flex items-center justify-center gap-[6px]">
-              <DenyIcon className="w-[14px] h-[14px]" />
+            <span className="inline-flex items-center justify-center gap-2">
+              <DenyIcon className="w-4 h-4" />
               {busy ? "…" : "Deny"}
             </span>
           </SecondaryButton>
           <SecondaryButton onClick={() => onReassign(referral)} disabled={busy}>
-            <span className="inline-flex items-center justify-center gap-[6px]">
-              <ReassignIcon className="w-[14px] h-[14px]" />
+            <span className="inline-flex items-center justify-center gap-2">
+              <ReassignIcon className="w-4 h-4" />
               Reassign
             </span>
           </SecondaryButton>
@@ -2449,7 +2449,7 @@ const CardActions = ({
         <button
           disabled
           title="Waiting for the promoter to finish onboarding before a landing page can be ordered."
-          className="w-full rounded-full px-[14px] py-[10px] text-base font-medium border border-tm-success-color05 text-tm-success-color05 opacity-40 cursor-not-allowed"
+          className="w-full rounded-full px-4 py-3 text-base font-medium border border-tm-success-color05 text-tm-success-color05 opacity-40 cursor-not-allowed"
         >
           Order Landing Page
         </button>
@@ -2463,8 +2463,8 @@ const CardActions = ({
   if (state === "order_lp") {
     if (!canOrderLandingPage) {
       return (
-        <div className="flex flex-col gap-[8px]">
-          <p className="w-full rounded-[6px] border border-[rgba(255,255,255,0.12)] bg-[#1a1a1a] px-[14px] py-[10px] text-[#9e9e9e] text-base font-medium text-center">
+        <div className="flex flex-col gap-2">
+          <p className="w-full rounded-md border border-[rgba(255,255,255,0.12)] bg-[#1a1a1a] px-4 py-3 text-[#9e9e9e] text-base font-medium text-center">
             Onboarding is complete. Your account manager will order the landing
             page next.
           </p>
@@ -2473,7 +2473,7 @@ const CardActions = ({
       );
     }
     return (
-      <div className="flex flex-col gap-[8px]">
+      <div className="flex flex-col gap-2">
         <GreenCta onClick={() => onOrderLandingPage(referral)} disabled={busy}>
           {busy ? "Requesting…" : "Order Landing Page"}
         </GreenCta>
@@ -2484,11 +2484,11 @@ const CardActions = ({
 
   if (state === "building") {
     return (
-      <div className="flex flex-col gap-[8px]">
-        <div className="flex items-center gap-[8px] w-full rounded-[6px] border border-dashed border-tm-success-color06 bg-[rgba(34,191,86,0.05)] px-[14px] py-[10px] text-tm-success-color06 text-base font-semibold">
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2 w-full rounded-md border border-dashed border-tm-success-color06 bg-[rgba(34,191,86,0.05)] px-4 py-3 text-tm-success-color06 text-base font-semibold">
           <span
             aria-hidden
-            className="h-[10px] w-[10px] rounded-full bg-tm-success-color06 animate-pulse"
+            className="h-3 w-3 rounded-full bg-tm-success-color06 animate-pulse"
           />
           Building landing page…
         </div>
@@ -2523,7 +2523,7 @@ const CardActions = ({
     referral.preUser.currentStep >= 5 &&
     !completedFirstLogin;
   return (
-    <div className="flex flex-col gap-[8px]">
+    <div className="flex flex-col gap-2">
       {canSendWelcomeEmail && (
         <SecondaryButton
           onClick={() => onSendWelcomeEmail(referral)}
@@ -2541,7 +2541,7 @@ const CardActions = ({
           {busy ? "Assigning…" : "Assign Chatters"}
         </PinkCta>
       ) : (
-        <p className="w-full rounded-[6px] border border-[rgba(255,255,255,0.12)] bg-[#1a1a1a] px-[14px] py-[10px] text-[#9e9e9e] text-base font-medium text-center">
+        <p className="w-full rounded-md border border-[rgba(255,255,255,0.12)] bg-[#1a1a1a] px-4 py-3 text-[#9e9e9e] text-base font-medium text-center">
           Your account manager will assign chatters.
         </p>
       )}
@@ -2564,15 +2564,15 @@ const ModalShell = ({
   children: React.ReactNode;
 }) => (
   <div
-    className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-[16px]"
+    className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
     onClick={onClose}
   >
     <div
       onClick={(e) => e.stopPropagation()}
-      className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[10px] w-full max-w-[440px] p-[20px] flex flex-col gap-[16px]"
+      className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-3 w-full max-w-110 p-5 flex flex-col gap-4"
     >
-      <div className="flex items-start justify-between gap-[12px]">
-        <div className="flex flex-col gap-[2px] min-w-0">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-1 min-w-0">
           <h3 className="text-white text-base font-bold">{title}</h3>
           {subtitle ? (
             <p className="text-[#9e9e9e] text-base truncate">{subtitle}</p>
@@ -2581,7 +2581,7 @@ const ModalShell = ({
         <button
           onClick={onClose}
           aria-label="Close"
-          className="text-[#9e9e9e] hover:text-white text-lg leading-none px-[6px]"
+          className="text-[#9e9e9e] hover:text-white text-lg leading-none px-2"
         >
           &#x2715;
         </button>
@@ -2653,14 +2653,14 @@ const ReassignModal = ({
           No account managers available to reassign to.
         </p>
       ) : (
-        <label className="flex flex-col gap-[6px]">
+        <label className="flex flex-col gap-2">
           <span className="text-xs uppercase tracking-[0.08em] text-[#9e9e9e] font-bold">
             New account manager
           </span>
           <select
             value={selectedId}
             onChange={(e) => setSelectedId(e.target.value)}
-            className="bg-[#0f0f0f] border border-[rgba(255,255,255,0.1)] rounded-[6px] px-[12px] py-[10px] text-white text-sm focus:outline-none focus:border-[#ff0f5f]"
+            className="bg-[#0f0f0f] border border-[rgba(255,255,255,0.1)] rounded-md px-3 py-3 text-white text-sm focus:outline-none focus:border-[#ff0f5f]"
           >
             <option value="" disabled>
               Select…
@@ -2673,18 +2673,18 @@ const ReassignModal = ({
           </select>
         </label>
       )}
-      <div className="flex justify-end gap-[8px] pt-[4px]">
+      <div className="flex justify-end gap-2 pt-1">
         <button
           onClick={onClose}
           disabled={busy}
-          className="px-[14px] py-[8px] rounded-[6px] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] text-base font-bold hover:text-white"
+          className="px-4 py-2 rounded-md border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] text-base font-bold hover:text-white"
         >
           Cancel
         </button>
         <button
           onClick={() => selectedId && onSubmit(selectedId)}
           disabled={busy || !selectedId}
-          className="px-[14px] py-[8px] rounded-[6px] bg-linear-to-b from-[#ff0f5f] to-[#cc0047] text-white text-base font-bold hover:from-[#ff1f69] hover:to-[#d10050] disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 py-2 rounded-md bg-linear-to-b from-[#ff0f5f] to-[#cc0047] text-white text-base font-bold hover:from-[#ff1f69] hover:to-[#d10050] disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {busy ? "Reassigning…" : "Reassign"}
         </button>
@@ -2755,14 +2755,14 @@ const AssignChattersModal = ({
           No chatter groups yet. Create one on the Chatters page first.
         </p>
       ) : (
-        <label className="flex flex-col gap-[6px]">
+        <label className="flex flex-col gap-2">
           <span className="text-xs uppercase tracking-[0.08em] text-[#9e9e9e] font-bold">
             Chatter group
           </span>
           <select
             value={selectedId}
             onChange={(e) => setSelectedId(e.target.value)}
-            className="bg-[#0f0f0f] border border-[rgba(255,255,255,0.1)] rounded-[6px] px-[12px] py-[10px] text-white text-sm focus:outline-none focus:border-[#ff0f5f]"
+            className="bg-[#0f0f0f] border border-[rgba(255,255,255,0.1)] rounded-md px-3 py-3 text-white text-sm focus:outline-none focus:border-[#ff0f5f]"
           >
             <option value="" disabled>
               Select…
@@ -2776,18 +2776,18 @@ const AssignChattersModal = ({
           </select>
         </label>
       )}
-      <div className="flex justify-end gap-[8px] pt-[4px]">
+      <div className="flex justify-end gap-2 pt-1">
         <button
           onClick={onClose}
           disabled={busy}
-          className="px-[14px] py-[8px] rounded-[6px] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] text-base font-bold hover:text-white"
+          className="px-4 py-2 rounded-md border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] text-base font-bold hover:text-white"
         >
           Cancel
         </button>
         <button
           onClick={() => selectedId && onSubmit(selectedId)}
           disabled={busy || !selectedId}
-          className="px-[14px] py-[8px] rounded-[6px] bg-linear-to-b from-[#ff0f5f] to-[#cc0047] text-white text-base font-bold hover:from-[#ff1f69] hover:to-[#d10050] disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 py-2 rounded-md bg-linear-to-b from-[#ff0f5f] to-[#cc0047] text-white text-base font-bold hover:from-[#ff1f69] hover:to-[#d10050] disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {busy ? "Assigning…" : "Assign"}
         </button>

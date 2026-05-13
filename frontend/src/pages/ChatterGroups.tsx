@@ -63,36 +63,36 @@ const GroupFormModal = ({ isOpen, onClose, onSaved, editing }: GroupFormModalPro
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] w-full max-w-[440px] flex flex-col gap-[20px]">
+      <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-lg p-6 w-full max-w-110 flex flex-col gap-5">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-white">{editing ? 'Edit Group' : 'New Chatter Group'}</h2>
           <button onClick={onClose} className="text-[#9e9e9e] hover:text-white text-xl leading-none">×</button>
         </div>
 
-        <div className="flex flex-col gap-[8px]">
+        <div className="flex flex-col gap-2">
           <label className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.2px]">Group Name</label>
           <input
             type="text"
             value={name}
             onChange={e => setName(e.target.value)}
             placeholder="e.g. Night Shift Team"
-            className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[14px] py-[11px] text-base text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
+            className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-lg px-4 py-3 text-base text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
           />
         </div>
 
-        <div className="flex flex-col gap-[8px]">
+        <div className="flex flex-col gap-2">
           <label className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.2px]">Tag <span className="normal-case font-normal">(optional)</span></label>
           <input
             type="text"
             value={tag}
             onChange={e => setTag(e.target.value)}
             placeholder="e.g. night-shift, vip"
-            className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[14px] py-[11px] text-base text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
+            className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-2 px-4 py-3 text-base text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
           />
           <p className="text-[#9e9e9e] text-xs">A short label to identify or filter this group.</p>
         </div>
 
-        <div className="flex flex-col gap-[8px]">
+        <div className="flex flex-col gap-2">
           <label className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.2px]">Commission Percentage (%)</label>
           <input
             type="number"
@@ -102,7 +102,7 @@ const GroupFormModal = ({ isOpen, onClose, onSaved, editing }: GroupFormModalPro
             value={pct}
             onChange={e => setPct(e.target.value)}
             placeholder="e.g. 2"
-            className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[14px] py-[11px] text-base text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
+            className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-lg px-4 py-3 text-base text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
           />
           <p className="text-[#9e9e9e] text-xs">
             This percentage of every sale is split equally among all chatters in the group. Maximum{' '}
@@ -111,7 +111,7 @@ const GroupFormModal = ({ isOpen, onClose, onSaved, editing }: GroupFormModalPro
         </div>
 
         {error && (
-          <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-[8px] px-[16px] py-[12px]">
+          <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-lg px-4 py-3">
             <p className="text-tm-danger-color05 text-sm font-medium">{error}</p>
           </div>
         )}
@@ -119,7 +119,7 @@ const GroupFormModal = ({ isOpen, onClose, onSaved, editing }: GroupFormModalPro
         <button
           onClick={handleSubmit}
           disabled={isLoading}
-          className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[24px] py-[13px] text-white text-base font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-6 py-4 text-white text-base font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLoading ? 'Saving...' : editing ? 'Save Changes' : 'Create Group'}
         </button>
@@ -172,46 +172,46 @@ const CreateChatterPanel = ({ onChatterCreated, allChatters }: CreateChatterPane
   };
 
   return (
-    <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-[14px] p-[20px] flex flex-col gap-[12px] mb-6">
+    <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-4 p-5 flex flex-col gap-3 mb-6">
       <p className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.3px]">Create New Chatter</p>
 
       {success && (
-        <div className="bg-[#0d2b1a] border border-[#1a5c35] rounded-[8px] px-[12px] py-[9px]">
+        <div className="bg-[#0d2b1a] border border-[#1a5c35] rounded-lg px-3 py-3">
           <p className="text-tm-success-color05 text-xs font-medium">{success}</p>
         </div>
       )}
       {error && (
-        <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-[8px] px-[12px] py-[9px]">
+        <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-lg px-3 py-3">
           <p className="text-tm-danger-color05 text-xs font-medium">{error}</p>
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row gap-[8px]">
+      <div className="flex flex-col sm:flex-row gap-2">
         <input
           type="email"
           value={email}
           onChange={e => { setEmail(e.target.value); setError(''); setSuccess(''); }}
           placeholder="Email address *"
-          className="flex-1 bg-[#141416] border border-[rgba(255,255,255,0.08)] rounded-[8px] px-[12px] py-[9px] text-white text-sm placeholder-[#555] outline-none focus:border-[#ff0f5f] transition-colors"
+          className="flex-1 bg-[#141416] border border-[rgba(255,255,255,0.08)] rounded-lg px-3 py-3 text-white text-sm placeholder-[#555] outline-none focus:border-[#ff0f5f] transition-colors"
         />
         <input
           type="text"
           value={firstName}
           onChange={e => setFirstName(e.target.value)}
           placeholder="First name"
-          className="w-full sm:w-[140px] bg-[#141416] border border-[rgba(255,255,255,0.08)] rounded-[8px] px-[12px] py-[9px] text-white text-sm placeholder-[#555] outline-none focus:border-[rgba(255,255,255,0.18)] transition-colors"
+          className="w-full sm:w-35 bg-[#141416] border border-[rgba(255,255,255,0.08)] rounded-2 px-3 py-3 text-white text-sm placeholder-[#555] outline-none focus:border-[rgba(255,255,255,0.18)] transition-colors"
         />
         <input
           type="text"
           value={lastName}
           onChange={e => setLastName(e.target.value)}
           placeholder="Last name"
-          className="w-full sm:w-[140px] bg-[#141416] border border-[rgba(255,255,255,0.08)] rounded-[8px] px-[12px] py-[9px] text-white text-sm placeholder-[#555] outline-none focus:border-[rgba(255,255,255,0.18)] transition-colors"
+          className="w-full sm:w-35 bg-[#141416] border border-[rgba(255,255,255,0.08)] rounded-lg px-3 py-3 text-white text-sm placeholder-[#555] outline-none focus:border-[rgba(255,255,255,0.18)] transition-colors"
         />
         <button
           onClick={handleCreate}
           disabled={isCreating || !email.trim()}
-          className="shrink-0 bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[9px] text-white text-sm font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          className="shrink-0 bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-3 text-white text-sm font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isCreating ? 'Creating…' : '+ Create Chatter'}
         </button>
@@ -219,11 +219,11 @@ const CreateChatterPanel = ({ onChatterCreated, allChatters }: CreateChatterPane
 
       {/* Existing chatters — horizontal list */}
       {allChatters.length > 0 && (
-        <div className="border-t border-[rgba(255,255,255,0.06)] pt-[12px] flex flex-col gap-[10px]">
+        <div className="border-t border-[rgba(255,255,255,0.06)] pt-3 flex flex-col gap-3">
           <p className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.3px]">
             Existing Chatters ({allChatters.length})
           </p>
-          <div className="flex flex-wrap gap-[8px]">
+          <div className="flex flex-wrap gap-2">
             {allChatters.map(c => {
               const name = [c.firstName, c.lastName].filter(Boolean).join(' ') || c.email;
               const initials = name
@@ -235,10 +235,10 @@ const CreateChatterPanel = ({ onChatterCreated, allChatters }: CreateChatterPane
                 <div
                   key={c.id}
                   title={c.email}
-                  className="flex items-center gap-[8px] bg-[#141416] border border-[rgba(255,255,255,0.07)] rounded-full px-4 py-2"
+                  className="flex items-center gap-2 bg-[#141416] border border-[rgba(255,255,255,0.07)] rounded-full px-4 py-2"
                 >
-                  <div className="w-[26px] h-[26px] rounded-full bg-[#2e2e32] border border-[#3a3a3e] flex items-center justify-center shrink-0">
-                    <span className="text-[10px] font-semibold text-[#aaa] leading-none">{initials}</span>
+                  <div className="w-7 h-7 rounded-full bg-[#2e2e32] border border-[#3a3a3e] flex items-center justify-center shrink-0">
+                    <span className="text-3 font-semibold text-[#aaa] leading-none">{initials}</span>
                   </div>
                   <span className="text-white text-sm font-medium">{name}</span>
                 </div>
@@ -293,13 +293,13 @@ const InlineMemberManager = ({ group, allChatters, onGroupUpdated }: InlineMembe
   };
 
   return (
-    <div className="border-t border-[rgba(255,255,255,0.06)] pt-[16px] flex flex-col gap-[12px]">
+    <div className="border-t border-[rgba(255,255,255,0.06)] pt-4 flex flex-col gap-3">
       <p className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.3px]">
         Add Chatters ({nonMembers.length} available)
       </p>
 
       {addError && (
-        <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-[8px] px-[12px] py-[9px]">
+        <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-lg px-3 py-3">
           <p className="text-tm-danger-color05 text-xs font-medium">{addError}</p>
         </div>
       )}
@@ -309,7 +309,7 @@ const InlineMemberManager = ({ group, allChatters, onGroupUpdated }: InlineMembe
         placeholder="Search by name or email…"
         value={search}
         onChange={e => setSearch(e.target.value)}
-        className="w-full bg-[#141416] border border-[rgba(255,255,255,0.08)] rounded-[8px] px-[12px] py-[9px] text-white text-sm placeholder-[#555] outline-none focus:border-[rgba(255,255,255,0.18)] transition-colors"
+        className="w-full bg-[#141416] border border-[rgba(255,255,255,0.08)] rounded-lg px-3 py-3 text-white text-sm placeholder-[#555] outline-none focus:border-[rgba(255,255,255,0.18)] transition-colors"
       />
 
       {filteredNonMembers.length === 0 ? (
@@ -321,7 +321,7 @@ const InlineMemberManager = ({ group, allChatters, onGroupUpdated }: InlineMembe
               : 'No results.'}
         </p>
       ) : (
-        <div className="flex flex-wrap gap-[8px]">
+        <div className="flex flex-wrap gap-2">
           {filteredNonMembers.map(c => {
             const name = chatterName(c);
             const initials = name
@@ -335,10 +335,10 @@ const InlineMemberManager = ({ group, allChatters, onGroupUpdated }: InlineMembe
                 onClick={() => handleAdd(c.id)}
                 disabled={isAdding === c.id}
                 title={c.email}
-                className="flex items-center gap-[8px] bg-[#141416] border border-[rgba(255,255,255,0.08)] hover:border-tm-success-color05 rounded-full px-4 py-2 text-white text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
+                className="flex items-center gap-2 bg-[#141416] border border-[rgba(255,255,255,0.08)] hover:border-tm-success-color05 rounded-full px-4 py-2 text-white text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
               >
-                <div className="w-[26px] h-[26px] rounded-full bg-[#2e2e32] border border-[#3a3a3e] flex items-center justify-center shrink-0">
-                  <span className="text-[10px] font-semibold text-[#aaa] group-hover:text-white transition-colors leading-none">
+                <div className="w-7 h-7 rounded-full bg-[#2e2e32] border border-[#3a3a3e] flex items-center justify-center shrink-0">
+                  <span className="text-3 font-semibold text-[#aaa] group-hover:text-white transition-colors leading-none">
                     {isAdding === c.id ? '…' : initials}
                   </span>
                 </div>
@@ -424,7 +424,7 @@ const LinkPromoterModal = ({ isOpen, onClose, group, allPromoters, onGroupUpdate
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] w-full max-w-[520px] flex flex-col gap-[20px] max-h-[90vh] overflow-y-auto">
+      <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-lg p-6 w-full max-w-130 flex flex-col gap-5 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-white">Link Promoter — {group.name}</h2>
           <button onClick={handleClose} className="text-[#9e9e9e] hover:text-white text-xl leading-none">×</button>
@@ -436,18 +436,18 @@ const LinkPromoterModal = ({ isOpen, onClose, group, allPromoters, onGroupUpdate
         </p>
 
         {error && (
-          <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-[8px] px-[16px] py-[12px]">
+          <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-lg px-4 py-3">
             <p className="text-tm-danger-color05 text-sm font-medium">{error}</p>
           </div>
         )}
 
         {/* Currently linked promoter */}
         <div>
-          <p className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.2px] mb-[10px]">
+          <p className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.2px] mb-3">
             Currently Linked Promoter
           </p>
           {group.promoter ? (
-            <div className="flex items-center justify-between bg-[#1a1a1a] border border-[rgba(255,255,255,0.08)] rounded-[8px] px-[14px] py-[10px]">
+            <div className="flex items-center justify-between bg-[#1a1a1a] border border-[rgba(255,255,255,0.08)] rounded-lg px-4 py-3">
               <div>
                 <p className="text-white text-sm font-medium">
                   {[group.promoter.firstName, group.promoter.lastName].filter(Boolean).join(' ') || group.promoter.email}
@@ -468,7 +468,7 @@ const LinkPromoterModal = ({ isOpen, onClose, group, allPromoters, onGroupUpdate
         </div>
 
         {/* Available promoters */}
-        <div className="flex flex-col gap-[10px]">
+        <div className="flex flex-col gap-3">
           <p className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.2px]">
             {group.promoter ? 'Switch Promoter' : 'Select Promoter'}
           </p>
@@ -477,14 +477,14 @@ const LinkPromoterModal = ({ isOpen, onClose, group, allPromoters, onGroupUpdate
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search by name or email..."
-            className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[14px] py-[9px] text-sm text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
+            className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
           />
           {availablePromoters.length === 0 ? (
             <p className="text-[#9e9e9e] text-sm">{search ? 'No promoters match your search.' : 'No promoters available.'}</p>
           ) : (
-            <div className="flex flex-col gap-[8px] max-h-[280px] overflow-y-auto pr-[2px]">
+            <div className="flex flex-col gap-2 max-h-70 overflow-y-auto pr-1">
               {availablePromoters.map(p => (
-                <div key={p.id} className="flex items-center justify-between bg-[#1a1a1a] border border-[rgba(255,255,255,0.05)] rounded-[8px] px-[14px] py-[10px]">
+                <div key={p.id} className="flex items-center justify-between bg-[#1a1a1a] border border-[rgba(255,255,255,0.05)] rounded-lg px-4 py-3">
                   <div>
                     <p className="text-white text-sm font-medium">{promoterName(p)}</p>
                     <p className="text-[#9e9e9e] text-xs">{p.email}</p>
@@ -508,7 +508,7 @@ const LinkPromoterModal = ({ isOpen, onClose, group, allPromoters, onGroupUpdate
 
         <button
           onClick={handleClose}
-          className="self-end bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[16px] py-[10px] text-white text-sm font-bold hover:bg-[#252525] transition-all"
+          className="self-end bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-lg px-4 py-3 text-white text-sm font-bold hover:bg-[#252525] transition-all"
         >
           Close
         </button>
@@ -532,8 +532,8 @@ const ChatterAvatarCard = ({ member, onRemove, isRemoving }: ChatterAvatarCardPr
   const initials = [firstName[0], lastName[0]].filter(Boolean).join('').toUpperCase() || displayName.slice(0, 2).toUpperCase();
 
   return (
-    <div className="relative flex items-center gap-[12px] bg-[#202022] border border-[rgba(255,255,255,0.06)] rounded-[14px] px-[16px] py-[14px]">
-      <div className="w-[44px] h-[44px] rounded-full bg-[#2e2e32] border-2 border-[#3a3a3e] flex items-center justify-center shrink-0">
+    <div className="relative flex items-center gap-3 bg-[#202022] border border-[rgba(255,255,255,0.06)] rounded-4 px-4 py-4">
+      <div className="w-11 h-11 rounded-full bg-[#2e2e32] border-2 border-[#3a3a3e] flex items-center justify-center shrink-0">
         <span className="text-[#aaa] text-sm font-semibold">{isRemoving ? '…' : initials}</span>
       </div>
       <span className="text-white text-sm font-medium flex-1 truncate">{displayName}</span>
@@ -543,7 +543,7 @@ const ChatterAvatarCard = ({ member, onRemove, isRemoving }: ChatterAvatarCardPr
           disabled={isRemoving}
           title={`Remove ${displayName}`}
           aria-label={`Remove ${displayName} from group`}
-          className="absolute top-[5px] right-[7px] w-6 h-6 flex items-center justify-center text-tm-danger-color05 lg:text-[#555] hover:text-tm-danger-color05 disabled:opacity-40 transition-colors text-3xl leading-none"
+          className="absolute top-1 right-2 w-6 h-6 flex items-center justify-center text-tm-danger-color05 lg:text-[#555] hover:text-tm-danger-color05 disabled:opacity-40 transition-colors text-3xl leading-none"
         >
           ×
         </button>
@@ -661,7 +661,7 @@ export const ChatterGroups = () => {
       {/* Header */}
       <div className="grid lg:grid-cols-2 items-start gap-4">
         <div className='col-span-full'>
-          <h1 className="text-3xl leading-[36px] font-semibold text-white lg:w-full">Chatters</h1>
+          <h1 className="text-3xl leading-9 font-semibold text-white lg:w-full">Chatters</h1>
         </div>
 
       </div>
@@ -675,20 +675,20 @@ export const ChatterGroups = () => {
       )}
 
       {error && (
-        <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-[8px] px-[16px] py-[12px]">
+        <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-2 px-4 py-3">
           <p className="text-tm-danger-color05 text-sm font-medium">{error}</p>
         </div>
       )}
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-[48px]">
-          <div className="w-[32px] h-[32px] border-2 border-[#ff0f5f] border-t-transparent rounded-full animate-spin" />
+        <div className="flex items-center justify-center py-12">
+          <div className="w-8 h-8 border-2 border-[#ff0f5f] border-t-transparent rounded-full animate-spin" />
         </div>
       ) : sortedGroups.length === 0 ? (
-        <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[32px] text-center mt-4">
+        <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-lg p-8 text-center mt-4">
           <p className="text-[#9e9e9e] text-base">No chatter groups yet.</p>
           {canManage && (
-            <p className="text-[#9e9e9e] text-sm mt-[8px]">
+            <p className="text-[#9e9e9e] text-sm mt-2">
               Click <span className="text-white font-semibold">+ New Group</span> to get started.
             </p>
           )}
@@ -697,12 +697,12 @@ export const ChatterGroups = () => {
 
         <div className="flex flex-col gap-4">
           <h2 className="text-xl font-semibold text-white lg:w-full">Chatter Groups</h2>
-          <p className="text-[#9e9e9e] text-sm mt-[4px]">
+          <p className="text-[#9e9e9e] text-sm mt-1">
             {groups.length} group{groups.length !== 1 ? 's' : ''} — commissions split equally among group members
           </p>
           <div className="grid grid-cols-2 items-center gap-3 w-full lg:col-start-2">
             {/* Sort dropdown */}
-            <div className="flex items-start gap-[8px] flex-col w-full">
+            <div className="flex items-start gap-2 flex-col w-full">
               <label htmlFor="chatter-groups-sort-by" className="text-[#9e9e9e] text-sm">
                 Sort By
               </label>
@@ -715,7 +715,7 @@ export const ChatterGroups = () => {
                     setSortBy(nextSortBy);
                   }
                 }}
-                className="bg-[#1c1c1e] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[12px] py-[8px] text-white text-sm focus:outline-none focus:border-[#ff0f5f] appearance-none cursor-pointer pr-[28px] w-full"
+                className="bg-[#1c1c1e] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#ff0f5f] appearance-none cursor-pointer pr-7 w-full"
                 style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239e9e9e' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}
               >
                 <option value="name">Name</option>
@@ -726,7 +726,7 @@ export const ChatterGroups = () => {
             {canManage && (
               <button
                 onClick={() => { setEditingGroup(null); setIsGroupFormOpen(true); }}
-                className="w-full self-end bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-sm font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+                className="w-full self-end bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-3 text-white text-sm font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
               >
                 + New Group
               </button>
@@ -738,9 +738,9 @@ export const ChatterGroups = () => {
               className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-[18px] flex flex-col overflow-hidden"
             >
               {/* Card header — static */}
-              <div className="p-[28px] flex flex-col-reverse lg:flex-row lg:items-start justify-between gap-[16px]">
+              <div className="p-7 flex flex-col-reverse lg:flex-row lg:items-start justify-between gap-4">
                 {/* Left: avatar + name + tag */}
-                <div className="flex items-center gap-[14px] min-w-0">
+                <div className="flex items-center gap-4 min-w-0">
                   {(() => {
                     const promoterName = group.promoter
                       ? [group.promoter.firstName, group.promoter.lastName].filter(Boolean).join(' ') ||
@@ -755,7 +755,7 @@ export const ChatterGroups = () => {
                         .map(w => w[0]?.toUpperCase() ?? '')
                         .join('') || group.name.slice(0, 2).toUpperCase();
                     return (
-                      <div className="w-[56px] h-[56px] rounded-full bg-linear-to-br from-[#ff0f5f] to-[#cc0047] flex items-center justify-center shrink-0 overflow-hidden border border-[rgba(255,255,255,0.08)]">
+                      <div className="w-14 h-14 rounded-full bg-linear-to-br from-[#ff0f5f] to-[#cc0047] flex items-center justify-center shrink-0 overflow-hidden border border-[rgba(255,255,255,0.08)]">
                         {group.promoter?.photoUrl ? (
                           <img src={group.promoter.photoUrl} alt={promoterName} className="w-full h-full object-cover" />
                         ) : (
@@ -764,10 +764,10 @@ export const ChatterGroups = () => {
                       </div>
                     );
                   })()}
-                  <div className="flex flex-col gap-[8px] min-w-0">
+                  <div className="flex flex-col gap-2 min-w-0">
                     <h3 className="text-white text-xl lg:text-2xl truncate">{group.name}</h3>
                     {group.tag && (
-                      <span className="self-start px-[10px] py-[3px] rounded-full text-xs font-semibold text-tm-primary-color05 border border-tm-primary-color05 bg-tm-primary-color12">
+                      <span className="self-start px-3 py-1 rounded-full text-xs font-semibold text-tm-primary-color05 border border-tm-primary-color05 bg-tm-primary-color12">
                         {group.tag}
                       </span>
                     )}
@@ -776,12 +776,12 @@ export const ChatterGroups = () => {
 
                 {/* Right: referral bonus + admin actions */}
                 <div className="flex flex-row justify-between gap-4">
-                  <div className="flex items-baseline gap-[5px] self-end">
+                  <div className="flex items-baseline gap-1 self-end">
                     <span className="text-[#9e9e9e] text-base">Referral Bonus</span>
                     <span className="text-white text-sm font-bold">{group.commissionPercentage}%</span>
                   </div>
                   {canManage && (
-                    <div className="flex items-center gap-[10px]">
+                    <div className="flex items-center gap-3">
                       <button
                         onClick={() => { setEditingGroup(group); setIsGroupFormOpen(true); }}
                         className="text-[#9e9e9e] text-sm hover:text-white hover:-translate-y-0.5 transition-all"
@@ -789,7 +789,7 @@ export const ChatterGroups = () => {
                         Edit
                       </button>
                       {confirmDeleteId === group.id ? (
-                        <div className="flex items-center gap-[6px]">
+                        <div className="flex items-center gap-2">
                           <span className="text-[#555] text-xs">Delete?</span>
                           <button
                             onClick={() => void handleDelete(group.id)}
@@ -819,7 +819,7 @@ export const ChatterGroups = () => {
               </div>
 
               {/* Card body */}
-              <div className="px-[28px] pb-[24px] flex flex-col gap-[16px]">
+              <div className="px-7 pb-6 flex flex-col gap-4">
                 {/* Team Members section */}
                 <div className="flex flex-col gap-2">
                   <div className="flex flex-col items-start lg:items-center justify-start gap-2 lg:gap-6 lg:flex-row">
@@ -840,7 +840,7 @@ export const ChatterGroups = () => {
                   {group.members.length === 0 ? (
                     <p className="text-[#555] text-base">No chatters assigned yet.</p>
                   ) : (
-                    <div className="grid lg:grid-cols-3 gap-[10px]">
+                    <div className="grid lg:grid-cols-3 gap-3">
                       {group.members.map(m => (
                         <ChatterAvatarCard
                           key={m.id}
@@ -864,8 +864,8 @@ export const ChatterGroups = () => {
               </div>
 
               {/* Linked Promoter — subtle footer row */}
-              <div className="flex flex-row items-center justify-between gap-4 px-[28px] py-[14px] border-t border-[rgba(255,255,255,0.04)] bg-tm-neutral-color09 flex-wrap">
-                <div className="flex flex-col items-start gap-[6px]">
+              <div className="flex flex-row items-center justify-between gap-4 px-7 py-4 border-t border-[rgba(255,255,255,0.04)] bg-tm-neutral-color09 flex-wrap">
+                <div className="flex flex-col items-start gap-2">
                   <span className="text-tm-text-color08 text-sm font-semibold uppercase tracking-[0.3px]">Linked Promoter</span>
                   <span className="text-tm-text-color01 text-base">
                     {group.promoter
