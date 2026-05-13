@@ -188,26 +188,27 @@ const CreateChatterPanel = ({ onChatterCreated, allChatters }: CreateChatterPane
 
       <div className="flex flex-col sm:flex-row gap-2">
         <input
-          type="email"
-          value={email}
-          onChange={e => { setEmail(e.target.value); setError(''); setSuccess(''); }}
-          placeholder="Email address *"
-          className="flex-1 bg-[#141416] border border-[rgba(255,255,255,0.08)] rounded-lg px-3 py-3 text-white text-sm placeholder-[#555] outline-none focus:border-[#ff0f5f] transition-colors"
-        />
-        <input
           type="text"
           value={firstName}
           onChange={e => setFirstName(e.target.value)}
           placeholder="First name"
-          className="w-full sm:w-35 bg-[#141416] border border-[rgba(255,255,255,0.08)] rounded-md px-3 py-3 text-white text-sm placeholder-[#555] outline-none focus:border-[rgba(255,255,255,0.18)] transition-colors"
+          className="w-full lg:w-40 bg-[#141416] border border-[rgba(255,255,255,0.08)] rounded-md px-3 py-3 text-white text-sm placeholder-[#555] outline-none focus:border-[rgba(255,255,255,0.18)] transition-colors"
         />
         <input
           type="text"
           value={lastName}
           onChange={e => setLastName(e.target.value)}
           placeholder="Last name"
-          className="w-full sm:w-35 bg-[#141416] border border-[rgba(255,255,255,0.08)] rounded-lg px-3 py-3 text-white text-sm placeholder-[#555] outline-none focus:border-[rgba(255,255,255,0.18)] transition-colors"
+          className="w-full lg:w-60 bg-[#141416] border border-[rgba(255,255,255,0.08)] rounded-lg px-3 py-3 text-white text-sm placeholder-[#555] outline-none focus:border-[rgba(255,255,255,0.18)] transition-colors"
         />
+        <input
+          type="email"
+          value={email}
+          onChange={e => { setEmail(e.target.value); setError(''); setSuccess(''); }}
+          placeholder="Email address *"
+          className="flex-1 bg-[#141416] lg:min-w-90 border border-[rgba(255,255,255,0.08)] rounded-lg px-3 py-3 text-white text-sm placeholder-[#555] outline-none focus:border-[#ff0f5f] transition-colors"
+        />
+
         <button
           onClick={handleCreate}
           disabled={isCreating || !email.trim()}
@@ -235,7 +236,7 @@ const CreateChatterPanel = ({ onChatterCreated, allChatters }: CreateChatterPane
                 <div
                   key={c.id}
                   title={c.email}
-                  className="flex items-center gap-2 bg-[#141416] border border-[rgba(255,255,255,0.07)] rounded-full px-4 py-2"
+                  className="flex items-center gap-2 bg-[#141416] border border-[rgba(255,255,255,0.07)] rounded-full px-6 py-2"
                 >
                   <div className="w-7 h-7 rounded-full bg-[#2e2e32] border border-[#3a3a3e] flex items-center justify-center shrink-0">
                     <span className="text-3 font-semibold text-[#aaa] leading-none">{initials}</span>
@@ -335,7 +336,7 @@ const InlineMemberManager = ({ group, allChatters, onGroupUpdated }: InlineMembe
                 onClick={() => handleAdd(c.id)}
                 disabled={isAdding === c.id}
                 title={c.email}
-                className="flex items-center gap-2 bg-[#141416] border border-[rgba(255,255,255,0.08)] hover:border-tm-success-color05 rounded-full px-4 py-2 text-white text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
+                className="flex items-center gap-2 bg-[#141416] border border-[rgba(255,255,255,0.08)] hover:border-tm-success-color05 rounded-full px-6 py-2 text-white text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
               >
                 <div className="w-7 h-7 rounded-full bg-[#2e2e32] border border-[#3a3a3e] flex items-center justify-center shrink-0">
                   <span className="text-3 font-semibold text-[#aaa] group-hover:text-white transition-colors leading-none">
@@ -700,7 +701,7 @@ export const ChatterGroups = () => {
           <p className="text-[#9e9e9e] text-sm mt-1">
             {groups.length} group{groups.length !== 1 ? 's' : ''} — commissions split equally among group members
           </p>
-          <div className="grid grid-cols-2 items-center gap-3 w-full lg:col-start-2">
+          <div className="grid grid-cols-2 items-center gap-3 w-full lg:col-start-2 lg:self-end lg:max-w-lg">
             {/* Sort dropdown */}
             <div className="flex items-start gap-2 flex-col w-full">
               <label htmlFor="chatter-groups-sort-by" className="text-[#9e9e9e] text-sm">

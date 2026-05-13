@@ -353,7 +353,7 @@ export const Transactions = () => {
             {/* Transaction rows */}
             <div className="px-[20px]">
               {loading && (
-                <div className="flex items-center justify-center py-[48px]">
+                <div className="flex items-center justify-center py-12">
                   <span className="text-[#888] text-sm">Loading transactions…</span>
                 </div>
               )}
