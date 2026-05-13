@@ -414,14 +414,14 @@ export const Models = () => {
       prev.map((u) =>
         u.accountManager?.id === updated.id
           ? {
-              ...u,
-              accountManager: {
-                ...u.accountManager,
-                email: updated.email,
-                firstName: updated.firstName ?? null,
-                lastName: updated.lastName ?? null,
-              },
-            }
+            ...u,
+            accountManager: {
+              ...u.accountManager,
+              email: updated.email,
+              firstName: updated.firstName ?? null,
+              lastName: updated.lastName ?? null,
+            },
+          }
           : u,
       ),
     );
@@ -1423,7 +1423,7 @@ const OnboardingIconPill = ({
   ariaLabel?: string;
 }) => {
   const base =
-    "inline-flex items-center justify-center rounded-full bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-white px-5 py-2";
+    "inline-flex items-center justify-center rounded-full bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-white px-3 py-3";
   if (onClick) {
     return (
       <div className="glass-button-outer rounded-full">
@@ -1539,9 +1539,9 @@ const ReferralStepStream = ({
           prev.map((r) =>
             r.id === referralId && r.preUser
               ? {
-                  ...r,
-                  preUser: { ...r.preUser, currentStep: data.currentStep },
-                }
+                ...r,
+                preUser: { ...r.preUser, currentStep: data.currentStep },
+              }
               : r,
           ),
         );
@@ -1805,25 +1805,25 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
         prev.map((r) =>
           r.id === referral.id
             ? {
-                ...r,
-                preUser: {
-                  ...(r.preUser ?? {
-                    currentStep: 0,
-                    status: null,
-                    lastCheckedAt: null,
-                    teasemeUserId: null,
-                    surveyLink: null,
-                    assetLink: null,
-                    welcomeEmailSentAt: null,
-                  }),
-                  currentStep: result.preUser.currentStep,
-                  status: result.preUser.status,
-                  lastCheckedAt: result.preUser.lastCheckedAt,
-                  teasemeUserId: result.preUser.teasemeUserId,
-                  surveyLink: result.preUser.surveyLink,
-                  assetLink: result.preUser.assetLink,
-                },
-              }
+              ...r,
+              preUser: {
+                ...(r.preUser ?? {
+                  currentStep: 0,
+                  status: null,
+                  lastCheckedAt: null,
+                  teasemeUserId: null,
+                  surveyLink: null,
+                  assetLink: null,
+                  welcomeEmailSentAt: null,
+                }),
+                currentStep: result.preUser.currentStep,
+                status: result.preUser.status,
+                lastCheckedAt: result.preUser.lastCheckedAt,
+                teasemeUserId: result.preUser.teasemeUserId,
+                surveyLink: result.preUser.surveyLink,
+                assetLink: result.preUser.assetLink,
+              },
+            }
             : r,
         ),
       );
@@ -1872,12 +1872,12 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
         prev.map((r) =>
           r.id === referral.id && r.preUser
             ? {
-                ...r,
-                preUser: {
-                  ...r.preUser,
-                  welcomeEmailSentAt: result.welcomeEmailSentAt,
-                },
-              }
+              ...r,
+              preUser: {
+                ...r.preUser,
+                welcomeEmailSentAt: result.welcomeEmailSentAt,
+              },
+            }
             : r,
         ),
       );

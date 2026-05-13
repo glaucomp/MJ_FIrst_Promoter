@@ -172,7 +172,7 @@ const CreateChatterPanel = ({ onChatterCreated, allChatters }: CreateChatterPane
   };
 
   return (
-    <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-[14px] p-[20px] flex flex-col gap-[12px]">
+    <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-[14px] p-[20px] flex flex-col gap-[12px] mb-6">
       <p className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.3px]">Create New Chatter</p>
 
       {success && (
@@ -235,7 +235,7 @@ const CreateChatterPanel = ({ onChatterCreated, allChatters }: CreateChatterPane
                 <div
                   key={c.id}
                   title={c.email}
-                  className="flex items-center gap-[8px] bg-[#141416] border border-[rgba(255,255,255,0.07)] rounded-full pl-[4px] pr-[12px] py-[4px]"
+                  className="flex items-center gap-[8px] bg-[#141416] border border-[rgba(255,255,255,0.07)] rounded-full px-4 py-2"
                 >
                   <div className="w-[26px] h-[26px] rounded-full bg-[#2e2e32] border border-[#3a3a3e] flex items-center justify-center shrink-0">
                     <span className="text-[10px] font-semibold text-[#aaa] leading-none">{initials}</span>
@@ -317,8 +317,8 @@ const InlineMemberManager = ({ group, allChatters, onGroupUpdated }: InlineMembe
           {search
             ? 'No chatters match search.'
             : nonMembers.length === 0
-            ? 'All chatters are already in this group.'
-            : 'No results.'}
+              ? 'All chatters are already in this group.'
+              : 'No results.'}
         </p>
       ) : (
         <div className="flex flex-wrap gap-[8px]">
@@ -335,7 +335,7 @@ const InlineMemberManager = ({ group, allChatters, onGroupUpdated }: InlineMembe
                 onClick={() => handleAdd(c.id)}
                 disabled={isAdding === c.id}
                 title={c.email}
-                className="flex items-center gap-[8px] bg-[#141416] border border-[rgba(255,255,255,0.08)] hover:border-tm-success-color05 rounded-full pl-[4px] pr-[12px] py-[4px] text-white text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
+                className="flex items-center gap-[8px] bg-[#141416] border border-[rgba(255,255,255,0.08)] hover:border-tm-success-color05 rounded-full px-4 py-2 text-white text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
               >
                 <div className="w-[26px] h-[26px] rounded-full bg-[#2e2e32] border border-[#3a3a3e] flex items-center justify-center shrink-0">
                   <span className="text-[10px] font-semibold text-[#aaa] group-hover:text-white transition-colors leading-none">
@@ -346,7 +346,7 @@ const InlineMemberManager = ({ group, allChatters, onGroupUpdated }: InlineMembe
                   {name}
                 </span>
                 {isAdding !== c.id && (
-                  <span className="text-[#555] text-xs group-hover:text-tm-success-color05 transition-colors">+</span>
+                  <span className="text-[#555] text-2xl group-hover:text-tm-success-color05 transition-colors">+</span>
                 )}
               </button>
             );
@@ -543,7 +543,7 @@ const ChatterAvatarCard = ({ member, onRemove, isRemoving }: ChatterAvatarCardPr
           disabled={isRemoving}
           title={`Remove ${displayName}`}
           aria-label={`Remove ${displayName} from group`}
-          className="absolute top-[5px] right-[7px] w-[16px] h-[16px] flex items-center justify-center text-[#555] hover:text-tm-danger-color05 disabled:opacity-40 transition-colors text-sm leading-none"
+          className="absolute top-[5px] right-[7px] w-6 h-6 flex items-center justify-center text-tm-danger-color05 lg:text-[#555] hover:text-tm-danger-color05 disabled:opacity-40 transition-colors text-3xl leading-none"
         >
           ×
         </button>
@@ -657,49 +657,15 @@ export const ChatterGroups = () => {
   });
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col gap-4">
       {/* Header */}
       <div className="grid lg:grid-cols-2 items-start gap-4">
         <div className='col-span-full'>
-          <h1 className="text-3xl leading-[36px] font-semibold text-white lg:w-full">Chatter Groups</h1>
-          <p className="text-[#9e9e9e] text-sm mt-[4px]">
-            {groups.length} group{groups.length !== 1 ? 's' : ''} — commissions split equally among group members
-          </p>
+          <h1 className="text-3xl leading-[36px] font-semibold text-white lg:w-full">Chatters</h1>
         </div>
-        <div className="grid grid-cols-2 items-center gap-3 w-full lg:col-start-2">
-          {/* Sort dropdown */}
-          <div className="flex items-start gap-[8px] flex-col w-full">
-            <label htmlFor="chatter-groups-sort-by" className="text-[#9e9e9e] text-sm">
-              Sort By
-            </label>
-            <select
-              id="chatter-groups-sort-by"
-              value={sortBy}
-              onChange={e => {
-                const nextSortBy = e.target.value;
-                if (isGroupSortBy(nextSortBy)) {
-                  setSortBy(nextSortBy);
-                }
-              }}
-              className="bg-[#1c1c1e] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[12px] py-[8px] text-white text-sm focus:outline-none focus:border-[#ff0f5f] appearance-none cursor-pointer pr-[28px] w-full"
-              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239e9e9e' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}
-            >
-              <option value="name">Name</option>
-              <option value="members">Members</option>
-              <option value="commission">Commission</option>
-            </select>
-          </div>
-          {canManage && (
-            <button
-              onClick={() => { setEditingGroup(null); setIsGroupFormOpen(true); }}
-              className="w-full self-end bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-sm font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
-            >
-              + New Group
-            </button>
-          )}
-        </div>
-      </div>
 
+      </div>
+      <h2 className="text-xl font-semibold text-white lg:w-full mt-2">Chatter Users</h2>
       {/* Create Chatter — always visible at top for account managers */}
       {canManage && (
         <CreateChatterPanel
@@ -728,7 +694,44 @@ export const ChatterGroups = () => {
           )}
         </div>
       ) : (
-        <div className="flex flex-col gap-8">
+
+        <div className="flex flex-col gap-4">
+          <h2 className="text-xl font-semibold text-white lg:w-full">Chatter Groups</h2>
+          <p className="text-[#9e9e9e] text-sm mt-[4px]">
+            {groups.length} group{groups.length !== 1 ? 's' : ''} — commissions split equally among group members
+          </p>
+          <div className="grid grid-cols-2 items-center gap-3 w-full lg:col-start-2">
+            {/* Sort dropdown */}
+            <div className="flex items-start gap-[8px] flex-col w-full">
+              <label htmlFor="chatter-groups-sort-by" className="text-[#9e9e9e] text-sm">
+                Sort By
+              </label>
+              <select
+                id="chatter-groups-sort-by"
+                value={sortBy}
+                onChange={e => {
+                  const nextSortBy = e.target.value;
+                  if (isGroupSortBy(nextSortBy)) {
+                    setSortBy(nextSortBy);
+                  }
+                }}
+                className="bg-[#1c1c1e] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[12px] py-[8px] text-white text-sm focus:outline-none focus:border-[#ff0f5f] appearance-none cursor-pointer pr-[28px] w-full"
+                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239e9e9e' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}
+              >
+                <option value="name">Name</option>
+                <option value="members">Members</option>
+                <option value="commission">Commission</option>
+              </select>
+            </div>
+            {canManage && (
+              <button
+                onClick={() => { setEditingGroup(null); setIsGroupFormOpen(true); }}
+                className="w-full self-end bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-sm font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+              >
+                + New Group
+              </button>
+            )}
+          </div>
           {sortedGroups.map(group => (
             <div
               key={group.id}
@@ -741,9 +744,9 @@ export const ChatterGroups = () => {
                   {(() => {
                     const promoterName = group.promoter
                       ? [group.promoter.firstName, group.promoter.lastName].filter(Boolean).join(' ') ||
-                        group.promoter.username ||
-                        group.promoter.email ||
-                        group.name
+                      group.promoter.username ||
+                      group.promoter.email ||
+                      group.name
                       : group.name;
                     const initials =
                       promoterName
@@ -762,7 +765,7 @@ export const ChatterGroups = () => {
                     );
                   })()}
                   <div className="flex flex-col gap-[8px] min-w-0">
-                    <h3 className="text-white text-2xl truncate">{group.name}</h3>
+                    <h3 className="text-white text-xl lg:text-2xl truncate">{group.name}</h3>
                     {group.tag && (
                       <span className="self-start px-[10px] py-[3px] rounded-full text-xs font-semibold text-tm-primary-color05 border border-tm-primary-color05 bg-tm-primary-color12">
                         {group.tag}
@@ -819,25 +822,25 @@ export const ChatterGroups = () => {
               <div className="px-[28px] pb-[24px] flex flex-col gap-[16px]">
                 {/* Team Members section */}
                 <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-start gap-4">
+                  <div className="flex flex-col items-start lg:items-center justify-start gap-2 lg:gap-6 lg:flex-row">
                     <p className="text-[#9e9e9e] text-base font-semibold">Team Members</p>
                     {canManage && (
                       <button
                         onClick={() => setExpandedMembersId(prev => prev === group.id ? null : group.id)}
-                        className="bg-tm-neutral-color05 px-4 py-2 text-tm-text-color08 hover:text-tm-text-color10 text-base transition-colors rounded-lg"
+                        className="bg-tm-neutral-color05 px-4 py-2 text-tm-text-color08 hover:text-tm-text-color10 text-base transition-colors rounded-lg mb-2"
                       >
                         {expandedMembersId === group.id
                           ? 'Done'
                           : group.members.length === 0
-                          ? '+ Add Chatters'
-                          : 'Manage Chatters'}
+                            ? '+ Add Chatters'
+                            : 'Manage Chatters'}
                       </button>
                     )}
                   </div>
                   {group.members.length === 0 ? (
                     <p className="text-[#555] text-base">No chatters assigned yet.</p>
                   ) : (
-                    <div className="grid grid-cols-3 gap-[10px]">
+                    <div className="grid lg:grid-cols-3 gap-[10px]">
                       {group.members.map(m => (
                         <ChatterAvatarCard
                           key={m.id}
@@ -861,8 +864,8 @@ export const ChatterGroups = () => {
               </div>
 
               {/* Linked Promoter — subtle footer row */}
-              <div className="flex items-center justify-start gap-4 px-[28px] py-[14px] border-t border-[rgba(255,255,255,0.04)] bg-tm-neutral-color09">
-                <div className="flex items-center gap-[6px]">
+              <div className="flex flex-row items-center justify-between gap-4 px-[28px] py-[14px] border-t border-[rgba(255,255,255,0.04)] bg-tm-neutral-color09 flex-wrap">
+                <div className="flex flex-col items-start gap-[6px]">
                   <span className="text-tm-text-color08 text-sm font-semibold uppercase tracking-[0.3px]">Linked Promoter</span>
                   <span className="text-tm-text-color01 text-base">
                     {group.promoter
