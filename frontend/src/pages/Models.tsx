@@ -459,7 +459,7 @@ export const Models = () => {
           <h1 className="text-3xl leading-9 font-semibold text-white lg:w-full">
             All Users
           </h1>
-          <div className="flex items-center  justify-between lg:justify-end lg:gap-4 w-full">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-4  justify-between lg:justify-end w-full">
             <p className="text-base text-[#9e9e9e]">
               {totalVisibleUsers} user{totalVisibleUsers !== 1 ? "s" : ""} ·{" "}
               {accountManagers.length} account manager
@@ -617,7 +617,7 @@ export const Models = () => {
                   }`}
               >
                 <div
-                  className={`flex items-center justify-between gap-3 border rounded-[10px] px-4 py-3 transition-colors ${isNeeds
+                  className={`flex flex-col lg:flex-row lg:items-center justify-between gap-3 border rounded-[10px] px-4 py-3 transition-colors ${isNeeds
                     ? "bg-[#2a1f0a] border-[#b8860b]/40 hover:border-[#b8860b]/70"
                     : "bg-[#1a1a1a] border-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.16)]"
                     }`}
@@ -651,7 +651,7 @@ export const Models = () => {
                       )}
                     </div>
                   </button>
-                  <div className="flex items-center gap-3 shrink-0">
+                  <div className="flex justify-between lg:justify-start items-center gap-3 shrink-0">
                     <span
                       className={`text-base ${isNeeds ? "text-[#d9b26a]" : "text-tm-text-color09"
                         }`}
@@ -727,7 +727,7 @@ export const Models = () => {
 
                 {!isCollapsed && (
                   <div
-                    className={`flex flex-col justify-center align-center gap-3  min-h-8 bg-tm-neutral-color08 px-6 py-8 rounded-b-xl overflow-clip  ${isDropTarget
+                    className={`flex flex-col justify-center align-center gap-3  min-h-8 bg-tm-neutral-color08 px-3 py-4 lg:px-6 lg:py-8 rounded-b-xl overflow-clip  ${isDropTarget
                       ? "border-[#ff0f5f]"
                       : isNeeds
                         ? "border-[#b8860b]/40"
@@ -879,7 +879,7 @@ export const Models = () => {
                                     onClick={() =>
                                       setConfirmDeleteId(apiUser.id)
                                     }
-                                    className="text-tm-danger-color04 text-sm hover:text-tm-danger-color05 hover:-translate-y-0.5 transition-all"
+                                    className="text-tm-danger-color04 text-sm hover:text-tm-danger-color05 hover:-translate-y-0.5 transition-all self-end"
                                   >
                                     Delete
                                   </button>
