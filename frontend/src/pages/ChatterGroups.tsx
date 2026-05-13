@@ -87,7 +87,7 @@ const GroupFormModal = ({ isOpen, onClose, onSaved, editing }: GroupFormModalPro
             value={tag}
             onChange={e => setTag(e.target.value)}
             placeholder="e.g. night-shift, vip"
-            className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-2 px-4 py-3 text-base text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
+            className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-md px-4 py-3 text-base text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
           />
           <p className="text-[#9e9e9e] text-xs">A short label to identify or filter this group.</p>
         </div>
@@ -172,7 +172,7 @@ const CreateChatterPanel = ({ onChatterCreated, allChatters }: CreateChatterPane
   };
 
   return (
-    <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-4 p-5 flex flex-col gap-3 mb-6">
+    <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-lg p-5 flex flex-col gap-3 mb-6">
       <p className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.3px]">Create New Chatter</p>
 
       {success && (
@@ -199,7 +199,7 @@ const CreateChatterPanel = ({ onChatterCreated, allChatters }: CreateChatterPane
           value={firstName}
           onChange={e => setFirstName(e.target.value)}
           placeholder="First name"
-          className="w-full sm:w-35 bg-[#141416] border border-[rgba(255,255,255,0.08)] rounded-2 px-3 py-3 text-white text-sm placeholder-[#555] outline-none focus:border-[rgba(255,255,255,0.18)] transition-colors"
+          className="w-full sm:w-35 bg-[#141416] border border-[rgba(255,255,255,0.08)] rounded-md px-3 py-3 text-white text-sm placeholder-[#555] outline-none focus:border-[rgba(255,255,255,0.18)] transition-colors"
         />
         <input
           type="text"
@@ -532,7 +532,7 @@ const ChatterAvatarCard = ({ member, onRemove, isRemoving }: ChatterAvatarCardPr
   const initials = [firstName[0], lastName[0]].filter(Boolean).join('').toUpperCase() || displayName.slice(0, 2).toUpperCase();
 
   return (
-    <div className="relative flex items-center gap-3 bg-[#202022] border border-[rgba(255,255,255,0.06)] rounded-4 px-4 py-4">
+    <div className="relative flex items-center gap-3 bg-[#202022] border border-[rgba(255,255,255,0.06)] rounded-lg px-4 py-4">
       <div className="w-11 h-11 rounded-full bg-[#2e2e32] border-2 border-[#3a3a3e] flex items-center justify-center shrink-0">
         <span className="text-[#aaa] text-sm font-semibold">{isRemoving ? '…' : initials}</span>
       </div>
@@ -675,7 +675,7 @@ export const ChatterGroups = () => {
       )}
 
       {error && (
-        <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-2 px-4 py-3">
+        <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-md px-4 py-3">
           <p className="text-tm-danger-color05 text-sm font-medium">{error}</p>
         </div>
       )}

@@ -2569,7 +2569,7 @@ const ModalShell = ({
   >
     <div
       onClick={(e) => e.stopPropagation()}
-      className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-3 w-full max-w-110 p-5 flex flex-col gap-4"
+      className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-lg w-full max-w-110 p-5 flex flex-col gap-4"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex flex-col gap-1 min-w-0">
