@@ -178,13 +178,13 @@ export const LinkGenerator = ({ username }: LinkGeneratorProps) => {
             d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
           />
         </svg>
-        <p className="text-xs font-bold uppercase tracking-[0.3px] text-[#9e9e9e]">
+        <p className="text-xs font-bold uppercase text-[#9e9e9e]">
           Invite Link
         </p>
       </div>
 
       {/* Name + Telegram ID row */}
-      <div className="grid lg:grid-cols-2 gap-[10px]">
+      <div className="grid lg:grid-cols-2 gap-4">
         <input
           type="text"
           value={name}
@@ -204,7 +204,7 @@ export const LinkGenerator = ({ username }: LinkGeneratorProps) => {
       </div>
 
       {/* Email + Reset + Generate row */}
-      <div className="flex flex-col lg:flex-row gap-[10px]">
+      <div className="flex flex-col lg:flex-row gap-4">
         <div className="relative flex-1">
           <svg
             className="absolute left-[12px] top-1/2 -translate-y-1/2 w-[14px] h-[14px] text-[#444]"
@@ -259,7 +259,7 @@ export const LinkGenerator = ({ username }: LinkGeneratorProps) => {
 
       {/* Error message */}
       {errorMessage && (
-        <div className="flex items-start gap-2 border border-[rgba(255,15,95,0.35)] bg-[rgba(255,15,95,0.08)] text-[#ff6b99] text-xs px-4 py-3 rounded-[8px]">
+        <div className="flex items-start gap-2 border border-[rgba(255,15,95,0.35)] bg-[rgba(255,15,95,0.08)] text-[#ff6b99] text-xs px-4 py-3 rounded-sm">
           <svg
             className="w-[14px] h-[14px] mt-[2px] shrink-0"
             fill="none"
@@ -281,7 +281,7 @@ export const LinkGenerator = ({ username }: LinkGeneratorProps) => {
       {generatedLink && (
         <div className="flex flex-col gap-4 border border-neutral-800 p-8 rounded-xl bg-tm-neutral-color08 min-w-0 w-full overflow-hidden">
           <div className="flex flex-row w-full">
-            <p className="text-xs font-bold uppercase tracking-[0.3px] text-[#9e9e9e]">
+            <p className="text-xs font-bold uppercase text-[#9e9e9e]">
               Generated Link
             </p>
           </div>
@@ -670,14 +670,14 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
             d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
           />
         </svg>
-        <p className="text-xs font-bold uppercase tracking-[0.3px] text-[#9e9e9e]">
+        <p className="text-xs font-bold uppercase text-[#9e9e9e]">
           Talk Like {displayName}
         </p>
       </div>
 
       {/* Missing voice warning */}
       {!hasVoice && (
-        <div className="flex items-start gap-[10px] bg-[#2a1a0f] border border-[rgba(255,170,50,0.25)] rounded-[10px] px-[14px] py-[12px]">
+        <div className="flex items-start gap-4 bg-[#2a1a0f] border border-[rgba(255,170,50,0.25)] rounded-[10px] px-[14px] py-[12px]">
           <svg
             className="w-[16px] h-[16px] text-[#ffaa33] shrink-0 mt-[2px]"
             fill="none"
@@ -702,7 +702,7 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
       )}
 
       {/* Text to Speech label */}
-      <div className="flex flex-col gap-[10px]">
+      <div className="flex flex-col gap-4">
         <button
           type="button"
           className="text-xs text-[#555] font-medium select-none cursor-pointer bg-transparent border-0 p-0 text-left"
@@ -713,7 +713,7 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
 
         <div className="w-full grid lg:grid-cols-[2fr_56px_1fr]  gap-2 items-center">
           {/* === ROW 1: Input with Mic inside === */}
-          <div className="relative flex flex-row items-center w-full bg-[#141414] rounded-[8px] p-[14px] border border-[rgba(255,255,255,0.1)] shadow-sm h-full">
+          <div className="relative flex flex-row items-center w-full bg-[#141414] rounded-sm p-[14px] border border-[rgba(255,255,255,0.1)] shadow-sm h-full">
             {/* The Input Field (flex-1 ensures it takes remaining space) */}
             <textarea
               value={text}
@@ -781,7 +781,7 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
               disabled={busy}
               title="Clear text"
               aria-label="Clear text"
-              className="w-full buttonSubtle buttonXl rounded-[8px] flex items-center justify-center bg-[#141414] border border-[rgba(255,255,255,0.1)]  text-[#555] hover:text-[#9e9e9e] hover:border-[rgba(255,255,255,0.2)] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-full buttonSubtle buttonXl rounded-sm flex items-center justify-center bg-[#141414] border border-[rgba(255,255,255,0.1)]  text-[#555] hover:text-[#9e9e9e] hover:border-[rgba(255,255,255,0.2)] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <svg
                 className="w-[15px] h-[15px]"
@@ -801,7 +801,7 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
           </div>
 
           {/* === ROW 3: Generate Voice & Play Sound (Stacked Div) === */}
-          <div className="flex flex-col gap-[10px] shrink-0">
+          <div className="flex flex-col gap-4 shrink-0">
             <div className="flex"> {isRecording && (
               <p className="text-[#ff2a71] text-sm font-medium animate-pulse">
                 ● Recording — {fmtTime(recordingSeconds)} — tap mic to stop
@@ -847,7 +847,7 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
               <button
                 onClick={handlePlaySound}
                 disabled={!audioUrl || countdown !== null}
-                className={`flex items-center justify-center gap-[8px] rounded-lg px-[18px] py-[10px] text-sm font-bold active:scale-[0.98] w-full transition-all ${audioUrl
+                className={`flex items-center justify-center gap-[8px] rounded-lg px-[18px] py-4 text-sm font-bold active:scale-[0.98] w-full transition-all ${audioUrl
                   ? "bg-[#1e1e20] border border-[rgba(255,255,255,0.12)] text-white hover:bg-[#252528]"
                   : "bg-[#141414] border border-[rgba(255,255,255,0.06)] text-[#444] cursor-not-allowed"
                   }`}
@@ -873,7 +873,7 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
                 <a
                   href={audioUrl}
                   download="voice-message.mp3"
-                  className="inline-flex flex-1 text-center items-center gap-[8px] rounded-[8px] px-[18px] py-[10px] text-sm font-bold active:scale-[0.98] transition-all bg-[#1e1e20] border border-[rgba(255,255,255,0.12)] text-white hover:bg-[#252528]"
+                  className="inline-flex flex-1 text-center items-center gap-[8px] rounded-sm px-[18px] py-4 text-sm font-bold active:scale-[0.98] transition-all bg-[#1e1e20] border border-[rgba(255,255,255,0.12)] text-white hover:bg-[#252528]"
                 >
                   Download
                 </a>
@@ -906,7 +906,7 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
       </div>
 
       {/* Mood selector */}
-      <div className="flex flex-col gap-[10px]">
+      <div className="flex flex-col gap-4">
         <p className="text-xs text-[#555] font-medium">Select Mood</p>
         <div className="grid grid-cols-2 lg:grid-cols-6 gap-2">
           {MOODS.map((m) => (
@@ -929,7 +929,7 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
 
       {/* Language selector — hidden until "Text to Speech" label is clicked 10 times */}
       {showLanguagePanel && (
-        <div className="flex flex-col gap-[10px]">
+        <div className="flex flex-col gap-4">
           <p className="text-xs text-[#555] font-medium">Select Language</p>
           <div className="grid grid-cols-3 lg:grid-cols-5 gap-2">
             {LANGUAGES.map((lang) => (
@@ -954,7 +954,7 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
 
       {/* Tip cards */}
       <div className="grid lg:grid-cols-2 gap-[12px] mt-[4px]">
-        <div className="bg-[#141416] border border-[rgba(255,255,255,0.06)] rounded-[12px] p-[16px] flex flex-col gap-[10px]">
+        <div className="bg-[#141416] border border-[rgba(255,255,255,0.06)] rounded-md p-[16px] flex flex-col gap-4">
           <div className="flex items-center  justify-center">
             <img src={PhoneTip} alt="" />
 
@@ -965,7 +965,7 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
             the messaging phone.
           </p>
         </div>
-        <div className="bg-[#141416] border border-[rgba(255,255,255,0.06)] rounded-[12px] p-[16px] hidden lg:flex flex-col gap-[10px]">
+        <div className="bg-[#141416] border border-[rgba(255,255,255,0.06)] rounded-md p-[16px] hidden lg:flex flex-col gap-4">
           <div className="flex items-center gap-4 justify-center">
             <img src={DesktopTip} alt="" />
           </div>

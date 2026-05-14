@@ -61,7 +61,7 @@ export const TopBar = () => {
               <button
                 key={item.id}
                 onClick={() => navigate(item.path)}
-                className={`flex items-center gap-[6px] px-[16px] py-[8px] rounded-[6px] hover:-translate-y-0.5 transition-all select-none whitespace-nowrap ${
+                className={`flex items-center gap-[6px] px-[16px] py-[8px] rounded-sm hover:-translate-y-0.5 transition-all select-none whitespace-nowrap ${
                   isActive
                     ? 'bg-[#660022] border border-[#ff2a71]'
                     : 'hover:bg-[#292929]/50'
@@ -87,11 +87,11 @@ export const TopBar = () => {
             <button
               type="button"
               onClick={() => navigate('/settings')}
-              className="flex items-center gap-[10px] min-w-0 max-w-[240px] rounded-[8px] px-[10px] py-[6px] hover:bg-[#292929]/50 transition-all text-left"
+              className="flex items-center gap-4 min-w-0 max-w-[240px] rounded-sm px-4 py-[6px] hover:bg-[#292929]/50 transition-all text-left"
               aria-label="Open account settings"
             >
               <span
-                className="flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full text-xs font-semibold tracking-[0.02em]"
+                className="flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full text-xs font-semibold tracking-widest"
                 style={{
                   background: 'linear-gradient(145deg, #660022 0%, #3d0014 100%)',
                   color: '#ffb3cc',
@@ -113,7 +113,7 @@ export const TopBar = () => {
           <button
             onClick={logout}
             aria-label="Log out"
-            className="flex items-center justify-center w-[36px] h-[36px] rounded-[6px] hover:bg-[#292929]/50 transition-all shrink-0"
+            className="flex items-center justify-center w-[36px] h-[36px] rounded-sm hover:bg-[#292929]/50 transition-all shrink-0"
             style={{ color: '#ff0f5f' }}
           >
             <IconLogout width={20} height={19} />

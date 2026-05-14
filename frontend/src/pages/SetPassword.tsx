@@ -104,7 +104,7 @@ export const SetPassword = () => {
             </h1>
           </div>
 
-          <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-[20px]">
+          <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-sm p-[24px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-[20px]">
             {tokenState.status === 'loading' && (
               <p className="text-[#9e9e9e] text-sm text-center py-[24px]">
                 Checking your link…
@@ -124,7 +124,7 @@ export const SetPassword = () => {
                 <button
                   type="button"
                   onClick={() => navigate('/login', { replace: true })}
-                  className="bg-linear-to-t from-tm-primary-color09 to-tm-primary-color06 rounded px-6 py-2 text-white text-base font-bold leading-[1.4] tracking-[0.2px] shadow-[0px_2px_4px_rgba(0,0,0,0.2)] hover:from-[#ff1f69] hover:to-[#d10050] transition-all"
+                  className="bg-linear-to-t from-tm-primary-color09 to-tm-primary-color06 rounded px-6 py-2 text-white text-base font-bold leading-[1.4]  shadow-[0px_2px_4px_rgba(0,0,0,0.2)] hover:from-[#ff1f69] hover:to-[#d10050] transition-all"
                 >
                   Back to Login
                 </button>
@@ -143,7 +143,7 @@ export const SetPassword = () => {
                 <div className="flex flex-col gap-[8px]">
                   <label
                     htmlFor="new-password"
-                    className="text-[#9e9e9e] text-xs leading-[1.4] font-bold uppercase tracking-[0.2px]"
+                    className="text-[#9e9e9e] text-xs leading-[1.4] font-bold uppercase "
                   >
                     New Password
                   </label>
@@ -155,7 +155,7 @@ export const SetPassword = () => {
                     autoComplete="new-password"
                     required
                     minLength={8}
-                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[16px] py-[12px] text-base text-white focus:outline-none focus:border-[#ff0f5f] transition-colors"
+                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] text-base text-white focus:outline-none focus:border-[#ff0f5f] transition-colors"
                     placeholder="At least 8 characters"
                   />
                 </div>
@@ -163,7 +163,7 @@ export const SetPassword = () => {
                 <div className="flex flex-col gap-[8px]">
                   <label
                     htmlFor="confirm-password"
-                    className="text-[#9e9e9e] text-xs leading-[1.4] font-bold uppercase tracking-[0.2px]"
+                    className="text-[#9e9e9e] text-xs leading-[1.4] font-bold uppercase "
                   >
                     Confirm Password
                   </label>
@@ -175,13 +175,13 @@ export const SetPassword = () => {
                     autoComplete="new-password"
                     required
                     minLength={8}
-                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[16px] py-[12px] text-base text-white focus:outline-none focus:border-[#ff0f5f] transition-colors"
+                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] text-base text-white focus:outline-none focus:border-[#ff0f5f] transition-colors"
                     placeholder="Repeat the password"
                   />
                 </div>
 
                 {error && (
-                  <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-[8px] px-[16px] py-[12px]">
+                  <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-sm px-[16px] py-[12px]">
                     <p className="text-tm-danger-color05 text-sm leading-[1.4] font-medium">
                       {error}
                     </p>
@@ -191,7 +191,7 @@ export const SetPassword = () => {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="bg-linear-to-t from-tm-primary-color09 to-tm-primary-color06 rounded px-6 py-2 text-white text-base font-bold leading-[1.4] tracking-[0.2px] shadow-[0px_2px_4px_rgba(0,0,0,0.2)] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="bg-linear-to-t from-tm-primary-color09 to-tm-primary-color06 rounded px-6 py-2 text-white text-base font-bold leading-[1.4]  shadow-[0px_2px_4px_rgba(0,0,0,0.2)] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSubmitting
                     ? 'Saving…'

@@ -80,7 +80,7 @@ const TransactionRow = ({ tx }: TransactionRowProps) => {
           <span className="text-xs text-[#888]">{date} {time}</span>
         </div>
 
-        <div className="flex items-center gap-[10px]">
+        <div className="flex items-center gap-4">
           <span
             className="text-sm font-semibold"
             style={{ color: amountColor }}
@@ -133,7 +133,7 @@ const TransactionRow = ({ tx }: TransactionRowProps) => {
           )}
           {tx.commissions.length > 0 && (
             <div className="flex flex-col gap-[4px]">
-              <span className="text-xs text-[#888] uppercase tracking-[0.06em]">Commissions</span>
+              <span className="text-xs text-[#888] uppercase tracking-tighter">Commissions</span>
               {tx.commissions.map((c) => (
                 <div key={c.id} className="flex justify-between text-xs">
                   <span className="text-[#aaa]">
@@ -173,7 +173,7 @@ const PaginationButton = ({
   <button
     onClick={onClick}
     disabled={disabled}
-    className="w-[28px] h-[28px] flex items-center justify-center rounded-[6px] text-sm font-medium transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+    className="w-[28px] h-[28px] flex items-center justify-center rounded-sm text-sm font-medium transition-all disabled:opacity-30 disabled:cursor-not-allowed"
     style={{
       background: active ? 'rgba(255,15,95,0.2)' : 'transparent',
       border: active ? '1px solid rgba(255,15,95,0.5)' : '1px solid transparent',
@@ -255,14 +255,14 @@ export const Transactions = () => {
       </div>
 
       {error && (
-        <div className="bg-[#3a0000] border border-tm-danger-color09 rounded-[8px] p-[12px] text-[#ff8080] text-sm">
+        <div className="bg-[#3a0000] border border-tm-danger-color09 rounded-sm p-[12px] text-[#ff8080] text-sm">
           {error}
         </div>
       )}
 
       {/* Transactions List Card */}
       <div
-        className="rounded-[16px] overflow-hidden"
+        className="rounded-2xl overflow-hidden"
         style={{
           background: 'linear-gradient(180deg, #1e1527 0%, #18101f 100%)',
           border: '1px solid rgba(139,92,246,0.2)',
@@ -285,7 +285,7 @@ export const Transactions = () => {
         {!isCollapsed && (
           <>
             {/* Filters Row */}
-            <div className="flex items-center gap-[10px] px-[20px] py-[14px]" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <div className="flex items-center gap-4 px-[20px] py-[14px]" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
               {/* Period dropdown */}
               <div className="relative flex-1">
                 <button
@@ -353,12 +353,12 @@ export const Transactions = () => {
             {/* Transaction rows */}
             <div className="px-[20px]">
               {loading && (
-                <div className="flex items-center justify-center py-[48px]">
+                <div className="flex items-center justify-center py-12">
                   <span className="text-[#888] text-sm">Loading transactions…</span>
                 </div>
               )}
               {!loading && transactions.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-[48px] gap-[10px]">
+                <div className="flex flex-col items-center justify-center py-[48px] gap-4">
                   <span className="text-3xl">💳</span>
                   <p className="text-base font-medium text-white">No transactions found</p>
                   <p className="text-sm text-[#888]">
