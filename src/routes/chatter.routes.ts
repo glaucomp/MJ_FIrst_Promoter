@@ -61,7 +61,19 @@ router.patch(
   ],
   chatterController.updateChatter,
 );
-router.post('/:id/resend-invite', authenticate, chatterController.resendInviteEmail);
+router.post(
+  '/:id/resend-invite',
+  authenticate,
+  rateLimit({
+    windowMs: 60 * 1_000,
+    limit: 10,
+    keyGenerator: rateLimitKeyByUserOrIp,
+    handler: (_req, res) => res.status(429).json({ error: 'Too many requests' }),
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+  }),
+  chatterController.resendInviteEmail,
+);
 router.delete('/:id', authenticate, chatterController.deleteChatter);
 
 export default router;
