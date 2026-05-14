@@ -193,7 +193,7 @@ export const Campaigns = () => {
       {isLoading ? (
         <p className="text-[#9e9e9e] text-base">Loading...</p>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 lg:gap-6">
           {campaigns.map((c) => (
             <div
               key={c.id}
@@ -216,7 +216,7 @@ export const Campaigns = () => {
                     </p>
                   </div>
 
-                  <div className="flex flex-wrap items-start lg:flex-row lg:items-center gap-[8px]">
+                  <div className="flex flex-wrap items-start lg:flex-row lg:items-center gap-3">
                     {/* Active toggle */}
                     <button
                       onClick={() => handleToggleActive(c)}
@@ -235,7 +235,7 @@ export const Campaigns = () => {
 
                     {/* Visibility badge */}
                     <span
-                      className={`px-3 py-1.5 rounded-full text-xs font-bold border ${c.visibleToPromoters
+                      className={`px-3 py-1 rounded-full text-xs font-bold border ${c.visibleToPromoters
                         ? "bg-tm-secondary-color11 border-tm-secondary-color05 text-tm-secondary-color03"
                         : "bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]"
                         }`}
