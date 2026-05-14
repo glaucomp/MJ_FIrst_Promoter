@@ -555,6 +555,124 @@ export const getChatter = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// PATCH /api/chatters/:id — update a chatter's name / email
+export const updateChatter = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!isAccountManagerOrAdmin(req)) {
+      return res.status(403).json({ error: "Insufficient permissions" });
+    }
+
+    const { id } = req.params;
+    const { firstName, lastName, email } = req.body;
+
+    const where = isAdmin(req)
+      ? { id, userType: UserType.CHATTER }
+      : { AND: [{ id }, chattersOwnedByWhere(req.user!.id)] };
+
+    const existing = await prisma.user.findFirst({ where });
+    if (!existing) {
+      return res.status(404).json({ error: "Chatter not found" });
+    }
+
+    const data: Record<string, unknown> = {};
+    if (typeof firstName === "string") data.firstName = firstName.trim() || null;
+    if (typeof lastName === "string") data.lastName = lastName.trim() || null;
+    if (typeof email === "string") {
+      const trimmed = email.trim().toLowerCase();
+      if (trimmed !== existing.email) {
+        const conflict = await prisma.user.findUnique({ where: { email: trimmed } });
+        if (conflict) {
+          return res.status(400).json({ error: "A user with that email already exists" });
+        }
+        data.email = trimmed;
+      }
+    }
+
+    const chatter = await prisma.user.update({
+      where: { id },
+      data,
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        isActive: true,
+        createdAt: true,
+        createdBy: { select: createdBySelect },
+        chatterGroupMemberships: {
+          select: {
+            group: { select: { id: true, name: true, createdBy: { select: createdBySelect } } },
+          },
+        },
+      },
+    });
+
+    res.json({
+      chatter: {
+        ...chatter,
+        groups: chatter.chatterGroupMemberships.map((m) => m.group),
+        chatterGroupMemberships: undefined,
+      },
+    });
+  } catch (error) {
+    console.error("Update chatter error:", error);
+    res.status(500).json({ error: "Failed to update chatter" });
+  }
+};
+
+// POST /api/chatters/:id/resend-invite — resend the welcome / set-password email
+export const resendInviteEmail = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!isAccountManagerOrAdmin(req)) {
+      return res.status(403).json({ error: "Insufficient permissions" });
+    }
+
+    const { id } = req.params;
+
+    const where = isAdmin(req)
+      ? { id, userType: UserType.CHATTER }
+      : { AND: [{ id }, chattersOwnedByWhere(req.user!.id)] };
+
+    const chatter = await prisma.user.findFirst({ where });
+    if (!chatter) {
+      return res.status(404).json({ error: "Chatter not found" });
+    }
+
+    const callerId = req.user!.id;
+    const callerRecord = await prisma.user.findUnique({
+      where: { id: callerId },
+      select: { firstName: true, lastName: true, email: true },
+    });
+    const invitedByName =
+      [callerRecord?.firstName, callerRecord?.lastName].filter(Boolean).join(" ").trim() ||
+      callerRecord?.email ||
+      req.user!.email;
+
+    const { rawToken, expiresAt } = await createPasswordResetToken(
+      chatter.id,
+      PasswordResetPurpose.INVITE,
+    );
+    const setupUrl = buildSetPasswordUrl(rawToken);
+
+    const sent = await emailService.sendSetPasswordEmail({
+      email: chatter.email,
+      firstName: chatter.firstName,
+      setupUrl,
+      invitedByName,
+      expiresAt,
+    });
+
+    if (!sent) {
+      return res.status(502).json({ error: "Failed to send invite email" });
+    }
+
+    res.json({ message: "Invite email sent" });
+  } catch (error) {
+    console.error("Resend invite email error:", error);
+    res.status(500).json({ error: "Failed to resend invite email" });
+  }
+};
+
 // DELETE /api/chatters/:id — delete a chatter
 export const deleteChatter = async (req: AuthRequest, res: Response) => {
   try {

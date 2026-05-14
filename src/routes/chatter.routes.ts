@@ -51,6 +51,17 @@ router.post(
 router.get('/me/groups', authenticate, chatterController.getMyGroups);
 router.get('/', authenticate, chatterController.listChatters);
 router.get('/:id', authenticate, chatterController.getChatter);
+router.patch(
+  '/:id',
+  authenticate,
+  [
+    body('email').optional().isEmail().normalizeEmail(EMAIL_NORMALIZE_OPTIONS),
+    body('firstName').optional().trim(),
+    body('lastName').optional().trim(),
+  ],
+  chatterController.updateChatter,
+);
+router.post('/:id/resend-invite', authenticate, chatterController.resendInviteEmail);
 router.delete('/:id', authenticate, chatterController.deleteChatter);
 
 export default router;
