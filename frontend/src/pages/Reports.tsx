@@ -170,7 +170,7 @@ interface BadgeProps {
 }
 const ChangeBadge = ({ value, positive }: BadgeProps) => (
   <span
-    className="inline-flex items-center gap-2 px-2 py-1 rounded-xl border text-[14px] leading-[1.4] font-bold"
+    className="inline-flex items-center gap-2 px-2 py-1 rounded-xl border text-sm leading-[1.4] font-bold"
     style={{
       background: positive ? "#006622" : "var(--color-tm-danger-color12)",
       color: positive ? "#28ff70" : "#ff2a2a",
@@ -248,7 +248,7 @@ const TxRow = ({
       >
         {/* Avatar circle */}
         <div
-          className="w-[32px] h-[32px] rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 mt-px"
+          className="w-[32px] h-[32px] rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-px"
           style={{ background: avatarBg, color: "var(--color-text-primary)" }}
         >
           {initials || "?"}
@@ -259,18 +259,18 @@ const TxRow = ({
           {/* Row 1: Sale + tier | amount */}
           <div className="flex items-center justify-between mb-[4px]">
             <div className="flex items-center gap-[6px]">
-              <span className="text-[14px] font-semibold text-white">
+              <span className="text-sm font-semibold text-white">
                 {isRefund ? "Refund" : "Sale"}
               </span>
               <span
-                className="text-sm font-bold px-[6px] py-px rounded-[4px]"
+                className="text-sm font-bold px-[6px] py-px rounded-sm"
                 style={{ background: tierBg, color: tierText, border: `1px solid ${tierText}44` }}
               >
                 {tierLabel}
               </span>
             </div>
             <span
-              className="text-[14px] font-bold"
+              className="text-sm font-bold"
               style={{
                 color: positive ? "var(--color-positive)" : "var(--color-danger)",
                 textDecoration: isRefund ? "line-through" : "none",
@@ -291,7 +291,7 @@ const TxRow = ({
               })()}
             </span>
             <span
-              className="text-[11px] font-semibold px-[9px] py-[2px] rounded-full capitalize"
+              className="text-xs font-semibold px-[9px] py-[2px] rounded-full capitalize"
               style={{ background: statusStyle.bg, color: statusStyle.text, border: `1px solid ${statusStyle.text}33` }}
             >
               {tx.status}
@@ -300,7 +300,7 @@ const TxRow = ({
 
           {/* Row 3: date | chevron */}
           <div className="flex items-center justify-between">
-            <span className="text-[11px]" style={{ color: "var(--color-text-subtle)" }}>
+            <span className="text-xs" style={{ color: "var(--color-text-subtle)" }}>
               {d}/{m}/{y} {hh}:{mn}:{sc}{ap}
             </span>
             <svg
@@ -319,13 +319,13 @@ const TxRow = ({
         <div className="tx-detail-enter px-[16px] pb-[20px] text-sm">
           <div className="rounded-[10px] overflow-hidden" style={{ background: "var(--color-surface-inset)" }}>
             {saleAmt > 0 && (
-              <div className="flex justify-between px-[14px] py-[10px]" style={{ borderBottom: "1px solid var(--border-elevated)" }}>
+              <div className="flex justify-between px-[14px] py-4" style={{ borderBottom: "1px solid var(--border-elevated)" }}>
                 <span style={{ color: "var(--color-text-faded)" }}>Sale Amount</span>
                 <span className="font-semibold text-white">${money(saleAmt)}</span>
               </div>
             )}
             <div
-              className="flex justify-between px-[14px] py-[10px]"
+              className="flex justify-between px-[14px] py-4"
               style={{ borderBottom: tx.customer || tx.campaign ? "1px solid var(--border-elevated)" : "none" }}
             >
               <span style={{ color: "var(--color-text-faded)" }}>Commission</span>
@@ -338,7 +338,7 @@ const TxRow = ({
             </div>
             {tx.customer && (
               <div
-                className="flex justify-between px-[14px] py-[10px]"
+                className="flex justify-between px-[14px] py-4"
                 style={{ borderBottom: tx.campaign ? "1px solid var(--border-elevated)" : "none" }}
               >
                 <span style={{ color: "var(--color-text-faded)" }}>Customer</span>
@@ -346,7 +346,7 @@ const TxRow = ({
               </div>
             )}
             {tx.campaign && (
-              <div className="flex justify-between items-center px-[14px] py-[10px]">
+              <div className="flex justify-between items-center px-[14px] py-4">
                 <span style={{ color: "var(--color-text-faded)" }}>Campaign</span>
                 <span
                   className="text-sm font-semibold px-[8px] py-[2px] rounded-full text-white"
@@ -419,7 +419,7 @@ const AdminTxRow = ({
         {/* Label + customer + date */}
         <div className="flex-1 min-w-0 text-left">
           <div className="flex items-center gap-[6px] flex-wrap">
-            <span className="text-[14px] font-semibold text-white">
+            <span className="text-sm font-semibold text-white">
               {isDeposit ? "Deposit" : "Refund"}
             </span>
             <span
@@ -430,7 +430,7 @@ const AdminTxRow = ({
             </span>
           </div>
           <div
-            className="text-[11px] mt-px"
+            className="text-xs mt-px"
             style={{ color: "var(--color-text-subtle)" }}
           >
             {d}/{m}/{y} {hh}:{min}:{sec}
@@ -441,7 +441,7 @@ const AdminTxRow = ({
         {/* Amount + chevron */}
         <div className="flex items-center gap-[8px] shrink-0 justify-between">
           <span
-            className="text-[14px] font-bold"
+            className="text-sm font-bold"
             style={{
               color: isDeposit
                 ? "var(--color-positive)"
@@ -478,11 +478,11 @@ const AdminTxRow = ({
           {/* Customer */}
           {tx.customer && (
             <div
-              className="flex flex-col lg:flex-row lg:items-center justify-between px-[14px] py-[10px]"
+              className="flex flex-col lg:flex-row lg:items-center justify-between px-[14px] py-4"
               style={{ borderBottom: "1px solid var(--border-elevated)" }}
             >
               <span
-                className="text-[11px] uppercase tracking-[0.07em]"
+                className="text-xs uppercase tracking-widest"
                 style={{ color: "var(--color-text-faded)" }}
               >
                 Customer
@@ -506,17 +506,17 @@ const AdminTxRow = ({
           {/* Campaign */}
           {tx.campaign && (
             <div
-              className="flex flex-col lg:flex-row lg:items-center justify-between px-[14px] py-[10px]"
+              className="flex flex-col lg:flex-row lg:items-center justify-between px-[14px] py-4"
               style={{ borderBottom: "1px solid var(--border-elevated)" }}
             >
               <span
-                className="text-[11px] uppercase tracking-[0.07em]"
+                className="text-xs uppercase tracking-widest"
                 style={{ color: "var(--color-text-faded)" }}
               >
                 Campaign
               </span>
               <span
-                className="text-[11px] px-3 py-1 rounded-full text-center"
+                className="text-xs px-3 py-1 rounded-full text-center"
                 style={{
                   color: "var(--color-tm-primary-color02)",
                   background: "var(--color-tm-primary-color12)",
@@ -530,7 +530,7 @@ const AdminTxRow = ({
 
           {/* Sale amount */}
           <div
-            className="flex flex-col lg:flex-row lg:items-center justify-between px-[14px] py-[10px]"
+            className="flex flex-col lg:flex-row lg:items-center justify-between px-[14px] py-4"
             style={{
               borderBottom:
                 tx.commissions.length > 0
@@ -539,13 +539,13 @@ const AdminTxRow = ({
             }}
           >
             <span
-              className="text-[11px] uppercase tracking-[0.07em]"
+              className="text-xs uppercase tracking-widest"
               style={{ color: "var(--color-text-faded)" }}
             >
               {isDeposit ? "Sale Amount" : "Refund Amount"}
             </span>
             <span
-              className="text-[13px] font-bold"
+              className="text-sm font-bold"
               style={{
                 color: isDeposit
                   ? "var(--color-positive)"
@@ -558,9 +558,9 @@ const AdminTxRow = ({
 
           {/* Commissions breakdown */}
           {tx.commissions.length > 0 && (
-            <div className="px-[14px] py-[10px] flex flex-col gap-[8px]">
+            <div className="px-[14px] py-4 flex flex-col gap-[8px]">
               <span
-                className="text-[11px] uppercase tracking-[0.07em]"
+                className="text-xs uppercase tracking-widest"
                 style={{ color: "var(--color-text-faded)" }}
               >
                 Commissions
@@ -582,7 +582,7 @@ const AdminTxRow = ({
                 return (
                   <div
                     key={c.id}
-                    className="flex flex-col lg:flex-row lg:items-center gap-[10px] py-[8px] px-[10px] rounded-[8px]"
+                    className="flex flex-col lg:flex-row lg:items-center gap-4 py-[8px] px-4 rounded-sm"
                     style={{
                       background: "var(--color-surface-inset)",
                       border: "1px solid var(--border-elevated)",
@@ -625,14 +625,14 @@ const AdminTxRow = ({
                     </div>
                    <div className="flex flex-row justify-between gap-3 items-center"> {/* Rate */}
                     <span
-                      className="text-[11px] shrink-0"
+                      className="text-xs shrink-0"
                       style={{ color: "var(--color-text-subtle)" }}
                     >
                       {c.percentage}%
                     </span>
                     {/* Amount */}
                     <span
-                      className="text-[13px] font-bold shrink-0"
+                      className="text-sm font-bold shrink-0"
                       style={{
                         color: commPositive
                           ? "var(--color-positive)"
@@ -754,7 +754,7 @@ const AdminTxListCard = ({
 
           <div className="flex flex-col-reverse lg:grid lg:grid-cols-[1fr_3fr]">
             {/* Active period label */}
-          <div className="flex items-center gap-[6px] px-[16px] py-[10px]">
+          <div className="flex items-center gap-[6px] px-[16px] py-4">
             <svg
               width="12"
               height="12"
@@ -799,7 +799,7 @@ const AdminTxListCard = ({
                 height="14"
                 viewBox="0 0 14 14"
                 fill="none"
-                className="absolute left-[10px] top-1/2 -translate-y-1/2"
+                className="absolute left-4 top-1/2 -translate-y-1/2"
                 style={{ color: "var(--color-text-faded)" }}
               >
                 <circle
@@ -839,7 +839,7 @@ const AdminTxListCard = ({
           {loading && (
             <div className="flex items-center justify-center py-[40px]">
               <span
-                className="text-[14px]"
+                className="text-sm"
                 style={{ color: "var(--color-text-muted)" }}
               >
                 Loading transactions…
@@ -848,9 +848,9 @@ const AdminTxListCard = ({
           )}
           {!loading && transactions.length === 0 && (
             <div className="flex flex-col items-center py-[40px] gap-[8px]">
-              <span className="text-[32px]">📊</span>
+              <span className="text-3xl">📊</span>
               <span
-                className="text-[14px]"
+                className="text-sm"
                 style={{ color: "var(--color-text-muted)" }}
               >
                 No transactions for this period
@@ -870,7 +870,7 @@ const AdminTxListCard = ({
                 type="button"
                 disabled={page === 1}
                 onClick={() => setPage(Math.max(1, page - 1))}
-                className="w-[28px] h-[28px] rounded-[6px] text-[13px] hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                className="w-[28px] h-[28px] rounded-sm text-sm hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 style={{
                   color: "var(--color-text-muted)",
                   border: "1px solid var(--border-subtle)",
@@ -895,7 +895,7 @@ const AdminTxListCard = ({
                     key={p}
                     type="button"
                     onClick={() => setPage(p)}
-                    className="w-[28px] h-[28px] rounded-[6px] text-[13px] font-medium transition-colors"
+                    className="w-[28px] h-[28px] rounded-sm text-sm font-medium transition-colors"
                     style={{
                       background:
                         page === p
@@ -917,7 +917,7 @@ const AdminTxListCard = ({
                 type="button"
                 disabled={page === totalPages}
                 onClick={() => setPage(Math.min(totalPages, page + 1))}
-                className="w-[28px] h-[28px] rounded-[6px] text-[13px] hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                className="w-[28px] h-[28px] rounded-sm text-sm hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 style={{
                   color: "var(--color-text-muted)",
                   border: "1px solid var(--border-subtle)",
@@ -1069,7 +1069,7 @@ const TxListCard = ({
         <>
 
           {/* Active period label */}
-          <div className="flex items-center gap-[6px] px-[16px] py-[10px]">
+          <div className="flex items-center gap-[6px] px-[16px] py-4">
             <svg
               width="12"
               height="12"
@@ -1148,7 +1148,7 @@ const TxListCard = ({
                 height="14"
                 viewBox="0 0 14 14"
                 fill="none"
-                className="absolute left-[10px] top-1/2 -translate-y-1/2"
+                className="absolute left-4 top-1/2 -translate-y-1/2"
                 style={{ color: "var(--color-text-faded)" }}
               >
                 <circle
@@ -1187,9 +1187,9 @@ const TxListCard = ({
           {/* Rows */}
           {pageTx.length === 0 ? (
             <div className="flex flex-col items-center py-[40px] gap-[8px]">
-              <span className="text-[32px]">📊</span>
+              <span className="text-3xl">📊</span>
               <span
-                className="text-[14px]"
+                className="text-sm"
                 style={{ color: "var(--color-text-muted)" }}
               >
                 No transactions found
@@ -1206,7 +1206,7 @@ const TxListCard = ({
                 type="button"
                 disabled={page === 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="w-[28px] h-[28px] rounded-[6px] text-[13px] hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                className="w-[28px] h-[28px] rounded-sm text-sm hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 style={{
                   color: "var(--color-text-muted)",
                   border: "1px solid var(--border-subtle)",
@@ -1230,7 +1230,7 @@ const TxListCard = ({
                     key={p}
                     type="button"
                     onClick={() => setPage(p)}
-                    className="w-[28px] h-[28px] rounded-[6px] text-[13px] font-medium transition-colors"
+                    className="w-[28px] h-[28px] rounded-sm text-sm font-medium transition-colors"
                     style={{
                       background:
                         page === p
@@ -1252,7 +1252,7 @@ const TxListCard = ({
                 type="button"
                 disabled={page === totalPages}
                 onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-                className="w-[28px] h-[28px] rounded-[6px] text-[13px] hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                className="w-[28px] h-[28px] rounded-sm text-sm hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 style={{
                   color: "var(--color-text-muted)",
                   border: "1px solid var(--border-subtle)",
@@ -1713,7 +1713,7 @@ export const Reports = () => {
     return (
       <div className="flex items-center justify-center py-[80px]">
         <span
-          className="text-[16px]"
+          className="text-base"
           style={{ color: "var(--color-text-muted)" }}
         >
           Loading reports…
@@ -1726,14 +1726,14 @@ export const Reports = () => {
     <div className="flex flex-col gap-[16px]">
       {/* ── Page header ── */}
       <div className="flex flex-col gap-[12px]">
-        <h1 className="text-[28px] font-bold text-white font-['DM_Sans',sans-serif]">
+        <h1 className="text-3xl font-bold text-white font-['DM_Sans',sans-serif]">
           Reports
         </h1>
         <div className="relative flex items-center gap-[8px]">
           <div className="relative flex-1">
             <button
               onClick={() => setPeriodOpen((o) => !o)}
-              className="w-full flex items-center justify-between text-[14px] hover:opacity-80 transition-opacity"
+              className="w-full flex items-center justify-between text-sm hover:opacity-80 transition-opacity"
               style={{
                 height: "var(--button-m)",
                 paddingLeft: "var(--space-16)",
@@ -1784,7 +1784,7 @@ export const Reports = () => {
                     <button
                       key={p}
                       onClick={() => selectPeriod(p)}
-                      className="w-full text-left text-[14px] transition-colors hover:bg-[rgba(255,255,255,0.04)]"
+                      className="w-full text-left text-sm transition-colors hover:bg-[rgba(255,255,255,0.04)]"
                       style={{
                         padding: "var(--space-14) var(--space-16)",
                         color:
@@ -1885,7 +1885,7 @@ export const Reports = () => {
                       >
                         {headerYear}
                       </div>
-                      <div className="text-[22px] font-semibold text-white leading-tight">
+                      <div className="text-lg font-semibold text-white leading-tight">
                         {headerDate}
                         {calRangeEnd && (
                           <span style={{ color: "var(--color-text-muted)" }}>
@@ -1933,7 +1933,7 @@ export const Reports = () => {
                         </svg>
                       </button>
                       <span
-                        className="text-[14px] font-semibold"
+                        className="text-sm font-semibold"
                         style={{ color: "var(--color-text-primary)" }}
                       >
                         {MONTH_NAMES[calViewMonth]} {calViewYear}
@@ -1976,7 +1976,7 @@ export const Reports = () => {
                       {DAY_NAMES.map((d) => (
                         <div
                           key={d}
-                          className="text-center text-[11px] font-bold"
+                          className="text-center text-xs font-bold"
                           style={{ color: "rgba(255,255,255,0.3)" }}
                         >
                           {d}
@@ -2046,7 +2046,7 @@ export const Reports = () => {
                               />
                             )}
                             <button
-                              className="relative z-10 w-[34px] h-[34px] flex items-center justify-center text-[13px] rounded-full transition-all"
+                              className="relative z-10 w-[34px] h-[34px] flex items-center justify-center text-sm rounded-full transition-all"
                               style={{
                                 background: btnBg,
                                 color: btnColor,
@@ -2085,7 +2085,7 @@ export const Reports = () => {
                           setCalHover(null);
                           setCalOpen(false);
                         }}
-                        className="text-[13px] font-medium transition-colors hover:opacity-70"
+                        className="text-sm font-medium transition-colors hover:opacity-70"
                         style={{ color: "var(--color-text-muted)" }}
                       >
                         Clear
@@ -2093,7 +2093,7 @@ export const Reports = () => {
                       <button
                         onClick={() => setCalOpen(false)}
                         disabled={!calRangeStart}
-                        className="text-[13px] font-semibold px-[20px] py-[8px] rounded-[8px] transition-all"
+                        className="text-sm font-semibold px-[20px] py-[8px] rounded-sm transition-all"
                         style={{
                           background: calRangeStart
                             ? "linear-gradient(135deg, var(--color-tm-primary-color05), var(--color-tm-primary-color12))"
@@ -2122,7 +2122,7 @@ export const Reports = () => {
         />
 
         {/* Chart */}
-        <Chart data={chartData} className="h-[180px] w-full bg-linear-to-l from-tm-neutral-color06 to-tm-neutral-color05 rounded-lg shadow-[0px_8px_8px_-2px_rgba(0,0,0,0.05),0px_2px_2px_0px_rgba(0,0,0,0.10),0px_-1px_0px_0px_rgba(255,255,255,0.10)] outline outline-1 outline-offset-1 outline-border-subtle/5" />
+        <Chart data={chartData} className="h-[180px] w-full bg-linear-to-l from-tm-neutral-color06 to-tm-neutral-color05 rounded-lg shadow-[0px_8px_8px_-2px_rgba(0,0,0,0.05),0px_2px_2px_0px_rgba(0,0,0,0.10),0px_-1px_0px_0px_rgba(255,255,255,0.10)] outline outline-offset-1 outline-border-subtle/5" />
 
         {/* Transactions total — admin only */}
         {isAdmin && (
@@ -2159,7 +2159,7 @@ export const Reports = () => {
         </div>
 
         {/* Refunded / Total Sales */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid lg:grid-cols-2 gap-4">
           <Card radius="var(--radius-m)">
             <div className="flex flex-col gap-0" style={{ padding: 'var(--space-20)' }}>
               <span className="stat-label">Refunded</span>
@@ -2235,7 +2235,7 @@ export const Reports = () => {
 
             {topCustomers.length === 0 ? (
               <div className="flex flex-col items-center py-[32px] gap-[8px]">
-                <span className="text-[28px]">👤</span>
+                <span className="text-3xl">👤</span>
                 <span style={{ fontSize: 'var(--font-size-body-s)', color: 'var(--color-text-muted)' }}>
                   No customer data for this period
                 </span>
@@ -2275,7 +2275,7 @@ export const Reports = () => {
                     }}
                   >
                     <div
-                      className="rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0"
+                      className="rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
                       style={{ width: '16px', height: '16px', background: avatarBg, fontSize: '7px' }}
                     >
                       {initials}
@@ -2300,14 +2300,14 @@ export const Reports = () => {
                 <span className="stat-label">Users</span>
                 {newCustomerCount > 0 && (
                   <span
-                    className="inline-flex items-center gap-2 px-2 py-1 rounded-xl border text-[14px] leading-[1.4] font-bold"
+                    className="inline-flex items-center gap-2 px-2 py-1 rounded-xl border text-sm leading-[1.4] font-bold"
                     style={{ background: "var(--color-success)", color:"#28ff70" }}
                   >
                     ↑ {newCustomerCount}
                   </span>
                 )}
               </div>
-              <div className="text-[26px] font-bold text-white mt-[4px] leading-none">
+              <div className="text-xl font-bold text-white mt-[4px] leading-none">
                 {allCustomers.length.toLocaleString()}
               </div>
             </div>
@@ -2351,7 +2351,7 @@ export const Reports = () => {
 
           {topPerformers.length === 0 ? (
             <div className="flex flex-col items-center py-[32px] gap-[8px]">
-              <span className="text-[28px]">📈</span>
+              <span className="text-3xl">📈</span>
               <span style={{ fontSize: 'var(--font-size-body-s)', color: 'var(--color-text-muted)' }}>
                 No performance data for this period
               </span>
@@ -2474,11 +2474,11 @@ export const Reports = () => {
                 <span className="stat-label">Users</span>
                
               </div>
-              <div className="grid grid-cols-2 gap-4 justify-items-end items-center text-[26px] font-bold mt-[4px] leading-none">
+              <div className="grid grid-cols-2 gap-4 justify-items-end items-center text-xl font-bold mt-[4px] leading-none">
                <div className="w-full"> {nonAdmin.length.toLocaleString()}</div>
                <div className=""> {newUsersCount > 0 && (
                   <span
-                    className="inline-flex items-center gap-[3px] text-sm font-bold px-[10px] py-[4px] rounded-full"
+                    className="inline-flex items-center gap-[3px] text-sm font-bold px-4 py-[4px] rounded-full"
                      style={{ background: "#006622", color:"#28ff70", border:"1px solid #28ff70" }}
                   >
                     ↑ {newUsersCount}

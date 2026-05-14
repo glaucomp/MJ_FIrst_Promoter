@@ -28,7 +28,7 @@ const Field = ({
   placeholder?: string; type?: string; hint?: string; required?: boolean;
 }) => (
   <div className="flex flex-col gap-[6px]">
-    <label className="text-[#9e9e9e] text-[11px] font-bold uppercase tracking-[0.5px]">
+    <label className="text-[#9e9e9e] text-xs font-bold uppercase">
       {label}{required && <span className="text-[#9fe870] ml-[2px]">*</span>}
     </label>
     <input
@@ -36,9 +36,9 @@ const Field = ({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[14px] py-[10px] text-[14px] text-white placeholder-[#444] focus:outline-none focus:border-[#9fe870] transition-colors"
+      className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[14px] py-4 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#9fe870] transition-colors"
     />
-    {hint && <p className="text-[10px] text-[#555] leading-[1.4]">{hint}</p>}
+    {hint && <p className="text-xs text-[#555] leading-[1.4]">{hint}</p>}
   </div>
 );
 
@@ -176,17 +176,17 @@ export const Settings = () => {
   };
 
   return (
-    <div className="flex flex-col gap-6">
-      <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">Settings</h1>
-
-      {/* Profile Information */}
-      <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-4 shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-[20px]">
-        <h2 className="text-[20px] leading-[1.4] font-bold text-white">
+    <div className="flex flex-col items-start gap-4">
+      <h1 className="text-3xl leading-[36px] font-semibold text-white lg:w-full">Settings</h1>
+      <div className="grid grid-cols-2 gap-4 w-full">
+              {/* Profile Information */}
+      <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-sm p-4 shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-5 w-full col-span-full lg:col-span-1">
+        <h2 className="text-lg leading-[1.4] font-bold text-white">
           Profile Information
         </h2>
         <div className="flex flex-col gap-[16px]">
           <div className="flex flex-col gap-[8px]">
-            <label htmlFor="profileName" className="text-[#9e9e9e] text-[14px] leading-[1.4] font-bold uppercase tracking-[0.2px]">
+            <label htmlFor="profileName" className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase">
               Name
             </label>
             <input
@@ -194,11 +194,11 @@ export const Settings = () => {
               type="text"
               value={user?.name || ''}
               readOnly
-              className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[16px] py-[12px] text-[16px] text-white"
+              className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] text-base text-white"
             />
           </div>
           <div className="flex flex-col gap-[8px]">
-            <label htmlFor="profileUsername" className="text-[#9e9e9e] text-[14px] leading-[1.4] font-bold uppercase tracking-[0.2px]">
+            <label htmlFor="profileUsername" className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase">
               Username
             </label>
             <div className="relative">
@@ -209,7 +209,7 @@ export const Settings = () => {
                 readOnly
                 aria-readonly="true"
                 placeholder="—"
-                className="w-full bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[16px] py-[12px] pr-[44px] text-[16px] text-white opacity-80 select-all placeholder-[#444]"
+                className="w-full bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] pr-[44px] text-base text-white opacity-80 select-all placeholder-[#444]"
               />
               <span
                 aria-hidden="true"
@@ -224,7 +224,7 @@ export const Settings = () => {
             </div>
           </div>
           <div className="flex flex-col gap-[8px]">
-            <label htmlFor="profileEmail" className="text-[#9e9e9e] text-[14px] leading-[1.4] font-bold uppercase tracking-[0.2px]">
+            <label htmlFor="profileEmail" className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase">
               Email
             </label>
             <input
@@ -232,18 +232,18 @@ export const Settings = () => {
               type="email"
               value={user?.email || ''}
               readOnly
-              className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[16px] py-[12px] text-[16px] text-white"
+              className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] text-base text-white"
             />
           </div>
           <div className="flex flex-col gap-[8px]">
-            <span className="text-[#9e9e9e] text-[14px] leading-[1.4] font-bold uppercase tracking-[0.2px]">
+            <span className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase">
               Role
             </span>
-            <div className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[16px] py-[12px] flex items-center gap-[8px]">
-              <span className="text-[16px] text-white font-medium">
+            <div className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] flex items-center gap-[8px]">
+              <span className="text-base text-white font-medium">
                 {user?.role ? (ROLE_DISPLAY[user.role] ?? user.role.replace('_', ' ').toUpperCase()) : ''}
               </span>
-              <span className="px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border bg-tm-success-color12 border-[#00d948] text-[#28ff70]">
+              <span className="px-[12px] py-[4px] rounded-full text-xs font-bold border bg-tm-success-color12 border-tm-success-color09 text-tm-success-color05">
                 Active
               </span>
             </div>
@@ -252,21 +252,21 @@ export const Settings = () => {
       </div>
 
       {/* Preferences */}
-      <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-4 shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-[20px]">
-        <h2 className="text-[20px] leading-[1.4] font-bold text-white">
+      <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-sm p-4 shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-5 w-full col-span-full lg:col-span-1">
+        <h2 className="text-lg leading-[1.4] font-bold text-white">
           Preferences
         </h2>
         <div className="flex flex-col gap-[16px]">
-          <label className="flex items-center justify-between p-[16px] bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] cursor-pointer hover:border-[#ff0f5f] transition-colors">
-            <span className="text-white text-[16px] font-medium">Email Notifications</span>
+          <label className="flex items-center justify-between p-[16px] bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm cursor-pointer hover:border-[#ff0f5f] transition-colors">
+            <span className="text-white text-base font-medium">Email Notifications</span>
             <input 
               type="checkbox" 
               className="w-[24px] h-[24px] accent-[#ff0f5f] cursor-pointer" 
               defaultChecked 
             />
           </label>
-          <label className="flex items-center justify-between p-[16px] bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] cursor-pointer hover:border-[#ff0f5f] transition-colors">
-            <span className="text-white text-[16px] font-medium">Push Notifications</span>
+          <label className="flex items-center justify-between p-[16px] bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm cursor-pointer hover:border-[#ff0f5f] transition-colors">
+            <span className="text-white text-base font-medium">Push Notifications</span>
             <input 
               type="checkbox" 
               className="w-[24px] h-[24px] accent-[#ff0f5f] cursor-pointer" 
@@ -277,12 +277,12 @@ export const Settings = () => {
       </div>
 
       {/* Payout Settings — Wise */}
-      <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-4 shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-[20px]">
+      <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-sm p-4 shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-5 w-full col-span-full">
 
         {/* Header */}
         <div className="flex items-start gap-[12px] flex-col lg:flex-row">
        <div
-              className="w-[32px] h-[32px] rounded-full flex items-center justify-center text-[#173300] font-black text-[14px]"
+              className="w-[32px] h-[32px] rounded-full flex items-center justify-center text-[#173300] font-black text-sm"
               style={{ background: "linear-gradient(135deg,#9fe870,#9fe870)" }}
             >
               <svg className="w-4" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 20 20">
@@ -290,8 +290,8 @@ export const Settings = () => {
 </svg>
           </div>
           <div className="flex flex-col gap-[2px]">
-            <h2 className="text-[20px] leading-[1.4] font-bold text-white">Wise Payout</h2>
-            <p className="text-[13px] text-[#9e9e9e]">
+            <h2 className="text-lg leading-[1.4] font-bold text-white">Wise Payout</h2>
+            <p className="text-sm text-[#9e9e9e]">
               Enter your bank details — we'll create a Wise recipient account automatically
             </p>
           </div>
@@ -300,20 +300,20 @@ export const Settings = () => {
         {/* Already linked */}
         {(user as any)?.wiseRecipientId && (
           <div
-            className="flex items-center gap-[12px] px-[14px] py-[12px] rounded-[8px]"
+            className="flex items-center gap-[12px] px-[14px] py-[12px] rounded-sm"
             style={{ background: 'rgba(0,217,72,0.06)', border: '1px solid rgba(0,217,72,0.2)' }}
           >
-            <span className="text-[20px]">✓</span>
+            <span className="text-lg">✓</span>
             <div className="flex flex-col gap-[2px]">
-              <span className="text-[12px] font-semibold" style={{ color: '#00d948' }}>Wise account linked</span>
-              <span className="text-[13px] text-white font-mono">
+              <span className="text-xs font-semibold" style={{ color: '#00d948' }}>Wise account linked</span>
+              <span className="text-sm text-white font-mono">
                 ID: {(user as any).wiseRecipientId}
                 {user?.wiseEmail && <span className="text-[#555] font-sans font-normal ml-[8px]">{user.wiseEmail}</span>}
               </span>
             </div>
             <button
               onClick={() => setWiseMessage(null)}
-              className="ml-auto text-[11px] font-semibold px-[10px] py-[5px] rounded-[6px]"
+              className="ml-auto text-xs font-semibold px-4 py-[5px] rounded-sm"
               style={{ background: 'rgba(0,185,255,0.1)', color: '#00b9ff', border: '1px solid rgba(0,185,255,0.2)' }}
             >
               Update
@@ -323,7 +323,7 @@ export const Settings = () => {
 
         {/* Bank type selector */}
         <div className="flex flex-col gap-[8px]">
-          <span className="text-[#9e9e9e] text-[11px] font-bold uppercase tracking-[0.5px]">
+          <span className="text-[#9e9e9e] text-xs font-bold uppercase">
             Bank Account Type
           </span>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-[8px]">
@@ -337,17 +337,17 @@ export const Settings = () => {
                 key={t.id}
                 type="button"
                 onClick={() => { setBankType(t.id); setWiseMessage(null); }}
-                className="flex flex-col gap-[2px] px-3 py-2 lg:py-4 rounded-[8px] text-left transition-all border"
+                className="flex flex-col gap-[2px] px-3 py-2 lg:py-4 rounded-sm text-left transition-all border"
                 style={{
                   background: bankType === t.id ? 'rgba(159, 232, 112, 0.1)' : '#1a1a1a',
                   borderColor: bankType === t.id ? 'rgb(159, 232, 112)' : 'rgba(255,255,255,0.08)',
                   boxShadow: bankType === t.id ? '0 0 0 1px rgba(0,185,255,0.2)' : 'none',
                 }}
               >
-                <span className="text-[12px] font-bold" style={{ color: bankType === t.id ? 'rgb(159, 232, 112)' : 'white' }}>
+                <span className="text-xs font-bold" style={{ color: bankType === t.id ? 'rgb(159, 232, 112)' : 'white' }}>
                   {t.label}
                 </span>
-                <span className="text-[10px]" style={{ color: bankType === t.id ? 'rgb(159, 232, 112)' : 'rgba(255, 255, 255, 0.3)' }}>{t.sub}</span>
+                <span className="text-xs" style={{ color: bankType === t.id ? 'rgb(159, 232, 112)' : 'rgba(255, 255, 255, 0.3)' }}>{t.sub}</span>
               </button>
             ))}
           </div>
@@ -357,7 +357,7 @@ export const Settings = () => {
         {bankType === 'australian' && (
           <div className="flex flex-col gap-[12px]">
             <Field label="Account Holder Name" value={holderName} onChange={setHolderName} placeholder="Jane Doe" />
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-[10px]">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <Field
                 label="BSB Number"
                 value={bsb}
@@ -374,7 +374,7 @@ export const Settings = () => {
         {bankType === 'aba' && (
           <div className="flex flex-col gap-[12px]">
             <Field label="Account Holder Name" value={holderName} onChange={setHolderName} placeholder="Jane Doe" />
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-[10px]">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <Field
                 label="Routing Number (ABA)"
                 value={routingNumber}
@@ -385,7 +385,7 @@ export const Settings = () => {
               <Field label="Account Number" value={accountNumber} onChange={setAccountNumber} placeholder="12345678" />
             </div>
             <div className="flex flex-col gap-[6px]">
-              <span className="text-[#9e9e9e] text-[11px] font-bold uppercase tracking-[0.5px]">
+              <span className="text-[#9e9e9e] text-xs font-bold uppercase">
                 Account Type<span className="text-[#9fe870] ml-[2px]">*</span>
               </span>
               <div className="flex gap-[8px]">
@@ -394,7 +394,7 @@ export const Settings = () => {
                     key={t}
                     type="button"
                     onClick={() => setAccountType(t)}
-                    className="flex-1 py-[9px] rounded-[8px] text-[13px] font-semibold capitalize transition-all border"
+                    className="flex-1 py-[9px] rounded-sm text-sm font-semibold capitalize transition-all border"
                     style={{
                       background: accountType === t ? 'rgb(159, 232, 112, 0.1)' : '#1a1a1a',
                       borderColor: accountType === t ? 'rgb(159, 232, 112)' : 'rgba(255,255,255,0.08)',
@@ -412,7 +412,7 @@ export const Settings = () => {
               <div className="flex flex-col gap-[6px]">
                 <label
                   htmlFor="stateSelect"
-                  className="text-[#9e9e9e] text-[11px] font-bold uppercase tracking-[0.5px]"
+                  className="text-[#9e9e9e] text-xs font-bold uppercase"
                 >
                   State<span className="text-[#9fe870] ml-[2px]">*</span>
                 </label>
@@ -420,7 +420,7 @@ export const Settings = () => {
                   id="stateSelect"
                   value={stateCode}
                   onChange={(e) => setStateCode(e.target.value)}
-                  className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[12px] py-[10px] text-[14px] text-white focus:outline-none focus:border-[#9fe870] transition-colors"
+                  className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[12px] py-4 text-sm text-white focus:outline-none focus:border-[#9fe870] transition-colors"
                 >
                   {US_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
@@ -483,7 +483,7 @@ export const Settings = () => {
         {/* Feedback */}
         {wiseMessage && (
           <div
-            className="flex items-center gap-[8px] px-[14px] py-[10px] rounded-[8px] text-[13px] font-medium"
+            className="flex items-center gap-[8px] px-[14px] py-4 rounded-sm text-sm font-medium"
             style={{
               background: wiseMessage.type === 'success' ? 'var(--color-tm-success-color12)' : 'var(--color-tm-danger-color12)',
               border: `1px solid ${wiseMessage.type === 'success' ? 'var(--color-tm-success-color05)' : 'var(--color-tm-danger-color05)'}`,
@@ -493,6 +493,7 @@ export const Settings = () => {
             {wiseMessage.type === 'success' ? '✓' : '✕'} {wiseMessage.text}
           </div>
         )}
+      </div>
       </div>
     </div>
   );

@@ -18,13 +18,13 @@ export const Chart = ({ data, className = '' }: ChartProps) => {
 
   const renderBars = (keys: string[], heights: number[], highlights: boolean[]) => (
     <div
-      className="absolute flex gap-[10px] justify-center"
+      className="absolute flex gap-4 justify-center"
       style={{ inset: PAD, alignItems: 'stretch' }}
     >
       {keys.map((key, i) => (
         <div key={key} className="flex-1 max-w-[44px] flex flex-col justify-end">
           <div
-            className={`w-full rounded-[8px] transition-all ${highlights[i] ? 'bg-linear-to-b from-[#ff0f5f] to-[#990033]' : ''}`}
+            className={`w-full rounded-sm transition-all ${highlights[i] ? 'bg-linear-to-b from-[#ff0f5f] to-[#990033]' : ''}`}
             style={{
               height: `${heights[i]}%`,
               background: highlights[i] ? undefined : 'var(--color-surface-overlay, #3a3e48)',

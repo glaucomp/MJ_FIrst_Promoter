@@ -33,7 +33,7 @@ export const Dashboard = () => {
             <h1 className="sr-only">Dashboard</h1>
             <LogoLottie height={48} width={200} />
           </div>
-          <p className="text-[16px] leading-[1.4] text-[#9e9e9e] font-medium tracking-[0.2px]">
+          <p className="text-base leading-[1.4] text-[#9e9e9e] font-medium">
             Welcome back, {user?.name}…
           </p>
         </div>
@@ -75,10 +75,10 @@ export const Dashboard = () => {
 
     <div className="flex flex-col gap-[16px]">
         <div className="flex items-center justify-between">
-          <p className="text-[16px] leading-[1.4] text-[#9e9e9e] font-medium tracking-[0.2px]">
+          <p className="text-base leading-[1.4] text-[#9e9e9e] font-medium">
             Monthly Statistics
           </p>
-          <button className="text-[14px] leading-[1.4] text-[#ff1f69] font-medium underline tracking-[0.2px]">
+          <button className="text-sm leading-[1.4] text-[#ff1f69] font-medium underline">
             View Details
           </button>
         </div>
@@ -89,7 +89,7 @@ export const Dashboard = () => {
       </div>
 
       <div className="flex flex-col gap-[16px]">
-        <p className="text-[16px] leading-[1.4] text-[#9e9e9e] font-medium tracking-[0.2px]">Quick Tasks</p>
+        <p className="text-base leading-[1.4] text-[#9e9e9e] font-medium">Quick Tasks</p>
         <div className="grid grid-cols-1 gap-[12px] lg:grid-cols-2">
           {(user?.role === 'team_manager' || user?.role === 'account_manager') && (
             <>

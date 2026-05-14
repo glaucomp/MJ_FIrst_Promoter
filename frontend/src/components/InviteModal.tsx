@@ -132,13 +132,13 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-[20px]">
-      <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] w-full max-w-[500px]">
+      <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-sm p-[24px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] w-full max-w-[500px]">
         <div className="flex flex-col gap-[20px]">
           <div className="flex items-center justify-between">
-            <h2 className="text-[20px] leading-[1.4] font-bold text-white">{title}</h2>
+            <h2 className="text-lg leading-[1.4] font-bold text-white">{title}</h2>
             <button
               onClick={handleClose}
-              className="text-[#9e9e9e] hover:text-white text-[24px] leading-none"
+              className="text-[#9e9e9e] hover:text-white text-xl leading-none"
             >
               ×
             </button>
@@ -147,14 +147,14 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
           {!generatedUrl ? (
             <>
               <div className="flex flex-col gap-[8px]">
-                <label className="text-[#9e9e9e] text-[14px] leading-[1.4] font-bold uppercase tracking-[0.2px]">
+                <label className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase">
                   Campaign
                 </label>
                 <select
                   value={selectedCampaignId}
                   onChange={(e) => setSelectedCampaignId(e.target.value)}
-                  disabled={campaigns.length === 0}
-                  className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[16px] py-[12px] text-[16px] text-white focus:outline-none focus:border-[#ff0f5f] disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={campaigns.length === 0 || userRole === 'account_manager'}
+                  className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] text-base text-white focus:outline-none focus:border-[#ff0f5f] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {campaigns.map((campaign) => (
                     <option key={campaign.id} value={campaign.id}>
@@ -163,7 +163,7 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
                   ))}
                 </select>
                 {campaigns.length === 0 && (
-                  <p className="text-[#ffcc33] text-[13px] leading-[1.4] mt-[4px]">
+                  <p className="text-[#ffcc33] text-sm leading-[1.4] mt-[4px]">
                     {userRole === 'account_manager'
                       ? 'No public campaign is linked to your account manager campaign yet. Ask an admin to set the linked campaign on the Campaigns page.'
                       : 'No active public campaigns are available. Ask an admin to enable a campaign.'}
@@ -172,8 +172,8 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
               </div>
 
               {quota && !quota.unlimited && (
-                <div className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[16px] py-[12px]">
-                  <p className="text-[14px] text-[#9e9e9e]">
+                <div className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px]">
+                  <p className="text-sm text-[#9e9e9e]">
                     Remaining invites: <span className="text-white font-bold">{quota.remaining}</span> / {quota.used + quota.remaining}
                   </p>
                 </div>
@@ -181,7 +181,7 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
 
               {type === 'referral' && (
                 <div className="flex flex-col gap-[8px]">
-                  <label className="text-[#9e9e9e] text-[14px] leading-[1.4] font-bold uppercase tracking-[0.2px]">
+                  <label className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase">
                     Email
                   </label>
                   <input
@@ -190,14 +190,14 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="promoter@example.com"
-                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[16px] py-[12px] text-[16px] text-white focus:outline-none focus:border-[#ff0f5f]"
+                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] text-base text-white focus:outline-none focus:border-[#ff0f5f]"
                   />
                 </div>
               )}
 
               {error && (
-                <div className="bg-[#660000] border border-[#cc0000] rounded-[8px] px-[16px] py-[12px]">
-                  <p className="text-[#ff2a2a] text-[14px] leading-[1.4] font-medium">{error}</p>
+                <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-sm px-[16px] py-[12px]">
+                  <p className="text-tm-danger-color05 text-sm leading-[1.4] font-medium">{error}</p>
                 </div>
               )}
 
@@ -209,49 +209,49 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
                   (type === 'referral' && !isEmailValid) ||
                   (quota?.remaining === 0 && !quota?.unlimited)
                 }
-                className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[24px] py-[14px] text-white text-[16px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-sm px-[24px] py-[14px] text-white text-base font-bold leading-[1.4] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? 'Generating...' : 'Generate Link'}
               </button>
             </>
           ) : (
             <>
-              <div className="bg-[#006622] border border-[#00d948] rounded-[8px] px-[16px] py-[12px]">
-                <p className="text-[#28ff70] text-[14px] leading-[1.4] font-medium">
+              <div className="bg-tm-success-color12 border border-tm-success-color09 rounded-sm px-[16px] py-[12px]">
+                <p className="text-tm-success-color05 text-sm leading-[1.4] font-medium">
                   {type === 'referral' ? 'Invite link generated successfully!' : 'Tracking link created successfully!'}
                 </p>
               </div>
 
               {type === 'referral' && emailSent === true && (
-                <div className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[16px] py-[12px]">
-                  <p className="text-[#9e9e9e] text-[14px] leading-[1.4]">
+                <div className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px]">
+                  <p className="text-[#9e9e9e] text-sm leading-[1.4]">
                     Invite email sent to <span className="text-white font-medium">{sentToEmail}</span>
                   </p>
                 </div>
               )}
 
               {type === 'referral' && emailSent === false && (
-                <div className="bg-[#332200] border border-[#cc9900] rounded-[8px] px-[16px] py-[12px]">
-                  <p className="text-[#ffcc33] text-[14px] leading-[1.4]">
+                <div className="bg-[#332200] border border-[#cc9900] rounded-sm px-[16px] py-[12px]">
+                  <p className="text-[#ffcc33] text-sm leading-[1.4]">
                     Email delivery failed &mdash; share the link manually with <span className="font-medium">{sentToEmail}</span>.
                   </p>
                 </div>
               )}
 
               <div className="flex flex-col gap-[8px]">
-                <label className="text-[#9e9e9e] text-[14px] leading-[1.4] font-bold uppercase tracking-[0.2px]">
+                <label className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase">
                   {type === 'referral' ? 'Invite Code' : 'Short Code'}
                 </label>
-                <div className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[16px] py-[12px] text-white font-mono">
+                <div className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] text-white font-mono">
                   {generatedCode}
                 </div>
               </div>
 
               <div className="flex flex-col gap-[8px]">
-                <label className="text-[#9e9e9e] text-[14px] leading-[1.4] font-bold uppercase tracking-[0.2px]">
+                <label className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase">
                   URL
                 </label>
-                <div className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[16px] py-[12px] text-white break-all text-[14px]">
+                <div className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] text-white break-all text-sm">
                   {generatedUrl}
                 </div>
               </div>
@@ -259,13 +259,13 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
               <div className="flex gap-[12px]">
                 <button
                   onClick={handleCopyUrl}
-                  className="flex-1 bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[24px] py-[14px] text-white text-[16px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+                  className="flex-1 bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-sm px-[24px] py-[14px] text-white text-base font-bold leading-[1.4] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
                 >
                   Copy URL
                 </button>
                 <button
                   onClick={handleClose}
-                  className="flex-1 bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[24px] py-[14px] text-white text-[16px] font-bold leading-[1.4] tracking-[0.2px] hover:bg-[#252525] active:scale-[0.98] transition-all"
+                  className="flex-1 bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[24px] py-[14px] text-white text-base font-bold leading-[1.4] hover:bg-[#252525] active:scale-[0.98] transition-all"
                 >
                   Done
                 </button>

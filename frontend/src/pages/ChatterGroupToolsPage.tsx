@@ -19,15 +19,15 @@ const InitialsAvatar = ({
 
   if (photoUrl) {
     return (
-      <div className="w-[36px] h-[36px] rounded-full overflow-hidden shrink-0 bg-[#1a1a1c]">
+      <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 bg-[#1a1a1c]">
         <img src={photoUrl} alt={name} className="w-full h-full object-cover" />
       </div>
     );
   }
 
   return (
-    <div className="w-[36px] h-[36px] rounded-full bg-linear-to-br from-[#ff0f5f] to-[#cc0047] flex items-center justify-center shrink-0">
-      <span className="text-white text-[13px] font-bold leading-none">
+    <div className="w-9 h-9 rounded-full bg-linear-to-br from-[#ff0f5f] to-[#cc0047] flex items-center justify-center shrink-0">
+      <span className="text-white text-sm font-bold leading-none">
         {initials}
       </span>
     </div>
@@ -55,7 +55,7 @@ const SocialIcon = ({ platform }: { platform: string }) => {
     case "bluesky":
       return (
         <svg
-          className="w-[24px] h-[24px] text-[#1185fe]"
+          className="w-6 h-6 text-[#1185fe]"
           viewBox="0 0 24 24"
           fill="currentColor"
         >
@@ -64,7 +64,7 @@ const SocialIcon = ({ platform }: { platform: string }) => {
       );
     case "instagram":
       return (
-        <svg className="w-[24px] h-[24px]" viewBox="0 0 24 24" fill="none">
+        <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
           <defs>
             <linearGradient id="ig-grad" x1="0%" y1="100%" x2="100%" y2="0%">
               <stop offset="0%" stopColor="#f09433" />
@@ -96,7 +96,7 @@ const SocialIcon = ({ platform }: { platform: string }) => {
     case "tiktok":
       return (
         <svg
-          className="w-[22px] h-[22px] text-white"
+          className="w-5.5 h-5.5 text-white"
           viewBox="0 0 24 24"
           fill="currentColor"
         >
@@ -108,14 +108,14 @@ const SocialIcon = ({ platform }: { platform: string }) => {
         <img
           src={onlyFansIcon}
           alt="OnlyFans"
-          className="w-[28px] h-[28px] object-contain"
+          className="w-7 h-7 object-contain"
           draggable={false}
         />
       );
     default:
       return (
         <svg
-          className="w-[22px] h-[22px] text-[#9e9e9e]"
+          className="w-5.5 h-5.5 text-[#9e9e9e]"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -188,11 +188,11 @@ const SocialCopyButton = ({
       onClick={handleCopy}
       title={copied ? `Copied ${label} link` : `Copy ${label} link`}
       aria-label={copied ? `Copied ${label} link` : `Copy ${label} link`}
-      className="relative w-[52px] h-[52px] flex items-center justify-center bg-[#141416] border border-[rgba(255,255,255,0.06)] rounded-[12px] hover:border-[rgba(255,255,255,0.2)] transition-colors cursor-pointer"
+      className="relative w-13 h-13 flex items-center justify-center bg-[#141416] border border-[rgba(255,255,255,0.06)] rounded-xl hover:border-[rgba(255,255,255,0.2)] transition-colors cursor-pointer"
     >
       {copied ? (
         <svg
-          className="w-[22px] h-[22px] text-tm-success-color05"
+          className="w-5.5 h-5.5 text-tm-success-color05"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -218,11 +218,11 @@ export const ChatterGroupToolsPage = () => {
 
   if (!group) {
     return (
-      <div className="flex flex-col items-center justify-center py-[64px] gap-[16px]">
-        <p className="text-[#9e9e9e] text-[15px]">Group not found.</p>
+      <div className="flex flex-col items-center justify-center py-16 gap-4">
+        <p className="text-[#9e9e9e] text-base">Group not found.</p>
         <button
           onClick={() => navigate("/chatter-portal")}
-          className="text-[#ff2a71] text-[14px] font-semibold hover:underline"
+          className="text-[#ff2a71] text-sm font-semibold hover:underline"
         >
           ← Back to groups
         </button>
@@ -234,10 +234,10 @@ export const ChatterGroupToolsPage = () => {
     group.name.replace(/\s+chatters?\s*$/i, "").trim() || group.name;
   const promoterName = group.promoter
     ? [group.promoter.firstName, group.promoter.lastName]
-        .filter(Boolean)
-        .join(" ") ||
-      group.promoter.username ||
-      modelName
+      .filter(Boolean)
+      .join(" ") ||
+    group.promoter.username ||
+    modelName
     : modelName;
   const promoter = group.promoter;
   const photoUrl = promoter?.photoUrl ?? null;
@@ -245,17 +245,17 @@ export const ChatterGroupToolsPage = () => {
   const socialLinks = promoter?.socialLinks ?? [];
 
   return (
-    <div className="flex flex-col gap-[28px] py-[24px]">
+    <div className="flex flex-col gap-7 py-6">
       {/* Header */}
-      <div className="flex flex-col gap-[4px]">
-        <div className="flex items-center gap-[12px]">
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-3">
           <button
             onClick={() => navigate("/chatter-portal")}
             className="text-[#9e9e9e] hover:text-white transition-colors shrink-0"
             aria-label="Back"
           >
             <svg
-              className="w-[20px] h-[20px]"
+              className="w-5 h-5"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -269,23 +269,23 @@ export const ChatterGroupToolsPage = () => {
             </svg>
           </button>
           <InitialsAvatar name={promoterName} photoUrl={photoUrl} />
-          <h1 className="text-[24px] font-bold text-white leading-[1.2]">
+          <h1 className="text-xl font-bold text-white leading-[1.2]">
             {promoterName} Tools
           </h1>
         </div>
       </div>
 
       {/* Tools */}
-      <div className="flex flex-col gap-[20px]">
+      <div className="flex flex-col gap-5">
         {/* Invite Link */}
-        <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-[18px] p-4 lg:p-8">
+        <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-2xl p-4 lg:p-8">
           {group.promoter?.username ? (
             <LinkGenerator username={group.promoter.username} />
           ) : (
-            <div className="flex flex-col gap-[8px]">
-              <div className="flex items-center gap-[8px]">
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
                 <svg
-                  className="w-[14px] h-[14px] text-[#ff2a71]"
+                  className="w-3.5 h-3.5 text-[#ff2a71]"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -297,11 +297,11 @@ export const ChatterGroupToolsPage = () => {
                     d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
                   />
                 </svg>
-                <p className="text-[11px] font-bold uppercase tracking-[0.3px] text-[#9e9e9e]">
+                <p className="text-xs font-bold uppercase text-[#9e9e9e]">
                   Invite Link
                 </p>
               </div>
-              <p className="text-[#555] text-[13px]">
+              <p className="text-[#555] text-sm">
                 Link generation unavailable — this group's promoter has no
                 username set.
               </p>
@@ -310,17 +310,17 @@ export const ChatterGroupToolsPage = () => {
         </div>
 
         {/* Talk Like [Influencer] */}
-        <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-[18px] p-4 lg:p-8">
+        <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-2xl p-4 lg:p-8">
           <VoiceMessage modelName={promoterName} voiceId={voiceId} />
         </div>
 
         {/* Model Info */}
-        <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-[18px] p-[24px] flex flex-col gap-[20px] lg:w-1/2">
+        <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-2xl p-6 flex flex-col gap-5 lg:w-1/2">
           {/* Section header */}
-          <div className="flex items-center gap-[10px]">
+          <div className="flex items-center gap-2.5">
             {/* Waveform icon */}
             <svg
-              className="w-[18px] h-[14px] shrink-0 text-[#ff2a71]"
+              className="w-4.5 h-3.5 shrink-0 text-[#ff2a71]"
               viewBox="0 0 18 14"
               fill="currentColor"
             >
@@ -331,16 +331,16 @@ export const ChatterGroupToolsPage = () => {
               <rect x="12" y="4" width="2" height="6" rx="1" />
               <rect x="15" y="5" width="2" height="4" rx="1" />
             </svg>
-            <p className="text-[13px] font-bold uppercase tracking-[0.3px] text-white">
+            <p className="text-sm font-bold uppercase text-white">
               {promoterName} Info
             </p>
           </div>
 
           {/* Profile picture + socials */}
-          <div className="flex gap-[16px] ">
+          <div className="flex gap-4 ">
             {/* Profile picture card */}
-            <div className="flex-1 bg-[#141416] border border-[rgba(255,255,255,0.06)] rounded-[14px] p-[20px] flex items-center gap-[18px]">
-              <div className="w-[72px] h-[72px] rounded-full bg-linear-to-br from-[#ff0f5f] to-[#cc0047] flex items-center justify-center shrink-0 overflow-hidden">
+            <div className="flex-1 bg-[#141416] border border-[rgba(255,255,255,0.06)] rounded-2xl p-5 flex items-center gap-4.5">
+              <div className="w-14 lg:w-15 h-14 lg:h-15 rounded-full bg-linear-to-br from-[#ff0f5f] to-[#cc0047] flex items-center justify-center shrink-0 overflow-hidden">
                 {photoUrl ? (
                   <img
                     src={photoUrl}
@@ -348,7 +348,7 @@ export const ChatterGroupToolsPage = () => {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <span className="text-white text-[22px] font-bold leading-none">
+                  <span className="text-white text-lg font-bold leading-none">
                     {promoterName
                       .split(" ")
                       .slice(0, 2)
@@ -357,7 +357,7 @@ export const ChatterGroupToolsPage = () => {
                   </span>
                 )}
               </div>
-              <p className="text-[#555] text-[13px]">Current Profile Picture</p>
+              <p className="text-tm-text-color09 text-sm lg:text-base">Current Profile Picture</p>
             </div>
 
             {/* Social icon grid — click to copy the URL to clipboard */}

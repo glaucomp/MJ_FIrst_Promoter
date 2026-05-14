@@ -41,15 +41,15 @@ const USER_TYPE_OPTIONS: { value: string; label: string }[] = [
 ];
 
 const SessionExpiredBanner = ({ onLogout }: { onLogout: () => void }) => (
-  <div className="bg-tm-danger-color12 border border-[#cc0000] rounded-[8px] p-[16px] flex flex-col gap-[12px]">
-    <p className="text-[#ff2a2a] text-[14px] font-bold">Session expired</p>
-    <p className="text-[#ff8080] text-[13px]">
+  <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-lg p-4 flex flex-col gap-3">
+    <p className="text-tm-danger-color05 text-sm font-bold">Session expired</p>
+    <p className="text-[#ff8080] text-base">
       Your login session is no longer valid. This usually happens after the
       server restarts. Please log out and log back in to continue.
     </p>
     <button
       onClick={onLogout}
-      className="self-start bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+      className="self-start bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-3 text-white text-sm font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
     >
       Log out &amp; log back in
     </button>
@@ -414,14 +414,14 @@ export const Models = () => {
       prev.map((u) =>
         u.accountManager?.id === updated.id
           ? {
-              ...u,
-              accountManager: {
-                ...u.accountManager,
-                email: updated.email,
-                firstName: updated.firstName ?? null,
-                lastName: updated.lastName ?? null,
-              },
-            }
+            ...u,
+            accountManager: {
+              ...u.accountManager,
+              email: updated.email,
+              firstName: updated.firstName ?? null,
+              lastName: updated.lastName ?? null,
+            },
+          }
           : u,
       ),
     );
@@ -439,11 +439,11 @@ export const Models = () => {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col gap-6">
-        <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">
+      <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
+        <h1 className="text-3xl leading-9 font-semibold text-white lg:w-full">
           Models
         </h1>
-        <p className="text-[16px] text-[#9e9e9e]">Loading...</p>
+        <p className="text-base text-[#9e9e9e]">Loading...</p>
       </div>
     );
   }
@@ -455,11 +455,11 @@ export const Models = () => {
 
     return (
       <div className="flex flex-col gap-6">
-        <div className="flex items-start justify-between flex-col lg:flex-row gap-3">
-          <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">
+        <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
+          <h1 className="text-3xl leading-9 font-semibold text-white lg:w-full">
             All Users
           </h1>
-          <div className="flex items-center  justify-between lg:justify-end lg:gap-4 w-full">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-4  justify-between lg:justify-end w-full">
             <p className="text-base text-[#9e9e9e]">
               {totalVisibleUsers} user{totalVisibleUsers !== 1 ? "s" : ""} ·{" "}
               {accountManagers.length} account manager
@@ -467,7 +467,7 @@ export const Models = () => {
             </p>
             <button
               onClick={() => setIsCreateUserModalOpen(true)}
-              className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+              className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-3 text-white text-sm font-bold leading-[1.4]  hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
             >
               + Create User
             </button>
@@ -475,11 +475,11 @@ export const Models = () => {
         </div>
 
         {/* Filter bar (search + user-type). Grouping by AM is always on. */}
-        <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[12px] flex flex-col lg:flex-row lg:items-end gap-[12px]">
-          <div className="flex flex-col gap-[6px] flex-1 min-w-[200px]">
+        <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-lg p-3 lg:p-6 flex flex-col lg:flex-row lg:items-end gap-3">
+          <div className="flex flex-col gap-2 flex-1 min-w-50">
             <label
               htmlFor="admin-users-search"
-              className="text-[#9e9e9e] text-[11px] font-bold uppercase tracking-[0.2px]"
+              className="text-[#9e9e9e] text-xs font-bold uppercase "
             >
               Search
             </label>
@@ -489,14 +489,14 @@ export const Models = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Name, email, or account manager…"
-              className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.08)] rounded-[8px] px-4 py-4 text-base text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
+              className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.08)] rounded-lg px-4 py-4 text-base text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
             />
           </div>
 
-          <div className="flex flex-col gap-[6px] min-w-[160px]">
+          <div className="flex flex-col gap-2 min-w-40">
             <label
               htmlFor="admin-users-type"
-              className="text-[#9e9e9e] text-[11px] font-bold uppercase tracking-[0.2px]"
+              className="text-[#9e9e9e] text-xs font-bold uppercase "
             >
               User Type
             </label>
@@ -504,7 +504,7 @@ export const Models = () => {
               id="admin-users-type"
               value={selectedUserType}
               onChange={(e) => setSelectedUserType(e.target.value)}
-              className="bg-[#1c1c1e] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-4 py-4 text-white text-base focus:outline-none focus:border-[#ff0f5f] appearance-none cursor-pointer pr-[28px]"
+              className="bg-[#1c1c1e] border border-[rgba(255,255,255,0.1)] rounded-lg px-4 py-4 text-white text-base focus:outline-none focus:border-[#ff0f5f] appearance-none cursor-pointer "
               style={{
                 backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239e9e9e' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
                 backgroundRepeat: "no-repeat",
@@ -526,7 +526,7 @@ export const Models = () => {
                 setSelectedUserType("");
                 setSearch("");
               }}
-              className="text-[#9e9e9e] hover:text-white text-[12px] underline self-start lg:self-center "
+              className="text-[#9e9e9e] hover:text-white text-xs underline self-start lg:self-center "
             >
               Clear filters
             </button>
@@ -536,15 +536,15 @@ export const Models = () => {
         {error === "SESSION_EXPIRED" ? (
           <SessionExpiredBanner onLogout={logout} />
         ) : error ? (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-[8px] p-[16px]">
-            <p className="text-red-400 text-[14px] font-semibold">{error}</p>
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+            <p className="text-red-400 text-sm font-semibold">{error}</p>
           </div>
         ) : null}
 
         {needsAssignmentCount > 0 && (
-          <div className="bg-[#3a2a0a] border border-[#b8860b]/50 rounded-[8px] px-[14px] py-[10px] flex items-center gap-[10px]">
-            <span className="text-[#ffb84d] text-[14px]">⚠</span>
-            <p className="text-[#ffd27a] text-[13px]">
+          <div className="bg-[#3a2a0a] border border-[#b8860b]/50 rounded-lg px-4 py-3 flex items-center gap-3">
+            <span className="text-[#ffb84d] text-sm">⚠</span>
+            <p className="text-[#ffd27a] text-base">
               {needsAssignmentCount} user{needsAssignmentCount !== 1 ? "s" : ""}{" "}
               need
               {needsAssignmentCount === 1 ? "s" : ""} to be assigned. Drag them
@@ -555,7 +555,7 @@ export const Models = () => {
 
         {/* Sections grouped by Account Manager. Drag a user card onto any
             manager section to reassign them. */}
-        <div className="flex flex-col gap-[20px]">
+        <div className="flex flex-col gap-5">
           {adminSections.map((section) => {
             const isNeeds = section.variant === "needs";
             const isPayers = section.variant === "payers";
@@ -617,7 +617,7 @@ export const Models = () => {
                   }`}
               >
                 <div
-                  className={`flex items-center justify-between gap-[12px] border rounded-[10px] px-[16px] py-[12px] transition-colors ${isNeeds
+                  className={`flex flex-col lg:flex-row lg:items-center justify-between gap-3 border rounded-[10px] px-4 py-3 transition-colors ${isNeeds
                     ? "bg-[#2a1f0a] border-[#b8860b]/40 hover:border-[#b8860b]/70"
                     : "bg-[#1a1a1a] border-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.16)]"
                     }`}
@@ -625,7 +625,7 @@ export const Models = () => {
                   <button
                     type="button"
                     onClick={() => toggleSection(section.key)}
-                    className="flex items-start gap-[12px] min-w-0 text-left flex-1"
+                    className="flex items-start gap-3 min-w-0 text-left flex-1"
                   >
                     <span
                       className={`inline-block text-2xl transition-transform ${isCollapsed ? "" : "rotate-90"
@@ -651,7 +651,7 @@ export const Models = () => {
                       )}
                     </div>
                   </button>
-                  <div className="flex items-center gap-[12px] flex-shrink-0">
+                  <div className="flex justify-between lg:justify-start items-center gap-3 shrink-0">
                     <span
                       className={`text-base ${isNeeds ? "text-[#d9b26a]" : "text-tm-text-color09"
                         }`}
@@ -660,15 +660,15 @@ export const Models = () => {
                       {section.users.length !== 1 ? "s" : ""}
                     </span>
                     {sectionTotal > 0 && !isNeeds && !isPayers && (
-                      <span className="text-white text-[13px] font-semibold">
+                      <span className="text-white text-base font-semibold">
                         ${sectionTotal.toFixed(2)}
                       </span>
                     )}
                     {section.variant === "manager" && section.manager && (
-                      <div className="flex items-center gap-[6px] pl-[8px] ml-[4px] border-l border-[rgba(255,255,255,0.08)]">
+                      <div className="flex items-center gap-2 pl-2 ml-1 border-l border-[rgba(255,255,255,0.08)]">
                         {confirmDeleteManagerId === section.manager.id ? (
                           <>
-                            <span className="text-[#9e9e9e] text-[12px] hidden lg:inline">
+                            <span className="text-[#9e9e9e] text-xs hidden lg:inline">
                               Delete?
                             </span>
                             <button
@@ -680,7 +680,7 @@ export const Models = () => {
                               disabled={
                                 deletingManagerId === section.manager.id
                               }
-                              className="px-[10px] py-[4px] rounded-[6px] text-[12px] font-bold bg-tm-danger-color12 border border-[#cc0000] text-[#ff2a2a] hover:bg-[#880000] disabled:opacity-50 transition-colors"
+                              className="px-3 py-1 rounded-md text-xs font-bold bg-tm-danger-color12 border border-tm-danger-color09 text-tm-danger-color05 hover:bg-[#880000] disabled:opacity-50 transition-colors"
                             >
                               {deletingManagerId === section.manager.id
                                 ? "..."
@@ -689,7 +689,7 @@ export const Models = () => {
                             <button
                               type="button"
                               onClick={() => setConfirmDeleteManagerId(null)}
-                              className="px-[10px] py-[4px] rounded-[6px] text-[12px] font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white transition-colors"
+                              className="px-3 py-1 rounded-md text-xs font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white transition-colors"
                             >
                               No
                             </button>
@@ -702,7 +702,7 @@ export const Models = () => {
                                 if (section.manager)
                                   setEditingManager(section.manager);
                               }}
-                              className="px-[10px] py-[4px] rounded-[6px] text-[12px] font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white hover:border-[rgba(255,255,255,0.2)] transition-colors"
+                              className="px-3 py-1 rounded-md text-xs font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white hover:border-[rgba(255,255,255,0.2)] transition-colors"
                               title="Edit account manager"
                             >
                               Edit
@@ -713,7 +713,7 @@ export const Models = () => {
                                 if (section.manager)
                                   setConfirmDeleteManagerId(section.manager.id);
                               }}
-                              className="px-[10px] py-[4px] rounded-[6px] text-[12px] font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-tm-danger-color04 hover:text-tm-danger-color05 hover:border-[#cc0000]/50 transition-colors"
+                              className="px-3 py-1 rounded-md text-xs font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-tm-danger-color04 hover:text-tm-danger-color05 hover:border-tm-danger-color09/50 transition-colors"
                               title="Delete account manager"
                             >
                               Delete
@@ -727,7 +727,7 @@ export const Models = () => {
 
                 {!isCollapsed && (
                   <div
-                    className={`flex flex-col justify-center align-center gap-[12px]  min-h-[32px] bg-tm-neutral-color08 px-6 py-8 rounded-b-xl overflow-clip  ${isDropTarget
+                    className={`flex flex-col justify-center align-center gap-3  min-h-8 bg-tm-neutral-color08 px-3 py-4 lg:px-6 lg:py-8 rounded-b-xl overflow-clip  ${isDropTarget
                       ? "border-[#ff0f5f]"
                       : isNeeds
                         ? "border-[#b8860b]/40"
@@ -752,7 +752,7 @@ export const Models = () => {
                           </svg>
                         )}
 
-                        <p className="text-tm-text-color10 text-center text-lg px-4 py-3">
+                        <p className="text-tm-text-color10 text-center text-lg px-4 py-2">
                           {canDrop
                             ? "Drop a user here to assign them to this Account Manager."
                             : "No users in this bucket."}
@@ -786,7 +786,7 @@ export const Models = () => {
                                 }
                                 : undefined
                             }
-                            className={`bg-linear-to-t from-[#212121] to-[#23252a] border rounded-[8px] p-[16px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] transition-all ${isDraggable
+                            className={`bg-linear-to-t from-[#212121] to-[#23252a] border rounded-lg p-4 shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] transition-all ${isDraggable
                               ? "cursor-grab active:cursor-grabbing"
                               : ""
                               } ${draggingUserId === apiUser.id
@@ -799,7 +799,7 @@ export const Models = () => {
                                 : undefined
                             }
                           >
-                            <div className="flex items-start justify-between gap-[12px] flex-col lg:flex-row">
+                            <div className="flex items-start justify-between gap-3 flex-col lg:flex-row">
                               {isDraggable && (
                                 <span
                                   className="text-[#666] text-xl font-bold select-none"
@@ -809,25 +809,25 @@ export const Models = () => {
                                   ⋮⋮
                                 </span>
                               )}
-                              <div className="flex flex-col gap-[8px] w-full">
-                                <div className="flex items-center gap-[8px]">
-                                  <p className="text-white text-[18px] font-semibold">
+                              <div className="flex flex-col gap-2 w-full">
+                                <div className="flex items-center gap-2">
+                                  <p className="text-white text-base font-semibold">
                                     {apiUser.firstName} {apiUser.lastName}
                                   </p>
                                 </div>
-                                <p className="text-[#9e9e9e] text-[14px]">
+                                <p className="text-[#9e9e9e] text-sm">
                                   {apiUser.email}
                                 </p>
-                                <div className="flex items-center gap-[8px] w-full">
+                                <div className="flex items-center gap-2 w-full">
                                   <span
-                                    className={`px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border ${apiUser.isActive
-                                      ? "bg-tm-success-color12 border-[#00d948] text-[#28ff70]"
-                                      : "bg-tm-danger-color12 border-[#cc0000] text-[#ff2a2a]"
+                                    className={`px-3 py-1 rounded-full text-xs font-bold border ${apiUser.isActive
+                                      ? "bg-tm-success-color12 border-tm-success-color09 text-tm-success-color05"
+                                      : "bg-tm-danger-color12 border-tm-danger-color09 text-tm-danger-color05"
                                       }`}
                                   >
                                     {apiUser.isActive ? "Active" : "Inactive"}
                                   </span>
-                                  <span className="px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]">
+                                  <span className="px-3 py-2 rounded-full text-xs font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]">
                                     {apiUser.userType?.toUpperCase() === "TEAM_MANAGER"
                                       ? "PROMOTER +"
                                       : apiUser.userType?.toLowerCase().replace("_", " ")}
@@ -835,13 +835,13 @@ export const Models = () => {
                                 </div>
                               </div>
 
-                              <div className="flex flex-col items-start lg:items-end gap-[8px] w-full">
+                              <div className="flex flex-col items-start lg:items-end gap-2 w-full">
                                 {apiUser.stats && !isPayers && (
-                                  <div className="text-left flex flex-col gap-[4px] w-full lg:text-right">
+                                  <div className="text-left flex flex-col gap-1 w-full lg:text-right">
                                     <p className="text-[#9e9e9e] text-xs uppercase">
                                       Earnings
                                     </p>
-                                    <p className="text-white text-2xl font-bold">
+                                    <p className="text-white text-xl lg:text-2xl font-bold">
                                       ${apiUser.stats.totalEarnings.toFixed(2)}
                                     </p>
                                     <p className="text-[#9e9e9e] text-sm">
@@ -852,8 +852,8 @@ export const Models = () => {
                                 )}
 
                                 {confirmDeleteId === apiUser.id ? (
-                                  <div className="flex items-center gap-[8px] mt-[4px]">
-                                    <span className="text-[#9e9e9e] text-[12px]">
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <span className="text-[#9e9e9e] text-xs">
                                       Delete?
                                     </span>
                                     <button
@@ -861,7 +861,7 @@ export const Models = () => {
                                         handleDeleteUser(apiUser.id)
                                       }
                                       disabled={deletingUserId === apiUser.id}
-                                      className="px-[10px] py-[4px] rounded-[6px] text-[12px] font-bold bg-tm-danger-color12 border border-[#cc0000] text-[#ff2a2a] hover:bg-[#880000] disabled:opacity-50 transition-colors"
+                                      className="px-3 py-1 rounded-md text-xs font-bold bg-tm-danger-color12 border border-tm-danger-color09 text-tm-danger-color05 hover:bg-[#880000] disabled:opacity-50 transition-colors"
                                     >
                                       {deletingUserId === apiUser.id
                                         ? "..."
@@ -869,7 +869,7 @@ export const Models = () => {
                                     </button>
                                     <button
                                       onClick={() => setConfirmDeleteId(null)}
-                                      className="px-[10px] py-[4px] rounded-[6px] text-[12px] font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white transition-colors"
+                                      className="px-3 py-1 rounded-md text-xs font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white transition-colors"
                                     >
                                       No
                                     </button>
@@ -879,7 +879,7 @@ export const Models = () => {
                                     onClick={() =>
                                       setConfirmDeleteId(apiUser.id)
                                     }
-                                    className="text-tm-danger-color04 text-sm hover:text-tm-danger-color05 hover:-translate-y-0.5 transition-all"
+                                    className="text-tm-danger-color04 text-sm hover:text-tm-danger-color05 hover:-translate-y-0.5 transition-all self-end"
                                   >
                                     Delete
                                   </button>
@@ -897,8 +897,8 @@ export const Models = () => {
           })}
 
           {adminSections.length === 0 && (
-            <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] text-center">
-              <p className="text-[#9e9e9e] text-[16px]">
+            <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-lg p-6 text-center">
+              <p className="text-[#9e9e9e] text-base">
                 {allUsers.length === 0
                   ? "No users found."
                   : "No users match your filters."}
@@ -933,8 +933,8 @@ export const Models = () => {
 
     return (
       <div className="flex flex-col gap-6">
-        <div className="flex items-start justify-between flex-col lg:flex-row gap-3">
-          <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">
+        <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
+          <h1 className="text-3xl leading-9 font-semibold text-white lg:w-full">
             My Users
           </h1>
           <div className="flex items-center justify-between lg:justify-end lg:gap-4 w-full">
@@ -944,18 +944,18 @@ export const Models = () => {
             </p>
             <button
               onClick={() => setIsCreateUserModalOpen(true)}
-              className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+              className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-3 text-white text-sm font-bold leading-[1.4]  hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
             >
               + Create Chatter
             </button>
           </div>
         </div>
 
-        <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[12px] flex flex-col lg:flex-row lg:items-end gap-[12px]">
-          <div className="flex flex-col gap-[6px] flex-1 min-w-[200px]">
+        <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-lg p-3 flex flex-col lg:flex-row lg:items-end gap-3">
+          <div className="flex flex-col gap-1.5 flex-1 min-w-50">
             <label
               htmlFor="am-users-search"
-              className="text-[#9e9e9e] text-[11px] font-bold uppercase tracking-[0.2px]"
+              className="text-[#9e9e9e] text-xs font-bold uppercase "
             >
               Search
             </label>
@@ -965,14 +965,14 @@ export const Models = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Name or email…"
-              className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.08)] rounded-[8px] px-[12px] py-[9px] text-[14px] text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
+              className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.08)] rounded-lg px-3 py-3 text-sm text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
             />
           </div>
 
-          <div className="flex flex-col gap-[6px] min-w-[160px]">
+          <div className="flex flex-col gap-2 min-w-40">
             <label
               htmlFor="am-users-type"
-              className="text-[#9e9e9e] text-[11px] font-bold uppercase tracking-[0.2px]"
+              className="text-[#9e9e9e] text-xs font-bold uppercase "
             >
               User Type
             </label>
@@ -980,7 +980,7 @@ export const Models = () => {
               id="am-users-type"
               value={selectedUserType}
               onChange={(e) => setSelectedUserType(e.target.value)}
-              className="bg-[#1c1c1e] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[12px] py-[9px] text-white text-[14px] focus:outline-none focus:border-[#ff0f5f] appearance-none cursor-pointer pr-[28px]"
+              className="bg-[#1c1c1e] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-3 text-white text-sm focus:outline-none focus:border-[#ff0f5f] appearance-none cursor-pointer pr-7"
               style={{
                 backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239e9e9e' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
                 backgroundRepeat: "no-repeat",
@@ -1004,7 +1004,7 @@ export const Models = () => {
                 setSelectedUserType("");
                 setSearch("");
               }}
-              className="text-[#9e9e9e] hover:text-white text-[12px] underline self-start lg:self-end lg:mb-[10px]"
+              className="text-[#9e9e9e] hover:text-white text-xs underline self-start lg:self-end lg:mb-3"
             >
               Clear filters
             </button>
@@ -1014,15 +1014,15 @@ export const Models = () => {
         {error === "SESSION_EXPIRED" ? (
           <SessionExpiredBanner onLogout={logout} />
         ) : error ? (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-[8px] p-[16px]">
-            <p className="text-red-400 text-[14px] font-semibold">{error}</p>
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+            <p className="text-red-400 text-sm font-semibold">{error}</p>
           </div>
         ) : null}
 
-        <div className="flex flex-col gap-[20px]">
+        <div className="flex flex-col gap-5">
           {visibleAdminUsers.length === 0 ? (
-            <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] text-center">
-              <p className="text-[#9e9e9e] text-[16px]">
+            <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-lg p-6 text-center">
+              <p className="text-[#9e9e9e] text-base">
                 {allUsers.length === 0
                   ? "You have no users yet."
                   : "No users match your filters."}
@@ -1030,39 +1030,39 @@ export const Models = () => {
             </div>
           ) : (
             accountManagerUserSections.map(({ typeKey, label, users }) => (
-              <section key={typeKey} className="flex flex-col gap-[12px]">
-                <div className="flex items-baseline justify-between gap-[12px] border-b border-[rgba(255,255,255,0.08)] pb-[10px]">
-                  <h2 className="text-[16px] font-semibold text-white">
+              <section key={typeKey} className="flex flex-col gap-3">
+                <div className="flex items-baseline justify-between gap-3 border-b border-[rgba(255,255,255,0.08)] pb-3">
+                  <h2 className="text-base font-semibold text-white">
                     {label}
                   </h2>
-                  <span className="text-[13px] text-[#9e9e9e] tabular-nums">
+                  <span className="text-base text-tm-text-color07 tabular-nums">
                     {users.length}
                   </span>
                 </div>
-                <div className="flex flex-col gap-[12px]">
+                <div className="flex flex-col gap-3">
                   {users.map((apiUser) => (
                     <div
                       key={apiUser.id}
-                      className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[16px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)]"
+                      className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-lg p-4 shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)]"
                     >
-                      <div className="flex items-start justify-between gap-[12px] flex-col lg:flex-row">
-                        <div className="flex flex-col gap-[8px] w-full">
-                          <p className="text-white text-[18px] font-semibold">
+                      <div className="flex items-start justify-between gap-3 flex-col lg:flex-row">
+                        <div className="flex flex-col gap-2 w-full">
+                          <p className="text-white text-base font-semibold">
                             {apiUser.firstName} {apiUser.lastName}
                           </p>
-                          <p className="text-[#9e9e9e] text-[14px]">
+                          <p className="text-[#9e9e9e] text-sm">
                             {apiUser.email}
                           </p>
-                          <div className="flex items-center gap-[8px] w-full">
+                          <div className="flex items-center gap-2 w-full">
                             <span
-                              className={`px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border ${apiUser.isActive
-                                ? "bg-tm-success-color12 border-[#00d948] text-[#28ff70]"
-                                : "bg-tm-danger-color12 border-[#cc0000] text-[#ff2a2a]"
+                              className={`px-3 py-1 rounded-full text-xs font-bold border ${apiUser.isActive
+                                ? "bg-tm-success-color12 border-tm-success-color09 text-tm-success-color05"
+                                : "bg-tm-danger-color12 border-tm-danger-color09 text-tm-danger-color05"
                                 }`}
                             >
                               {apiUser.isActive ? "Active" : "Inactive"}
                             </span>
-                            <span className="px-[12px] py-[4px] rounded-[100px] text-[12px] font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]">
+                            <span className="px-3 py-1 rounded-full text-xs font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-tm-text-color09">
                               {apiUser.userType?.toUpperCase() === "TEAM_MANAGER"
                                 ? "PROMOTER +"
                                 : apiUser.userType?.toLowerCase().replace("_", " ")}
@@ -1071,15 +1071,15 @@ export const Models = () => {
                         </div>
 
                         {apiUser.stats && (
-                          <div className="flex flex-col items-start lg:items-end gap-[8px] w-full">
-                            <div className="text-left flex flex-col gap-[4px] w-full lg:text-right">
-                              <p className="text-[#9e9e9e] text-[12px] uppercase">
+                          <div className="flex flex-col items-start lg:items-end gap-2 w-full">
+                            <div className="text-left flex flex-col gap-1 w-full lg:text-right">
+                              <p className="text-[#9e9e9e] text-xs uppercase">
                                 Earnings
                               </p>
-                              <p className="text-white text-[20px] font-bold">
+                              <p className="text-white text-lg font-bold">
                                 ${apiUser.stats.totalEarnings.toFixed(2)}
                               </p>
-                              <p className="text-[#9e9e9e] text-[12px]">
+                              <p className="text-[#9e9e9e] text-xs">
                                 {apiUser.stats.activeReferrals} active referrals
                               </p>
                             </div>
@@ -1112,13 +1112,13 @@ export const Models = () => {
   if (user?.baseRole === "account_manager") {
     return (
       <div className="flex flex-col gap-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">
+        <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
+          <h1 className="text-3xl leading-9 font-semibold text-white lg:w-full">
             My Promoters
           </h1>
           <button
             onClick={() => handleOpenInviteModal("referral")}
-            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all 
+            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-2 text-white text-base font-bold leading-[1.4]  hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all 
 whitespace-nowrap"
           >
             + Create Referral Link
@@ -1128,12 +1128,12 @@ whitespace-nowrap"
         {error === "SESSION_EXPIRED" ? (
           <SessionExpiredBanner onLogout={logout} />
         ) : error ? (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-[8px] p-[16px]">
-            <p className="text-red-400 text-[14px] font-semibold">{error}</p>
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+            <p className="text-red-400 text-sm font-semibold">{error}</p>
           </div>
         ) : null}
 
-        <p className="text-[14px] text-[#9e9e9e]">
+        <p className="text-sm text-[#9e9e9e]">
           {myReferrals.length} total referrals
         </p>
 
@@ -1153,13 +1153,13 @@ whitespace-nowrap"
   if (user?.baseRole === "team_manager") {
     return (
       <div className="flex flex-col gap-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">
+        <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
+          <h1 className="text-3xl leading-9 font-semibold text-white lg:w-full">
             My Team
           </h1>
           <button
             onClick={() => handleOpenInviteModal("referral")}
-            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-3 text-white text-sm font-bold leading-[1.4]  hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
           >
             + Create Referral Link
           </button>
@@ -1168,12 +1168,12 @@ whitespace-nowrap"
         {error === "SESSION_EXPIRED" ? (
           <SessionExpiredBanner onLogout={logout} />
         ) : error ? (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-[8px] p-[16px]">
-            <p className="text-red-400 text-[14px] font-semibold">{error}</p>
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+            <p className="text-red-400 text-sm font-semibold">{error}</p>
           </div>
         ) : null}
 
-        <p className="text-[14px] text-[#9e9e9e]">
+        <p className="text-sm text-[#9e9e9e]">
           {myReferrals.length} total referrals
         </p>
 
@@ -1197,13 +1197,13 @@ whitespace-nowrap"
   if (user?.baseRole === "promoter") {
     return (
       <div className="flex flex-col gap-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">
+        <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
+          <h1 className="text-3xl leading-9 font-semibold text-white lg:w-full">
             My Promoters
           </h1>
           <button
             onClick={() => handleOpenInviteModal("referral")}
-            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all whitespace-nowrap"
+            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-3 text-white text-base font-bold leading-[1.4]  hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all whitespace-nowrap"
           >
             + Create Referral Link
           </button>
@@ -1212,12 +1212,12 @@ whitespace-nowrap"
         {error === "SESSION_EXPIRED" ? (
           <SessionExpiredBanner onLogout={logout} />
         ) : error ? (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-[8px] p-[16px]">
-            <p className="text-red-400 text-[14px] font-semibold">{error}</p>
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+            <p className="text-red-400 text-sm font-semibold">{error}</p>
           </div>
         ) : null}
 
-        <p className="text-[14px] text-[#9e9e9e]">
+        <p className="text-sm text-[#9e9e9e]">
           {myReferrals.length} total referrals
         </p>
 
@@ -1234,11 +1234,11 @@ whitespace-nowrap"
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">
+    <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
+      <h1 className="text-3xl leading-9 font-semibold text-white lg:w-full">
         Models
       </h1>
-      <p className="text-[#9e9e9e] text-[16px]">Access denied</p>
+      <p className="text-[#9e9e9e] text-base">Access denied</p>
     </div>
   );
 };
@@ -1331,7 +1331,7 @@ const CHIP_CLASS: Record<ChipState, string> = {
 
 const StatusChip = ({ state }: { state: ChipState }) => (
   <span
-    className={`inline-flex items-center px-4 py-1 rounded-[100px] text-sm font-medium border ${CHIP_CLASS[state]}`}
+    className={`inline-flex items-center px-4 py-1 rounded-full text-sm font-medium border ${CHIP_CLASS[state]}`}
   >
     {CHIP_LABEL[state]}
   </span>
@@ -1423,10 +1423,10 @@ const OnboardingIconPill = ({
   ariaLabel?: string;
 }) => {
   const base =
-    "inline-flex items-center justify-center rounded-[100px] bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-white px-[10px] py-[4px]";
+    "inline-flex items-center justify-center rounded-full bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-white px-3 py-3";
   if (onClick) {
     return (
-      <div className="glass-button-outer rounded-[100px]">
+      <div className="glass-button-outer rounded-full">
         <button
           type="button"
           onClick={onClick}
@@ -1467,7 +1467,7 @@ const OnboardingChecklist = ({
   dimmed?: boolean;
 }) => (
   <ul
-    className={`flex flex-col gap-[6px] text-[13px] ${dimmed ? "opacity-60" : ""
+    className={`flex flex-col gap-2 text-base ${dimmed ? "opacity-60" : ""
       }`}
   >
     {ONBOARDING_STEPS.map(({ idx, label }) => {
@@ -1475,7 +1475,7 @@ const OnboardingChecklist = ({
       return (
         <li
           key={idx}
-          className={`flex items-center gap-[8px] tracking-tight ${done ? "text-tm-text-color01 line-through opacity-30" : "text-tm-text-color01"
+          className={`flex items-center gap-2 tracking-tight ${done ? "text-tm-text-color01 line-through opacity-30" : "text-tm-text-color01"
             }`}
         >
           <span className="text-tm-text-color08 text-sm w-4">
@@ -1539,9 +1539,9 @@ const ReferralStepStream = ({
           prev.map((r) =>
             r.id === referralId && r.preUser
               ? {
-                  ...r,
-                  preUser: { ...r.preUser, currentStep: data.currentStep },
-                }
+                ...r,
+                preUser: { ...r.preUser, currentStep: data.currentStep },
+              }
               : r,
           ),
         );
@@ -1805,25 +1805,25 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
         prev.map((r) =>
           r.id === referral.id
             ? {
-                ...r,
-                preUser: {
-                  ...(r.preUser ?? {
-                    currentStep: 0,
-                    status: null,
-                    lastCheckedAt: null,
-                    teasemeUserId: null,
-                    surveyLink: null,
-                    assetLink: null,
-                    welcomeEmailSentAt: null,
-                  }),
-                  currentStep: result.preUser.currentStep,
-                  status: result.preUser.status,
-                  lastCheckedAt: result.preUser.lastCheckedAt,
-                  teasemeUserId: result.preUser.teasemeUserId,
-                  surveyLink: result.preUser.surveyLink,
-                  assetLink: result.preUser.assetLink,
-                },
-              }
+              ...r,
+              preUser: {
+                ...(r.preUser ?? {
+                  currentStep: 0,
+                  status: null,
+                  lastCheckedAt: null,
+                  teasemeUserId: null,
+                  surveyLink: null,
+                  assetLink: null,
+                  welcomeEmailSentAt: null,
+                }),
+                currentStep: result.preUser.currentStep,
+                status: result.preUser.status,
+                lastCheckedAt: result.preUser.lastCheckedAt,
+                teasemeUserId: result.preUser.teasemeUserId,
+                surveyLink: result.preUser.surveyLink,
+                assetLink: result.preUser.assetLink,
+              },
+            }
             : r,
         ),
       );
@@ -1872,12 +1872,12 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
         prev.map((r) =>
           r.id === referral.id && r.preUser
             ? {
-                ...r,
-                preUser: {
-                  ...r.preUser,
-                  welcomeEmailSentAt: result.welcomeEmailSentAt,
-                },
-              }
+              ...r,
+              preUser: {
+                ...r.preUser,
+                welcomeEmailSentAt: result.welcomeEmailSentAt,
+              },
+            }
             : r,
         ),
       );
@@ -1902,8 +1902,8 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
 
   if (referrals.length === 0) {
     return (
-      <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] text-center">
-        <p className="text-[#9e9e9e] text-[16px]">
+      <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-lg p-6 text-center">
+        <p className="text-[#9e9e9e] text-base">
           No referrals yet. Create a referral link to get started.
         </p>
       </div>
@@ -1923,22 +1923,22 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
     ];
 
   return (
-    <div className="flex flex-col gap-[12px]">
-      <div className="flex items-center gap-[8px] flex-wrap">
+    <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 items-center gap-2 flex-wrap">
         {filterOptions.map((opt) => {
           const isSelected = filter === opt.id;
           return (
             <button
               key={opt.id}
               onClick={() => setFilter(opt.id)}
-              className={`px-[14px] py-[6px] rounded-[100px] text-[12px] font-bold border transition-colors ${isSelected
-                ? "bg-[#ff0f5f] border-[#ff0f5f] text-white"
+              className={`px-4 py-2 rounded-lg text-sm  border transition-colors ${isSelected
+                ? "bg-tm-primary-color12 border-tm-primary-color10 text-tm-primary-color02"
                 : "bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white hover:border-[rgba(255,255,255,0.3)]"
                 }`}
             >
               {opt.label}
               <span
-                className={`ml-[6px] font-normal ${isSelected ? "opacity-80" : ""}`}
+                className={`ml-2 font-normal ${isSelected ? "opacity-80" : ""}`}
               >
                 {opt.count}
               </span>
@@ -1949,9 +1949,9 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
 
       {toast && (
         <div
-          className={`rounded-[8px] px-[16px] py-[12px] border text-[14px] font-medium ${toast.kind === "success"
-            ? "bg-tm-success-color12 border-[#00d948] text-[#28ff70]"
-            : "bg-tm-danger-color12 border-[#cc0000] text-[#ff2a2a]"
+          className={`rounded-lg px-4 py-3 border text-sm font-medium ${toast.kind === "success"
+            ? "bg-tm-success-color12 border-tm-success-color09 text-tm-success-color05"
+            : "bg-tm-danger-color12 border-tm-danger-color09 text-tm-danger-color05"
             }`}
         >
           {toast.text}
@@ -1959,8 +1959,8 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
       )}
 
       {visibleReferrals.length === 0 && (
-        <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] text-center">
-          <p className="text-[#9e9e9e] text-[14px]">
+        <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-lg p-6 text-center">
+          <p className="text-[#9e9e9e] text-sm">
             No {filter === "all" ? "active or pending" : filter} referrals
             {filter === "all" && (counts.expired > 0 || counts.denied > 0)
               ? ` — ${[
@@ -1975,7 +1975,7 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
         </div>
       )}
 
-      <div className="grid gap-[16px] lg:grid-cols-2 grid-cols-1">
+      <div className="grid gap-4 lg:grid-cols-2 grid-cols-1">
         {visibleReferrals.map((referral) => {
           const chipState = deriveChipState(referral);
           // The Onboarding "Open" icon always points at the in-flight survey
@@ -2017,26 +2017,25 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
           const isBusy = busyId === referral.id;
           const step = referral.preUser?.currentStep ?? 0;
           const assetLink = referral.preUser?.assetLink ?? null;
-          const canCopyAssetLink = !!assetLink;
+          const normalizedAssetLink = assetLink?.replace(/^"|"$/g, "").trim() || null;
+          const canCopyAssetLink = !!normalizedAssetLink;
           const assetLinkTooltip = canCopyAssetLink
             ? "Copy landing page link"
             : "Landing page link not available yet";
           // On lp_live the onboarding history is purely informational — the
           // promoter has already finished the survey and the LP is live —
           // so we fade the checklist + header to 20% to push the eye toward
-          // the Assign Chatters CTA. The asset-link copy button stays at
-          // full opacity because it's still the primary affordance inside
-          // this block.
+          // the Assign Chatters CTA.
           const isLive = chipState === "lp_live";
           return (
             <div
               key={referral.id}
-              className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[16px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-[14px]"
+              className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-lg p-4 shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-4"
             >
               {/* Header: chip on the left, LEVEL N on the right */}
               <div className="flex flex-row items-center justify-between">
                 <StatusChip state={chipState} />
-                <div className="flex items-center gap-[6px] text-[#9e9e9e]">
+                <div className="flex items-center gap-2 text-[#9e9e9e]">
                   <span className="text-sm uppercase tracking-tight font-bold">
                     Level
                   </span>
@@ -2047,14 +2046,14 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
               </div>
 
               {/* Body: optional "Referred by" (AM view), campaign, invitee email */}
-              <div className="flex flex-col min-w-0 gap-[4px]">
+              <div className="flex flex-col min-w-0 gap-1">
                 {showReferredByLine && (
-                  <div className="flex flex-col gap-[6px] min-w-0">
+                  <div className="flex flex-col gap-2 min-w-0">
                     <p className="text-[#ff4d8d] text-sm font-medium truncate">
                       Referred by {referrerLabel}
                     </p>
                     {isAccountManagerViewer && (
-                      <p className="text-[#9e9e9e] text-[12px] font-medium leading-snug">
+                      <p className="text-[#9e9e9e] text-xs font-medium leading-snug">
                         They were invited through this promoter&apos;s link, not
                         through your account manager invite.
                       </p>
@@ -2072,7 +2071,7 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
                             showToast("error", "Could not copy link");
                           }
                         }}
-                        className="self-start text-left text-[12px] font-semibold text-tm-text-color10 hover:text-white underline underline-offset-2"
+                        className="self-start text-left text-xs font-semibold text-tm-text-color10 hover:text-white underline underline-offset-2"
                       >
                         Copy their invite link
                       </button>
@@ -2090,9 +2089,9 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
               {/* Onboarding checklist — always shown so the user sees survey
                   progress even on `building` / `lp_live` (a gentle history
                   cue rather than an interactive checklist). */}
-              <div className="relative px-[14px] py-[12px]">
+              <div className="relative px-4 py-3">
                 <div
-                  className={`flex items-center justify-between mb-[8px] ${isLive ? "opacity-20" : ""
+                  className={`flex items-center justify-between mb-2 ${isLive ? "opacity-20" : ""
                     }`}
                 >
                   <div className="flex items-center gap-2">
@@ -2105,7 +2104,7 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
                       active={!isLive && !isTerminalState}
                     />
                   </div>
-                  <div className="flex items-center gap-[8px]">
+                  <div className="flex items-center gap-2">
                     <span className="text-sm  text-tm-text-color09">
                       {Math.min(step, ONBOARDING_STEPS.length)}/
                       {ONBOARDING_STEPS.length}
@@ -2157,17 +2156,17 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
                     is disabled (cursor-not-allowed, no onClick) but the pill
                     keeps its full visual treatment so it looks identical
                     across every card state. */}
-                <div className="glass-button-outer">
+                <div className="absolute bottom-3 right-4 flex items-center gap-2">
+                  {/* Copy link (left) */}
                   <OnboardingIconPill
                     title={assetLinkTooltip}
                     ariaLabel={assetLinkTooltip}
-                    className={`absolute bottom-3 right-4 glass-button-inner ${canCopyAssetLink ? "" : "cursor-not-allowed"
-                      }`}
+                    className={`h-7 w-12 transition-all select-none ${canCopyAssetLink ? "cursor-pointer hover:-translate-y-0.5" : "cursor-not-allowed opacity-50"}`}
                     onClick={
                       canCopyAssetLink
                         ? async () => {
                           try {
-                            await navigator.clipboard.writeText(assetLink!);
+                            await navigator.clipboard.writeText(normalizedAssetLink!);
                             showToast("success", "Landing page link copied!");
                           } catch {
                             showToast(
@@ -2179,7 +2178,20 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
                         : undefined
                     }
                   >
-                    <OnboardingCopyIcon className="w-[14px] h-[14px]" />
+                    <OnboardingCopyIcon className="w-4 h-4" />
+                  </OnboardingIconPill>
+                  {/* Open in browser (right) */}
+                  <OnboardingIconPill
+                    title={canCopyAssetLink ? "Open landing page" : "Landing page not available yet"}
+                    ariaLabel={canCopyAssetLink ? "Open landing page" : "Landing page not available yet"}
+                    className={`h-7 w-12 transition-all select-none ${canCopyAssetLink ? "cursor-pointer hover:-translate-y-0.5" : "cursor-not-allowed opacity-50"}`}
+                    onClick={
+                      canCopyAssetLink
+                        ? () => window.open(normalizedAssetLink!, "_blank", "noopener,noreferrer")
+                        : undefined
+                    }
+                  >
+                    <OnboardingOpenIcon className="w-4 h-4" />
                   </OnboardingIconPill>
                 </div>
               </div>
@@ -2272,19 +2284,19 @@ const AdminOverrideRow = ({
   onReassign: (r: Referral) => void;
   showReassign: boolean;
 }) => (
-  <div className="flex items-center justify-between gap-[8px] pt-[6px] mt-[2px] border-t border-[rgba(255,255,255,0.06)]">
+  <div className="flex items-center justify-between gap-2 pt-2 mt-1 border-t border-[rgba(255,255,255,0.06)]">
     <span
-      className="text-[#9e9e9e] text-[11px] uppercase tracking-[0.3px]"
+      className="text-[#9e9e9e] text-xs uppercase"
       title="Admin-only overrides"
     >
       Admin
     </span>
-    <div className="flex items-center gap-[8px]">
+    <div className="flex items-center gap-2">
       {showReassign && (
         <button
           onClick={() => onReassign(referral)}
           disabled={busy}
-          className="bg-transparent border border-[rgba(255,255,255,0.14)] rounded-[6px] px-[10px] py-[6px] text-[#d0d0d0] text-[12px] font-bold hover:text-white hover:border-[rgba(255,255,255,0.3)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="bg-transparent border border-[rgba(255,255,255,0.14)] rounded-md px-3 py-2 text-[#d0d0d0] text-xs font-bold hover:text-white hover:border-[rgba(255,255,255,0.3)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           Reassign
         </button>
@@ -2292,7 +2304,7 @@ const AdminOverrideRow = ({
       <button
         onClick={() => onDelete(referral)}
         disabled={busy}
-        className="bg-transparent border border-[rgba(255,255,255,0.14)] rounded-[6px] px-[10px] py-[6px] text-[#d0d0d0] text-[12px] font-bold hover:text-[#ff2a2a] hover:border-[#cc0000] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        className="bg-transparent border border-[rgba(255,255,255,0.14)] rounded-md px-3 py-2 text-[#d0d0d0] text-xs font-bold hover:text-tm-danger-color05 hover:border-tm-danger-color09 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
       >
         Delete
       </button>
@@ -2314,7 +2326,7 @@ const SecondaryButton = ({
   <div className="glass-button-outer rounded-full">  <button
     onClick={onClick}
     disabled={disabled}
-    className={`glass-button-inner flex-1 bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-full px-[12px] py-[10px] text-white text-[13px] font-bold hover:bg-[#252525] disabled:opacity-40 disabled:cursor-not-allowed transition-colors ${className}`}
+    className={`glass-button-inner flex-1 bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-full px-3 py-3 text-white text-base font-bold hover:bg-[#252525] disabled:opacity-40 disabled:cursor-not-allowed transition-colors ${className}`}
   >
     {children}
   </button>
@@ -2333,7 +2345,7 @@ const GreenCta = ({
   <button
     onClick={onClick}
     disabled={disabled}
-    className="w-full bg-linear-to-b from-[#28ff70] to-[#00aa3c] rounded-[6px] px-[14px] py-[10px] text-black text-[13px] font-bold hover:from-[#3aff82] hover:to-[#00bc43] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+    className="w-full bg-linear-to-b from-tm-success-color05 to-[#00aa3c] rounded-md px-4 py-3 text-black text-base font-bold hover:from-[#3aff82] hover:to-[#00bc43] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
   >
     {children}
   </button>
@@ -2351,7 +2363,7 @@ const PinkCta = ({
   <button
     onClick={onClick}
     disabled={disabled}
-    className="w-full bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[6px] px-[14px] py-[10px] text-white text-[13px] font-bold hover:from-[#ff1f69] hover:to-[#d10050] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+    className="w-full bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-full px-8 py-3 text-white text-base font-bold hover:from-[#ff1f69] hover:to-[#d10050] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
   >
     {children}
   </button>
@@ -2398,12 +2410,12 @@ const CardActions = ({
         ? "This invite has expired."
         : "This invite has been denied.";
     return (
-      <div className="flex items-center justify-between gap-[8px]">
-        <span className="text-[#9e9e9e] text-[13px]">{message}</span>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[#9e9e9e] text-base">{message}</span>
         <button
           onClick={() => onDelete(referral)}
           disabled={busy}
-          className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[6px] px-[14px] py-[8px] text-[#9e9e9e] text-[13px] font-bold hover:text-[#ff2a2a] hover:border-[#cc0000] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-md px-4 py-2 text-[#9e9e9e] text-base font-bold hover:text-tm-danger-color05 hover:border-tm-danger-color09 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           Delete
         </button>
@@ -2413,21 +2425,21 @@ const CardActions = ({
 
   if (state === "waiting") {
     return (
-      <div className="flex flex-col gap-[8px]">
-        <div className="grid grid-cols-2 items-center gap-[8px]">
+      <div className="flex flex-col gap-2">
+        <div className="grid grid-cols-2 items-center gap-2">
           <SecondaryButton
             onClick={() => onDeny(referral)}
             disabled={busy}
-            className="hover:text-[#ff2a2a] hover:border-[#cc0000]"
+            className="hover:text-tm-danger-color05 hover:border-tm-danger-color09"
           >
-            <span className="inline-flex items-center justify-center gap-[6px]">
-              <DenyIcon className="w-[14px] h-[14px]" />
+            <span className="inline-flex items-center justify-center gap-2">
+              <DenyIcon className="w-4 h-4" />
               {busy ? "…" : "Deny"}
             </span>
           </SecondaryButton>
           <SecondaryButton onClick={() => onReassign(referral)} disabled={busy}>
-            <span className="inline-flex items-center justify-center gap-[6px]">
-              <ReassignIcon className="w-[14px] h-[14px]" />
+            <span className="inline-flex items-center justify-center gap-2">
+              <ReassignIcon className="w-4 h-4" />
               Reassign
             </span>
           </SecondaryButton>
@@ -2437,7 +2449,7 @@ const CardActions = ({
         <button
           disabled
           title="Waiting for the promoter to finish onboarding before a landing page can be ordered."
-          className="w-full rounded-full px-[14px] py-[10px] text-[13px] font-medium border border-[#28ff70] text-[#28ff70] opacity-40 cursor-not-allowed"
+          className="w-full rounded-full px-4 py-3 text-base font-medium border border-tm-success-color05 text-tm-success-color05 opacity-40 cursor-not-allowed"
         >
           Order Landing Page
         </button>
@@ -2451,8 +2463,8 @@ const CardActions = ({
   if (state === "order_lp") {
     if (!canOrderLandingPage) {
       return (
-        <div className="flex flex-col gap-[8px]">
-          <p className="w-full rounded-[6px] border border-[rgba(255,255,255,0.12)] bg-[#1a1a1a] px-[14px] py-[10px] text-[#9e9e9e] text-[13px] font-medium text-center">
+        <div className="flex flex-col gap-2">
+          <p className="w-full rounded-md border border-[rgba(255,255,255,0.12)] bg-[#1a1a1a] px-4 py-3 text-[#9e9e9e] text-base font-medium text-center">
             Onboarding is complete. Your account manager will order the landing
             page next.
           </p>
@@ -2461,7 +2473,7 @@ const CardActions = ({
       );
     }
     return (
-      <div className="flex flex-col gap-[8px]">
+      <div className="flex flex-col gap-2">
         <GreenCta onClick={() => onOrderLandingPage(referral)} disabled={busy}>
           {busy ? "Requesting…" : "Order Landing Page"}
         </GreenCta>
@@ -2472,11 +2484,11 @@ const CardActions = ({
 
   if (state === "building") {
     return (
-      <div className="flex flex-col gap-[8px]">
-        <div className="flex items-center gap-[8px] w-full rounded-[6px] border border-dashed border-tm-success-color06 bg-[rgba(34,191,86,0.05)] px-[14px] py-[10px] text-tm-success-color06 text-[13px] font-semibold">
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2 w-full rounded-md border border-dashed border-tm-success-color06 bg-[rgba(34,191,86,0.05)] px-4 py-3 text-tm-success-color06 text-base font-semibold">
           <span
             aria-hidden
-            className="h-[10px] w-[10px] rounded-full bg-tm-success-color06 animate-pulse"
+            className="h-3 w-3 rounded-full bg-tm-success-color06 animate-pulse"
           />
           Building landing page…
         </div>
@@ -2511,7 +2523,7 @@ const CardActions = ({
     referral.preUser.currentStep >= 5 &&
     !completedFirstLogin;
   return (
-    <div className="flex flex-col gap-[8px]">
+    <div className="flex flex-col gap-2">
       {canSendWelcomeEmail && (
         <SecondaryButton
           onClick={() => onSendWelcomeEmail(referral)}
@@ -2529,7 +2541,7 @@ const CardActions = ({
           {busy ? "Assigning…" : "Assign Chatters"}
         </PinkCta>
       ) : (
-        <p className="w-full rounded-[6px] border border-[rgba(255,255,255,0.12)] bg-[#1a1a1a] px-[14px] py-[10px] text-[#9e9e9e] text-[13px] font-medium text-center">
+        <p className="w-full rounded-md border border-[rgba(255,255,255,0.12)] bg-[#1a1a1a] px-4 py-3 text-[#9e9e9e] text-base font-medium text-center">
           Your account manager will assign chatters.
         </p>
       )}
@@ -2552,24 +2564,24 @@ const ModalShell = ({
   children: React.ReactNode;
 }) => (
   <div
-    className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-[16px]"
+    className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
     onClick={onClose}
   >
     <div
       onClick={(e) => e.stopPropagation()}
-      className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[10px] w-full max-w-[440px] p-[20px] flex flex-col gap-[16px]"
+      className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-lg w-full max-w-110 p-5 flex flex-col gap-4"
     >
-      <div className="flex items-start justify-between gap-[12px]">
-        <div className="flex flex-col gap-[2px] min-w-0">
-          <h3 className="text-white text-[18px] font-bold">{title}</h3>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-1 min-w-0">
+          <h3 className="text-white text-base font-bold">{title}</h3>
           {subtitle ? (
-            <p className="text-[#9e9e9e] text-[13px] truncate">{subtitle}</p>
+            <p className="text-[#9e9e9e] text-base truncate">{subtitle}</p>
           ) : null}
         </div>
         <button
           onClick={onClose}
           aria-label="Close"
-          className="text-[#9e9e9e] hover:text-white text-[20px] leading-none px-[6px]"
+          className="text-[#9e9e9e] hover:text-white text-lg leading-none px-2"
         >
           &#x2715;
         </button>
@@ -2633,22 +2645,22 @@ const ReassignModal = ({
       onClose={onClose}
     >
       {loading ? (
-        <p className="text-[#9e9e9e] text-[14px]">Loading account managers…</p>
+        <p className="text-[#9e9e9e] text-sm">Loading account managers…</p>
       ) : error ? (
-        <p className="text-[#ff2a2a] text-[14px]">{error}</p>
+        <p className="text-tm-danger-color05 text-sm">{error}</p>
       ) : managers.length === 0 ? (
-        <p className="text-[#9e9e9e] text-[14px]">
+        <p className="text-[#9e9e9e] text-sm">
           No account managers available to reassign to.
         </p>
       ) : (
-        <label className="flex flex-col gap-[6px]">
-          <span className="text-[12px] uppercase tracking-[0.08em] text-[#9e9e9e] font-bold">
+        <label className="flex flex-col gap-2">
+          <span className="text-xs uppercase tracking-widest text-[#9e9e9e] font-bold">
             New account manager
           </span>
           <select
             value={selectedId}
             onChange={(e) => setSelectedId(e.target.value)}
-            className="bg-[#0f0f0f] border border-[rgba(255,255,255,0.1)] rounded-[6px] px-[12px] py-[10px] text-white text-[14px] focus:outline-none focus:border-[#ff0f5f]"
+            className="bg-[#0f0f0f] border border-[rgba(255,255,255,0.1)] rounded-md px-3 py-3 text-white text-sm focus:outline-none focus:border-[#ff0f5f]"
           >
             <option value="" disabled>
               Select…
@@ -2661,18 +2673,18 @@ const ReassignModal = ({
           </select>
         </label>
       )}
-      <div className="flex justify-end gap-[8px] pt-[4px]">
+      <div className="flex justify-end gap-2 pt-1">
         <button
           onClick={onClose}
           disabled={busy}
-          className="px-[14px] py-[8px] rounded-[6px] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] text-[13px] font-bold hover:text-white"
+          className="px-4 py-2 rounded-md border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] text-base font-bold hover:text-white"
         >
           Cancel
         </button>
         <button
           onClick={() => selectedId && onSubmit(selectedId)}
           disabled={busy || !selectedId}
-          className="px-[14px] py-[8px] rounded-[6px] bg-linear-to-b from-[#ff0f5f] to-[#cc0047] text-white text-[13px] font-bold hover:from-[#ff1f69] hover:to-[#d10050] disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 py-2 rounded-md bg-linear-to-b from-[#ff0f5f] to-[#cc0047] text-white text-base font-bold hover:from-[#ff1f69] hover:to-[#d10050] disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {busy ? "Reassigning…" : "Reassign"}
         </button>
@@ -2735,22 +2747,22 @@ const AssignChattersModal = ({
       onClose={onClose}
     >
       {loading ? (
-        <p className="text-[#9e9e9e] text-[14px]">Loading chatter groups…</p>
+        <p className="text-[#9e9e9e] text-sm">Loading chatter groups…</p>
       ) : error ? (
-        <p className="text-[#ff2a2a] text-[14px]">{error}</p>
+        <p className="text-tm-danger-color05 text-sm">{error}</p>
       ) : groups.length === 0 ? (
-        <p className="text-[#9e9e9e] text-[14px]">
+        <p className="text-[#9e9e9e] text-sm">
           No chatter groups yet. Create one on the Chatters page first.
         </p>
       ) : (
-        <label className="flex flex-col gap-[6px]">
-          <span className="text-[12px] uppercase tracking-[0.08em] text-[#9e9e9e] font-bold">
+        <label className="flex flex-col gap-2">
+          <span className="text-xs uppercase tracking-widest text-[#9e9e9e] font-bold">
             Chatter group
           </span>
           <select
             value={selectedId}
             onChange={(e) => setSelectedId(e.target.value)}
-            className="bg-[#0f0f0f] border border-[rgba(255,255,255,0.1)] rounded-[6px] px-[12px] py-[10px] text-white text-[14px] focus:outline-none focus:border-[#ff0f5f]"
+            className="bg-[#0f0f0f] border border-[rgba(255,255,255,0.1)] rounded-md px-3 py-3 text-white text-sm focus:outline-none focus:border-[#ff0f5f]"
           >
             <option value="" disabled>
               Select…
@@ -2764,18 +2776,18 @@ const AssignChattersModal = ({
           </select>
         </label>
       )}
-      <div className="flex justify-end gap-[8px] pt-[4px]">
+      <div className="flex justify-end gap-2 pt-1">
         <button
           onClick={onClose}
           disabled={busy}
-          className="px-[14px] py-[8px] rounded-[6px] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] text-[13px] font-bold hover:text-white"
+          className="px-4 py-2 rounded-md border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] text-base font-bold hover:text-white"
         >
           Cancel
         </button>
         <button
           onClick={() => selectedId && onSubmit(selectedId)}
           disabled={busy || !selectedId}
-          className="px-[14px] py-[8px] rounded-[6px] bg-linear-to-b from-[#ff0f5f] to-[#cc0047] text-white text-[13px] font-bold hover:from-[#ff1f69] hover:to-[#d10050] disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 py-2 rounded-md bg-linear-to-b from-[#ff0f5f] to-[#cc0047] text-white text-base font-bold hover:from-[#ff1f69] hover:to-[#d10050] disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {busy ? "Assigning…" : "Assign"}
         </button>

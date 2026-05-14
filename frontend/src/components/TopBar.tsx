@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import type { UserRole } from '../types';
 import { IconLogout } from './NavIcons';
 import { LogoLottie } from './LogoLottie';
-import { defaultLandingPath, navItems } from './navConfig';
+import { defaultLandingPath, getNavForRole } from './navConfig';
 
 function initialsForUser(name: string, email: string): string {
   const trimmed = name.trim();
@@ -51,11 +51,7 @@ export const TopBar = () => {
 
         {/* Navigation - Centered */}
         <nav className="flex items-center gap-[8px] absolute left-1/2 -translate-x-1/2">
-          {navItems.filter(item => {
-            if (item.adminOnly) return user?.baseRole === 'admin';
-            if (item.allowedRoles) return item.allowedRoles.includes(user?.baseRole as UserRole);
-            return true;
-          }).map((item) => {
+          {getNavForRole(user?.baseRole).map((item) => {
             const isActive = location.pathname === item.path;
             const iconColor = isActive
               ? 'var(--color-tm-primary-color05, white)'
@@ -65,7 +61,7 @@ export const TopBar = () => {
               <button
                 key={item.id}
                 onClick={() => navigate(item.path)}
-                className={`flex items-center gap-[6px] px-[16px] py-[8px] rounded-[6px] hover:-translate-y-0.5 transition-all select-none ${
+                className={`flex items-center gap-[6px] px-[16px] py-[8px] rounded-sm hover:-translate-y-0.5 transition-all select-none whitespace-nowrap ${
                   isActive
                     ? 'bg-[#660022] border border-[#ff2a71]'
                     : 'hover:bg-[#292929]/50'
@@ -75,7 +71,7 @@ export const TopBar = () => {
                   <item.Icon width={16} height={16} />
                 </div>
                 <span
-                  className="text-[13px] font-medium"
+                  className="text-sm font-medium"
                   style={{ color: iconColor }}
                 >
                   {item.label}
@@ -91,11 +87,11 @@ export const TopBar = () => {
             <button
               type="button"
               onClick={() => navigate('/settings')}
-              className="flex items-center gap-[10px] min-w-0 max-w-[240px] rounded-[8px] px-[10px] py-[6px] hover:bg-[#292929]/50 transition-all text-left"
+              className="flex items-center gap-4 min-w-0 max-w-[240px] rounded-sm px-4 py-[6px] hover:bg-[#292929]/50 transition-all text-left"
               aria-label="Open account settings"
             >
               <span
-                className="flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full text-[12px] font-semibold tracking-[0.02em]"
+                className="flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full text-xs font-semibold tracking-widest"
                 style={{
                   background: 'linear-gradient(145deg, #660022 0%, #3d0014 100%)',
                   color: '#ffb3cc',
@@ -105,8 +101,8 @@ export const TopBar = () => {
                 {initialsForUser(user.name, user.email)}
               </span>
               <span className="flex min-w-0 flex-col gap-px">
-                <span className="truncate text-[13px] font-semibold text-white leading-tight">{user.name}</span>
-                <span className="truncate text-[11px] font-medium text-white/50 leading-tight">
+                <span className="truncate text-sm font-semibold text-white leading-tight">{user.name}</span>
+                <span className="truncate text-xs font-medium text-white/50 leading-tight">
                   {user.role === user.baseRole
                     ? roleLabel[user.baseRole]
                     : `${roleLabel[user.role]} · ${roleLabel[user.baseRole]}`}
@@ -117,7 +113,7 @@ export const TopBar = () => {
           <button
             onClick={logout}
             aria-label="Log out"
-            className="flex items-center justify-center w-[36px] h-[36px] rounded-[6px] hover:bg-[#292929]/50 transition-all shrink-0"
+            className="flex items-center justify-center w-[36px] h-[36px] rounded-sm hover:bg-[#292929]/50 transition-all shrink-0"
             style={{ color: '#ff0f5f' }}
           >
             <IconLogout width={20} height={19} />

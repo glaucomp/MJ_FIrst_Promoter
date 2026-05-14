@@ -183,7 +183,7 @@ const PromoterRow = ({
       <div className="flex lg:items-center flex-col lg:flex-row gap-[12px] px-[16px] py-[14px] bg-[#1e1e1e] lg:grid lg:grid-cols-2">
       <div className="flex lg:items-center flex-row gap-4">  {/* Avatar */}
         <div
-          className="w-[36px] h-[36px] rounded-full flex items-center justify-center text-[13px] font-bold text-white shrink-0"
+          className="w-[36px] h-[36px] rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0"
           style={{ background: "linear-gradient(135deg,#ff0f5f,#cc0047)" }}
         >
           {(group.name[0] ?? "?").toUpperCase()}
@@ -192,7 +192,7 @@ const PromoterRow = ({
         {/* Name + badges */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-[8px] flex-wrap">
-            <span className="text-[14px] font-semibold text-white truncate">
+            <span className="text-sm font-semibold text-white truncate">
               {group.name}
             </span>
             <WiseBadge recipientId={group.wiseRecipientId} />
@@ -206,18 +206,18 @@ const PromoterRow = ({
         </div></div>
 
         {/* Amount + pay button */}
-        <div className="grid lg:grid-cols-2 lg:flex items-center gap-[10px] shrink-0 lg:justify-end ">
+        <div className="grid lg:grid-cols-2 lg:flex items-center gap-4 shrink-0 lg:justify-end ">
           <div className="lg:text-right flex  flex-row-reverse justify-between items-center lg:items-end lg:gap-0 w-full lg:flex-col">
-            <div className="text-[15px] font-bold text-white">
+            <div className="text-base font-bold text-white">
               ${money(group.totalOwed)}
             </div>
             {group.totalOnHold > 0 && (
-              <div className="text-[10px]" style={{ color: "#ffb900" }}>
+              <div className="text-xs" style={{ color: "#ffb900" }}>
                 +${money(group.totalOnHold)} on hold
               </div>
             )}
             <div
-              className="text-[10px]"
+              className="text-xs"
               style={{ color: "rgba(255,255,255,0.3)" }}
             >
               {plural(unpaidCommissions.length, "commission")}
@@ -227,7 +227,7 @@ const PromoterRow = ({
        {/* Expand toggle */}
           <button
             onClick={() => setExpanded((p) => !p)}
-            className="h-8 flex items-center justify-center rounded-[6px] transition-colors w-full lg:w-12 lg:h-auto"
+            className="h-8 flex items-center justify-center rounded-sm transition-colors w-full lg:w-12 lg:h-auto"
             style={{
               border: "1px solid rgba(255,255,255,0.08)",
               color: "rgba(255,255,255,0.3)",
@@ -262,7 +262,7 @@ const PromoterRow = ({
                   ? undefined
                   : "No Wise recipient configured"
               }
-              className="text-[12px] font-bold px-[14px] py-[8px] rounded-[8px] transition-all  whitespace-nowrap"
+              className="text-xs font-bold px-[14px] py-[8px] rounded-sm transition-all  whitespace-nowrap"
               style={{
                 background:
                   canPay && !loading
@@ -279,7 +279,7 @@ const PromoterRow = ({
 
           {unpaidCommissions.length === 0 && (
             <span
-              className="text-sm font-semibold px-[10px] py-[5px] rounded-full"
+              className="text-sm font-semibold px-4 py-[5px] rounded-full"
               style={{
                 background: "rgba(0,217,72,0.12)",
                 color: "#00d948",
@@ -297,7 +297,7 @@ const PromoterRow = ({
       {/* Error */}
       {error && (
         <div
-          className="px-[16px] py-[8px] text-[12px]"
+          className="px-[16px] py-[8px] text-xs"
           style={{
             background: "rgba(255,68,68,0.08)",
             color: "#ff6b6b",
@@ -322,7 +322,7 @@ const PromoterRow = ({
             return (
               <div
                 key={c.id}
-                className="flex flex-wrap items-center gap-[12px] px-[16px] py-[10px] "
+                className="flex flex-wrap items-center gap-[12px] px-[16px] py-4 "
                 style={{
                   borderBottom:
                     i < group.commissions.length - 1
@@ -335,7 +335,7 @@ const PromoterRow = ({
                     {c.campaign?.name ?? "—"}
                   </div>
                   <div
-                    className="text-[10px]"
+                    className="text-xs"
                     style={{ color: "rgba(255,255,255,0.3)" }}
                   >
                     {new Date(c.createdAt).toLocaleDateString("en-US", {
@@ -353,7 +353,7 @@ const PromoterRow = ({
                   {c.percentage}%
                 </div>
                 <div
-                  className="text-[13px] font-bold shrink-0"
+                  className="text-sm font-bold shrink-0"
                   style={{ color: c.amount >= 0 ? "#00d948" : "#ff4444" }}
                 >
                   ${money(Math.abs(c.amount))}
@@ -361,14 +361,14 @@ const PromoterRow = ({
 
              </div>
                 <span
-                  className="text-[10px] font-semibold px-[7px] py-[2px] rounded-full capitalize shrink-0 w-full text-center lg:w-fit"
+                  className="text-xs font-semibold px-[7px] py-[2px] rounded-full capitalize shrink-0 w-full text-center lg:w-fit"
                   style={getStatusStyle(c.status)}
                 >
                   {c.status}
                 </span>
                 {!isPaid && isOnHold(c.createdAt) && (
                   <span
-                    className="inline-flex items-center gap-[3px] text-[10px] font-semibold px-[7px] py-[2px] rounded-full shrink-0"
+                    className="inline-flex items-center gap-[3px] text-xs font-semibold px-[7px] py-[2px] rounded-full shrink-0"
                     style={{
                       background: "rgba(255,185,0,0.12)",
                       color: "#ffb900",
@@ -380,7 +380,7 @@ const PromoterRow = ({
                   </span>
                 )}
                 {isPaid && c.wiseTransferId && (
-                  <span className="text-[9px]" style={{ color: "#00b9ff" }}>
+                  <span className="text-xs" style={{ color: "#00b9ff" }}>
                     #{c.wiseTransferId}
                   </span>
                 )}
@@ -515,11 +515,11 @@ export const Payouts = () => {
     <div className="flex flex-col gap-6">
       {/* ── Page title ── */}
       <div className="flex items-center justify-between">
-        <h1 className="text-[28px] leading-[36px] font-semibold text-white ">
+        <h1 className="text-3xl leading-[36px] font-semibold text-white ">
           Payouts
         </h1>
         <span
-          className="text-[12px] font-medium px-[10px] py-[4px] rounded-full"
+          className="text-xs font-medium px-4 py-2 rounded-full"
           style={{
             background: "rgba(0,185,255,0.1)",
             color: "#00b9ff",
@@ -536,7 +536,7 @@ export const Payouts = () => {
         <div className="flex items-start flex-col lg:flex-row lg:justify-between w-full gap-4">
           <div className="flex items-start gap-3 flex-col lg:flex-row">
             <div
-              className="w-[32px] h-[32px] rounded-full flex items-center justify-center text-[#173300] font-black text-[14px]"
+              className="w-[32px] h-[32px] rounded-full flex items-center justify-center text-[#173300] font-black text-sm"
               style={{ background: "linear-gradient(135deg,#9fe870,#9fe870)" }}
             >
              <svg className="w-4" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 20 20">
@@ -544,11 +544,11 @@ export const Payouts = () => {
 </svg>
             </div>
             <div>
-              <div className="text-lg font-semibold text-white">
+              <div className="text-xl lg:text-2xl font-semibold text-white">
                 Current Payment Cycle
               </div>
               <div
-                className="text-sm"
+                className="text-base"
                 style={{ color: "rgba(255,255,255,0.35)" }}
               >
                 {fmt(cycle.cycleStart)} → {fmt(cycle.cycleEnd)}
@@ -557,12 +557,12 @@ export const Payouts = () => {
           </div>
           <div className="lg:text-right">
             <div
-              className="text-sm uppercase tracking-[0.06em]"
+              className="text-sm uppercase tracking-widest"
               style={{ color: "rgba(255,255,255,0.35)" }}
             >
               Next payout
             </div>
-            <div className="text-[14px] font-bold text-white">
+            <div className="text-base font-semibold text-white">
               {fmtFull(cycle.nextPayout)}
             </div>
           </div>
@@ -570,9 +570,9 @@ export const Payouts = () => {
 
         {/* Progress bar */}
         <div className="w-full">
-          <div className="flex items-start justify-between mb-[6px] gap-4 flex-col lg:flex-row">
+          <div className="flex items-start justify-between mt-6 mb-4 gap-4 flex-col lg:flex-row">
             <span
-              className="text-sm"
+              className="text-base"
               style={{ color: "rgba(255,255,255,0.4)" }}
             >
               {cycle.daysLeft === 0
@@ -580,7 +580,7 @@ export const Payouts = () => {
                 : `${plural(cycle.daysLeft, "day")} until next payout`}
             </span>
             <span
-              className="text-sm font-semibold"
+              className="text-base"
               style={{ color: "#9fe870" }}
             >
               {fmt(cycle.cycleStart)} – {fmtFull(cycle.nextPayout)}
@@ -602,7 +602,7 @@ export const Payouts = () => {
         </div>
 
         {/* Stats row */}
-        <div className="grid lg:grid-cols-4 gap-[8px] w-full">
+        <div className="grid lg:grid-cols-4 gap-3 w-full mt-4">
           {[
             {
               label: "Total Pending",
@@ -627,16 +627,16 @@ export const Payouts = () => {
           ].map(({ label, value, color }) => (
             <div
               key={label}
-              className="rounded px-3 py-4 flex flex-col gap-[2px] "
+              className="rounded px-3 py-4 flex flex-col gap-1 "
               style={{ background: "rgba(0,0,0,0.2)" }}
             >
               <span
-                className="text-[10px] uppercase tracking-[0.06em]"
-                style={{ color: "rgba(255,255,255,0.3)" }}
+                className="text-sm uppercase font-semibold tracking-widest text-tm-text-color09"
+               
               >
                 {label}
               </span>
-              <span className="text-[15px] font-bold" style={{ color }}>
+              <span className="mt-2 text-xl" style={{ color }}>
                 {value}
               </span>
             </div>
@@ -649,7 +649,7 @@ export const Payouts = () => {
             <button
               onClick={handlePayAllReady}
               disabled={bulkLoading}
-              className={( !bulkLoading ? "animate-bounce-custom " : "" ) + "w-full py-[13px] px-6 rounded-[10px] text-sm tracking-tight font-bold transition-all disabled:opacity-50 max-w-fit"}
+              className={( !bulkLoading ? "animate-bounce-custom " : "" ) + "w-full py-[13px] px-6 rounded-sm text-sm tracking-tight font-bold transition-all disabled:opacity-50 max-w-fit"}
               style={{
                 background: bulkLoading
                   ? "none"
@@ -666,7 +666,7 @@ export const Payouts = () => {
             </button>
             {bulkError && (
               <div
-                className="text-[12px] px-[12px] py-[8px] rounded-[8px]"
+                className="text-xs px-[12px] py-[8px] rounded-sm"
                 style={{
                   background: "rgba(255,68,68,0.1)",
                   color: "#ff6b6b",
@@ -689,7 +689,7 @@ export const Payouts = () => {
           <button
             key={t}
             onClick={() => setTab(t)}
-            className="flex-1 py-[8px] rounded-[7px] text-[13px] font-semibold capitalize transition-all"
+            className="flex-1 py-[8px] rounded-[7px] text-sm font-semibold capitalize transition-all"
             style={{
               background: tab === t ? "#2a2a2a" : "transparent",
               color: tab === t ? "white" : "rgba(255,255,255,0.4)",
@@ -707,7 +707,7 @@ export const Payouts = () => {
       {loading && (
         <div className="flex items-center justify-center py-[60px]">
           <span
-            className="text-[14px]"
+            className="text-sm"
             style={{ color: "rgba(255,255,255,0.3)" }}
           >
             Loading commissions…
@@ -717,13 +717,13 @@ export const Payouts = () => {
       {!loading &&
         tab === "pending" &&
         (pendingGroups.length === 0 ? (
-          <div className="flex flex-col items-center py-[60px] gap-[10px]">
-            <span className="text-[36px]">✓</span>
-            <span className="text-[15px] font-semibold text-white">
+          <div className="flex flex-col items-center py-[60px] gap-4">
+            <span className="text-3xl">✓</span>
+            <span className="text-base font-semibold text-white">
               All caught up!
             </span>
             <span
-              className="text-[13px]"
+              className="text-sm"
               style={{ color: "rgba(255,255,255,0.35)" }}
             >
               No pending commissions this cycle.
@@ -739,10 +739,10 @@ export const Payouts = () => {
       {!loading &&
         tab === "history" &&
         (historyGroups.length === 0 ? (
-          <div className="flex flex-col items-center py-[60px] gap-[10px]">
-            <span className="text-[36px]">📋</span>
+          <div className="flex flex-col items-center py-[60px] gap-4">
+            <span className="text-3xl">📋</span>
             <span
-              className="text-[13px]"
+              className="text-sm"
               style={{ color: "rgba(255,255,255,0.35)" }}
             >
               No Wise payouts recorded yet.

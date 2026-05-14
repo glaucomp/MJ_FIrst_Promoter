@@ -76,13 +76,13 @@ const TransactionRow = ({ tx }: TransactionRowProps) => {
         onClick={() => { if (isDeposit) setExpanded(p => !p); }}
       >
         <div className="flex flex-col gap-[3px]">
-          <span className="text-[14px] font-medium text-white leading-none">{label}</span>
-          <span className="text-[11px] text-[#888]">{date} {time}</span>
+          <span className="text-sm font-medium text-white leading-none">{label}</span>
+          <span className="text-xs text-[#888]">{date} {time}</span>
         </div>
 
-        <div className="flex items-center gap-[10px]">
+        <div className="flex items-center gap-4">
           <span
-            className="text-[14px] font-semibold"
+            className="text-sm font-semibold"
             style={{ color: amountColor }}
           >
             {amountSign} ${Math.abs(tx.saleAmount).toFixed(2)}
@@ -101,16 +101,16 @@ const TransactionRow = ({ tx }: TransactionRowProps) => {
           style={{ borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.02)' }}
         >
           {tx.customer && (
-            <div className="flex justify-between text-[12px]">
+            <div className="flex justify-between text-xs">
               <span className="text-[#888]">Customer</span>
               <span className="text-white">{tx.customer.name || tx.customer.email || '—'}</span>
             </div>
           )}
           {tx.campaign && (
-            <div className="flex justify-between text-[12px]">
+            <div className="flex justify-between text-xs">
               <span className="text-[#888]">Campaign</span>
               <span
-                className="text-[11px] font-semibold px-[8px] py-[2px] rounded-full"
+                className="text-xs font-semibold px-[8px] py-[2px] rounded-full"
                 style={{ background: '#ff0f5f33', border: '1px solid rgba(255,15,95,0.3)', color: 'white' }}
               >
                 {tx.campaign.name}
@@ -118,7 +118,7 @@ const TransactionRow = ({ tx }: TransactionRowProps) => {
             </div>
           )}
           {tx.referral?.referrer && (
-            <div className="flex justify-between text-[12px]">
+            <div className="flex justify-between text-xs">
               <span className="text-[#888]">Promoter</span>
               <span className="text-white">
                 {tx.referral.referrer.firstName} {tx.referral.referrer.lastName}
@@ -126,16 +126,16 @@ const TransactionRow = ({ tx }: TransactionRowProps) => {
             </div>
           )}
           {tx.plan && (
-            <div className="flex justify-between text-[12px]">
+            <div className="flex justify-between text-xs">
               <span className="text-[#888]">Plan</span>
               <span className="text-white capitalize">{tx.plan}</span>
             </div>
           )}
           {tx.commissions.length > 0 && (
             <div className="flex flex-col gap-[4px]">
-              <span className="text-[11px] text-[#888] uppercase tracking-[0.06em]">Commissions</span>
+              <span className="text-xs text-[#888] uppercase tracking-tighter">Commissions</span>
               {tx.commissions.map((c) => (
-                <div key={c.id} className="flex justify-between text-[12px]">
+                <div key={c.id} className="flex justify-between text-xs">
                   <span className="text-[#aaa]">
                     {c.user.firstName} {c.user.lastName} ({c.percentage}%)
                   </span>
@@ -149,9 +149,9 @@ const TransactionRow = ({ tx }: TransactionRowProps) => {
               ))}
             </div>
           )}
-          <div className="flex justify-between text-[12px]">
+          <div className="flex justify-between text-xs">
             <span className="text-[#888]">Event ID</span>
-            <span className="text-[#666] font-mono text-[10px]">{tx.eventId.slice(0, 20)}…</span>
+            <span className="text-[#666] font-mono text-xs">{tx.eventId.slice(0, 20)}…</span>
           </div>
         </div>
       )}
@@ -173,7 +173,7 @@ const PaginationButton = ({
   <button
     onClick={onClick}
     disabled={disabled}
-    className="w-[28px] h-[28px] flex items-center justify-center rounded-[6px] text-[13px] font-medium transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+    className="w-[28px] h-[28px] flex items-center justify-center rounded-sm text-sm font-medium transition-all disabled:opacity-30 disabled:cursor-not-allowed"
     style={{
       background: active ? 'rgba(255,15,95,0.2)' : 'transparent',
       border: active ? '1px solid rgba(255,15,95,0.5)' : '1px solid transparent',
@@ -246,23 +246,23 @@ export const Transactions = () => {
     <div className="flex flex-col gap-6">
       {/* Header */}
       <div>
-        <h1 className="text-[28px] leading-[36px] font-semibold text-white font-['DM_Sans',sans-serif] lg:w-full">
+        <h1 className="text-3xl leading-[36px] font-semibold text-white font-['DM_Sans',sans-serif] lg:w-full">
           Transactions
         </h1>
-        <p className="text-[14px] text-[#9e9e9e] mt-[4px]">
+        <p className="text-sm text-[#9e9e9e] mt-[4px]">
           {total > 0 ? buildCountLabel(total) : 'Sale and refund history'}
         </p>
       </div>
 
       {error && (
-        <div className="bg-[#3a0000] border border-[#cc0000] rounded-[8px] p-[12px] text-[#ff8080] text-[13px]">
+        <div className="bg-[#3a0000] border border-tm-danger-color09 rounded-sm p-[12px] text-[#ff8080] text-sm">
           {error}
         </div>
       )}
 
       {/* Transactions List Card */}
       <div
-        className="rounded-[16px] overflow-hidden"
+        className="rounded-2xl overflow-hidden"
         style={{
           background: 'linear-gradient(180deg, #1e1527 0%, #18101f 100%)',
           border: '1px solid rgba(139,92,246,0.2)',
@@ -276,7 +276,7 @@ export const Transactions = () => {
           style={{ borderBottom: isCollapsed ? 'none' : '1px solid rgba(255,255,255,0.06)' }}
           onClick={() => setIsCollapsed(p => !p)}
         >
-          <span className="text-[15px] font-semibold text-white">Transactions List</span>
+          <span className="text-base font-semibold text-white">Transactions List</span>
           <ChevronDown
             className={`text-[#888] transition-transform duration-200 ${isCollapsed ? '' : 'rotate-180'}`}
           />
@@ -285,12 +285,12 @@ export const Transactions = () => {
         {!isCollapsed && (
           <>
             {/* Filters Row */}
-            <div className="flex items-center gap-[10px] px-[20px] py-[14px]" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <div className="flex items-center gap-4 px-[20px] py-[14px]" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
               {/* Period dropdown */}
               <div className="relative flex-1">
                 <button
                   onClick={(e) => { e.stopPropagation(); setShowPeriodMenu(p => !p); }}
-                  className="flex items-center justify-between w-full px-[14px] py-[9px] rounded-[10px] text-[13px] font-medium text-white transition-all"
+                  className="flex items-center justify-between w-full px-[14px] py-[9px] rounded-[10px] text-sm font-medium text-white transition-all"
                   style={{
                     background: 'rgba(255,255,255,0.06)',
                     border: '1px solid rgba(255,255,255,0.1)',
@@ -320,7 +320,7 @@ export const Transactions = () => {
                         <button
                           key={p}
                           onClick={() => handlePeriodChange(p)}
-                          className="w-full text-left px-[14px] py-[9px] text-[13px] transition-colors"
+                          className="w-full text-left px-[14px] py-[9px] text-sm transition-colors"
                           style={{ color: period === p ? '#ff2a71' : 'white' }}
                           onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.06)'; }}
                           onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
@@ -353,15 +353,15 @@ export const Transactions = () => {
             {/* Transaction rows */}
             <div className="px-[20px]">
               {loading && (
-                <div className="flex items-center justify-center py-[48px]">
-                  <span className="text-[#888] text-[14px]">Loading transactions…</span>
+                <div className="flex items-center justify-center py-12">
+                  <span className="text-[#888] text-sm">Loading transactions…</span>
                 </div>
               )}
               {!loading && transactions.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-[48px] gap-[10px]">
-                  <span className="text-[36px]">💳</span>
-                  <p className="text-[15px] font-medium text-white">No transactions found</p>
-                  <p className="text-[13px] text-[#888]">
+                <div className="flex flex-col items-center justify-center py-[48px] gap-4">
+                  <span className="text-3xl">💳</span>
+                  <p className="text-base font-medium text-white">No transactions found</p>
+                  <p className="text-sm text-[#888]">
                     Transactions will appear here once sales are tracked.
                   </p>
                 </div>
@@ -387,7 +387,7 @@ export const Transactions = () => {
                 {getPaginationPages().map((p) => {
                   if (p === '…') {
                     return (
-                      <span key={`ellipsis-before-${page}`} className="text-[#888] text-[13px] px-[4px]">…</span>
+                      <span key={`ellipsis-before-${page}`} className="text-[#888] text-sm px-[4px]">…</span>
                     );
                   }
                   return (

@@ -170,14 +170,14 @@ export const Campaigns = () => {
     <div className="flex flex-col gap-6">
       {/* Header */}
       <div className="flex items-start justify-between flex-col lg:flex-row gap-3">
-        <h1 className="text-[28px] leading-[36px] font-semibold text-white lg:w-full">
+        <h1 className="text-3xl leading-9 font-semibold text-white lg:w-full">
           Campaigns
         </h1>
-        <div className="flex items-center  justify-between lg:justify-end lg:gap-4 w-full">
-          <p className="text-[16px] text-[#9e9e9e]">{campaigns.length} total</p>
+        <div className="flex flex-col lg:flex-row lg:items-center gap-4  justify-between lg:justify-end w-full">
+          <p className="text-base text-[#9e9e9e]">{campaigns.length} total</p>
           <button
             onClick={openCreate}
-            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-[14px] font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-3 text-white text-sm font-bold leading-[1.4] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
           >
             + Create Campaign
           </button>
@@ -185,25 +185,25 @@ export const Campaigns = () => {
       </div>
 
       {error && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-[8px] p-[16px]">
-          <p className="text-red-400 text-[14px] font-semibold">{error}</p>
+        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+          <p className="text-red-400 text-sm font-semibold">{error}</p>
         </div>
       )}
 
       {isLoading ? (
-        <p className="text-[#9e9e9e] text-[16px]">Loading...</p>
+        <p className="text-[#9e9e9e] text-base">Loading...</p>
       ) : (
-        <div className="flex flex-col gap-[12px]">
+        <div className="flex flex-col gap-3 lg:gap-6">
           {campaigns.map((c) => (
             <div
               key={c.id}
-              className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[16px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)]"
+              className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-lg p-4 lg:p-6 shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)]"
             >
-              <div className="flex flex-col gap-[12px]">
+              <div className="flex flex-col gap-3">
                 {/* Top row */}
-                <div className="flex items-start justify-between gap-[12px] flex-col lg:flex-row">
-                  <div className="flex flex-col gap-[4px]">
-                    <p className="text-white text-2xl">
+                <div className="flex items-start justify-between gap-3 flex-col lg:flex-row">
+                  <div className="flex flex-col gap-1">
+                    <p className="text-white text-xl lg:text-2xl">
                       {c.name}
                     </p>
                     {c.description && (
@@ -216,16 +216,15 @@ export const Campaigns = () => {
                     </p>
                   </div>
 
-                  <div className="flex flex-row items-center gap-[8px]">
+                  <div className="flex flex-wrap items-start lg:flex-row lg:items-center gap-3">
                     {/* Active toggle */}
                     <button
                       onClick={() => handleToggleActive(c)}
                       disabled={togglingId === c.id}
-                      className={`px-[12px] py-[4px] rounded-[100px] text-xs font-bold border transition-all ${
-                        c.isActive
-                          ? "bg-tm-success-color12 border-[#00d948] text-[#28ff70] hover:bg-[#005518] hover:scale-95"
-                          : "bg-[#333] border-[#555] text-[#9e9e9e] hover:bg-[#3a3a3a]"
-                      } disabled:opacity-50`}
+                      className={`px-3 py-1 rounded-full text-xs font-bold border transition-all ${c.isActive
+                        ? "bg-tm-success-color12 border-tm-success-color09 text-tm-success-color05 hover:bg-[#005518] hover:scale-95"
+                        : "bg-[#333] border-[#555] text-[#9e9e9e] hover:bg-[#3a3a3a]"
+                        } disabled:opacity-50`}
                     >
                       {togglingId === c.id
                         ? "..."
@@ -236,11 +235,10 @@ export const Campaigns = () => {
 
                     {/* Visibility badge */}
                     <span
-                      className={`px-[12px] py-[6px] rounded-[100px] text-xs font-bold border ${
-                        c.visibleToPromoters
-                          ? "bg-tm-secondary-color11 border-tm-secondary-color05 text-tm-secondary-color03"
-                          : "bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]"
-                      }`}
+                      className={`px-3 py-1 rounded-full text-xs font-bold border ${c.visibleToPromoters
+                        ? "bg-tm-secondary-color11 border-tm-secondary-color05 text-tm-secondary-color03"
+                        : "bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]"
+                        }`}
                     >
                       {c.visibleToPromoters ? "Public" : "Hidden"}
                     </span>
@@ -250,7 +248,7 @@ export const Campaigns = () => {
                     {!c.visibleToPromoters && c.linkedCampaign && (
                       <span
                         title={`Linked to ${c.linkedCampaign.name}`}
-                        className="px-[12px] py-[6px] rounded-[100px] text-xs font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e] max-w-[220px] truncate"
+                        className="px-3 py-1.5 rounded-full text-xs font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e] max-w-55 truncate"
                       >
                         Linked → {c.linkedCampaign.name}
                       </span>
@@ -258,7 +256,7 @@ export const Campaigns = () => {
                     {!c.visibleToPromoters && !c.linkedCampaign && (
                       <span
                         title="No public campaign linked. AMs enrolled here can't invite anyone."
-                        className="px-[12px] py-[6px] rounded-[100px] text-xs font-bold border bg-[#332200] border-[#cc9900] text-[#ffcc33]"
+                        className="px-3 py-1.5 rounded-full text-xs font-bold border bg-[#332200] border-[#cc9900] text-[#ffcc33]"
                       >
                         Not linked
                       </span>
@@ -267,7 +265,7 @@ export const Campaigns = () => {
                 </div>
 
                 {/* Stats row */}
-                <div className="grid grid-cols-3 gap-2 lg:grid lg:grid-cols-6 lg:gap-4 lg:text-center lg:mt-3">
+                <div className="grid grid-cols-2 gap-2 lg:grid lg:grid-cols-6 lg:gap-4 lg:text-center lg:mt-3">
                   <div className="flex flex-col gap-2">
                     <p className="text-tm-text-color10 text-xs uppercase font-bold">
                       Promoter commission %
@@ -336,20 +334,20 @@ export const Campaigns = () => {
                   </button>
 
                   {confirmDeleteId === c.id ? (
-                    <div className="flex items-center gap-[8px]">
+                    <div className="flex items-center gap-2">
                       <span className="text-[#9e9e9e] text-xs">
                         Delete?
                       </span>
                       <button
                         onClick={() => handleDelete(c.id)}
                         disabled={deletingId === c.id}
-                        className="px-[10px] py-[4px] rounded-[6px] text-xs bg-tm-danger-color12 border border-[#cc0000] text-[#ff2a2a] hover:bg-[#880000] disabled:opacity-50 transition-colors"
+                        className="px-2.5 py-1 rounded-md text-xs bg-tm-danger-color12 border border-tm-danger-color09 text-tm-danger-color05 hover:bg-[#880000] disabled:opacity-50 transition-colors"
                       >
                         {deletingId === c.id ? "..." : "Yes"}
                       </button>
                       <button
                         onClick={() => setConfirmDeleteId(null)}
-                        className="px-[10px] py-[4px] rounded-[6px] text-xs bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white transition-colors"
+                        className="px-2.5 py-1 rounded-md text-xs bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white transition-colors"
                       >
                         No
                       </button>
@@ -368,8 +366,8 @@ export const Campaigns = () => {
           ))}
 
           {campaigns.length === 0 && (
-            <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] text-center">
-              <p className="text-[#9e9e9e] text-[16px]">
+            <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-lg p-6 text-center">
+              <p className="text-[#9e9e9e] text-base">
                 No campaigns yet. Create the first one.
               </p>
             </div>
@@ -379,17 +377,17 @@ export const Campaigns = () => {
 
       {/* Create / Edit Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-[20px] py-[20px]">
-          <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1)] w-full lg:max-w-[960px] max-h-[90vh] overflow-y-auto">
-            <div className="flex flex-col gap-[18px]">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-5 py-5">
+          <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-lg p-6 shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1)] w-full lg:max-w-240 max-h-[90vh] overflow-y-auto">
+            <div className="flex flex-col gap-4.5">
               {/* Modal header */}
               <div className="flex items-center justify-between">
-                <h2 className="text-[20px] font-bold text-white">
+                <h2 className="text-lg font-bold text-white">
                   {editingCampaign ? "Edit Campaign" : "Create Campaign"}
                 </h2>
                 <button
                   onClick={() => setIsModalOpen(false)}
-                  className="text-[#9e9e9e] hover:text-white text-[24px] leading-none"
+                  className="text-[#9e9e9e] hover:text-white text-xl leading-none"
                 >
                   ×
                 </button>
@@ -447,7 +445,7 @@ export const Campaigns = () => {
               </Field>
 
               {/* Rates row */}
-              <div className="flex gap-[12px] flex-col lg:flex-row">
+              <div className="flex gap-3 flex-col lg:flex-row">
                 <Field label="Promoter commission %" className="flex-1">
                   <input
                     type="number"
@@ -507,7 +505,7 @@ export const Campaigns = () => {
               </div>
 
               {/* Cookie + Invites row */}
-              <div className="flex gap-[12px] flex-col lg:flex-row">
+              <div className="flex gap-3 flex-col lg:flex-row">
                 <Field label="Cookie Life (days)" className="flex-1">
                   <input
                     type="number"
@@ -541,7 +539,7 @@ export const Campaigns = () => {
               </div>
 
               {/* Toggles row */}
-              <div className="flex gap-[12px] flex-col lg:flex-row">
+              <div className="flex gap-3 flex-col lg:flex-row">
                 <Toggle
                   label="Visible to Promoters"
                   value={form.visibleToPromoters ?? true}
@@ -602,8 +600,8 @@ export const Campaigns = () => {
               )}
 
               {formError && (
-                <div className="bg-tm-danger-color12 border border-[#cc0000] rounded-[8px] px-[14px] py-[10px]">
-                  <p className="text-[#ff2a2a] text-sm font-medium">
+                <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-md px-4 py-3">
+                  <p className="text-tm-danger-color05 text-sm font-medium">
                     {formError}
                   </p>
                 </div>
@@ -612,7 +610,7 @@ export const Campaigns = () => {
               <button
                 onClick={handleSave}
                 disabled={isSaving}
-                className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[24px] py-[14px] text-white text-[16px] font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-6 py-3.5 text-white text-base font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSaving
                   ? "Saving..."
@@ -636,7 +634,7 @@ function secondaryRateLabelForCampaign(visibleToPromoters: boolean): string {
 }
 
 const inputCls =
-  "bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[14px] py-[11px] text-[14px] text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555] w-full";
+  "bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[14px] py-[11px] text-sm text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555] w-full";
 
 const Field = ({
   label,
@@ -647,8 +645,8 @@ const Field = ({
   children: React.ReactNode;
   className?: string;
 }) => (
-  <div className={`flex flex-col gap-[6px] ${className}`}>
-    <label className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.2px]">
+  <div className={`flex flex-col gap-1.5 ${className}`}>
+    <label className="text-[#9e9e9e] text-xs font-bold uppercase" >
       {label}
     </label>
     {children}
@@ -666,11 +664,10 @@ const Toggle = ({
 }) => (
   <button
     onClick={() => onChange(!value)}
-    className={`flex-1 flex items-center justify-between rounded-[8px] px-[14px] py-[12px] border transition-all ${
-      value
-        ? "bg-[#ff0f5f]/10 border-[#ff0f5f]"
-        : "bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.2)]"
-    }`}
+    className={`flex-1 flex items-center justify-between rounded-lg px-3.5 py-3 border transition-all ${value
+      ? "bg-[#ff0f5f]/10 border-[#ff0f5f]"
+      : "bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.2)]"
+      }`}
   >
     <span
       className={`text-sm font-bold ${value ? "text-tm-primary-color05" : "text-[#9e9e9e]"}`}
@@ -678,9 +675,8 @@ const Toggle = ({
       {label}
     </span>
     <div
-      className={`w-[16px] h-[16px] rounded-full border-2 ${
-        value ? "border-[#ff0f5f] bg-[#ff0f5f]" : "border-[#555]"
-      }`}
+      className={`w-4 h-4 rounded-full border-2 ${value ? "border-[#ff0f5f] bg-[#ff0f5f]" : "border-[#555]"
+        }`}
     />
   </button>
 );
