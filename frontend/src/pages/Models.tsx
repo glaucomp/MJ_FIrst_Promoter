@@ -475,7 +475,7 @@ export const Models = () => {
         </div>
 
         {/* Filter bar (search + user-type). Grouping by AM is always on. */}
-        <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-lg p-3 flex flex-col lg:flex-row lg:items-end gap-3">
+        <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-lg p-3 lg:p-6 flex flex-col lg:flex-row lg:items-end gap-3">
           <div className="flex flex-col gap-2 flex-1 min-w-50">
             <label
               htmlFor="admin-users-search"
