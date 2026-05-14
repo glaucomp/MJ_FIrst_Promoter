@@ -562,6 +562,11 @@ export const updateChatter = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ error: "Insufficient permissions" });
     }
 
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ error: "Validation failed", errors: errors.array() });
+    }
+
     const { id } = req.params;
     const { firstName, lastName, email } = req.body;
 
@@ -636,6 +641,12 @@ export const resendInviteEmail = async (req: AuthRequest, res: Response) => {
     const chatter = await prisma.user.findFirst({ where });
     if (!chatter) {
       return res.status(404).json({ error: "Chatter not found" });
+    }
+
+    if (chatter.isActive) {
+      return res.status(400).json({
+        error: "Chatter has already activated their account. Use the password reset flow instead.",
+      });
     }
 
     const callerId = req.user!.id;

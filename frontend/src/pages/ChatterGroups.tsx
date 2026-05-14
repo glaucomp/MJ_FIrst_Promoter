@@ -286,6 +286,7 @@ const CreateChatterPanel = ({ onChatterCreated, onChatterUpdated, onChatterDelet
       await chattersApi.delete(id);
       onChatterDeleted(id);
       setConfirmDeleteChatterId(null);
+      setError('');
       setSuccess('Chatter deleted successfully.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete chatter');
