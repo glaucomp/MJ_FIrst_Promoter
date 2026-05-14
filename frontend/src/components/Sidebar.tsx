@@ -39,7 +39,7 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
           boxShadow: '0px -1px 0px 0px rgba(255,255,255,0.1), 0px 4px 8px 0px rgba(0,0,0,0.4), 0px 8px 16px -4px rgba(0,0,0,0.3), 0px 24px 32px -8px rgba(0,0,0,0.2)'
         }}
       >
-        <div className={`flex flex-col h-full pb-[64px] pt-[64px] gap-[32px] ${
+        <div className={`flex flex-col h-full pb-[64px] pt-16 gap-[32px] ${
           isOpen ? 'px-[12px]' : 'pl-[20px] pr-[16px]'
         }`}>
           <button
@@ -51,7 +51,7 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
               className="w-[40px] h-auto object-contain"
               src={mjLogo}
             />
-            <div className="h-[24px] w-8 rounded-[4px] flex items-center justify-center">
+            <div className="h-[24px] w-8 rounded-sm flex items-center justify-center">
               <span className={`text-xs transition-transform ${isOpen ? 'rotate-0 ml-3' : '-rotate-90'}`}>
                 <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="none" stroke="#ffffff" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m6 9l6 6l6-6"/></svg>
               </span>
@@ -72,7 +72,7 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
                     onClick={() => handleNavigation(item.path)}
                     aria-label={item.label}
                     aria-current={isActive ? 'page' : undefined}
-                    className={`flex items-center gap-[8px] h-[44px] rounded-[8px] p-[12px] transition-all ${
+                    className={`flex items-center gap-[8px] h-[44px] rounded-sm p-[12px] transition-all ${
                       isActive
                         ? 'bg-[#660022] border border-[#ff2a71]'
                         : 'hover:bg-[#292929]/50'
@@ -98,7 +98,7 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
                   aria-label={item.label}
                   aria-current={isActive ? 'page' : undefined}
                   title={item.label}
-                  className={`flex items-center justify-center h-[40px] w-full px-[12px] py-[8px] rounded-[4px] transition-all ${
+                  className={`flex items-center justify-center h-[40px] w-full px-[12px] py-[8px] rounded-sm transition-all ${
                     isActive
                       ? 'bg-[#660022] border border-[#ff2a71]'
                       : 'hover:bg-[#292929]/50'
@@ -114,7 +114,7 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
 
           <button
             onClick={logout}
-            className={`flex items-center justify-start rounded-[4px] hover:bg-[#292929]/50 h-[44px] w-full transition-all ${
+            className={`flex items-center justify-start rounded-sm hover:bg-[#292929]/50 h-[44px] w-full transition-all ${
               isOpen ? 'gap-[8px] px-[12px]' : 'px-[12px]'
             }`}
             aria-label="Log out"

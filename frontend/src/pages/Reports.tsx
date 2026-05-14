@@ -263,7 +263,7 @@ const TxRow = ({
                 {isRefund ? "Refund" : "Sale"}
               </span>
               <span
-                className="text-sm font-bold px-[6px] py-px rounded-[4px]"
+                className="text-sm font-bold px-[6px] py-px rounded-sm"
                 style={{ background: tierBg, color: tierText, border: `1px solid ${tierText}44` }}
               >
                 {tierLabel}
@@ -319,13 +319,13 @@ const TxRow = ({
         <div className="tx-detail-enter px-[16px] pb-[20px] text-sm">
           <div className="rounded-[10px] overflow-hidden" style={{ background: "var(--color-surface-inset)" }}>
             {saleAmt > 0 && (
-              <div className="flex justify-between px-[14px] py-[10px]" style={{ borderBottom: "1px solid var(--border-elevated)" }}>
+              <div className="flex justify-between px-[14px] py-4" style={{ borderBottom: "1px solid var(--border-elevated)" }}>
                 <span style={{ color: "var(--color-text-faded)" }}>Sale Amount</span>
                 <span className="font-semibold text-white">${money(saleAmt)}</span>
               </div>
             )}
             <div
-              className="flex justify-between px-[14px] py-[10px]"
+              className="flex justify-between px-[14px] py-4"
               style={{ borderBottom: tx.customer || tx.campaign ? "1px solid var(--border-elevated)" : "none" }}
             >
               <span style={{ color: "var(--color-text-faded)" }}>Commission</span>
@@ -338,7 +338,7 @@ const TxRow = ({
             </div>
             {tx.customer && (
               <div
-                className="flex justify-between px-[14px] py-[10px]"
+                className="flex justify-between px-[14px] py-4"
                 style={{ borderBottom: tx.campaign ? "1px solid var(--border-elevated)" : "none" }}
               >
                 <span style={{ color: "var(--color-text-faded)" }}>Customer</span>
@@ -346,7 +346,7 @@ const TxRow = ({
               </div>
             )}
             {tx.campaign && (
-              <div className="flex justify-between items-center px-[14px] py-[10px]">
+              <div className="flex justify-between items-center px-[14px] py-4">
                 <span style={{ color: "var(--color-text-faded)" }}>Campaign</span>
                 <span
                   className="text-sm font-semibold px-[8px] py-[2px] rounded-full text-white"
@@ -478,7 +478,7 @@ const AdminTxRow = ({
           {/* Customer */}
           {tx.customer && (
             <div
-              className="flex flex-col lg:flex-row lg:items-center justify-between px-[14px] py-[10px]"
+              className="flex flex-col lg:flex-row lg:items-center justify-between px-[14px] py-4"
               style={{ borderBottom: "1px solid var(--border-elevated)" }}
             >
               <span
@@ -506,7 +506,7 @@ const AdminTxRow = ({
           {/* Campaign */}
           {tx.campaign && (
             <div
-              className="flex flex-col lg:flex-row lg:items-center justify-between px-[14px] py-[10px]"
+              className="flex flex-col lg:flex-row lg:items-center justify-between px-[14px] py-4"
               style={{ borderBottom: "1px solid var(--border-elevated)" }}
             >
               <span
@@ -530,7 +530,7 @@ const AdminTxRow = ({
 
           {/* Sale amount */}
           <div
-            className="flex flex-col lg:flex-row lg:items-center justify-between px-[14px] py-[10px]"
+            className="flex flex-col lg:flex-row lg:items-center justify-between px-[14px] py-4"
             style={{
               borderBottom:
                 tx.commissions.length > 0
@@ -558,7 +558,7 @@ const AdminTxRow = ({
 
           {/* Commissions breakdown */}
           {tx.commissions.length > 0 && (
-            <div className="px-[14px] py-[10px] flex flex-col gap-[8px]">
+            <div className="px-[14px] py-4 flex flex-col gap-[8px]">
               <span
                 className="text-xs uppercase tracking-widest"
                 style={{ color: "var(--color-text-faded)" }}
@@ -582,7 +582,7 @@ const AdminTxRow = ({
                 return (
                   <div
                     key={c.id}
-                    className="flex flex-col lg:flex-row lg:items-center gap-[10px] py-[8px] px-[10px] rounded-[8px]"
+                    className="flex flex-col lg:flex-row lg:items-center gap-4 py-[8px] px-4 rounded-sm"
                     style={{
                       background: "var(--color-surface-inset)",
                       border: "1px solid var(--border-elevated)",
@@ -754,7 +754,7 @@ const AdminTxListCard = ({
 
           <div className="flex flex-col-reverse lg:grid lg:grid-cols-[1fr_3fr]">
             {/* Active period label */}
-          <div className="flex items-center gap-[6px] px-[16px] py-[10px]">
+          <div className="flex items-center gap-[6px] px-[16px] py-4">
             <svg
               width="12"
               height="12"
@@ -799,7 +799,7 @@ const AdminTxListCard = ({
                 height="14"
                 viewBox="0 0 14 14"
                 fill="none"
-                className="absolute left-[10px] top-1/2 -translate-y-1/2"
+                className="absolute left-4 top-1/2 -translate-y-1/2"
                 style={{ color: "var(--color-text-faded)" }}
               >
                 <circle
@@ -870,7 +870,7 @@ const AdminTxListCard = ({
                 type="button"
                 disabled={page === 1}
                 onClick={() => setPage(Math.max(1, page - 1))}
-                className="w-[28px] h-[28px] rounded-[6px] text-sm hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                className="w-[28px] h-[28px] rounded-sm text-sm hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 style={{
                   color: "var(--color-text-muted)",
                   border: "1px solid var(--border-subtle)",
@@ -895,7 +895,7 @@ const AdminTxListCard = ({
                     key={p}
                     type="button"
                     onClick={() => setPage(p)}
-                    className="w-[28px] h-[28px] rounded-[6px] text-sm font-medium transition-colors"
+                    className="w-[28px] h-[28px] rounded-sm text-sm font-medium transition-colors"
                     style={{
                       background:
                         page === p
@@ -917,7 +917,7 @@ const AdminTxListCard = ({
                 type="button"
                 disabled={page === totalPages}
                 onClick={() => setPage(Math.min(totalPages, page + 1))}
-                className="w-[28px] h-[28px] rounded-[6px] text-sm hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                className="w-[28px] h-[28px] rounded-sm text-sm hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 style={{
                   color: "var(--color-text-muted)",
                   border: "1px solid var(--border-subtle)",
@@ -1069,7 +1069,7 @@ const TxListCard = ({
         <>
 
           {/* Active period label */}
-          <div className="flex items-center gap-[6px] px-[16px] py-[10px]">
+          <div className="flex items-center gap-[6px] px-[16px] py-4">
             <svg
               width="12"
               height="12"
@@ -1148,7 +1148,7 @@ const TxListCard = ({
                 height="14"
                 viewBox="0 0 14 14"
                 fill="none"
-                className="absolute left-[10px] top-1/2 -translate-y-1/2"
+                className="absolute left-4 top-1/2 -translate-y-1/2"
                 style={{ color: "var(--color-text-faded)" }}
               >
                 <circle
@@ -1206,7 +1206,7 @@ const TxListCard = ({
                 type="button"
                 disabled={page === 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="w-[28px] h-[28px] rounded-[6px] text-sm hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                className="w-[28px] h-[28px] rounded-sm text-sm hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 style={{
                   color: "var(--color-text-muted)",
                   border: "1px solid var(--border-subtle)",
@@ -1230,7 +1230,7 @@ const TxListCard = ({
                     key={p}
                     type="button"
                     onClick={() => setPage(p)}
-                    className="w-[28px] h-[28px] rounded-[6px] text-sm font-medium transition-colors"
+                    className="w-[28px] h-[28px] rounded-sm text-sm font-medium transition-colors"
                     style={{
                       background:
                         page === p
@@ -1252,7 +1252,7 @@ const TxListCard = ({
                 type="button"
                 disabled={page === totalPages}
                 onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-                className="w-[28px] h-[28px] rounded-[6px] text-sm hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                className="w-[28px] h-[28px] rounded-sm text-sm hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 style={{
                   color: "var(--color-text-muted)",
                   border: "1px solid var(--border-subtle)",
@@ -2093,7 +2093,7 @@ export const Reports = () => {
                       <button
                         onClick={() => setCalOpen(false)}
                         disabled={!calRangeStart}
-                        className="text-sm font-semibold px-[20px] py-[8px] rounded-[8px] transition-all"
+                        className="text-sm font-semibold px-[20px] py-[8px] rounded-sm transition-all"
                         style={{
                           background: calRangeStart
                             ? "linear-gradient(135deg, var(--color-tm-primary-color05), var(--color-tm-primary-color12))"
@@ -2159,7 +2159,7 @@ export const Reports = () => {
         </div>
 
         {/* Refunded / Total Sales */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid lg:grid-cols-2 gap-4">
           <Card radius="var(--radius-m)">
             <div className="flex flex-col gap-0" style={{ padding: 'var(--space-20)' }}>
               <span className="stat-label">Refunded</span>
@@ -2478,7 +2478,7 @@ export const Reports = () => {
                <div className="w-full"> {nonAdmin.length.toLocaleString()}</div>
                <div className=""> {newUsersCount > 0 && (
                   <span
-                    className="inline-flex items-center gap-[3px] text-sm font-bold px-[10px] py-[4px] rounded-full"
+                    className="inline-flex items-center gap-[3px] text-sm font-bold px-4 py-[4px] rounded-full"
                      style={{ background: "#006622", color:"#28ff70", border:"1px solid #28ff70" }}
                   >
                     ↑ {newUsersCount}

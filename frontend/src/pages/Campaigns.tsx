@@ -203,7 +203,7 @@ export const Campaigns = () => {
                 {/* Top row */}
                 <div className="flex items-start justify-between gap-3 flex-col lg:flex-row">
                   <div className="flex flex-col gap-1">
-                    <p className="text-white text-2xl">
+                    <p className="text-white text-xl lg:text-2xl">
                       {c.name}
                     </p>
                     {c.description && (
@@ -634,7 +634,7 @@ function secondaryRateLabelForCampaign(visibleToPromoters: boolean): string {
 }
 
 const inputCls =
-  "bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[14px] py-[11px] text-sm text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555] w-full";
+  "bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[14px] py-[11px] text-sm text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555] w-full";
 
 const Field = ({
   label,

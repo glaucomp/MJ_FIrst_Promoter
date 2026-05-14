@@ -75,7 +75,7 @@ export const ChatterDashboard = () => {
       )}
 
       {!isLoading && !error && groups.length === 0 && (
-        <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-[18px] p-8 text-center">
+        <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-2xl p-8 text-center">
           <p className="text-[#9e9e9e] text-base">You are not assigned to any group yet.</p>
         </div>
       )}
@@ -100,7 +100,7 @@ export const ChatterDashboard = () => {
               <button
                 key={group.id}
                 onClick={() => openTools(group)}
-                className="w-full text-left bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-[18px] flex flex-col  transition-all group/card"
+                className="w-full text-left bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-2xl flex flex-col  transition-all group/card"
               >
                 {/* Card header */}
                 <div className="p-7 flex flex-col items-start justify-between gap-4">

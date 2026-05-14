@@ -827,7 +827,7 @@ export const Models = () => {
                                   >
                                     {apiUser.isActive ? "Active" : "Inactive"}
                                   </span>
-                                  <span className="px-3 py-1 rounded-full text-xs font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]">
+                                  <span className="px-3 py-2 rounded-full text-xs font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]">
                                     {apiUser.userType?.toUpperCase() === "TEAM_MANAGER"
                                       ? "PROMOTER +"
                                       : apiUser.userType?.toLowerCase().replace("_", " ")}
@@ -841,7 +841,7 @@ export const Models = () => {
                                     <p className="text-[#9e9e9e] text-xs uppercase">
                                       Earnings
                                     </p>
-                                    <p className="text-white text-2xl font-bold">
+                                    <p className="text-white text-xl lg:text-2xl font-bold">
                                       ${apiUser.stats.totalEarnings.toFixed(2)}
                                     </p>
                                     <p className="text-[#9e9e9e] text-sm">
@@ -1062,7 +1062,7 @@ export const Models = () => {
                             >
                               {apiUser.isActive ? "Active" : "Inactive"}
                             </span>
-                            <span className="px-3 py-1 rounded-full text-xs font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]">
+                            <span className="px-3 py-1 rounded-full text-xs font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-tm-text-color09">
                               {apiUser.userType?.toUpperCase() === "TEAM_MANAGER"
                                 ? "PROMOTER +"
                                 : apiUser.userType?.toLowerCase().replace("_", " ")}

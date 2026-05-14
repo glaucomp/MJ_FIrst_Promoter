@@ -736,7 +736,7 @@ export const ChatterGroups = () => {
           {sortedGroups.map(group => (
             <div
               key={group.id}
-              className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-[18px] flex flex-col overflow-hidden"
+              className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-2xl flex flex-col overflow-hidden"
             >
               {/* Card header — static */}
               <div className="p-7 flex flex-col-reverse lg:flex-row lg:items-start justify-between gap-4">

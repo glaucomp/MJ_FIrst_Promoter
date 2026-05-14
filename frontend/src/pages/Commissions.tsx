@@ -255,7 +255,7 @@ export const Commissions = () => {
                 ).map(({ label, align }) => (
                   <th
                     key={label || 'actions'}
-                    className="px-[16px] py-[10px] text-xs font-semibold text-[#666] uppercase tracking-widest whitespace-nowrap"
+                    className="px-[16px] py-4 text-xs font-semibold text-[#666] uppercase tracking-widest whitespace-nowrap"
                     style={{ textAlign: align as 'left' | 'right' }}
                   >
                     {label}
@@ -275,7 +275,7 @@ export const Commissions = () => {
                   >
                     {/* Promoter */}
                     <td className="px-[16px] py-[14px]">
-                      <div className="flex items-center gap-[10px]">
+                      <div className="flex items-center gap-4">
                         <div
                           className="w-8 h-[32px] rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0"
                           style={{ background: tier1 ? '#3b82f6' : '#f59e0b' }}
@@ -373,7 +373,7 @@ export const Commissions = () => {
                           <button
                             onClick={() => setOpenMenuId(openMenuId === commission.id ? null : commission.id)}
                             disabled={isUpdating}
-                            className="w-[28px] h-[28px] flex items-center justify-center rounded-[6px] text-[#9e9e9e] hover:bg-[rgba(255,255,255,0.08)] hover:text-white transition-all text-base disabled:opacity-40"
+                            className="w-[28px] h-[28px] flex items-center justify-center rounded-sm text-[#9e9e9e] hover:bg-[rgba(255,255,255,0.08)] hover:text-white transition-all text-base disabled:opacity-40"
                           >
                             {isUpdating ? '…' : '⋮'}
                           </button>
@@ -386,7 +386,7 @@ export const Commissions = () => {
                                 onClick={() => setOpenMenuId(null)}
                               />
                               <div
-                                className="absolute right-0 top-[32px] z-20 rounded-[8px] py-[4px] min-w-[130px]"
+                                className="absolute right-0 top-[32px] z-20 rounded-sm py-[4px] min-w-[130px]"
                                 style={{
                                   background: '#2a2a2a',
                                   border: '1px solid rgba(255,255,255,0.1)',

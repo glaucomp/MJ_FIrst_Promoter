@@ -88,7 +88,7 @@ export const Login = () => {
           {mode === 'login' ? (
             <form onSubmit={handleSubmit} className="flex flex-col gap-5">
               <div
-                className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-5"
+                className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-sm p-[24px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-5"
               >
                 <div className="flex flex-col gap-[8px]">
                   <label
@@ -104,7 +104,7 @@ export const Login = () => {
                     onChange={(e) => setEmail(e.target.value)}
                     required
                     tabIndex={1}
-                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-4 py-[12px] text-base text-white focus:outline-none focus:border-[#ff0f5f] transition-colors"
+                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-4 py-[12px] text-base text-white focus:outline-none focus:border-[#ff0f5f] transition-colors"
                     placeholder="your@email.com"
                   />
                 </div>
@@ -137,13 +137,13 @@ export const Login = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     tabIndex={2}
-                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[16px] py-[12px] text-base text-white focus:outline-none focus:border-[#ff0f5f] transition-colors"
+                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] text-base text-white focus:outline-none focus:border-[#ff0f5f] transition-colors"
                     placeholder="••••••••"
                   />
                 </div>
 
                 {error && (
-                  <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-[8px] px-[16px] py-[12px]">
+                  <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-sm px-[16px] py-[12px]">
                     <p className="text-tm-danger-color05 text-sm leading-[1.4] font-medium">
                       {error}
                     </p>
@@ -167,7 +167,7 @@ export const Login = () => {
           ) : (
             <form onSubmit={handleForgotSubmit} className="flex flex-col gap-[20px]">
               <div
-                className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[8px] p-[24px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-[20px]"
+                className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-sm p-[24px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-[20px]"
               >
                 <div className="flex flex-col gap-[8px]">
                   <label
@@ -182,13 +182,13 @@ export const Login = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[16px] py-[12px] text-base text-white focus:outline-none focus:border-[#ff0f5f] transition-colors"
+                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] text-base text-white focus:outline-none focus:border-[#ff0f5f] transition-colors"
                     placeholder="your@email.com"
                   />
                 </div>
 
                 {error && (
-                  <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-[8px] px-[16px] py-[12px]">
+                  <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-sm px-[16px] py-[12px]">
                     <p className="text-tm-danger-color05 text-sm leading-[1.4] font-medium">
                       {error}
                     </p>
@@ -196,7 +196,7 @@ export const Login = () => {
                 )}
 
                 {forgotMessage && (
-                  <div className="bg-[#1f3d29] border border-tm-success-color09 rounded-[8px] px-[16px] py-3">
+                  <div className="bg-[#1f3d29] border border-tm-success-color09 rounded-sm px-[16px] py-3">
                     <p className="text-tm-success-color05 text-sm leading-[1.4] font-medium">
                       {forgotMessage}
                     </p>

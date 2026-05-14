@@ -278,7 +278,7 @@ export const ChatterGroupToolsPage = () => {
       {/* Tools */}
       <div className="flex flex-col gap-5">
         {/* Invite Link */}
-        <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-[18px] p-4 lg:p-8">
+        <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-2xl p-4 lg:p-8">
           {group.promoter?.username ? (
             <LinkGenerator username={group.promoter.username} />
           ) : (
@@ -310,12 +310,12 @@ export const ChatterGroupToolsPage = () => {
         </div>
 
         {/* Talk Like [Influencer] */}
-        <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-[18px] p-4 lg:p-8">
+        <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-2xl p-4 lg:p-8">
           <VoiceMessage modelName={promoterName} voiceId={voiceId} />
         </div>
 
         {/* Model Info */}
-        <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-[18px] p-6 flex flex-col gap-5 lg:w-1/2">
+        <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-2xl p-6 flex flex-col gap-5 lg:w-1/2">
           {/* Section header */}
           <div className="flex items-center gap-2.5">
             {/* Waveform icon */}
@@ -339,8 +339,8 @@ export const ChatterGroupToolsPage = () => {
           {/* Profile picture + socials */}
           <div className="flex gap-4 ">
             {/* Profile picture card */}
-            <div className="flex-1 bg-[#141416] border border-[rgba(255,255,255,0.06)] rounded-[14px] p-5 flex items-center gap-4.5">
-              <div className="w-18 h-18 rounded-full bg-linear-to-br from-[#ff0f5f] to-[#cc0047] flex items-center justify-center shrink-0 overflow-hidden">
+            <div className="flex-1 bg-[#141416] border border-[rgba(255,255,255,0.06)] rounded-2xl p-5 flex items-center gap-4.5">
+              <div className="w-14 lg:w-15 h-14 lg:h-15 rounded-full bg-linear-to-br from-[#ff0f5f] to-[#cc0047] flex items-center justify-center shrink-0 overflow-hidden">
                 {photoUrl ? (
                   <img
                     src={photoUrl}
@@ -357,7 +357,7 @@ export const ChatterGroupToolsPage = () => {
                   </span>
                 )}
               </div>
-              <p className="text-[#555] text-sm">Current Profile Picture</p>
+              <p className="text-tm-text-color09 text-sm lg:text-base">Current Profile Picture</p>
             </div>
 
             {/* Social icon grid — click to copy the URL to clipboard */}
