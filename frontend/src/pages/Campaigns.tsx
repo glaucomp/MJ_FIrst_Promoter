@@ -173,11 +173,11 @@ export const Campaigns = () => {
         <h1 className="text-3xl leading-[36px] font-semibold text-white lg:w-full">
           Campaigns
         </h1>
-        <div className="flex items-center  justify-between lg:justify-end lg:gap-4 w-full">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-4  justify-between lg:justify-end w-full">
           <p className="text-base text-[#9e9e9e]">{campaigns.length} total</p>
           <button
             onClick={openCreate}
-            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-[8px] px-[16px] py-[10px] text-white text-sm font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-3 text-white text-sm font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
           >
             + Create Campaign
           </button>
@@ -216,14 +216,14 @@ export const Campaigns = () => {
                     </p>
                   </div>
 
-                  <div className="flex flex-row items-center gap-[8px]">
+                  <div className="flex flex-wrap items-start lg:flex-row lg:items-center gap-[8px]">
                     {/* Active toggle */}
                     <button
                       onClick={() => handleToggleActive(c)}
                       disabled={togglingId === c.id}
                       className={`px-[12px] py-[4px] rounded-full text-xs font-bold border transition-all ${
                         c.isActive
-                          ? "bg-tm-success-color12 border-[#00d948] text-[#28ff70] hover:bg-[#005518] hover:scale-95"
+                          ? "bg-tm-success-color12 border-tm-success-color09 text-tm-success-color05 hover:bg-[#005518] hover:scale-95"
                           : "bg-[#333] border-[#555] text-[#9e9e9e] hover:bg-[#3a3a3a]"
                       } disabled:opacity-50`}
                     >
@@ -267,7 +267,7 @@ export const Campaigns = () => {
                 </div>
 
                 {/* Stats row */}
-                <div className="grid grid-cols-3 gap-2 lg:grid lg:grid-cols-6 lg:gap-4 lg:text-center lg:mt-3">
+                <div className="grid grid-cols-2 gap-2 lg:grid lg:grid-cols-6 lg:gap-4 lg:text-center lg:mt-3">
                   <div className="flex flex-col gap-2">
                     <p className="text-tm-text-color10 text-xs uppercase font-bold">
                       Promoter commission %
@@ -343,7 +343,7 @@ export const Campaigns = () => {
                       <button
                         onClick={() => handleDelete(c.id)}
                         disabled={deletingId === c.id}
-                        className="px-[10px] py-[4px] rounded-[6px] text-xs bg-tm-danger-color12 border border-[#cc0000] text-[#ff2a2a] hover:bg-[#880000] disabled:opacity-50 transition-colors"
+                        className="px-[10px] py-[4px] rounded-[6px] text-xs bg-tm-danger-color12 border border-tm-danger-color09 text-tm-danger-color05 hover:bg-[#880000] disabled:opacity-50 transition-colors"
                       >
                         {deletingId === c.id ? "..." : "Yes"}
                       </button>
@@ -602,8 +602,8 @@ export const Campaigns = () => {
               )}
 
               {formError && (
-                <div className="bg-tm-danger-color12 border border-[#cc0000] rounded-[8px] px-[14px] py-[10px]">
-                  <p className="text-[#ff2a2a] text-sm font-medium">
+                <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-md px-4 py-3">
+                  <p className="text-tm-danger-color05 text-sm font-medium">
                     {formError}
                   </p>
                 </div>
