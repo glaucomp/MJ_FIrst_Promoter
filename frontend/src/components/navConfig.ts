@@ -117,7 +117,7 @@ export const navOrderByRole: Partial<Record<UserRole, string[]>> = {
     "settings",
   ],
   team_manager: ["referrals", "reports", "settings"],
-  promoter: ["referrals", "reports", "settings"],
+  promoter: ["reports", "referrals", "settings"],
   chatter: ["chatter-portal", "settings"],
   payer: ["reports", "payouts", "settings"],
 };
