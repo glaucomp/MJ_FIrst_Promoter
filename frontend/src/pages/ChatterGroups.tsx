@@ -188,8 +188,8 @@ const EditChatterModal = ({ chatter, onClose, onSaved }: EditChatterModalProps) 
           <p className="bg-[#111] border border-[rgba(255,255,255,0.06)] rounded-lg px-4 py-3 text-sm text-[#9e9e9e] select-all">{chatter.email}</p>
         </div>
 
-        <div className="flex gap-3">
-          <div className="flex flex-col gap-1.5 flex-1">
+        <div className="flex gap-3 flex-wrap">
+          <div className="flex flex-col gap-2 flex-1">
             <label className="text-[#9e9e9e] text-xs font-bold uppercase">First Name</label>
             <input
               type="text"
@@ -384,14 +384,14 @@ const CreateChatterPanel = ({ onChatterCreated, onChatterUpdated, onChatterDelet
               return (
                 <div
                   key={c.id}
-                  className="group relative flex items-center gap-2 bg-[#141416] border border-[rgba(255,255,255,0.07)] hover:border-[rgba(255,255,255,0.15)] rounded-2xl px-3 py-2 transition-colors"
+                  className="group relative flex-col lg:flex-row flex items-start lg:items-center gap-2 bg-[#141416] border border-[rgba(255,255,255,0.07)] hover:border-[rgba(255,255,255,0.15)] rounded-2xl px-3 py-2 transition-colors w-full"
                 >
                   <div className="w-7 h-7 rounded-full bg-[#2e2e32] border border-[#3a3a3e] flex items-center justify-center shrink-0">
                     <span className="text-3 font-semibold text-[#aaa] leading-none">{initials}</span>
                   </div>
-                  <div className="flex flex-col min-w-0">
+                  <div className="flex flex-col min-w-0 w-full">
                     <span className="text-white text-sm font-medium leading-tight">{name}</span>
-                    <span className="text-[#666] text-xs truncate max-w-[140px]">{c.email}</span>
+                    <span className="text-[#666] text-xs truncate lg:max-w-[140px] w-full">{c.email}</span>
                   </div>
 
                   {/* Action buttons — always visible on mobile, fade in on hover for desktop */}
@@ -400,9 +400,9 @@ const CreateChatterPanel = ({ onChatterCreated, onChatterUpdated, onChatterDelet
                     <button
                       onClick={() => setEditingChatter(c)}
                       title="Edit chatter"
-                      className="w-6 h-6 flex items-center justify-center rounded-md text-[#9e9e9e] hover:text-white hover:bg-[#2a2a2e] transition-colors"
+                      className="w-8 h-8 p-1 flex items-center justify-center rounded-md text-[#9e9e9e] hover:text-white hover:bg-[#2a2a2e] transition-colors"
                     >
-                      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <svg width="100%" height="100%" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M11.5 2.5a2.121 2.121 0 0 1 3 3L5 15H1v-4L11.5 2.5z"/>
                       </svg>
                     </button>
@@ -411,11 +411,11 @@ const CreateChatterPanel = ({ onChatterCreated, onChatterUpdated, onChatterDelet
                       onClick={() => handleResendInvite(c)}
                       disabled={isResending}
                       title="Resend welcome email"
-                      className="w-6 h-6 flex items-center justify-center rounded-md text-[#9e9e9e] hover:text-white hover:bg-[#2a2a2e] transition-colors disabled:opacity-40"
+                      className="w-8 h-8  p-1flex items-center justify-center rounded-md text-[#9e9e9e] hover:text-white hover:bg-[#2a2a2e] transition-colors disabled:opacity-40"
                     >
                       {isResending
-                        ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-                        : <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        ? <svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                        : <svg width="100%" height="100%" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                             <rect x="1" y="3" width="14" height="10" rx="1.5"/>
                             <path d="M1 4l7 5 7-5"/>
                           </svg>
@@ -427,13 +427,13 @@ const CreateChatterPanel = ({ onChatterCreated, onChatterUpdated, onChatterDelet
                         <button
                           onClick={() => handleDeleteChatter(c.id)}
                           disabled={isDeleting}
-                          className="text-[10px] font-semibold text-red-400 hover:text-red-300 px-1.5 py-0.5 rounded bg-red-900/30 hover:bg-red-900/50 transition-colors disabled:opacity-50"
+                          className="text-sm font-semibold text-red-400 hover:text-red-300  py-0.5 rounded bg-red-900/30 hover:bg-red-900/50 transition-colors disabled:opacity-50 px-3"
                         >
                           {isDeleting ? '…' : 'Yes'}
                         </button>
                         <button
                           onClick={() => setConfirmDeleteChatterId(null)}
-                          className="text-[10px] font-semibold text-[#9e9e9e] hover:text-white px-1.5 py-0.5 rounded bg-[#2a2a2e] transition-colors"
+                          className="text-sm font-semibold text-[#9e9e9e] hover:text-white  py-0.5 rounded bg-[#2a2a2e] transition-colors px-3"
                         >
                           No
                         </button>
@@ -442,9 +442,9 @@ const CreateChatterPanel = ({ onChatterCreated, onChatterUpdated, onChatterDelet
                       <button
                         onClick={() => setConfirmDeleteChatterId(c.id)}
                         title="Delete chatter"
-                        className="w-6 h-6 flex items-center justify-center rounded-md text-[#9e9e9e] hover:text-red-400 hover:bg-[#2a2a2e] transition-colors"
+                        className="w-8 h-8 p-1 flex items-center justify-center rounded-md text-[#9e9e9e] hover:text-red-400 hover:bg-[#2a2a2e] transition-colors px-3"
                       >
-                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <svg width="100%" height="100%" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M2 4h12M5 4V2h6v2M6 7v5M10 7v5M3 4l1 9a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-9"/>
                         </svg>
                       </button>
