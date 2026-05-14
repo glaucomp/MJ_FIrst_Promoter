@@ -146,7 +146,7 @@ export const Commissions = () => {
             border: '1px solid rgba(251,191,36,0.2)',
           }}
         >
-          <span className="text-xs text-[#fbbf24] font-medium uppercase tracking-[0.08em]">Pending Earnings</span>
+          <span className="text-xs text-[#fbbf24] font-medium uppercase tracking-widest">Pending Earnings</span>
           <span className="text-xl font-bold text-white leading-none">${pendingEarnings.toFixed(2)}</span>
           <span className="text-xs text-[#9e9e9e]">Tier 1 sales revenue</span>
         </div>
@@ -159,7 +159,7 @@ export const Commissions = () => {
             border: '1px solid rgba(139,92,246,0.25)',
           }}
         >
-          <span className="text-xs text-[#a78bfa] font-medium uppercase tracking-[0.08em]">Pending Commissions</span>
+          <span className="text-xs text-[#a78bfa] font-medium uppercase tracking-widest">Pending Commissions</span>
           <span className="text-xl font-bold text-white leading-none">${pendingCommissions.toFixed(2)}</span>
           <span className="text-xs text-[#9e9e9e]">Tier 1 + tier 2 total</span>
         </div>
@@ -172,7 +172,7 @@ export const Commissions = () => {
             border: '1px solid rgba(16,185,129,0.2)',
           }}
         >
-          <span className="text-xs text-[#10b981] font-medium uppercase tracking-[0.08em]">Completed Earnings</span>
+          <span className="text-xs text-[#10b981] font-medium uppercase tracking-widest">Completed Earnings</span>
           <span className="text-xl font-bold text-white leading-none">${completedEarnings.toFixed(2)}</span>
           <span className="text-xs text-[#9e9e9e]">Tier 1 sales paid</span>
         </div>
@@ -185,7 +185,7 @@ export const Commissions = () => {
             border: '1px solid rgba(5,150,105,0.2)',
           }}
         >
-          <span className="text-xs text-[#059669] font-medium uppercase tracking-[0.08em]">Completed Commissions</span>
+          <span className="text-xs text-[#059669] font-medium uppercase tracking-widest">Completed Commissions</span>
           <span className="text-xl font-bold text-white leading-none">${completedCommissions.toFixed(2)}</span>
           <span className="text-xs text-[#9e9e9e]">Tier 1 + tier 2 paid</span>
         </div>
@@ -255,7 +255,7 @@ export const Commissions = () => {
                 ).map(({ label, align }) => (
                   <th
                     key={label || 'actions'}
-                    className="px-[16px] py-[10px] text-xs font-semibold text-[#666] uppercase tracking-[0.06em] whitespace-nowrap"
+                    className="px-[16px] py-[10px] text-xs font-semibold text-[#666] uppercase tracking-widest whitespace-nowrap"
                     style={{ textAlign: align as 'left' | 'right' }}
                   >
                     {label}

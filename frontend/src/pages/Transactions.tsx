@@ -133,7 +133,7 @@ const TransactionRow = ({ tx }: TransactionRowProps) => {
           )}
           {tx.commissions.length > 0 && (
             <div className="flex flex-col gap-[4px]">
-              <span className="text-xs text-[#888] uppercase tracking-[0.06em]">Commissions</span>
+              <span className="text-xs text-[#888] uppercase tracking-tighter">Commissions</span>
               {tx.commissions.map((c) => (
                 <div key={c.id} className="flex justify-between text-xs">
                   <span className="text-[#aaa]">

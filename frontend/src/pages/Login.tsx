@@ -78,7 +78,7 @@ export const Login = () => {
           <div className="flex flex-col gap-[12px] items-center">
             <h1 className="sr-only">{mode === 'login' ? 'Login' : 'Forgot password'}</h1>
             <LogoLottie height={56} width={220} />
-            <p className="text-base leading-[1.4] text-[#9e9e9e] font-medium tracking-[0.2px]">
+            <p className="text-base leading-[1.4] text-[#9e9e9e] font-medium ">
               {mode === 'login'
                 ? 'Sign in to your account'
                 : 'Enter your email and we\u2019ll send a reset link'}
@@ -93,7 +93,7 @@ export const Login = () => {
                 <div className="flex flex-col gap-[8px]">
                   <label
                     htmlFor="email"
-                    className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase tracking-[0.2px]"
+                    className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase "
                   >
                     Email
                   </label>
@@ -113,7 +113,7 @@ export const Login = () => {
                   <div className="flex items-center justify-between">
                     <label
                       htmlFor="password"
-                      className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase tracking-[0.2px]"
+                      className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase "
                     >
                       Password
                     </label>
@@ -154,13 +154,13 @@ export const Login = () => {
                   type="submit"
                   disabled={isLoading}
                   tabIndex={3}
-                  className="bg-linear-to-t from-tm-primary-color09 to-tm-primary-color06 rounded px-6 py-2 text-white text-base font-bold leading-[1.4] tracking-[0.2px] shadow-[0px_2px_4px_rgba(0,0,0,0.2)] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="bg-linear-to-t from-tm-primary-color09 to-tm-primary-color06 rounded px-6 py-2 text-white text-base font-bold leading-[1.4]  shadow-[0px_2px_4px_rgba(0,0,0,0.2)] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isLoading ? 'Signing In...' : 'Sign In'}
                 </button>
               </div>
 
-              <p className="text-center text-sm leading-[1.4] text-[#9e9e9e] tracking-[0.2px]">
+              <p className="text-center text-sm leading-[1.4] text-[#9e9e9e] ">
                 Need help? Contact support
               </p>
             </form>
@@ -172,7 +172,7 @@ export const Login = () => {
                 <div className="flex flex-col gap-[8px]">
                   <label
                     htmlFor="forgot-email"
-                    className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase tracking-[0.2px]"
+                    className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase "
                   >
                     Email
                   </label>
@@ -206,7 +206,7 @@ export const Login = () => {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="bg-linear-to-t from-tm-primary-color09 to-tm-primary-color06 rounded px-6 py-2 text-white text-base font-bold leading-[1.4] tracking-[0.2px] shadow-[0px_2px_4px_rgba(0,0,0,0.2)] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="bg-linear-to-t from-tm-primary-color09 to-tm-primary-color06 rounded px-6 py-2 text-white text-base font-bold leading-[1.4]  shadow-[0px_2px_4px_rgba(0,0,0,0.2)] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isLoading ? 'Sending…' : 'Send reset link'}
                 </button>
@@ -218,7 +218,7 @@ export const Login = () => {
                     setError('');
                     setForgotMessage('');
                   }}
-                  className="text-center text-sm leading-[1.4] text-[#9e9e9e] hover:text-white tracking-[0.2px]"
+                  className="text-center text-sm leading-[1.4] text-[#9e9e9e] hover:text-white "
                 >
                   ← Back to sign in
                 </button>

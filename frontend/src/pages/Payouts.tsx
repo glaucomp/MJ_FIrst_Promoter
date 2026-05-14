@@ -557,7 +557,7 @@ export const Payouts = () => {
           </div>
           <div className="lg:text-right">
             <div
-              className="text-sm uppercase tracking-[0.06em]"
+              className="text-sm uppercase tracking-widest"
               style={{ color: "rgba(255,255,255,0.35)" }}
             >
               Next payout
@@ -631,7 +631,7 @@ export const Payouts = () => {
               style={{ background: "rgba(0,0,0,0.2)" }}
             >
               <span
-                className="text-xs uppercase tracking-[0.06em]"
+                className="text-xs uppercase tracking-widest"
                 style={{ color: "rgba(255,255,255,0.3)" }}
               >
                 {label}

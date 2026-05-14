@@ -467,7 +467,7 @@ export const Models = () => {
             </p>
             <button
               onClick={() => setIsCreateUserModalOpen(true)}
-              className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-3 text-white text-sm font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+              className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-3 text-white text-sm font-bold leading-[1.4]  hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
             >
               + Create User
             </button>
@@ -479,7 +479,7 @@ export const Models = () => {
           <div className="flex flex-col gap-2 flex-1 min-w-50">
             <label
               htmlFor="admin-users-search"
-              className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.2px]"
+              className="text-[#9e9e9e] text-xs font-bold uppercase "
             >
               Search
             </label>
@@ -496,7 +496,7 @@ export const Models = () => {
           <div className="flex flex-col gap-2 min-w-40">
             <label
               htmlFor="admin-users-type"
-              className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.2px]"
+              className="text-[#9e9e9e] text-xs font-bold uppercase "
             >
               User Type
             </label>
@@ -944,7 +944,7 @@ export const Models = () => {
             </p>
             <button
               onClick={() => setIsCreateUserModalOpen(true)}
-              className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-3 text-white text-sm font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+              className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-3 text-white text-sm font-bold leading-[1.4]  hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
             >
               + Create Chatter
             </button>
@@ -955,7 +955,7 @@ export const Models = () => {
           <div className="flex flex-col gap-1.5 flex-1 min-w-50">
             <label
               htmlFor="am-users-search"
-              className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.2px]"
+              className="text-[#9e9e9e] text-xs font-bold uppercase "
             >
               Search
             </label>
@@ -972,7 +972,7 @@ export const Models = () => {
           <div className="flex flex-col gap-2 min-w-40">
             <label
               htmlFor="am-users-type"
-              className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.2px]"
+              className="text-[#9e9e9e] text-xs font-bold uppercase "
             >
               User Type
             </label>
@@ -1118,7 +1118,7 @@ export const Models = () => {
           </h1>
           <button
             onClick={() => handleOpenInviteModal("referral")}
-            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-2 text-white text-base font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all 
+            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-2 text-white text-base font-bold leading-[1.4]  hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all 
 whitespace-nowrap"
           >
             + Create Referral Link
@@ -1159,7 +1159,7 @@ whitespace-nowrap"
           </h1>
           <button
             onClick={() => handleOpenInviteModal("referral")}
-            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-3 text-white text-sm font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-3 text-white text-sm font-bold leading-[1.4]  hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
           >
             + Create Referral Link
           </button>
@@ -1203,7 +1203,7 @@ whitespace-nowrap"
           </h1>
           <button
             onClick={() => handleOpenInviteModal("referral")}
-            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-3 text-white text-base font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all whitespace-nowrap"
+            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-3 text-white text-base font-bold leading-[1.4]  hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all whitespace-nowrap"
           >
             + Create Referral Link
           </button>
@@ -2286,7 +2286,7 @@ const AdminOverrideRow = ({
 }) => (
   <div className="flex items-center justify-between gap-2 pt-2 mt-1 border-t border-[rgba(255,255,255,0.06)]">
     <span
-      className="text-[#9e9e9e] text-xs uppercase tracking-[0.3px]"
+      className="text-[#9e9e9e] text-xs uppercase"
       title="Admin-only overrides"
     >
       Admin
@@ -2654,7 +2654,7 @@ const ReassignModal = ({
         </p>
       ) : (
         <label className="flex flex-col gap-2">
-          <span className="text-xs uppercase tracking-[0.08em] text-[#9e9e9e] font-bold">
+          <span className="text-xs uppercase tracking-widest text-[#9e9e9e] font-bold">
             New account manager
           </span>
           <select
@@ -2756,7 +2756,7 @@ const AssignChattersModal = ({
         </p>
       ) : (
         <label className="flex flex-col gap-2">
-          <span className="text-xs uppercase tracking-[0.08em] text-[#9e9e9e] font-bold">
+          <span className="text-xs uppercase tracking-widest text-[#9e9e9e] font-bold">
             Chatter group
           </span>
           <select

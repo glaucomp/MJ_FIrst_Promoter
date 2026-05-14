@@ -82,7 +82,7 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
                       <item.Icon width={18} height={18} aria-hidden="true" focusable="false" />
                     </div>
                     <span
-                      className="text-base font-medium leading-[1.4] tracking-[0.2px] flex-1 text-left whitespace-nowrap text-ellipsis"
+                      className="text-base font-medium leading-[1.4] flex-1 text-left whitespace-nowrap text-ellipsis"
                       style={{ color: iconColor }}
                     >
                       {item.label}
@@ -124,7 +124,7 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
             </div>
             {isOpen && (
               <span
-                className="text-base font-medium leading-[1.4] tracking-[0.2px] flex-1 text-left whitespace-nowrap"
+                className="text-base font-medium leading-[1.4] flex-1 text-left whitespace-nowrap"
                 style={{ color: '#ff0f5f' }}
               >
                 Log Out

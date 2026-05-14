@@ -90,7 +90,7 @@ export const FirstPasswordChange = () => {
             <form onSubmit={handleSubmit} className="flex flex-col gap-[20px]">
               <div className="flex flex-col gap-[4px]">
                 <h2 className="text-white text-lg font-bold">{greeting}</h2>
-                <p className="text-[#9e9e9e] text-sm leading-[1.5]">
+                <p className="text-[#9e9e9e] text-sm leading-normal">
                   {intro}
                 </p>
               </div>
@@ -98,7 +98,7 @@ export const FirstPasswordChange = () => {
               <div className="flex flex-col gap-[8px]">
                 <label
                   htmlFor="new-password"
-                  className="text-[#9e9e9e] text-xs leading-[1.4] font-bold uppercase tracking-[0.2px]"
+                  className="text-[#9e9e9e] text-xs leading-[1.4] font-bold uppercase"
                 >
                   New Password
                 </label>
@@ -118,7 +118,7 @@ export const FirstPasswordChange = () => {
               <div className="flex flex-col gap-[8px]">
                 <label
                   htmlFor="confirm-password"
-                  className="text-[#9e9e9e] text-xs leading-[1.4] font-bold uppercase tracking-[0.2px]"
+                  className="text-[#9e9e9e] text-xs leading-[1.4] font-bold uppercase"
                 >
                   Confirm Password
                 </label>
@@ -136,8 +136,8 @@ export const FirstPasswordChange = () => {
               </div>
 
               {error && (
-                <div className="bg-tm-danger-color12 border border-[#cc0000] rounded-[8px] px-[16px] py-[12px]">
-                  <p className="text-[#ff2a2a] text-sm leading-[1.4] font-medium">
+                <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-[8px] px-[16px] py-[12px]">
+                  <p className="text-tm-danger-color05 text-sm leading-[1.4] font-medium">
                     {error}
                   </p>
                 </div>
@@ -146,7 +146,7 @@ export const FirstPasswordChange = () => {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="bg-linear-to-t from-tm-primary-color09 to-tm-primary-color06 rounded px-6 py-2 text-white text-base font-bold leading-[1.4] tracking-[0.2px] shadow-[0px_2px_4px_rgba(0,0,0,0.2)] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-linear-to-t from-tm-primary-color09 to-tm-primary-color06 rounded px-6 py-2 text-white text-base font-bold leading-[1.4] shadow-[0px_2px_4px_rgba(0,0,0,0.2)] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? 'Saving…' : 'Save and continue'}
               </button>

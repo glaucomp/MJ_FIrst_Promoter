@@ -178,7 +178,7 @@ export const LinkGenerator = ({ username }: LinkGeneratorProps) => {
             d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
           />
         </svg>
-        <p className="text-xs font-bold uppercase tracking-[0.3px] text-[#9e9e9e]">
+        <p className="text-xs font-bold uppercase text-[#9e9e9e]">
           Invite Link
         </p>
       </div>
@@ -281,7 +281,7 @@ export const LinkGenerator = ({ username }: LinkGeneratorProps) => {
       {generatedLink && (
         <div className="flex flex-col gap-4 border border-neutral-800 p-8 rounded-xl bg-tm-neutral-color08 min-w-0 w-full overflow-hidden">
           <div className="flex flex-row w-full">
-            <p className="text-xs font-bold uppercase tracking-[0.3px] text-[#9e9e9e]">
+            <p className="text-xs font-bold uppercase text-[#9e9e9e]">
               Generated Link
             </p>
           </div>
@@ -670,7 +670,7 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
             d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
           />
         </svg>
-        <p className="text-xs font-bold uppercase tracking-[0.3px] text-[#9e9e9e]">
+        <p className="text-xs font-bold uppercase text-[#9e9e9e]">
           Talk Like {displayName}
         </p>
       </div>

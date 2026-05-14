@@ -22,8 +22,8 @@ export const QuickTaskCard = ({
         <span className="text-base leading-none">{icon}</span>
       </div>
       <div className="flex flex-col  flex-1 min-w-0">
-        <p className="text-[#e6e6e6] text-base leading-[1.4] font-medium tracking-[0.2px]">{title}</p>
-        <p className="text-[#9e9e9e] text-sm leading-[1.4] font-medium tracking-[0.2px]">
+        <p className="text-[#e6e6e6] text-base leading-[1.4] font-medium">{title}</p>
+        <p className="text-[#9e9e9e] text-sm leading-[1.4] font-medium">
           {description}
         </p>
       </div>

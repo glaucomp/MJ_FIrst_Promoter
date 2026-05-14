@@ -28,7 +28,7 @@ const Field = ({
   placeholder?: string; type?: string; hint?: string; required?: boolean;
 }) => (
   <div className="flex flex-col gap-[6px]">
-    <label className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.5px]">
+    <label className="text-[#9e9e9e] text-xs font-bold uppercase">
       {label}{required && <span className="text-[#9fe870] ml-[2px]">*</span>}
     </label>
     <input
@@ -186,7 +186,7 @@ export const Settings = () => {
         </h2>
         <div className="flex flex-col gap-[16px]">
           <div className="flex flex-col gap-[8px]">
-            <label htmlFor="profileName" className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase tracking-[0.2px]">
+            <label htmlFor="profileName" className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase">
               Name
             </label>
             <input
@@ -198,7 +198,7 @@ export const Settings = () => {
             />
           </div>
           <div className="flex flex-col gap-[8px]">
-            <label htmlFor="profileUsername" className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase tracking-[0.2px]">
+            <label htmlFor="profileUsername" className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase">
               Username
             </label>
             <div className="relative">
@@ -224,7 +224,7 @@ export const Settings = () => {
             </div>
           </div>
           <div className="flex flex-col gap-[8px]">
-            <label htmlFor="profileEmail" className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase tracking-[0.2px]">
+            <label htmlFor="profileEmail" className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase">
               Email
             </label>
             <input
@@ -236,7 +236,7 @@ export const Settings = () => {
             />
           </div>
           <div className="flex flex-col gap-[8px]">
-            <span className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase tracking-[0.2px]">
+            <span className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase">
               Role
             </span>
             <div className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-[8px] px-[16px] py-[12px] flex items-center gap-[8px]">
@@ -323,7 +323,7 @@ export const Settings = () => {
 
         {/* Bank type selector */}
         <div className="flex flex-col gap-[8px]">
-          <span className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.5px]">
+          <span className="text-[#9e9e9e] text-xs font-bold uppercase">
             Bank Account Type
           </span>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-[8px]">
@@ -385,7 +385,7 @@ export const Settings = () => {
               <Field label="Account Number" value={accountNumber} onChange={setAccountNumber} placeholder="12345678" />
             </div>
             <div className="flex flex-col gap-[6px]">
-              <span className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.5px]">
+              <span className="text-[#9e9e9e] text-xs font-bold uppercase">
                 Account Type<span className="text-[#9fe870] ml-[2px]">*</span>
               </span>
               <div className="flex gap-[8px]">
@@ -412,7 +412,7 @@ export const Settings = () => {
               <div className="flex flex-col gap-[6px]">
                 <label
                   htmlFor="stateSelect"
-                  className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.5px]"
+                  className="text-[#9e9e9e] text-xs font-bold uppercase"
                 >
                   State<span className="text-[#9fe870] ml-[2px]">*</span>
                 </label>

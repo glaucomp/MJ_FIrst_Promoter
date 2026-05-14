@@ -91,7 +91,7 @@ export const TopBar = () => {
               aria-label="Open account settings"
             >
               <span
-                className="flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full text-xs font-semibold tracking-[0.02em]"
+                className="flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full text-xs font-semibold tracking-widest"
                 style={{
                   background: 'linear-gradient(145deg, #660022 0%, #3d0014 100%)',
                   color: '#ffb3cc',

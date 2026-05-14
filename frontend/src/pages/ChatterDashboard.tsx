@@ -162,7 +162,7 @@ export const ChatterDashboard = () => {
 
                 {/* Linked promoter footer */}
                 <div className="flex flex-col lg:flex-row lg:justify-between items-start gap-1.5 px-7 py-3.5 border-t border-tm-neutral-color04">
-                  <span className="text-[#444] text-xs font-semibold uppercase tracking-[0.3px]">Linked Promoter</span>
+                  <span className="text-[#444] text-xs font-semibold uppercase">Linked Promoter</span>
                   <span className="text-tm-primary-color04 text-lg">
                     {group.promoter
                       ? [group.promoter.firstName, group.promoter.lastName].filter(Boolean).join(' ') || group.promoter.username || 'Unknown'

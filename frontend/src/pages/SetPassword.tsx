@@ -124,7 +124,7 @@ export const SetPassword = () => {
                 <button
                   type="button"
                   onClick={() => navigate('/login', { replace: true })}
-                  className="bg-linear-to-t from-tm-primary-color09 to-tm-primary-color06 rounded px-6 py-2 text-white text-base font-bold leading-[1.4] tracking-[0.2px] shadow-[0px_2px_4px_rgba(0,0,0,0.2)] hover:from-[#ff1f69] hover:to-[#d10050] transition-all"
+                  className="bg-linear-to-t from-tm-primary-color09 to-tm-primary-color06 rounded px-6 py-2 text-white text-base font-bold leading-[1.4]  shadow-[0px_2px_4px_rgba(0,0,0,0.2)] hover:from-[#ff1f69] hover:to-[#d10050] transition-all"
                 >
                   Back to Login
                 </button>
@@ -143,7 +143,7 @@ export const SetPassword = () => {
                 <div className="flex flex-col gap-[8px]">
                   <label
                     htmlFor="new-password"
-                    className="text-[#9e9e9e] text-xs leading-[1.4] font-bold uppercase tracking-[0.2px]"
+                    className="text-[#9e9e9e] text-xs leading-[1.4] font-bold uppercase "
                   >
                     New Password
                   </label>
@@ -163,7 +163,7 @@ export const SetPassword = () => {
                 <div className="flex flex-col gap-[8px]">
                   <label
                     htmlFor="confirm-password"
-                    className="text-[#9e9e9e] text-xs leading-[1.4] font-bold uppercase tracking-[0.2px]"
+                    className="text-[#9e9e9e] text-xs leading-[1.4] font-bold uppercase "
                   >
                     Confirm Password
                   </label>
@@ -191,7 +191,7 @@ export const SetPassword = () => {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="bg-linear-to-t from-tm-primary-color09 to-tm-primary-color06 rounded px-6 py-2 text-white text-base font-bold leading-[1.4] tracking-[0.2px] shadow-[0px_2px_4px_rgba(0,0,0,0.2)] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="bg-linear-to-t from-tm-primary-color09 to-tm-primary-color06 rounded px-6 py-2 text-white text-base font-bold leading-[1.4]  shadow-[0px_2px_4px_rgba(0,0,0,0.2)] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSubmitting
                     ? 'Saving…'

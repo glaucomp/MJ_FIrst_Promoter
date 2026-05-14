@@ -177,7 +177,7 @@ export const Campaigns = () => {
           <p className="text-base text-[#9e9e9e]">{campaigns.length} total</p>
           <button
             onClick={openCreate}
-            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-3 text-white text-sm font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-3 text-white text-sm font-bold leading-[1.4] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
           >
             + Create Campaign
           </button>
@@ -646,7 +646,7 @@ const Field = ({
   className?: string;
 }) => (
   <div className={`flex flex-col gap-1.5 ${className}`}>
-    <label className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.2px]">
+    <label className="text-[#9e9e9e] text-xs font-bold uppercase >
       {label}
     </label>
     {children}

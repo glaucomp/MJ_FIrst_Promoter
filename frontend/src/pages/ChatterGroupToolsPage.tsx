@@ -297,7 +297,7 @@ export const ChatterGroupToolsPage = () => {
                     d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
                   />
                 </svg>
-                <p className="text-xs font-bold uppercase tracking-[0.3px] text-[#9e9e9e]">
+                <p className="text-xs font-bold uppercase text-[#9e9e9e]">
                   Invite Link
                 </p>
               </div>
@@ -331,7 +331,7 @@ export const ChatterGroupToolsPage = () => {
               <rect x="12" y="4" width="2" height="6" rx="1" />
               <rect x="15" y="5" width="2" height="4" rx="1" />
             </svg>
-            <p className="text-sm font-bold uppercase tracking-[0.3px] text-white">
+            <p className="text-sm font-bold uppercase text-white">
               {promoterName} Info
             </p>
           </div>

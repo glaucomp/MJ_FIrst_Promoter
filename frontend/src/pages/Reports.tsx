@@ -482,7 +482,7 @@ const AdminTxRow = ({
               style={{ borderBottom: "1px solid var(--border-elevated)" }}
             >
               <span
-                className="text-xs uppercase tracking-[0.07em]"
+                className="text-xs uppercase tracking-widest"
                 style={{ color: "var(--color-text-faded)" }}
               >
                 Customer
@@ -510,7 +510,7 @@ const AdminTxRow = ({
               style={{ borderBottom: "1px solid var(--border-elevated)" }}
             >
               <span
-                className="text-xs uppercase tracking-[0.07em]"
+                className="text-xs uppercase tracking-widest"
                 style={{ color: "var(--color-text-faded)" }}
               >
                 Campaign
@@ -539,7 +539,7 @@ const AdminTxRow = ({
             }}
           >
             <span
-              className="text-xs uppercase tracking-[0.07em]"
+              className="text-xs uppercase tracking-widest"
               style={{ color: "var(--color-text-faded)" }}
             >
               {isDeposit ? "Sale Amount" : "Refund Amount"}
@@ -560,7 +560,7 @@ const AdminTxRow = ({
           {tx.commissions.length > 0 && (
             <div className="px-[14px] py-[10px] flex flex-col gap-[8px]">
               <span
-                className="text-xs uppercase tracking-[0.07em]"
+                className="text-xs uppercase tracking-widest"
                 style={{ color: "var(--color-text-faded)" }}
               >
                 Commissions

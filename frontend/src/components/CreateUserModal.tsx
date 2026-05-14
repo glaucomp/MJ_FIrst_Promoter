@@ -282,7 +282,7 @@ export const CreateUserModal = ({
               {/* Name row */}
               <div className="flex gap-[12px] flex-col lg:flex-row">
                 <div className="flex flex-col gap-[8px] flex-1">
-                  <label className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.2px]">
+                  <label className="text-[#9e9e9e] text-xs font-bold uppercase">
                     First Name
                   </label>
                   <input
@@ -294,7 +294,7 @@ export const CreateUserModal = ({
                   />
                 </div>
                 <div className="flex flex-col gap-[8px] flex-1">
-                  <label className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.2px]">
+                  <label className="text-[#9e9e9e] text-xs font-bold uppercase">
                     Last Name
                   </label>
                   <input
@@ -309,7 +309,7 @@ export const CreateUserModal = ({
 
               {/* Email */}
               <div className="flex flex-col gap-[8px]">
-                <label className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.2px]">
+                <label className="text-[#9e9e9e] text-xs font-bold uppercase">
                   Email
                 </label>
                 <input
@@ -327,7 +327,7 @@ export const CreateUserModal = ({
 
               {/* User type */}
               <div className="flex flex-col gap-[8px]">
-                <label className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.2px]">
+                <label className="text-[#9e9e9e] text-xs font-bold uppercase">
                   Role
                 </label>
                 <div className="flex flex-col gap-[8px]">
@@ -375,7 +375,7 @@ export const CreateUserModal = ({
                   promoters straight after activation. */}
               {isAccountManager && (
                 <div className="flex flex-col gap-[8px]">
-                  <label className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.2px]">
+                  <label className="text-[#9e9e9e] text-xs font-bold uppercase">
                     Campaign
                   </label>
                   {campaignsLoading && (

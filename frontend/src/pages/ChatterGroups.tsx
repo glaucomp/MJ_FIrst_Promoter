@@ -70,7 +70,7 @@ const GroupFormModal = ({ isOpen, onClose, onSaved, editing }: GroupFormModalPro
         </div>
 
         <div className="flex flex-col gap-2">
-          <label className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.2px]">Group Name</label>
+          <label className="text-[#9e9e9e] text-xs font-bold uppercase">Group Name</label>
           <input
             type="text"
             value={name}
@@ -81,7 +81,7 @@ const GroupFormModal = ({ isOpen, onClose, onSaved, editing }: GroupFormModalPro
         </div>
 
         <div className="flex flex-col gap-2">
-          <label className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.2px]">Tag <span className="normal-case font-normal">(optional)</span></label>
+          <label className="text-[#9e9e9e] text-xs font-bold uppercase">Tag <span className="normal-case font-normal">(optional)</span></label>
           <input
             type="text"
             value={tag}
@@ -93,7 +93,7 @@ const GroupFormModal = ({ isOpen, onClose, onSaved, editing }: GroupFormModalPro
         </div>
 
         <div className="flex flex-col gap-2">
-          <label className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.2px]">Commission Percentage (%)</label>
+          <label className="text-[#9e9e9e] text-xs font-bold uppercase">Commission Percentage (%)</label>
           <input
             type="number"
             min="0"
@@ -173,7 +173,7 @@ const CreateChatterPanel = ({ onChatterCreated, allChatters }: CreateChatterPane
 
   return (
     <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-lg p-5 flex flex-col gap-3 mb-6">
-      <p className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.3px]">Create New Chatter</p>
+      <p className="text-[#9e9e9e] text-xs font-bold uppercase">Create New Chatter</p>
 
       {success && (
         <div className="bg-[#0d2b1a] border border-[#1a5c35] rounded-lg px-3 py-3">
@@ -221,7 +221,7 @@ const CreateChatterPanel = ({ onChatterCreated, allChatters }: CreateChatterPane
       {/* Existing chatters — horizontal list */}
       {allChatters.length > 0 && (
         <div className="border-t border-[rgba(255,255,255,0.06)] pt-3 flex flex-col gap-3">
-          <p className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.3px]">
+          <p className="text-[#9e9e9e] text-xs font-bold uppercase">
             Existing Chatters ({allChatters.length})
           </p>
           <div className="flex flex-wrap gap-2">
@@ -295,7 +295,7 @@ const InlineMemberManager = ({ group, allChatters, onGroupUpdated }: InlineMembe
 
   return (
     <div className="border-t border-[rgba(255,255,255,0.06)] pt-4 flex flex-col gap-3">
-      <p className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.3px]">
+      <p className="text-[#9e9e9e] text-xs font-bold uppercase">
         Add Chatters ({nonMembers.length} available)
       </p>
 
@@ -444,7 +444,7 @@ const LinkPromoterModal = ({ isOpen, onClose, group, allPromoters, onGroupUpdate
 
         {/* Currently linked promoter */}
         <div>
-          <p className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.2px] mb-3">
+          <p className="text-[#9e9e9e] text-xs font-bold uppercase mb-3">
             Currently Linked Promoter
           </p>
           {group.promoter ? (
@@ -470,7 +470,7 @@ const LinkPromoterModal = ({ isOpen, onClose, group, allPromoters, onGroupUpdate
 
         {/* Available promoters */}
         <div className="flex flex-col gap-3">
-          <p className="text-[#9e9e9e] text-xs font-bold uppercase tracking-[0.2px]">
+          <p className="text-[#9e9e9e] text-xs font-bold uppercase">
             {group.promoter ? 'Switch Promoter' : 'Select Promoter'}
           </p>
           <input
@@ -867,7 +867,7 @@ export const ChatterGroups = () => {
               {/* Linked Promoter — subtle footer row */}
               <div className="flex flex-row items-center justify-between gap-4 px-7 py-4 border-t border-[rgba(255,255,255,0.04)] bg-tm-neutral-color09 flex-wrap">
                 <div className="flex flex-col items-start gap-2">
-                  <span className="text-tm-text-color08 text-sm font-semibold uppercase tracking-[0.3px]">Linked Promoter</span>
+                  <span className="text-tm-text-color08 text-sm font-semibold uppercase">Linked Promoter</span>
                   <span className="text-tm-text-color01 text-base">
                     {group.promoter
                       ? [group.promoter.firstName, group.promoter.lastName].filter(Boolean).join(' ') || group.promoter.email
