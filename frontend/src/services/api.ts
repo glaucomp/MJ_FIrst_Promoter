@@ -1048,12 +1048,29 @@ export const chattersApi = {
     return { chatter: result.chatter, inviteEmailSent: result.inviteEmailSent ?? false };
   },
 
+  async update(id: string, data: { email?: string; firstName?: string; lastName?: string }): Promise<{ chatter: import('../types').Chatter }> {
+    const response = await apiFetch(`${API_URL}/chatters/${id}`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+    return handleResponse(response, 'Failed to update chatter');
+  },
+
   async delete(id: string): Promise<{ message: string }> {
     const response = await apiFetch(`${API_URL}/chatters/${id}`, {
       method: 'DELETE',
       headers: getAuthHeaders(),
     });
     return handleResponse(response, 'Failed to delete chatter');
+  },
+
+  async resendInvite(id: string): Promise<{ message: string }> {
+    const response = await apiFetch(`${API_URL}/chatters/${id}/resend-invite`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response, 'Failed to resend invite email');
   },
 
   async getMyGroups(): Promise<{ groups: ChatterMyGroup[] }> {

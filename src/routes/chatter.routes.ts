@@ -51,6 +51,29 @@ router.post(
 router.get('/me/groups', authenticate, chatterController.getMyGroups);
 router.get('/', authenticate, chatterController.listChatters);
 router.get('/:id', authenticate, chatterController.getChatter);
+router.patch(
+  '/:id',
+  authenticate,
+  [
+    body('email').optional().isEmail().normalizeEmail(EMAIL_NORMALIZE_OPTIONS),
+    body('firstName').optional().trim(),
+    body('lastName').optional().trim(),
+  ],
+  chatterController.updateChatter,
+);
+router.post(
+  '/:id/resend-invite',
+  authenticate,
+  rateLimit({
+    windowMs: 60 * 1_000,
+    limit: 10,
+    keyGenerator: rateLimitKeyByUserOrIp,
+    handler: (_req, res) => res.status(429).json({ error: 'Too many requests' }),
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+  }),
+  chatterController.resendInviteEmail,
+);
 router.delete('/:id', authenticate, chatterController.deleteChatter);
 
 export default router;
