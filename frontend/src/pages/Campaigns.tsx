@@ -173,11 +173,11 @@ export const Campaigns = () => {
         <h1 className="text-3xl leading-9 font-semibold text-white lg:w-full">
           Campaigns
         </h1>
-        <div className="flex items-center  justify-between lg:justify-end lg:gap-4 w-full">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-4  justify-between lg:justify-end w-full">
           <p className="text-base text-[#9e9e9e]">{campaigns.length} total</p>
           <button
             onClick={openCreate}
-            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-2.5 text-white text-sm font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-3 text-white text-sm font-bold leading-[1.4] tracking-[0.2px] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
           >
             + Create Campaign
           </button>
@@ -216,7 +216,7 @@ export const Campaigns = () => {
                     </p>
                   </div>
 
-                  <div className="flex flex-row items-center gap-2">
+                  <div className="flex flex-wrap items-start lg:flex-row lg:items-center gap-[8px]">
                     {/* Active toggle */}
                     <button
                       onClick={() => handleToggleActive(c)}
@@ -265,7 +265,7 @@ export const Campaigns = () => {
                 </div>
 
                 {/* Stats row */}
-                <div className="grid grid-cols-3 gap-2 lg:grid lg:grid-cols-6 lg:gap-4 lg:text-center lg:mt-3">
+                <div className="grid grid-cols-2 gap-2 lg:grid lg:grid-cols-6 lg:gap-4 lg:text-center lg:mt-3">
                   <div className="flex flex-col gap-2">
                     <p className="text-tm-text-color10 text-xs uppercase font-bold">
                       Promoter commission %
@@ -600,7 +600,7 @@ export const Campaigns = () => {
               )}
 
               {formError && (
-                <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-lg px-3.5 py-2.5">
+                <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-md px-4 py-3">
                   <p className="text-tm-danger-color05 text-sm font-medium">
                     {formError}
                   </p>
