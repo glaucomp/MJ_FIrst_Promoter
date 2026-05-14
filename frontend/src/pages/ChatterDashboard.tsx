@@ -51,7 +51,7 @@ export const ChatterDashboard = () => {
   }, []);
 
   return (
-    <div className="flex flex-col gap-624px]">
+    <div className="flex flex-col gap-[24px]">
       {/* Header */}
       <div>
         <h1 className="text-xl font-bold text-white leading-[1.3]">My Groups</h1>
