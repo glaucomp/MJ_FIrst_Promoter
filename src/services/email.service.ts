@@ -1,20 +1,23 @@
-import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
+import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 
-import { PUBLIC_EMAIL_BUCKET_URL } from './s3.service';
+import { PUBLIC_EMAIL_BUCKET_URL } from "./s3.service";
 
 const LOGO_PUBLIC_URL = `${PUBLIC_EMAIL_BUCKET_URL}/mjpromoLogo.png`;
 
-const AWS_REGION = process.env.AWS_REGION || 'us-east-1';
-const SES_SENDER = process.env.SES_SENDER || 'noreply@yourdomain.com';
+const AWS_REGION = process.env.AWS_REGION || "us-east-1";
+const SES_SENDER = process.env.SES_SENDER || "noreply@yourdomain.com";
 const AWS_ACCESS_KEY_ID = process.env.SES_AWS_ACCESS_KEY_ID;
 const AWS_SECRET_ACCESS_KEY = process.env.SES_AWS_SECRET_ACCESS_KEY;
 
 const sesClient = new SESClient({
   region: AWS_REGION,
-  credentials: AWS_ACCESS_KEY_ID && AWS_SECRET_ACCESS_KEY ? {
-    accessKeyId: AWS_ACCESS_KEY_ID,
-    secretAccessKey: AWS_SECRET_ACCESS_KEY
-  } : undefined
+  credentials:
+    AWS_ACCESS_KEY_ID && AWS_SECRET_ACCESS_KEY
+      ? {
+          accessKeyId: AWS_ACCESS_KEY_ID,
+          secretAccessKey: AWS_SECRET_ACCESS_KEY,
+        }
+      : undefined,
 });
 
 interface WelcomeEmailData {
@@ -57,24 +60,24 @@ interface ReferralInviteEmailData {
 
 const escapeHtml = (value: string) =>
   value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 
 const formatExpiry = (expiresAt: Date) => {
   const hours = Math.max(
     1,
     Math.round((expiresAt.getTime() - Date.now()) / (60 * 60 * 1000)),
   );
-  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'}`;
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"}`;
   const days = Math.round(hours / 24);
-  return `${days} day${days === 1 ? '' : 's'}`;
+  return `${days} day${days === 1 ? "" : "s"}`;
 };
 
-const BRAND_PRIMARY = '#ff0f5f';
-const BRAND_PRIMARY_DARK = '#cc0047';
+const BRAND_PRIMARY = "#ff0f5f";
+const BRAND_PRIMARY_DARK = "#cc0047";
 
 // ─── Email header banner URLs ────────────────────────────────────────────────
 //
@@ -88,8 +91,8 @@ const BRAND_PRIMARY_DARK = '#cc0047';
 // upstream value so dev environments don't ship broken <img> tags.
 const BUCKET_PUBLIC_URL = (
   process.env.BUCKET_PUBLIC_URL?.trim() ||
-  'https://bucket-image-tease-me.s3.us-east-1.amazonaws.com'
-).replace(/\/+$/, '');
+  "https://bucket-image-tease-me.s3.us-east-1.amazonaws.com"
+).replace(/\/+$/, "");
 
 export const EMAIL_VERIFY_HEADER_URL = `${BUCKET_PUBLIC_URL}/email_verify_header.png`;
 export const EMAIL_RESET_HEADER_URL = `${BUCKET_PUBLIC_URL}/email-assets/reset_password_header.jpg`;
@@ -109,11 +112,11 @@ export class EmailService {
    */
   async sendPromoterWelcomeEmail(data: WelcomeEmailData): Promise<boolean> {
     const { email, username, password, firstName, ref_id, loginUrl } = data;
-    const headerOverride = data.headerImageOverrideUrl?.trim() || '';
+    const headerOverride = data.headerImageOverrideUrl?.trim() || "";
     const name = firstName || username;
     const currentYear = new Date().getFullYear();
 
-    const subject = '🎉 Welcome to MJ First Promoter Program!';
+    const subject = "🎉 Welcome to MJ First Promoter Program!";
 
     // Branded header banner. When the caller provides a per-promoter
     // composite (e.g. a data URL from composeWelcomeHeaderDataUrl), use
@@ -229,7 +232,7 @@ export class EmailService {
 
           <tr>
             <td align="center" style="background:#0f1012;padding:16px;">
-              <p style="font-size:11px;color:#555555;margin:0;">© ${currentYear} TeaseMe HQ. All rights reserved.</p>
+              <p style="font-size:11px;color:#555555;margin:0;">© ${currentYear} MJPromoter. All rights reserved.</p>
             </td>
           </tr>
         </table>
@@ -268,25 +271,25 @@ Next Steps:
 
   async sendSetPasswordEmail(data: SetPasswordEmailData): Promise<boolean> {
     const { email, firstName, setupUrl, invitedByName, expiresAt } = data;
-    const displayName = firstName?.trim() || email.split('@')[0];
+    const displayName = firstName?.trim() || email.split("@")[0];
     const expiryText = formatExpiry(expiresAt);
     const trimmedInviter = invitedByName?.trim();
     const inviter = trimmedInviter
       ? `${trimmedInviter} has invited you to `
-      : 'You have been invited to ';
+      : "You have been invited to ";
 
-    const subject = 'Set up your TeaseMe HQ account';
+    const subject = "Set up your MJPromoter account";
     const bodyHtml = this.renderActionTemplate({
       heading: `Welcome, ${displayName}!`,
-      intro: `${inviter}join the TeaseMe HQ platform. Click the button below to create your password and activate your account.`,
-      buttonLabel: 'Set My Password',
+      intro: `${inviter}join the MJPromoter platform. Click the button below to create your password and activate your account.`,
+      buttonLabel: "Set My Password",
       buttonUrl: setupUrl,
       footerNote: `For security, this invite link expires in ${expiryText}. If it expires, ask whoever invited you to send a new one.`,
     });
 
     const bodyText = `Welcome, ${displayName}!
 
-${inviter}join the TeaseMe HQ platform.
+${inviter}join the MJPromoter platform.
 
 Click the link below to set your password and activate your account:
 ${setupUrl}
@@ -300,22 +303,22 @@ If you weren't expecting this invite, you can safely ignore this email.`;
 
   async sendPasswordResetEmail(data: PasswordResetEmailData): Promise<boolean> {
     const { email, firstName, resetUrl, expiresAt } = data;
-    const displayName = firstName?.trim() || email.split('@')[0];
+    const displayName = firstName?.trim() || email.split("@")[0];
     const expiryText = formatExpiry(expiresAt);
 
-    const subject = 'Reset your TeaseMe HQ password';
+    const subject = "Reset your MJPromoter password";
     const bodyHtml = this.renderActionTemplate({
       heading: `Hi ${displayName},`,
       intro:
-        'We received a request to reset the password on your TeaseMe HQ account. Click the button below to choose a new one.',
-      buttonLabel: 'Reset Password',
+        "We received a request to reset the password on your MJPromoter account. Click the button below to choose a new one.",
+      buttonLabel: "Reset Password",
       buttonUrl: resetUrl,
       footerNote: `This link expires in ${expiryText}. If you didn't request a reset, you can safely ignore this email — your password will stay the same.`,
     });
 
     const bodyText = `Hi ${displayName},
 
-We received a request to reset the password on your TeaseMe HQ account.
+We received a request to reset the password on your MJPromoter account.
 
 Use the link below to choose a new password:
 ${resetUrl}
@@ -325,18 +328,20 @@ This link expires in ${expiryText}. If you didn't request a reset, you can ignor
     return this.sendEmail(email, subject, bodyHtml, bodyText);
   }
 
-  async sendReferralInviteEmail(data: ReferralInviteEmailData): Promise<boolean> {
+  async sendReferralInviteEmail(
+    data: ReferralInviteEmailData,
+  ): Promise<boolean> {
     const { inviteeEmail, inviterName, campaignName, acceptUrl } = data;
-    const safeInviter = inviterName?.trim() || 'A promoter';
+    const safeInviter = inviterName?.trim() || "A promoter";
 
     const subject = `${safeInviter} invited you to join ${campaignName}`;
     const bodyHtml = this.renderActionTemplate({
       heading: `You're invited to ${campaignName}`,
       intro: `${safeInviter} sent you a referral invite. Click the button below to accept and get started.`,
-      buttonLabel: 'Accept Invite',
+      buttonLabel: "Accept Invite",
       buttonUrl: acceptUrl,
       footerNote:
-        'This invite link is single-use. If you weren\u2019t expecting this email, you can safely ignore it.',
+        "This invite link is single-use. If you weren\u2019t expecting this email, you can safely ignore it.",
     });
 
     const bodyText = `You're invited to ${campaignName}
@@ -369,7 +374,7 @@ This invite link is single-use. If you weren't expecting this email, you can saf
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>TeaseMe HQ</title>
+  <title>MJPromoter</title>
 </head>
 <body style="background:#0f1012;padding:0;margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0f1012;padding:40px 0;">
@@ -407,7 +412,7 @@ This invite link is single-use. If you weren't expecting this email, you can saf
           </tr>
           <tr>
             <td align="center" style="background:#0f1012;padding:16px;">
-              <p style="font-size:11px;color:#555555;margin:0;">© ${currentYear} TeaseMe HQ. All rights reserved.</p>
+              <p style="font-size:11px;color:#555555;margin:0;">© ${currentYear} MJPromoter. All rights reserved.</p>
             </td>
           </tr>
         </table>
@@ -422,30 +427,30 @@ This invite link is single-use. If you weren't expecting this email, you can saf
     toEmail: string,
     subject: string,
     bodyHtml: string,
-    bodyText: string
+    bodyText: string,
   ): Promise<boolean> {
     try {
       const command = new SendEmailCommand({
         Source: SES_SENDER,
         Destination: {
-          ToAddresses: [toEmail]
+          ToAddresses: [toEmail],
         },
         Message: {
           Subject: {
             Data: subject,
-            Charset: 'UTF-8'
+            Charset: "UTF-8",
           },
           Body: {
             Html: {
               Data: bodyHtml,
-              Charset: 'UTF-8'
+              Charset: "UTF-8",
             },
             Text: {
               Data: bodyText,
-              Charset: 'UTF-8'
-            }
-          }
-        }
+              Charset: "UTF-8",
+            },
+          },
+        },
       });
 
       const response = await sesClient.send(command);
