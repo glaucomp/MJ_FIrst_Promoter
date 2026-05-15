@@ -2537,9 +2537,15 @@ const CardActions = ({
         </SecondaryButton>
       )}
       {canAssignChatters ? (
-        <PinkCta onClick={() => onAssignChatters(referral)} disabled={busy}>
-          {busy ? "Assigning…" : "Assign Chatters"}
-        </PinkCta>
+        referral.referredUser?.chatterGroupId ? (
+          <SecondaryButton onClick={() => onAssignChatters(referral)} disabled={busy}>
+            {busy ? "Assigning…" : "Reassign Chatters"}
+          </SecondaryButton>
+        ) : (
+          <PinkCta onClick={() => onAssignChatters(referral)} disabled={busy}>
+            {busy ? "Assigning…" : "Assign Chatters"}
+          </PinkCta>
+        )
       ) : (
         <p className="w-full rounded-md border border-[rgba(255,255,255,0.12)] bg-[#1a1a1a] px-4 py-3 text-[#9e9e9e] text-base font-medium text-center">
           Your account manager will assign chatters.
