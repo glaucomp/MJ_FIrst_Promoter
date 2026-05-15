@@ -255,6 +255,7 @@ export interface Referral {
     // (mustChangePassword === true OR no referredUser yet), hidden once
     // the promoter has rotated their temp password into a real one.
     mustChangePassword?: boolean;
+    chatterGroupId?: string | null;
   };
   commissions?: ReferralCommission[];
   childReferrals?: Array<{

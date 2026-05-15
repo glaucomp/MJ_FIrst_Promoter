@@ -1736,6 +1736,7 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
             // cards: button hides once the promoter has completed
             // /first-password-change (mustChangePassword flips to false).
             mustChangePassword: true,
+            chatterGroupId: true,
           },
         },
         childReferrals: {
