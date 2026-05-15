@@ -55,7 +55,7 @@ export const ChatterDashboard = () => {
       {/* Header */}
       <div>
         <h1 className="text-xl font-bold text-white leading-[1.3]">My Groups</h1>
-        <p className="text-[#9e9e9e] text-sm mt-1">
+        <p className="text-[#9e9e9e] text-sm lg:text-base mt-1">
           {groups.length === 0
             ? 'Your assigned chatter groups'
             : `${groups.length} group${groups.length === 1 ? '' : 's'} — commissions split equally among group members`}

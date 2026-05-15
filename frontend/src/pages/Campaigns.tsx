@@ -328,7 +328,7 @@ export const Campaigns = () => {
                 <div className="flex items-center justify-end gap-4 pt-6 pb-4 mt-4 border-t border-[rgba(255,255,255,0.05)]">
                   <button
                     onClick={() => openEdit(c)}
-                    className="text-[#9e9e9e] text-sm hover:text-white hover:-translate-y-0.5 transition-all"
+                    className="text-[#9e9e9e] text-sm lg:text-base hover:text-white hover:-translate-y-0.5 transition-all"
                   >
                     Edit
                   </button>
