@@ -41,7 +41,7 @@ router.post(
     legacyHeaders: false,
   }),
   [
-    body('email').isEmail().normalizeEmail(EMAIL_NORMALIZE_OPTIONS),
+    body('email').optional({ nullable: true, checkFalsy: true }).isEmail().normalizeEmail(EMAIL_NORMALIZE_OPTIONS),
     body('influencer_id').isString().trim().notEmpty(),
     body('telegram_id').isInt({ min: 1 }).toInt(),
     body('full_name').isString().trim().notEmpty(),

@@ -13,7 +13,7 @@ interface PreregisterSuccess {
 }
 
 const callPreregister = async (payload: {
-  email: string;
+  email?: string;
   influencer_id: string;
   telegram_id: number;
   full_name: string;
@@ -107,15 +107,15 @@ export const LinkGenerator = ({ username }: LinkGeneratorProps) => {
     const trimmedEmail = email.trim();
     const trimmedTelegram = telegramId.trim();
 
-    if (!trimmedName || !trimmedEmail || !trimmedTelegram) {
-      setErrorMessage("Please fill in name, telegram ID and email.");
+    if (!trimmedName || !trimmedTelegram) {
+      setErrorMessage("Please fill in name and telegram ID.");
       return;
     }
     if (!/^\d+$/.test(trimmedTelegram)) {
       setErrorMessage("Telegram ID must be a number.");
       return;
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+    if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
       setErrorMessage("Please enter a valid email address.");
       return;
     }
@@ -124,7 +124,7 @@ export const LinkGenerator = ({ username }: LinkGeneratorProps) => {
     setLoading(true);
     try {
       const result = await callPreregister({
-        email: trimmedEmail,
+        ...(trimmedEmail ? { email: trimmedEmail } : {}),
         influencer_id: username,
         telegram_id: Number(trimmedTelegram),
         full_name: trimmedName,
@@ -159,7 +159,7 @@ export const LinkGenerator = ({ username }: LinkGeneratorProps) => {
     }
   };
 
-  const canGenerate = !!(name.trim() && telegramId.trim() && email.trim()) && !loading;
+  const canGenerate = !!(name.trim() && telegramId.trim()) && !loading;
 
   return (
     <div className="flex flex-col gap-[16px]">

@@ -170,7 +170,7 @@ export const createChatter = async (req: AuthRequest, res: Response) => {
 };
 
 type PreregisterPayload = {
-  email: string;
+  email?: string;
   influencer_id: string;
   telegram_id: number;
   full_name: string;
@@ -268,8 +268,10 @@ export const preregisterVipUser = async (req: AuthRequest, res: Response) => {
         .json({ error: "telegram_id must be a positive integer" });
     }
 
+    const rawEmail = req.body.email ? String(req.body.email).trim() : undefined;
+
     const payload: PreregisterPayload = {
-      email: String(req.body.email).trim(),
+      ...(rawEmail ? { email: rawEmail } : {}),
       influencer_id: String(req.body.influencer_id).trim(),
       telegram_id: telegramId,
       full_name: String(req.body.full_name).trim(),
