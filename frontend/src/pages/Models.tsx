@@ -2539,7 +2539,7 @@ const CardActions = ({
       {canAssignChatters ? (
         referral.referredUser?.chatterGroupId ? (
           <SecondaryButton onClick={() => onAssignChatters(referral)} disabled={busy}>
-            {busy ? "Assigning…" : "Reassign Chatter"}
+            {busy ? "Assigning…" : "Reassign Chatters"}
           </SecondaryButton>
         ) : (
           <PinkCta onClick={() => onAssignChatters(referral)} disabled={busy}>
