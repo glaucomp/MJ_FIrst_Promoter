@@ -384,9 +384,9 @@ const CreateChatterPanel = ({ onChatterCreated, onChatterUpdated, onChatterDelet
               return (
                 <div
                   key={c.id}
-                  className="group relative flex-col lg:flex-row flex items-start lg:items-center gap-2 bg-[#141416] border border-[rgba(255,255,255,0.07)] hover:border-[rgba(255,255,255,0.15)] rounded-2xl px-3 py-2 transition-colors w-full"
+                  className="group relative flex-col lg:flex-row flex items-start lg:items-center gap-2 bg-[#141416] border border-[rgba(255,255,255,0.07)] hover:border-[rgba(255,255,255,0.15)] rounded-2xl px-4 py-3 transition-colors w-full lg:w-auto"
                 >
-                  <div className="w-7 h-7 rounded-full bg-[#2e2e32] border border-[#3a3a3e] flex items-center justify-center shrink-0">
+                  <div className="w-7 h-7  rounded-full bg-[#2e2e32] border border-[#3a3a3e] flex items-center justify-center shrink-0">
                     <span className="text-3 font-semibold text-[#aaa] leading-none">{initials}</span>
                   </div>
                   <div className="flex flex-col min-w-0 w-full">
@@ -395,12 +395,12 @@ const CreateChatterPanel = ({ onChatterCreated, onChatterUpdated, onChatterDelet
                   </div>
 
                   {/* Action buttons — always visible on mobile, fade in on hover for desktop */}
-                  <div className="flex items-center gap-1 ml-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-1 ml-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity mt-3">
                     {/* Edit */}
                     <button
                       onClick={() => setEditingChatter(c)}
                       title="Edit chatter"
-                      className="w-8 h-8 p-1 flex items-center justify-center rounded-md text-[#9e9e9e] hover:text-white hover:bg-[#2a2a2e] transition-colors"
+                      className="w-8 h-8 lg:w-6 lg:h-6 p-1 flex items-center justify-center rounded-md text-[#9e9e9e] hover:text-white hover:bg-[#2a2a2e] transition-colors"
                     >
                       <svg width="100%" height="100%" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M11.5 2.5a2.121 2.121 0 0 1 3 3L5 15H1v-4L11.5 2.5z"/>
@@ -411,7 +411,7 @@ const CreateChatterPanel = ({ onChatterCreated, onChatterUpdated, onChatterDelet
                       onClick={() => handleResendInvite(c)}
                       disabled={isResending}
                       title="Resend welcome email"
-                      className="w-8 h-8  p-1flex items-center justify-center rounded-md text-[#9e9e9e] hover:text-white hover:bg-[#2a2a2e] transition-colors disabled:opacity-40"
+                      className="w-8 h-8 lg:w-6 lg:h-6 p-1 flex items-center justify-center rounded-md text-[#9e9e9e] hover:text-white hover:bg-[#2a2a2e] transition-colors disabled:opacity-40"
                     >
                       {isResending
                         ? <svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
@@ -442,7 +442,7 @@ const CreateChatterPanel = ({ onChatterCreated, onChatterUpdated, onChatterDelet
                       <button
                         onClick={() => setConfirmDeleteChatterId(c.id)}
                         title="Delete chatter"
-                        className="w-8 h-8 p-1 flex items-center justify-center rounded-md text-[#9e9e9e] hover:text-red-400 hover:bg-[#2a2a2e] transition-colors px-3"
+                        className="w-8 h-8 lg:w-6 lg:h-6 p-1 flex items-center justify-center rounded-md text-[#9e9e9e] hover:text-red-400 hover:bg-[#2a2a2e] transition-colors"
                       >
                         <svg width="100%" height="100%" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M2 4h12M5 4V2h6v2M6 7v5M10 7v5M3 4l1 9a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-9"/>
@@ -921,7 +921,7 @@ export const ChatterGroups = () => {
 
         <div className="flex flex-col gap-4">
           <h2 className="text-xl font-semibold text-white lg:w-full">Chatter Groups</h2>
-          <p className="text-[#9e9e9e] text-sm mt-1">
+          <p className="text-[#9e9e9e] text-sm lg:text-base mt-1">
             {groups.length} group{groups.length !== 1 ? 's' : ''} — commissions split equally among group members
           </p>
           <div className="grid grid-cols-2 items-center gap-3 w-full lg:col-start-2 lg:self-end lg:max-w-lg">
@@ -1008,23 +1008,23 @@ export const ChatterGroups = () => {
                     <div className="flex items-center gap-3">
                       <button
                         onClick={() => { setEditingGroup(group); setIsGroupFormOpen(true); }}
-                        className="text-[#9e9e9e] text-sm hover:text-white hover:-translate-y-0.5 transition-all"
+                        className="text-[#9e9e9e] text-sm lg:text-base hover:text-white hover:-translate-y-0.5 transition-all"
                       >
                         Edit
                       </button>
                       {confirmDeleteId === group.id ? (
                         <div className="flex items-center gap-2">
-                          <span className="text-[#555] text-xs">Delete?</span>
+                          <span className="text-[#555] text-sm lg:text-base">Delete?</span>
                           <button
                             onClick={() => void handleDelete(group.id)}
                             disabled={deletingId === group.id}
-                            className="text-tm-danger-color05 text-xs font-bold hover:text-[#ff4444] disabled:opacity-50"
+                            className="text-tm-danger-color05 text-sm lg:text-base font-bold hover:text-[#ff4444] disabled:opacity-50"
                           >
                             {deletingId === group.id ? '...' : 'Yes'}
                           </button>
                           <button
                             onClick={() => setConfirmDeleteId(null)}
-                            className="text-[#555] text-xs font-bold hover:text-[#9e9e9e]"
+                            className="text-[#555] text-sm lg:text-base font-bold hover:text-[#9e9e9e]"
                           >
                             No
                           </button>
@@ -1032,7 +1032,7 @@ export const ChatterGroups = () => {
                       ) : (
                         <button
                           onClick={() => setConfirmDeleteId(group.id)}
-                          className="text-tm-danger-color04 text-sm hover:text-tm-danger-color05 hover:-translate-y-0.5 transition-all"
+                          className="text-tm-danger-color04 text-sm lg:text-base hover:text-tm-danger-color05 hover:-translate-y-0.5 transition-all"
                         >
                           Delete
                         </button>
