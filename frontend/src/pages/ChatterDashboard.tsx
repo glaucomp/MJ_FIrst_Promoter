@@ -97,10 +97,13 @@ export const ChatterDashboard = () => {
                 .join('') || group.name.slice(0, 2).toUpperCase();
 
             return (
-              <button
+              <div
                 key={group.id}
                 onClick={() => openTools(group)}
-                className="w-full text-left bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-2xl flex flex-col  transition-all group/card"
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && openTools(group)}
+                className="w-full text-left bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-2xl flex flex-col  transition-all group/card cursor-pointer"
               >
                 {/* Card header */}
                 <div className="p-7 flex flex-col items-start justify-between gap-4">
@@ -169,7 +172,7 @@ export const ChatterDashboard = () => {
                       : 'None'}
                   </span>
                 </div>
-              </button>
+              </div>
             );
           })}
         </div>
