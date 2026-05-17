@@ -43,6 +43,22 @@ const DAY_INITIALS = ["M", "T", "W", "T", "F", "S", "S"]; // Mon=0 … Sun=6
 const MONTH_3 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const MONTH_1 = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
 
+const isoWeekNumber = (d: Date): number => {
+  const tmp = new Date(d);
+  tmp.setHours(0, 0, 0, 0);
+  tmp.setDate(tmp.getDate() + 3 - ((tmp.getDay() + 6) % 7));
+  const yearStart = new Date(tmp.getFullYear(), 0, 4);
+  return (
+    1 +
+    Math.round(
+      ((tmp.getTime() - yearStart.getTime()) / 86_400_000 -
+        3 +
+        ((yearStart.getDay() + 6) % 7)) /
+        7,
+    )
+  );
+};
+
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
 const isTier1 = (c: Commission) =>
@@ -117,18 +133,25 @@ const buildChart = (
   }
 
   if (period === "month") {
-    // 5 weekly buckets over the past 30 days (Wk 1 = oldest)
-    const labels = ["Wk 1", "Wk 2", "Wk 3", "Wk 4", "Wk 5"];
+    // 5 weekly buckets over the past 30 days; labels show actual ISO week numbers
+    // values[0] = oldest bucket (days 29-24 ago), values[4] = newest (days 5-0)
     const values = new Array<number>(5).fill(0);
     const today = new Date(now);
     today.setHours(0, 0, 0, 0);
+    // Derive label for each bucket from the oldest day in that bucket
+    const labels: string[] = Array.from({ length: 5 }, (_, i) => {
+      const daysAgo = 29 - i * 6; // oldest day of bucket i
+      const d = new Date(today);
+      d.setDate(d.getDate() - daysAgo);
+      return `Wk ${isoWeekNumber(d)}`;
+    });
     commissions.forEach((c) => {
       if (c.amount <= 0) return;
       const cd = new Date(c.createdAt);
       cd.setHours(0, 0, 0, 0);
       const diff = Math.round((today.getTime() - cd.getTime()) / 86_400_000);
       if (diff < 0 || diff > 29) return;
-      // days 29-24 → bucket 0 (Wk 1), …, days 5-0 → bucket 4 (Wk 5)
+      // diff 0-5 → newest bucket (values[4]), diff 24-29 → oldest (values[0])
       const bucket = Math.max(0, Math.min(4, 4 - Math.floor(diff / 6)));
       values[bucket] += c.amount;
     });
@@ -155,35 +178,35 @@ const buildChart = (
   }
 
   if (period === "all") {
-    if (commissions.length === 0) {
-      return {
-        labels: MONTH_3.slice(0, 6),
-        values: new Array(6).fill(0.01),
-      };
+    // Always show at least 12 months (Jan of current year → current month,
+    // or the full span from the earliest commission — whichever is longer).
+    const janThisYear = new Date(now.getFullYear(), 0, 1);
+    let earliest = janThisYear;
+    if (commissions.length > 0) {
+      const minTs = commissions.reduce(
+        (m, c) => Math.min(m, new Date(c.createdAt).getTime()),
+        Number.POSITIVE_INFINITY,
+      );
+      const fromData = new Date(minTs);
+      fromData.setDate(1);
+      fromData.setHours(0, 0, 0, 0);
+      if (fromData < earliest) earliest = fromData;
     }
-    const earliestTimestamp = commissions.reduce(
-      (minTimestamp, c) => Math.min(minTimestamp, new Date(c.createdAt).getTime()),
-      Number.POSITIVE_INFINITY,
-    );
-    const earliest = new Date(earliestTimestamp);
-    const totalMonths =
-      (now.getFullYear() - earliest.getFullYear()) * 12 +
-      (now.getMonth() - earliest.getMonth()) +
-      1;
     const sy = earliest.getFullYear();
     const sm = earliest.getMonth();
+    const totalMonths =
+      (now.getFullYear() - sy) * 12 + (now.getMonth() - sm) + 1;
     const labels: string[] = [];
     const values = new Array<number>(totalMonths).fill(0);
     for (let i = 0; i < totalMonths; i++) {
       const m = (sm + i) % 12;
       const y = sy + Math.floor((sm + i) / 12);
-      labels.push(`${MONTH_3[m]}-${String(y).slice(2)}`);
+      labels.push(`${MONTH_1[m]}-${String(y).slice(2)}`);
     }
     commissions.forEach((c) => {
       if (c.amount <= 0) return;
       const cd = new Date(c.createdAt);
-      const idx =
-        (cd.getFullYear() - sy) * 12 + (cd.getMonth() - sm);
+      const idx = (cd.getFullYear() - sy) * 12 + (cd.getMonth() - sm);
       if (idx >= 0 && idx < totalMonths) values[idx] += c.amount;
     });
     return { labels, values: values.map((v) => Math.max(v, 0.01)) };
