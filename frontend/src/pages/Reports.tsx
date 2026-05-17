@@ -176,7 +176,7 @@ const buildChart = (
     for (let i = 0; i < totalMonths; i++) {
       const m = (sm + i) % 12;
       const y = sy + Math.floor((sm + i) / 12);
-      labels.push(`${MONTH_1[m]}-${String(y).slice(2)}`);
+      labels.push(`${MONTH_3[m]}-${String(y).slice(2)}`);
     }
     commissions.forEach((c) => {
       if (c.amount <= 0) return;
