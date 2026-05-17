@@ -160,8 +160,11 @@ const buildChart = (
         values: new Array(6).fill(0.01),
       };
     }
-    const timestamps = commissions.map((c) => new Date(c.createdAt).getTime());
-    const earliest = new Date(Math.min(...timestamps));
+    const earliestTimestamp = commissions.reduce(
+      (minTimestamp, c) => Math.min(minTimestamp, new Date(c.createdAt).getTime()),
+      Number.POSITIVE_INFINITY,
+    );
+    const earliest = new Date(earliestTimestamp);
     const totalMonths =
       (now.getFullYear() - earliest.getFullYear()) * 12 +
       (now.getMonth() - earliest.getMonth()) +
