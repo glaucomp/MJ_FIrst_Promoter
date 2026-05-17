@@ -39,8 +39,8 @@ const ITEMS_PER_PAGE = 8;
 const CHART_PAGE_SIZE = 12;
 
 const DAY_INITIALS = ["M", "T", "W", "T", "F", "S", "S"]; // Mon=0 … Sun=6
-const MONTH_3 = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-const MONTH_1 = ["J","F","M","A","M","J","J","A","S","O","N","D"];
+const MONTH_3 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTH_1 = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
