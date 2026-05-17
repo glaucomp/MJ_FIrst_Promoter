@@ -115,6 +115,7 @@ export const Chart = ({
           style={{ bottom: 0, height: PAGINATION_H }}
         >
           <button
+            type="button"
             onClick={onPrev}
             disabled={!canPrev}
             className="flex items-center justify-center w-5 h-5 rounded text-white/40 hover:text-white/70 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
@@ -131,6 +132,7 @@ export const Chart = ({
             </svg>
           </button>
           <button
+            type="button"
             onClick={onNext}
             disabled={!canNext}
             className="flex items-center justify-center w-5 h-5 rounded text-white/40 hover:text-white/70 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
