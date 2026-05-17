@@ -128,8 +128,8 @@ const buildChart = (
       const diff = Math.round((today.getTime() - cd.getTime()) / 86_400_000);
       if (diff < 0 || diff > 29) return;
       // days 29-24 → bucket 0 (Wk 1), …, days 5-0 → bucket 4 (Wk 5)
-      const bucket = Math.min(4, Math.floor(diff / 6));
-      values[4 - bucket] += c.amount;
+      const bucket = Math.max(0, Math.min(4, 4 - Math.floor(diff / 6)));
+      values[bucket] += c.amount;
     });
     return { labels, values: values.map((v) => Math.max(v, 0.01)) };
   }
