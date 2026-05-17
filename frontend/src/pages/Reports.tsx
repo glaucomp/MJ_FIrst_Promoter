@@ -16,6 +16,7 @@ import {
   type Referral,
   type TransactionFull,
 } from "../services/api";
+import type { ChartData } from "../types";
 
 // ─── types & constants ───────────────────────────────────────────────────────
 
@@ -95,12 +96,12 @@ const buildChart = (
   const now = new Date();
 
   if (period === "week") {
-    // 8 bars: 7 days ago → today (oldest left, newest right)
+    // 7 bars: 6 days ago → today (oldest left, newest right)
     const labels: string[] = [];
-    const values = new Array<number>(8).fill(0);
+    const values = new Array<number>(7).fill(0);
     const today = new Date(now);
     today.setHours(0, 0, 0, 0);
-    for (let i = 7; i >= 0; i--) {
+    for (let i = 6; i >= 0; i--) {
       const d = new Date(today);
       d.setDate(d.getDate() - i);
       labels.push(DAY_INITIALS[(d.getDay() + 6) % 7]);
@@ -110,7 +111,7 @@ const buildChart = (
       const cd = new Date(c.createdAt);
       cd.setHours(0, 0, 0, 0);
       const diff = Math.round((today.getTime() - cd.getTime()) / 86_400_000);
-      if (diff >= 0 && diff <= 7) values[7 - diff] += c.amount;
+      if (diff >= 0 && diff <= 6) values[6 - diff] += c.amount;
     });
     return { labels, values: values.map((v) => Math.max(v, 0.01)) };
   }
@@ -1497,6 +1498,14 @@ export const Reports = () => {
     () => buildChart(curr, calRangeStart ? "custom" : period),
     [curr, period, calRangeStart],
   );
+
+  // Clamp chartPage when fullChartData changes to prevent empty pages
+  useEffect(() => {
+    const totalPages = Math.ceil(fullChartData.labels.length / CHART_PAGE_SIZE);
+    if (totalPages > 0 && chartPage >= totalPages) {
+      setChartPage(Math.max(0, totalPages - 1));
+    }
+  }, [fullChartData, chartPage]);
 
   const chartData = useMemo(() => {
     if (
