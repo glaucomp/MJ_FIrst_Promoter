@@ -1511,6 +1511,7 @@ const OnboardingChecklist = ({
 type ReferralListProps = {
   referrals: Referral[];
   setReferrals?: React.Dispatch<React.SetStateAction<Referral[]>>;
+  onRefetch?: () => void | Promise<void>;
   // Admins get override buttons (Delete / Reassign) on every card state so
   // they can reallocate or remove referrals that are past the normal AM
   // window (e.g. accepted/active/building). Non-admin AMs keep the stock
@@ -1582,7 +1583,7 @@ const ReferralStepStream = ({
     return () => {
       source.close();
     };
-  }, [referralId, active, setReferrals]);
+  }, [referralId, active, setReferrals, onRefetch]);
 
   return null;
 };
