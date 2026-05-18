@@ -16,6 +16,7 @@ import {
   type Referral,
   type TransactionFull,
 } from "../services/api";
+import type { ChartData } from "../types";
 
 // ─── types & constants ───────────────────────────────────────────────────────
 
@@ -36,7 +37,27 @@ const PERIOD_DAYS: Record<Period, number> = {
 };
 
 const ITEMS_PER_PAGE = 8;
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const CHART_PAGE_SIZE = 12;
+
+const DAY_INITIALS = ["M", "T", "W", "T", "F", "S", "S"]; // Mon=0 … Sun=6
+const MONTH_3 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTH_1 = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+
+const isoWeekNumber = (d: Date): number => {
+  const tmp = new Date(d);
+  tmp.setHours(0, 0, 0, 0);
+  tmp.setDate(tmp.getDate() + 3 - ((tmp.getDay() + 6) % 7));
+  const yearStart = new Date(tmp.getFullYear(), 0, 4);
+  return (
+    1 +
+    Math.round(
+      ((tmp.getTime() - yearStart.getTime()) / 86_400_000 -
+        3 +
+        ((yearStart.getDay() + 6) % 7)) /
+        7,
+    )
+  );
+};
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -84,13 +105,121 @@ const pctChange = (curr: number, prev: number): number | null => {
   return Math.round(((curr - prev) / prev) * 100);
 };
 
-const buildChart = (commissions: Commission[]) => {
+const buildChart = (
+  commissions: Commission[],
+  period: Period | "custom",
+): ChartData => {
+  const now = new Date();
+
+  if (period === "week") {
+    // 7 bars: 6 days ago → today (oldest left, newest right)
+    const labels: string[] = [];
+    const values = new Array<number>(7).fill(0);
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      labels.push(DAY_INITIALS[(d.getDay() + 6) % 7]);
+    }
+    commissions.forEach((c) => {
+      if (c.amount <= 0) return;
+      const cd = new Date(c.createdAt);
+      cd.setHours(0, 0, 0, 0);
+      const diff = Math.round((today.getTime() - cd.getTime()) / 86_400_000);
+      if (diff >= 0 && diff <= 6) values[6 - diff] += c.amount;
+    });
+    return { labels, values };
+  }
+
+  if (period === "month") {
+    // 5 weekly buckets over the past 30 days; labels show actual ISO week numbers
+    // values[0] = oldest bucket (days 29-24 ago), values[4] = newest (days 5-0)
+    const values = new Array<number>(5).fill(0);
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+    // Derive label for each bucket from the oldest day in that bucket
+    const labels: string[] = Array.from({ length: 5 }, (_, i) => {
+      const daysAgo = 29 - i * 6; // oldest day of bucket i
+      const d = new Date(today);
+      d.setDate(d.getDate() - daysAgo);
+      return `Wk ${isoWeekNumber(d)}`;
+    });
+    commissions.forEach((c) => {
+      if (c.amount <= 0) return;
+      const cd = new Date(c.createdAt);
+      cd.setHours(0, 0, 0, 0);
+      const diff = Math.round((today.getTime() - cd.getTime()) / 86_400_000);
+      if (diff < 0 || diff > 29) return;
+      // diff 0-5 → newest bucket (values[4]), diff 24-29 → oldest (values[0])
+      const bucket = Math.max(0, Math.min(4, 4 - Math.floor(diff / 6)));
+      values[bucket] += c.amount;
+    });
+    return { labels, values };
+  }
+
+  if (period === "3month") {
+    // 3 bars: current month and 2 months before it
+    const labels: string[] = [];
+    const values = new Array<number>(3).fill(0);
+    for (let i = 2; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      labels.push(MONTH_3[d.getMonth()]);
+    }
+    commissions.forEach((c) => {
+      if (c.amount <= 0) return;
+      const cd = new Date(c.createdAt);
+      const mDiff =
+        (now.getFullYear() - cd.getFullYear()) * 12 +
+        (now.getMonth() - cd.getMonth());
+      if (mDiff >= 0 && mDiff <= 2) values[2 - mDiff] += c.amount;
+    });
+    return { labels, values };
+  }
+
+  if (period === "all") {
+    // Always show at least 12 months (Jan of current year → current month,
+    // or the full span from the earliest commission — whichever is longer).
+    const janThisYear = new Date(now.getFullYear(), 0, 1);
+    let earliest = janThisYear;
+    if (commissions.length > 0) {
+      const minTs = commissions.reduce(
+        (m, c) => Math.min(m, new Date(c.createdAt).getTime()),
+        Number.POSITIVE_INFINITY,
+      );
+      const fromData = new Date(minTs);
+      fromData.setDate(1);
+      fromData.setHours(0, 0, 0, 0);
+      if (fromData < earliest) earliest = fromData;
+    }
+    const sy = earliest.getFullYear();
+    const sm = earliest.getMonth();
+    const totalMonths =
+      (now.getFullYear() - sy) * 12 + (now.getMonth() - sm) + 1;
+    const labels: string[] = [];
+    const values = new Array<number>(totalMonths).fill(0);
+    for (let i = 0; i < totalMonths; i++) {
+      const m = (sm + i) % 12;
+      const y = sy + Math.floor((sm + i) / 12);
+      labels.push(`${MONTH_1[m]}-${String(y).slice(2)}`);
+    }
+    commissions.forEach((c) => {
+      if (c.amount <= 0) return;
+      const cd = new Date(c.createdAt);
+      const idx = (cd.getFullYear() - sy) * 12 + (cd.getMonth() - sm);
+      if (idx >= 0 && idx < totalMonths) values[idx] += c.amount;
+    });
+    return { labels, values };
+  }
+
+  // "custom" calendar range — bucket by day of week
   const byDay = new Array<number>(7).fill(0);
   commissions.forEach((c) => {
     if (c.amount > 0)
       byDay[(new Date(c.createdAt).getDay() + 6) % 7] += c.amount;
   });
-  return { labels: DAYS, values: byDay.map((v) => Math.max(v, 0.01)) };
+  const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  return { labels: DAYS, values: byDay };
 };
 
 const money = (n: number) =>
@@ -1386,7 +1515,34 @@ export const Reports = () => {
     [commissions, period, calRangeStart],
   );
 
-  const chartData = useMemo(() => buildChart(curr), [curr]);
+  const [chartPage, setChartPage] = useState(0);
+
+  const fullChartData = useMemo(
+    () => buildChart(curr, calRangeStart ? "custom" : period),
+    [curr, period, calRangeStart],
+  );
+
+  // Clamp chartPage when fullChartData changes to prevent empty pages
+  useEffect(() => {
+    const totalPages = Math.ceil(fullChartData.labels.length / CHART_PAGE_SIZE);
+    if (totalPages > 0 && chartPage >= totalPages) {
+      setChartPage(Math.max(0, totalPages - 1));
+    }
+  }, [fullChartData, chartPage]);
+
+  const chartData = useMemo(() => {
+    if (
+      period !== "all" ||
+      calRangeStart ||
+      fullChartData.labels.length <= CHART_PAGE_SIZE
+    )
+      return fullChartData;
+    const start = chartPage * CHART_PAGE_SIZE;
+    return {
+      labels: fullChartData.labels.slice(start, start + CHART_PAGE_SIZE),
+      values: fullChartData.values.slice(start, start + CHART_PAGE_SIZE),
+    };
+  }, [fullChartData, period, chartPage, calRangeStart]);
 
   const currTotal = useMemo(() => sumPositive(curr), [curr]);
   const prevTotal = useMemo(() => sumPositive(prev), [prev]);
@@ -1645,6 +1801,7 @@ export const Reports = () => {
     setAdminTxPage(1);
     setCalRangeStart(null);
     setCalRangeEnd(null);
+    setChartPage(0);
   };
 
   // ── Calendar helpers ──────────────────────────────────────────────────────
@@ -2122,7 +2279,32 @@ export const Reports = () => {
         />
 
         {/* Chart */}
-        <Chart data={chartData} className="h-[180px] w-full bg-linear-to-l from-tm-neutral-color06 to-tm-neutral-color05 rounded-lg shadow-[0px_8px_8px_-2px_rgba(0,0,0,0.05),0px_2px_2px_0px_rgba(0,0,0,0.10),0px_-1px_0px_0px_rgba(255,255,255,0.10)] outline outline-offset-1 outline-border-subtle/5" />
+        {(() => {
+          const totalPages = Math.ceil(
+            fullChartData.labels.length / CHART_PAGE_SIZE,
+          );
+          const showPagination =
+            period === "all" && !calRangeStart && totalPages > 1;
+          return (
+            <Chart
+              data={chartData}
+              className="h-[200px] w-full bg-linear-to-l from-tm-neutral-color06 to-tm-neutral-color05 rounded-lg shadow-[0px_8px_8px_-2px_rgba(0,0,0,0.05),0px_2px_2px_0px_rgba(0,0,0,0.10),0px_-1px_0px_0px_rgba(255,255,255,0.10)] outline outline-offset-1 outline-border-subtle/5"
+              onPrev={
+                showPagination
+                  ? () => setChartPage((p) => Math.max(0, p - 1))
+                  : undefined
+              }
+              onNext={
+                showPagination
+                  ? () =>
+                      setChartPage((p) => Math.min(totalPages - 1, p + 1))
+                  : undefined
+              }
+              canPrev={showPagination && chartPage > 0}
+              canNext={showPagination && chartPage < totalPages - 1}
+            />
+          );
+        })()}
 
         {/* Transactions total — admin only */}
         {isAdmin && (
