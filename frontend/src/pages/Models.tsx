@@ -1516,7 +1516,6 @@ type ReferralListProps = {
   // window (e.g. accepted/active/building). Non-admin AMs keep the stock
   // action row.
   isAdmin?: boolean;
-  onRefetch?: () => void;
 };
 
 type StepStreamPayload = {
