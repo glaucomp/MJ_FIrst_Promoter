@@ -1137,7 +1137,7 @@ whitespace-nowrap"
           {myReferrals.length} total referrals
         </p>
 
-        <ReferralList referrals={myReferrals} setReferrals={setMyReferrals} />
+        <ReferralList referrals={myReferrals} setReferrals={setMyReferrals} onRefetch={loadData} />
 
         <InviteModal
           isOpen={isInviteModalOpen}
@@ -1177,7 +1177,7 @@ whitespace-nowrap"
           {myReferrals.length} total referrals
         </p>
 
-        <ReferralList referrals={myReferrals} setReferrals={setMyReferrals} />
+        <ReferralList referrals={myReferrals} setReferrals={setMyReferrals} onRefetch={loadData} />
 
         <InviteModal
           isOpen={isInviteModalOpen}
@@ -1221,7 +1221,7 @@ whitespace-nowrap"
           {myReferrals.length} total referrals
         </p>
 
-        <ReferralList referrals={myReferrals} setReferrals={setMyReferrals} />
+        <ReferralList referrals={myReferrals} setReferrals={setMyReferrals} onRefetch={loadData} />
 
         <InviteModal
           isOpen={isInviteModalOpen}
@@ -1496,6 +1496,7 @@ type ReferralListProps = {
   // window (e.g. accepted/active/building). Non-admin AMs keep the stock
   // action row.
   isAdmin?: boolean;
+  onRefetch?: () => void;
 };
 
 type StepStreamPayload = {
@@ -1515,10 +1516,12 @@ const ReferralStepStream = ({
   referralId,
   setReferrals,
   active,
+  onRefetch,
 }: {
   referralId: string;
   setReferrals?: React.Dispatch<React.SetStateAction<Referral[]>>;
   active: boolean;
+  onRefetch?: () => void;
 }) => {
   const [isConnected, setIsConnected] = useState(false);
 
@@ -1545,6 +1548,10 @@ const ReferralStepStream = ({
               : r,
           ),
         );
+        // Re-fetch the full referral so assetLink / surveyLink are up to date.
+        // The SSE payload only carries currentStep, so without this the
+        // copy/open buttons stay disabled even after the link is ready.
+        onRefetch?.();
         if (data.done) {
           source.close();
           setIsConnected(false);
@@ -1579,7 +1586,7 @@ const ReferralStepStream = ({
 
 type ReferralFilter = "all" | "pending" | "active" | "expired" | "denied";
 
-const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: ReferralListProps) => {
+const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp, onRefetch }: ReferralListProps) => {
   const auth = useAuth();
   const viewerId = auth.user?.id;
   const canOrderLandingPage =
@@ -1847,6 +1854,21 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
         referral.id,
         chatterGroupId,
       );
+      // Splice the new chatterGroupId into local state so the button label
+      // immediately flips to "Reassign Chatters" without waiting for a refetch.
+      setReferrals?.((prev) =>
+        prev.map((r) =>
+          r.id === referral.id && r.referredUser
+            ? {
+                ...r,
+                referredUser: {
+                  ...r.referredUser,
+                  chatterGroupId: result.chatterGroup.id,
+                },
+              }
+            : r,
+        ),
+      );
       showToast("success", `Chatters assigned: ${result.chatterGroup.name}`);
       setAssignChattersFor(null);
     } catch (err) {
@@ -2102,6 +2124,7 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
                       referralId={referral.id}
                       setReferrals={setReferrals}
                       active={!isLive && !isTerminalState}
+                      onRefetch={onRefetch}
                     />
                   </div>
                   <div className="flex items-center gap-2">
