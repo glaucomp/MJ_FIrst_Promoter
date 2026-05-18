@@ -187,8 +187,7 @@ export const Models = () => {
       else buckets.set(key, [u]);
     }
 
-    const sections: { typeKey: string; label: string; users: ApiUser[] }[] =
-      [];
+    const sections: { typeKey: string; label: string; users: ApiUser[] }[] = [];
     for (const typeKey of typeOrder) {
       const users = buckets.get(typeKey);
       if (users?.length) {
@@ -347,10 +346,10 @@ export const Models = () => {
         prev.map((u) =>
           u.id === userId
             ? {
-              ...u,
-              createdBy: previousCreatedBy,
-              accountManager: previousAccountManager,
-            }
+                ...u,
+                createdBy: previousCreatedBy,
+                accountManager: previousAccountManager,
+              }
             : u,
         ),
       );
@@ -414,14 +413,14 @@ export const Models = () => {
       prev.map((u) =>
         u.accountManager?.id === updated.id
           ? {
-            ...u,
-            accountManager: {
-              ...u.accountManager,
-              email: updated.email,
-              firstName: updated.firstName ?? null,
-              lastName: updated.lastName ?? null,
-            },
-          }
+              ...u,
+              accountManager: {
+                ...u.accountManager,
+                email: updated.email,
+                firstName: updated.firstName ?? null,
+                lastName: updated.lastName ?? null,
+              },
+            }
           : u,
       ),
     );
@@ -611,16 +610,18 @@ export const Models = () => {
                 onDragOver={onDragOver}
                 onDragLeave={onDragLeave}
                 onDrop={onDrop}
-                className={`flex flex-col  rounded-[10px] transition-colors ${isDropTarget
-                  ? "ring-2 ring-tm-text-color10 ring-offset-2 ring-offset-[#0f0f0f]"
-                  : ""
-                  }`}
+                className={`flex flex-col  rounded-[10px] transition-colors ${
+                  isDropTarget
+                    ? "ring-2 ring-tm-text-color10 ring-offset-2 ring-offset-[#0f0f0f]"
+                    : ""
+                }`}
               >
                 <div
-                  className={`flex flex-col lg:flex-row lg:items-center justify-between gap-3 border rounded-[10px] px-4 py-3 transition-colors ${isNeeds
-                    ? "bg-[#2a1f0a] border-[#b8860b]/40 hover:border-[#b8860b]/70"
-                    : "bg-[#1a1a1a] border-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.16)]"
-                    }`}
+                  className={`flex flex-col lg:flex-row lg:items-center justify-between gap-3 border rounded-[10px] px-4 py-3 transition-colors ${
+                    isNeeds
+                      ? "bg-[#2a1f0a] border-[#b8860b]/40 hover:border-[#b8860b]/70"
+                      : "bg-[#1a1a1a] border-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.16)]"
+                  }`}
                 >
                   <button
                     type="button"
@@ -628,23 +629,26 @@ export const Models = () => {
                     className="flex items-start gap-3 min-w-0 text-left flex-1"
                   >
                     <span
-                      className={`inline-block text-2xl transition-transform ${isCollapsed ? "" : "rotate-90"
-                        } ${isNeeds ? "text-[#ffb84d]" : "text-tm-primary-color05"}`}
+                      className={`inline-block text-2xl transition-transform ${
+                        isCollapsed ? "" : "rotate-90"
+                      } ${isNeeds ? "text-[#ffb84d]" : "text-tm-primary-color05"}`}
                       aria-hidden
                     >
                       ▸
                     </span>
                     <div className="flex flex-col min-w-0">
                       <p
-                        className={`text-xl truncate ${isNeeds ? "text-[#ffd27a]" : "text-white"
-                          }`}
+                        className={`text-xl truncate ${
+                          isNeeds ? "text-[#ffd27a]" : "text-white"
+                        }`}
                       >
                         {headerLabel}
                       </p>
                       {headerSubtitle && (
                         <p
-                          className={`text-sm mt-1 truncate ${isNeeds ? "text-[#d9b26a]" : "text-tm-text-color09"
-                            }`}
+                          className={`text-sm mt-1 truncate ${
+                            isNeeds ? "text-[#d9b26a]" : "text-tm-text-color09"
+                          }`}
                         >
                           {headerSubtitle}
                         </p>
@@ -653,8 +657,9 @@ export const Models = () => {
                   </button>
                   <div className="flex justify-between lg:justify-start items-center gap-3 shrink-0">
                     <span
-                      className={`text-base ${isNeeds ? "text-[#d9b26a]" : "text-tm-text-color09"
-                        }`}
+                      className={`text-base ${
+                        isNeeds ? "text-[#d9b26a]" : "text-tm-text-color09"
+                      }`}
                     >
                       {section.users.length} user
                       {section.users.length !== 1 ? "s" : ""}
@@ -727,12 +732,13 @@ export const Models = () => {
 
                 {!isCollapsed && (
                   <div
-                    className={`flex flex-col justify-center align-center gap-3  min-h-8 bg-tm-neutral-color08 px-3 py-4 lg:px-6 lg:py-8 rounded-b-xl overflow-clip  ${isDropTarget
-                      ? "border-[#ff0f5f]"
-                      : isNeeds
-                        ? "border-[#b8860b]/40"
-                        : "border-[rgba(255,255,255,0.05)]"
-                      }`}
+                    className={`flex flex-col justify-center align-center gap-3  min-h-8 bg-tm-neutral-color08 px-3 py-4 lg:px-6 lg:py-8 rounded-b-xl overflow-clip  ${
+                      isDropTarget
+                        ? "border-[#ff0f5f]"
+                        : isNeeds
+                          ? "border-[#b8860b]/40"
+                          : "border-[rgba(255,255,255,0.05)]"
+                    }`}
                   >
                     {section.users.length === 0 ? (
                       <>
@@ -769,30 +775,32 @@ export const Models = () => {
                             onDragStart={
                               isDraggable
                                 ? (e) => {
-                                  e.dataTransfer.setData(
-                                    "text/plain",
-                                    apiUser.id,
-                                  );
-                                  e.dataTransfer.effectAllowed = "move";
-                                  setDraggingUserId(apiUser.id);
-                                }
+                                    e.dataTransfer.setData(
+                                      "text/plain",
+                                      apiUser.id,
+                                    );
+                                    e.dataTransfer.effectAllowed = "move";
+                                    setDraggingUserId(apiUser.id);
+                                  }
                                 : undefined
                             }
                             onDragEnd={
                               isDraggable
                                 ? () => {
-                                  setDraggingUserId(null);
-                                  setDropTargetKey(null);
-                                }
+                                    setDraggingUserId(null);
+                                    setDropTargetKey(null);
+                                  }
                                 : undefined
                             }
-                            className={`bg-linear-to-t from-[#212121] to-[#23252a] border rounded-lg p-4 shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] transition-all ${isDraggable
-                              ? "cursor-grab active:cursor-grabbing"
-                              : ""
-                              } ${draggingUserId === apiUser.id
+                            className={`bg-linear-to-t from-[#212121] to-[#23252a] border rounded-lg p-4 shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] transition-all ${
+                              isDraggable
+                                ? "cursor-grab active:cursor-grabbing"
+                                : ""
+                            } ${
+                              draggingUserId === apiUser.id
                                 ? "opacity-10 shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)]"
                                 : "border-[rgba(255,255,255,0.03)]"
-                              } ${reassigningUserId === apiUser.id ? "animate-pulse" : ""}`}
+                            } ${reassigningUserId === apiUser.id ? "animate-pulse" : ""}`}
                             title={
                               isDraggable
                                 ? "Drag onto an account manager to reassign"
@@ -820,17 +828,21 @@ export const Models = () => {
                                 </p>
                                 <div className="flex items-center gap-2 w-full">
                                   <span
-                                    className={`px-3 py-1 rounded-full text-xs font-bold border ${apiUser.isActive
-                                      ? "bg-tm-success-color12 border-tm-success-color09 text-tm-success-color05"
-                                      : "bg-tm-danger-color12 border-tm-danger-color09 text-tm-danger-color05"
-                                      }`}
+                                    className={`px-3 py-1 rounded-full text-xs font-bold border ${
+                                      apiUser.isActive
+                                        ? "bg-tm-success-color12 border-tm-success-color09 text-tm-success-color05"
+                                        : "bg-tm-danger-color12 border-tm-danger-color09 text-tm-danger-color05"
+                                    }`}
                                   >
                                     {apiUser.isActive ? "Active" : "Inactive"}
                                   </span>
                                   <span className="px-3 py-2 rounded-full text-xs font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]">
-                                    {apiUser.userType?.toUpperCase() === "TEAM_MANAGER"
+                                    {apiUser.userType?.toUpperCase() ===
+                                    "TEAM_MANAGER"
                                       ? "PROMOTER +"
-                                      : apiUser.userType?.toLowerCase().replace("_", " ")}
+                                      : apiUser.userType
+                                          ?.toLowerCase()
+                                          .replace("_", " ")}
                                   </span>
                                 </div>
                               </div>
@@ -1055,17 +1067,21 @@ export const Models = () => {
                           </p>
                           <div className="flex items-center gap-2 w-full">
                             <span
-                              className={`px-3 py-1 rounded-full text-xs font-bold border ${apiUser.isActive
-                                ? "bg-tm-success-color12 border-tm-success-color09 text-tm-success-color05"
-                                : "bg-tm-danger-color12 border-tm-danger-color09 text-tm-danger-color05"
-                                }`}
+                              className={`px-3 py-1 rounded-full text-xs font-bold border ${
+                                apiUser.isActive
+                                  ? "bg-tm-success-color12 border-tm-success-color09 text-tm-success-color05"
+                                  : "bg-tm-danger-color12 border-tm-danger-color09 text-tm-danger-color05"
+                              }`}
                             >
                               {apiUser.isActive ? "Active" : "Inactive"}
                             </span>
                             <span className="px-3 py-1 rounded-full text-xs font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-tm-text-color09">
-                              {apiUser.userType?.toUpperCase() === "TEAM_MANAGER"
+                              {apiUser.userType?.toUpperCase() ===
+                              "TEAM_MANAGER"
                                 ? "PROMOTER +"
-                                : apiUser.userType?.toLowerCase().replace("_", " ")}
+                                : apiUser.userType
+                                    ?.toLowerCase()
+                                    .replace("_", " ")}
                             </span>
                           </div>
                         </div>
@@ -1137,7 +1153,7 @@ whitespace-nowrap"
           {myReferrals.length} total referrals
         </p>
 
-        <ReferralList referrals={myReferrals} setReferrals={setMyReferrals} />
+        <ReferralList referrals={myReferrals} setReferrals={setMyReferrals} onRefetch={loadData} />
 
         <InviteModal
           isOpen={isInviteModalOpen}
@@ -1177,7 +1193,7 @@ whitespace-nowrap"
           {myReferrals.length} total referrals
         </p>
 
-        <ReferralList referrals={myReferrals} setReferrals={setMyReferrals} />
+        <ReferralList referrals={myReferrals} setReferrals={setMyReferrals} onRefetch={loadData} />
 
         <InviteModal
           isOpen={isInviteModalOpen}
@@ -1221,7 +1237,7 @@ whitespace-nowrap"
           {myReferrals.length} total referrals
         </p>
 
-        <ReferralList referrals={myReferrals} setReferrals={setMyReferrals} />
+        <ReferralList referrals={myReferrals} setReferrals={setMyReferrals} onRefetch={loadData} />
 
         <InviteModal
           isOpen={isInviteModalOpen}
@@ -1317,16 +1333,20 @@ const CHIP_LABEL: Record<ChipState, string> = {
 // in the class string (rather than swapping the outer span) so the same
 // `border` class on the wrapper continues to set width + base style.
 const CHIP_CLASS: Record<ChipState, string> = {
-  denied: "bg-tm-warning-color12 border-tm-warning-color05 text-tm-warning-color05",
-  expired: "bg-tm-danger-color12 border-tm-danger-color05 text-tm-danger-color05",
-  waiting: "bg-tm-warning-color12 border-tm-warning-color05 text-tm-warning-color05",
+  denied:
+    "bg-tm-warning-color12 border-tm-warning-color05 text-tm-warning-color05",
+  expired:
+    "bg-tm-danger-color12 border-tm-danger-color05 text-tm-danger-color05",
+  waiting:
+    "bg-tm-warning-color12 border-tm-warning-color05 text-tm-warning-color05",
   order_lp: "bg-transparent border-tm-success-color05 text-tm-success-color05",
   // tm-success-color06 = #22BF56 (per frontend/src/index.css). Dashed
   // border telegraphs "in progress" without the visual weight of the
   // solid LP Live pill.
   building:
     "border-dashed bg-transparent border-tm-success-color05 text-tm-success-color05",
-  lp_live: "bg-tm-success-color12 border-tm-success-color05 text-tm-success-color05",
+  lp_live:
+    "bg-tm-success-color12 border-tm-success-color05 text-tm-success-color05",
 };
 
 const StatusChip = ({ state }: { state: ChipState }) => (
@@ -1466,17 +1486,17 @@ const OnboardingChecklist = ({
   step: number;
   dimmed?: boolean;
 }) => (
-  <ul
-    className={`flex flex-col gap-2 text-base ${dimmed ? "opacity-60" : ""
-      }`}
-  >
+  <ul className={`flex flex-col gap-2 text-base ${dimmed ? "opacity-60" : ""}`}>
     {ONBOARDING_STEPS.map(({ idx, label }) => {
       const done = step >= idx;
       return (
         <li
           key={idx}
-          className={`flex items-center gap-2 tracking-tight ${done ? "text-tm-text-color01 line-through opacity-30" : "text-tm-text-color01"
-            }`}
+          className={`flex items-center gap-2 tracking-tight ${
+            done
+              ? "text-tm-text-color01 line-through opacity-30"
+              : "text-tm-text-color01"
+          }`}
         >
           <span className="text-tm-text-color08 text-sm w-4">
             {String(idx).padStart(2, "0")}
@@ -1491,6 +1511,7 @@ const OnboardingChecklist = ({
 type ReferralListProps = {
   referrals: Referral[];
   setReferrals?: React.Dispatch<React.SetStateAction<Referral[]>>;
+  onRefetch?: () => void | Promise<void>;
   // Admins get override buttons (Delete / Reassign) on every card state so
   // they can reallocate or remove referrals that are past the normal AM
   // window (e.g. accepted/active/building). Non-admin AMs keep the stock
@@ -1515,13 +1536,13 @@ const ReferralStepStream = ({
   referralId,
   setReferrals,
   active,
+  onRefetch,
 }: {
   referralId: string;
   setReferrals?: React.Dispatch<React.SetStateAction<Referral[]>>;
   active: boolean;
+  onRefetch?: () => void;
 }) => {
-  const [isConnected, setIsConnected] = useState(false);
-
   useEffect(() => {
     if (!active) return;
 
@@ -1530,7 +1551,7 @@ const ReferralStepStream = ({
       { withCredentials: true },
     );
 
-    source.onopen = () => setIsConnected(true);
+    source.onopen = () => {};
 
     source.onmessage = (e: MessageEvent) => {
       try {
@@ -1539,57 +1560,49 @@ const ReferralStepStream = ({
           prev.map((r) =>
             r.id === referralId && r.preUser
               ? {
-                ...r,
-                preUser: { ...r.preUser, currentStep: data.currentStep },
-              }
+                  ...r,
+                  preUser: { ...r.preUser, currentStep: data.currentStep },
+                }
               : r,
           ),
         );
+        // Re-fetch the full referral so assetLink / surveyLink are up to date.
+        // The SSE payload only carries currentStep, so without this the
+        // copy/open buttons stay disabled even after the link is ready.
+        onRefetch?.();
         if (data.done) {
           source.close();
-          setIsConnected(false);
         }
       } catch {
         // ignore malformed frames
       }
     };
 
-    source.onerror = () => {
-      setIsConnected(false);
-    };
+    source.onerror = () => {};
 
     return () => {
       source.close();
-      setIsConnected(false);
     };
-  }, [referralId, active, setReferrals]);
+  }, [referralId, active, setReferrals, onRefetch]);
 
-  if (!isConnected) return null;
-
-  return (
-    <span
-      title="Receiving live step updates"
-      className="inline-flex items-center gap-1 text-[11px] text-green-400 font-medium"
-    >
-      <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-      Live
-    </span>
-  );
+  return null;
 };
 
 type ReferralFilter = "all" | "pending" | "active" | "expired" | "denied";
 
-const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: ReferralListProps) => {
+const ReferralList = ({
+  referrals,
+  setReferrals,
+  isAdmin: isAdminProp,
+  onRefetch,
+}: ReferralListProps) => {
   const auth = useAuth();
   const viewerId = auth.user?.id;
   const canOrderLandingPage =
     auth.user?.baseRole === "admin" ||
     auth.user?.baseRole === "account_manager";
-  const isAccountManagerViewer =
-    auth.user?.baseRole === "account_manager";
-  const isAdmin =
-    isAdminProp ??
-    (auth?.user?.baseRole === "admin");
+  const isAccountManagerViewer = auth.user?.baseRole === "account_manager";
+  const isAdmin = isAdminProp ?? auth?.user?.baseRole === "admin";
   const [busyId, setBusyId] = useState<string | null>(null);
   const [toast, setToast] = useState<{
     kind: "success" | "error";
@@ -1760,12 +1773,12 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
         prev.map((r) =>
           r.id === referral.id
             ? {
-              ...r,
-              metadata: {
-                ...(r.metadata ?? {}),
-                accountManagerEmail: result.newReferrer.email,
-              },
-            }
+                ...r,
+                metadata: {
+                  ...(r.metadata ?? {}),
+                  accountManagerEmail: result.newReferrer.email,
+                },
+              }
             : r,
         ),
       );
@@ -1805,25 +1818,25 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
         prev.map((r) =>
           r.id === referral.id
             ? {
-              ...r,
-              preUser: {
-                ...(r.preUser ?? {
-                  currentStep: 0,
-                  status: null,
-                  lastCheckedAt: null,
-                  teasemeUserId: null,
-                  surveyLink: null,
-                  assetLink: null,
-                  welcomeEmailSentAt: null,
-                }),
-                currentStep: result.preUser.currentStep,
-                status: result.preUser.status,
-                lastCheckedAt: result.preUser.lastCheckedAt,
-                teasemeUserId: result.preUser.teasemeUserId,
-                surveyLink: result.preUser.surveyLink,
-                assetLink: result.preUser.assetLink,
-              },
-            }
+                ...r,
+                preUser: {
+                  ...(r.preUser ?? {
+                    currentStep: 0,
+                    status: null,
+                    lastCheckedAt: null,
+                    teasemeUserId: null,
+                    surveyLink: null,
+                    assetLink: null,
+                    welcomeEmailSentAt: null,
+                  }),
+                  currentStep: result.preUser.currentStep,
+                  status: result.preUser.status,
+                  lastCheckedAt: result.preUser.lastCheckedAt,
+                  teasemeUserId: result.preUser.teasemeUserId,
+                  surveyLink: result.preUser.surveyLink,
+                  assetLink: result.preUser.assetLink,
+                },
+              }
             : r,
         ),
       );
@@ -1849,6 +1862,7 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
       );
       showToast("success", `Chatters assigned: ${result.chatterGroup.name}`);
       setAssignChattersFor(null);
+      onRefetch?.();
     } catch (err) {
       showToast(
         "error",
@@ -1858,6 +1872,7 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
       setBusyId(null);
     }
   };
+
 
   // Manual welcome-email dispatch for LP Live cards. The button label is
   // derived from `preUser.welcomeEmailSentAt` (Send vs Resend), and after
@@ -1872,12 +1887,12 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
         prev.map((r) =>
           r.id === referral.id && r.preUser
             ? {
-              ...r,
-              preUser: {
-                ...r.preUser,
-                welcomeEmailSentAt: result.welcomeEmailSentAt,
-              },
-            }
+                ...r,
+                preUser: {
+                  ...r.preUser,
+                  welcomeEmailSentAt: result.welcomeEmailSentAt,
+                },
+              }
             : r,
         ),
       );
@@ -1915,12 +1930,12 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
     label: string;
     count: number;
   }> = [
-      { id: "all", label: "All", count: counts.all },
-      { id: "pending", label: "Pending", count: counts.pending },
-      { id: "active", label: "Active", count: counts.active },
-      { id: "expired", label: "Expired", count: counts.expired },
-      { id: "denied", label: "Denied", count: counts.denied },
-    ];
+    { id: "all", label: "All", count: counts.all },
+    { id: "pending", label: "Pending", count: counts.pending },
+    { id: "active", label: "Active", count: counts.active },
+    { id: "expired", label: "Expired", count: counts.expired },
+    { id: "denied", label: "Denied", count: counts.denied },
+  ];
 
   return (
     <div className="flex flex-col gap-3">
@@ -1931,10 +1946,11 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
             <button
               key={opt.id}
               onClick={() => setFilter(opt.id)}
-              className={`px-4 py-2 rounded-lg text-sm  border transition-colors ${isSelected
-                ? "bg-tm-primary-color12 border-tm-primary-color10 text-tm-primary-color02"
-                : "bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white hover:border-[rgba(255,255,255,0.3)]"
-                }`}
+              className={`px-4 py-2 rounded-lg text-sm  border transition-colors ${
+                isSelected
+                  ? "bg-tm-primary-color12 border-tm-primary-color10 text-tm-primary-color02"
+                  : "bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white hover:border-[rgba(255,255,255,0.3)]"
+              }`}
             >
               {opt.label}
               <span
@@ -1949,10 +1965,11 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
 
       {toast && (
         <div
-          className={`rounded-lg px-4 py-3 border text-sm font-medium ${toast.kind === "success"
-            ? "bg-tm-success-color12 border-tm-success-color09 text-tm-success-color05"
-            : "bg-tm-danger-color12 border-tm-danger-color09 text-tm-danger-color05"
-            }`}
+          className={`rounded-lg px-4 py-3 border text-sm font-medium ${
+            toast.kind === "success"
+              ? "bg-tm-success-color12 border-tm-success-color09 text-tm-success-color05"
+              : "bg-tm-danger-color12 border-tm-danger-color09 text-tm-danger-color05"
+          }`}
         >
           {toast.text}
         </div>
@@ -1964,11 +1981,11 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
             No {filter === "all" ? "active or pending" : filter} referrals
             {filter === "all" && (counts.expired > 0 || counts.denied > 0)
               ? ` — ${[
-                counts.expired > 0 ? `${counts.expired} expired` : null,
-                counts.denied > 0 ? `${counts.denied} denied` : null,
-              ]
-                .filter(Boolean)
-                .join(", ")} hidden`
+                  counts.expired > 0 ? `${counts.expired} expired` : null,
+                  counts.denied > 0 ? `${counts.denied} denied` : null,
+                ]
+                  .filter(Boolean)
+                  .join(", ")} hidden`
               : ""}
             .
           </p>
@@ -2004,20 +2021,19 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
             ? formatManagerName(referral.referrer)
             : null;
           const showReferredByLine = Boolean(
-            referrerLabel &&
-            viewerId &&
-            referral.referrer?.id !== viewerId,
+            referrerLabel && viewerId && referral.referrer?.id !== viewerId,
           );
           const displayName = referral.referredUser
             ? [referral.referredUser.firstName, referral.referredUser.lastName]
-              .filter(Boolean)
-              .join(" ")
-              .trim() || referral.referredUser.email
+                .filter(Boolean)
+                .join(" ")
+                .trim() || referral.referredUser.email
             : (inviteeEmail ?? `Invite · ${referral.inviteCode}`);
           const isBusy = busyId === referral.id;
           const step = referral.preUser?.currentStep ?? 0;
           const assetLink = referral.preUser?.assetLink ?? null;
-          const normalizedAssetLink = assetLink?.replace(/^"|"$/g, "").trim() || null;
+          const normalizedAssetLink =
+            assetLink?.replace(/^"|"$/g, "").trim() || null;
           const canCopyAssetLink = !!normalizedAssetLink;
           const assetLinkTooltip = canCopyAssetLink
             ? "Copy landing page link"
@@ -2082,7 +2098,9 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
                   {referral.campaign.name}
                 </p>
                 <p className="text-tm-text-color01 text-base font-medium truncate">
-                  {referral.referredUser ? displayName : inviteeEmail ?? displayName}
+                  {referral.referredUser
+                    ? displayName
+                    : (inviteeEmail ?? displayName)}
                 </p>
               </div>
 
@@ -2091,8 +2109,9 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
                   cue rather than an interactive checklist). */}
               <div className="relative px-4 py-3">
                 <div
-                  className={`flex items-center justify-between mb-2 ${isLive ? "opacity-20" : ""
-                    }`}
+                  className={`flex items-center justify-between mb-2 ${
+                    isLive ? "opacity-20" : ""
+                  }`}
                 >
                   <div className="flex items-center gap-2">
                     <span className="text-base text-tm-text-color01 font-medium tracking-tight">
@@ -2102,6 +2121,7 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
                       referralId={referral.id}
                       setReferrals={setReferrals}
                       active={!isLive && !isTerminalState}
+                      onRefetch={onRefetch}
                     />
                   </div>
                   <div className="flex items-center gap-2">
@@ -2117,26 +2137,23 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
                         OnboardingIconPill renders as a non-interactive <span>
                         so the pill stays visible-but-inert with a tooltip. */}
                     <OnboardingIconPill
-                      title={
-                        isLive ? "Onboarding completed" : openTooltip
-                      }
-                      ariaLabel={
-                        isLive ? "Onboarding completed" : openTooltip
-                      }
-                      className={`h-7 w-12 transition-all select-none ${isLive
-                        ? "cursor-not-allowed opacity-20"
-                        : openUrl
-                          ? "cursor-pointer hover:-translate-y-0.5"
-                          : "cursor-not-allowed opacity-50 "
-                        }`}
+                      title={isLive ? "Onboarding completed" : openTooltip}
+                      ariaLabel={isLive ? "Onboarding completed" : openTooltip}
+                      className={`h-7 w-12 transition-all select-none ${
+                        isLive
+                          ? "cursor-not-allowed opacity-20"
+                          : openUrl
+                            ? "cursor-pointer hover:-translate-y-0.5"
+                            : "cursor-not-allowed opacity-50 "
+                      }`}
                       onClick={
                         !isLive && openUrl
                           ? () =>
-                            window.open(
-                              openUrl,
-                              "_blank",
-                              "noopener,noreferrer",
-                            )
+                              window.open(
+                                openUrl,
+                                "_blank",
+                                "noopener,noreferrer",
+                              )
                           : undefined
                       }
                     >
@@ -2165,16 +2182,18 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
                     onClick={
                       canCopyAssetLink
                         ? async () => {
-                          try {
-                            await navigator.clipboard.writeText(normalizedAssetLink!);
-                            showToast("success", "Landing page link copied!");
-                          } catch {
-                            showToast(
-                              "error",
-                              "Failed to copy landing page link",
-                            );
+                            try {
+                              await navigator.clipboard.writeText(
+                                normalizedAssetLink!,
+                              );
+                              showToast("success", "Landing page link copied!");
+                            } catch {
+                              showToast(
+                                "error",
+                                "Failed to copy landing page link",
+                              );
+                            }
                           }
-                        }
                         : undefined
                     }
                   >
@@ -2182,12 +2201,25 @@ const ReferralList = ({ referrals, setReferrals, isAdmin: isAdminProp }: Referra
                   </OnboardingIconPill>
                   {/* Open in browser (right) */}
                   <OnboardingIconPill
-                    title={canCopyAssetLink ? "Open landing page" : "Landing page not available yet"}
-                    ariaLabel={canCopyAssetLink ? "Open landing page" : "Landing page not available yet"}
+                    title={
+                      canCopyAssetLink
+                        ? "Open landing page"
+                        : "Landing page not available yet"
+                    }
+                    ariaLabel={
+                      canCopyAssetLink
+                        ? "Open landing page"
+                        : "Landing page not available yet"
+                    }
                     className={`h-7 w-12 transition-all select-none ${canCopyAssetLink ? "cursor-pointer hover:-translate-y-0.5" : "cursor-not-allowed opacity-50"}`}
                     onClick={
                       canCopyAssetLink
-                        ? () => window.open(normalizedAssetLink!, "_blank", "noopener,noreferrer")
+                        ? () =>
+                            window.open(
+                              normalizedAssetLink!,
+                              "_blank",
+                              "noopener,noreferrer",
+                            )
                         : undefined
                     }
                   >
@@ -2323,13 +2355,14 @@ const SecondaryButton = ({
   children: React.ReactNode;
   className?: string;
 }) => (
-  <div className="glass-button-outer rounded-full">  <button
-    onClick={onClick}
-    disabled={disabled}
-    className={`glass-button-inner flex-1 bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-full px-3 py-3 text-white text-base font-bold hover:bg-[#252525] disabled:opacity-40 disabled:cursor-not-allowed transition-colors ${className}`}
-  >
-    {children}
-  </button>
+  <div className="glass-button-outer rounded-full">
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`glass-button-inner flex-1 bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-full px-3 py-3 text-white text-base font-bold hover:bg-[#252525] disabled:opacity-40 disabled:cursor-not-allowed transition-colors ${className}`}
+    >
+      {children}
+    </button>
   </div>
 );
 
@@ -2538,7 +2571,10 @@ const CardActions = ({
       )}
       {canAssignChatters ? (
         referral.referredUser?.chatterGroupId ? (
-          <SecondaryButton onClick={() => onAssignChatters(referral)} disabled={busy}>
+          <SecondaryButton
+            onClick={() => onAssignChatters(referral)}
+            disabled={busy}
+          >
             {busy ? "Assigning…" : "Reassign Chatters"}
           </SecondaryButton>
         ) : (
