@@ -129,7 +129,7 @@ const buildChart = (
       const diff = Math.round((today.getTime() - cd.getTime()) / 86_400_000);
       if (diff >= 0 && diff <= 6) values[6 - diff] += c.amount;
     });
-    return { labels, values: values.map((v) => Math.max(v, 0.01)) };
+    return { labels, values };
   }
 
   if (period === "month") {
@@ -155,7 +155,7 @@ const buildChart = (
       const bucket = Math.max(0, Math.min(4, 4 - Math.floor(diff / 6)));
       values[bucket] += c.amount;
     });
-    return { labels, values: values.map((v) => Math.max(v, 0.01)) };
+    return { labels, values };
   }
 
   if (period === "3month") {
@@ -174,7 +174,7 @@ const buildChart = (
         (now.getMonth() - cd.getMonth());
       if (mDiff >= 0 && mDiff <= 2) values[2 - mDiff] += c.amount;
     });
-    return { labels, values: values.map((v) => Math.max(v, 0.01)) };
+    return { labels, values };
   }
 
   if (period === "all") {
@@ -209,7 +209,7 @@ const buildChart = (
       const idx = (cd.getFullYear() - sy) * 12 + (cd.getMonth() - sm);
       if (idx >= 0 && idx < totalMonths) values[idx] += c.amount;
     });
-    return { labels, values: values.map((v) => Math.max(v, 0.01)) };
+    return { labels, values };
   }
 
   // "custom" calendar range — bucket by day of week
@@ -219,7 +219,7 @@ const buildChart = (
       byDay[(new Date(c.createdAt).getDay() + 6) % 7] += c.amount;
   });
   const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  return { labels: DAYS, values: byDay.map((v) => Math.max(v, 0.01)) };
+  return { labels: DAYS, values: byDay };
 };
 
 const money = (n: number) =>
