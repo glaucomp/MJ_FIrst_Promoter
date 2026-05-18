@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { ChartData } from '../types';
 
 interface ChartProps {
@@ -13,6 +14,16 @@ const PAD_H = 16;
 const PAD_TOP = 16;
 const LABEL_H = 22;
 const PAGINATION_H = 28;
+// Minimum rendered bar height when a bucket has data (keeps very small values visible)
+const MIN_BAR_PCT = 6;
+// Thin line height (px) for buckets with zero data
+const EMPTY_BAR_PX = 4;
+
+const formatValue = (v: number) => {
+  if (v <= 0) return null;
+  if (v >= 1000) return `$${(v / 1000).toFixed(1)}k`;
+  return `$${v.toFixed(2)}`;
+};
 
 export const Chart = ({
   data,
@@ -22,16 +33,16 @@ export const Chart = ({
   canPrev = false,
   canNext = false,
 }: ChartProps) => {
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+
   const hasPagination = onPrev !== undefined || onNext !== undefined;
   const bottomReserve = LABEL_H + (hasPagination ? PAGINATION_H : 6);
 
   const rawMax = data.values.length > 0 ? Math.max(...data.values) : 0;
-  const maxValue = rawMax > 0 ? rawMax : null;
-  const highlightIndex =
-    maxValue === null ? -1 : data.values.indexOf(rawMax);
+  // true when there is genuinely no data at all
+  const isEmpty = rawMax <= 0;
 
   const PLACEHOLDER_COUNT = 7;
-  const isEmpty = maxValue === null;
 
   const keys = isEmpty
     ? data.labels.length > 0
@@ -39,18 +50,65 @@ export const Chart = ({
       : Array.from({ length: PLACEHOLDER_COUNT }, (_, i) => `p${i}`)
     : data.labels;
 
-  const heights = isEmpty
-    ? keys.map(() => 20)
-    : data.values.map((v) => Math.max((v / maxValue!) * 100, 20));
+  // Heights as percentages (null = use EMPTY_BAR_PX instead)
+  const heights: (number | null)[] = isEmpty
+    ? keys.map(() => 35) // flat placeholder look
+    : data.values.map((v) =>
+        v <= 0 ? null : Math.max((v / rawMax) * 100, MIN_BAR_PCT),
+      );
 
-  const highlights = isEmpty
-    ? keys.map(() => false)
-    : data.values.map((_, i) => i === highlightIndex);
+  const highlightIndex = isEmpty
+    ? -1
+    : data.values.reduce(
+        (best, v, i) => (v > (data.values[best] ?? -1) ? i : best),
+        0,
+      );
 
-  const card = `relative bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[var(--radius-card)] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1)] overflow-hidden ${className}`;
+  // Tooltip position: percentage across the bars area
+  const tooltipLeft =
+    activeIndex !== null && keys.length > 0
+      ? ((activeIndex + 0.5) / keys.length) * 100
+      : 50;
+
+  const activeVal =
+    activeIndex !== null ? formatValue(data.values[activeIndex] ?? 0) : null;
+
+  const card = `relative bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-[var(--radius-card)] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1)] ${className}`;
 
   return (
-    <div className={card}>
+    <div
+      className={card}
+      onMouseLeave={() => setActiveIndex(null)}
+      onTouchEnd={() => setTimeout(() => setActiveIndex(null), 1500)}
+    >
+      {/* Card-level tooltip — sits at the top, never clipped */}
+      {activeVal && (
+        <div
+          className="absolute z-20 pointer-events-none"
+          style={{
+            left: `calc(${PAD_H}px + ${tooltipLeft / 100} * (100% - ${PAD_H * 2}px))`,
+            top: 8,
+            transform: 'translateX(-50%)',
+          }}
+        >
+          <div className="bg-[#111] border border-white/10 rounded-md px-2 py-1 shadow-[0px_4px_12px_rgba(0,0,0,0.5)] whitespace-nowrap">
+            <span className="text-[11px] font-semibold text-white leading-none">
+              {activeVal}
+            </span>
+          </div>
+          <div
+            className="mx-auto mt-[2px]"
+            style={{
+              width: 0,
+              height: 0,
+              borderLeft: '4px solid transparent',
+              borderRight: '4px solid transparent',
+              borderTop: '4px solid rgba(255,255,255,0.10)',
+            }}
+          />
+        </div>
+      )}
+
       {/* Bars */}
       <div
         className="absolute flex gap-3 justify-center"
@@ -59,28 +117,51 @@ export const Chart = ({
           right: PAD_H,
           top: PAD_TOP,
           bottom: bottomReserve,
-          alignItems: 'stretch',
+          alignItems: 'flex-end', // bars grow up from the bottom
         }}
       >
-        {keys.map((key, i) => (
-          <div
-            key={`bar-${key}-${i}`}
-            className="flex-1 min-w-0 flex flex-col justify-end"
-          >
+        {keys.map((key, i) => {
+          const isActive = activeIndex === i;
+          const isHighlight = i === highlightIndex && !isEmpty;
+          const h = heights[i];
+          const isEmptyBar = h === null;
+
+          return (
             <div
-              className={`w-full rounded-sm transition-all ${highlights[i] ? 'bg-linear-to-b from-[#ff0f5f] to-[#990033]' : ''}`}
+              key={`bar-${key}-${i}`}
+              className="flex-1 min-w-0 cursor-pointer"
               style={{
-                height: `${heights[i]}%`,
-                background: highlights[i]
+                height: isEmptyBar ? `${EMPTY_BAR_PX}px` : `${h}%`,
+                borderRadius: '2px',
+                background: isHighlight
                   ? undefined
+                  : isEmptyBar
+                  ? 'rgba(255,255,255,0.06)'
+                  : isActive
+                  ? '#50566a'
                   : 'var(--color-surface-overlay, #3a3e48)',
-                boxShadow: highlights[i]
+                backgroundImage: isHighlight
+                  ? 'linear-gradient(to bottom, #ff0f5f, #990033)'
+                  : undefined,
+                boxShadow: isHighlight
                   ? '0px -1px 0px 0px rgba(255,255,255,0.2), 0px 4px 16px rgba(255,15,95,0.35), inset -3px 4px 1px -3px rgba(255,255,255,0.35), inset -3px 4px 3px -3px rgba(255,255,255,0.2)'
                   : undefined,
+                opacity:
+                  activeIndex !== null && !isActive
+                    ? isEmptyBar
+                      ? 0.3
+                      : 0.5
+                    : 1,
+                transition: 'opacity 0.15s ease, background-color 0.1s ease',
+              }}
+              onMouseEnter={() => setActiveIndex(i)}
+              onTouchStart={(e) => {
+                e.preventDefault();
+                setActiveIndex(i);
               }}
             />
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* X-axis labels */}
@@ -100,7 +181,13 @@ export const Chart = ({
             className="flex-1 min-w-0 flex items-center justify-center"
           >
             <span
-              className="text-[9px] leading-none font-medium text-white/35 truncate text-center select-none"
+              className="text-[9px] leading-none font-medium truncate text-center select-none transition-colors duration-150"
+              style={{
+                color:
+                  activeIndex === i
+                    ? 'rgba(255,255,255,0.80)'
+                    : 'rgba(255,255,255,0.30)',
+              }}
             >
               {data.labels[i] ?? ''}
             </span>
@@ -108,7 +195,7 @@ export const Chart = ({
         ))}
       </div>
 
-      {/* Pagination arrows — only when hasPagination */}
+      {/* Pagination arrows */}
       {hasPagination && (
         <div
           className="absolute left-0 right-0 flex items-center justify-between px-3"
