@@ -239,8 +239,9 @@ const refreshPreUserSteps = async (
           const stepChanged = updated.currentStep !== pre.currentStep;
           const assetLinkChanged = updated.assetLink !== pre.assetLink;
           const surveyLinkChanged = updated.surveyLink !== pre.surveyLink;
+          const statusChanged = updated.status !== pre.status;
           if (
-            (stepChanged || assetLinkChanged || surveyLinkChanged) &&
+            (stepChanged || assetLinkChanged || surveyLinkChanged || statusChanged) &&
             updated.referralId
           ) {
             stepEmitter.emit(`step:${updated.referralId}`, {

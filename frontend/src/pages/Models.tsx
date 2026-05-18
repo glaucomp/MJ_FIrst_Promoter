@@ -1153,7 +1153,7 @@ whitespace-nowrap"
           {myReferrals.length} total referrals
         </p>
 
-        <ReferralList referrals={myReferrals} setReferrals={setMyReferrals} />
+        <ReferralList referrals={myReferrals} setReferrals={setMyReferrals} onRefetch={loadData} />
 
         <InviteModal
           isOpen={isInviteModalOpen}
@@ -1193,7 +1193,7 @@ whitespace-nowrap"
           {myReferrals.length} total referrals
         </p>
 
-        <ReferralList referrals={myReferrals} setReferrals={setMyReferrals} />
+        <ReferralList referrals={myReferrals} setReferrals={setMyReferrals} onRefetch={loadData} />
 
         <InviteModal
           isOpen={isInviteModalOpen}
@@ -1237,7 +1237,7 @@ whitespace-nowrap"
           {myReferrals.length} total referrals
         </p>
 
-        <ReferralList referrals={myReferrals} setReferrals={setMyReferrals} />
+        <ReferralList referrals={myReferrals} setReferrals={setMyReferrals} onRefetch={loadData} />
 
         <InviteModal
           isOpen={isInviteModalOpen}
@@ -2356,7 +2356,6 @@ const SecondaryButton = ({
   className?: string;
 }) => (
   <div className="glass-button-outer rounded-full">
-    {" "}
     <button
       onClick={onClick}
       disabled={disabled}
