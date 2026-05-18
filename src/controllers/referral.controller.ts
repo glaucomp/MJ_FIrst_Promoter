@@ -234,6 +234,22 @@ const refreshPreUserSteps = async (
           });
           row.preUser = updated;
 
+          // If the step or either link changed, push an SSE event so any
+          // open browser tab refetches the card without a manual reload.
+          const stepChanged = updated.currentStep !== pre.currentStep;
+          const assetLinkChanged = updated.assetLink !== pre.assetLink;
+          const surveyLinkChanged = updated.surveyLink !== pre.surveyLink;
+          if (
+            (stepChanged || assetLinkChanged || surveyLinkChanged) &&
+            updated.referralId
+          ) {
+            stepEmitter.emit(`step:${updated.referralId}`, {
+              currentStep: updated.currentStep,
+              status: updated.status,
+              done: updated.currentStep >= 5,
+            });
+          }
+
           // Note: promoting the PreUser to a real User + sending the
           // welcome email is no longer an automatic side-effect of the
           // 4→5 transition. That work is now driven explicitly by the
@@ -1467,17 +1483,10 @@ export const assignReferralChatters = async (
 };
 
 /**
- * Manual welcome-email dispatch for the LP Live card. Replaces the
- * previous automatic 4→5 promotion hook in `refreshPreUserSteps`.
+ * sendReferralWelcomeEmail
  *
- * Behaviour:
- *   - First click (`welcomeEmailSentAt` is null) → creates the User row
- *     with a freshly generated temp password, sends the welcome email,
- *     and stamps `welcomeEmailSentAt`.
- *   - Subsequent clicks ("Resend") → re-uses the existing User row,
- *     requests a resend via `forceResend: true`, issues a fresh
- *     set-password token / welcome flow email, and re-stamps
- *     `welcomeEmailSentAt`.
+ * Send (or resend) the promoter welcome email. On first send it promotes
+ * the PreUser to a real User and stamps `welcomeEmailSentAt`.
  *
  * The helper is best-effort on the email-send step but never throws, so
  * a transient SES failure surfaces here as `emailSent: false` and the
@@ -2325,12 +2334,14 @@ export const receiveTeasemeStepWebhook = async (
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  const { email, inviteCode, currentStep, status, referralId } = req.body as {
+  const { email, inviteCode, currentStep, status, referralId, assetLink, surveyLink } = req.body as {
     email?: string;
     inviteCode?: string;
     currentStep?: number;
     status?: string;
     referralId?: string;
+    assetLink?: string;
+    surveyLink?: string;
   };
 
   if (!email || typeof currentStep !== "number") {
@@ -2370,6 +2381,8 @@ export const receiveTeasemeStepWebhook = async (
       data: {
         currentStep,
         ...(status ? { status } : {}),
+        ...(typeof assetLink === "string" && assetLink ? { assetLink } : {}),
+        ...(typeof surveyLink === "string" && surveyLink ? { surveyLink } : {}),
         lastCheckedAt: new Date(),
       },
     });
@@ -2379,6 +2392,8 @@ export const receiveTeasemeStepWebhook = async (
       email,
       currentStep,
       status,
+      assetLink: assetLink ?? null,
+      surveyLink: surveyLink ?? null,
       referralId: resolvedReferralId,
     });
 
