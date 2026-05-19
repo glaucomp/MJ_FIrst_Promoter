@@ -137,6 +137,25 @@ export const Models = () => {
     void loadData();
   }, [loadData]);
 
+  // Targeted background refresh for a single referral card.
+  // Called by ReferralStepStream on every SSE step-change event.
+  // Does NOT set isLoading so the page never flashes.
+  const silentRefreshReferral = useCallback(
+    async (referralId: string) => {
+      try {
+        const referrals = await modelsApi.getMyReferrals();
+        const updated = referrals.find((r) => r.id === referralId);
+        if (!updated) return;
+        setMyReferrals((prev) =>
+          prev.map((r) => (r.id === referralId ? updated : r)),
+        );
+      } catch {
+        // silent — don't surface errors for background refreshes
+      }
+    },
+    [],
+  );
+
   useEffect(() => {
     if (!isAdmin) return;
     usersApi
@@ -1153,7 +1172,7 @@ whitespace-nowrap"
           {myReferrals.length} total referrals
         </p>
 
-        <ReferralList referrals={myReferrals} setReferrals={setMyReferrals} onRefetch={loadData} />
+        <ReferralList referrals={myReferrals} setReferrals={setMyReferrals} onRefetch={loadData} onSilentRefetch={silentRefreshReferral} />
 
         <InviteModal
           isOpen={isInviteModalOpen}
@@ -1193,7 +1212,7 @@ whitespace-nowrap"
           {myReferrals.length} total referrals
         </p>
 
-        <ReferralList referrals={myReferrals} setReferrals={setMyReferrals} onRefetch={loadData} />
+        <ReferralList referrals={myReferrals} setReferrals={setMyReferrals} onRefetch={loadData} onSilentRefetch={silentRefreshReferral} />
 
         <InviteModal
           isOpen={isInviteModalOpen}
@@ -1237,7 +1256,7 @@ whitespace-nowrap"
           {myReferrals.length} total referrals
         </p>
 
-        <ReferralList referrals={myReferrals} setReferrals={setMyReferrals} onRefetch={loadData} />
+        <ReferralList referrals={myReferrals} setReferrals={setMyReferrals} onRefetch={loadData} onSilentRefetch={silentRefreshReferral} />
 
         <InviteModal
           isOpen={isInviteModalOpen}
@@ -1512,6 +1531,9 @@ type ReferralListProps = {
   referrals: Referral[];
   setReferrals?: React.Dispatch<React.SetStateAction<Referral[]>>;
   onRefetch?: () => void | Promise<void>;
+  // Silent per-referral refresh: fetches only the changed card in the
+  // background (no loading spinner, no full re-render).
+  onSilentRefetch?: (referralId: string) => void;
   // Admins get override buttons (Delete / Reassign) on every card state so
   // they can reallocate or remove referrals that are past the normal AM
   // window (e.g. accepted/active/building). Non-admin AMs keep the stock
@@ -1523,25 +1545,29 @@ type StepStreamPayload = {
   connected?: boolean;
   currentStep: number;
   status: string;
+  assetLink?: string | null;
+  surveyLink?: string | null;
   done: boolean;
 };
 
 /**
  * Mounts an EventSource for a single referral's step-progress stream.
- * Renders a pulsing "Live" dot while the connection is open, nothing once
- * the stream closes (step >= 5 or browser disconnects). Uses a proper
- * component so the useEffect hook is valid inside the referral card map.
+ * Splices currentStep / assetLink / surveyLink directly into local state
+ * on each event, then fires a silent background refresh so the backend
+ * immediately re-polls TeaseMe (lastCheckedAt was just nulled by the
+ * webhook) and picks up the fresh surveyLink / assetLink without any
+ * loading spinner or full list reload.
  */
 const ReferralStepStream = ({
   referralId,
   setReferrals,
   active,
-  onRefetch,
+  onSilentRefetch,
 }: {
   referralId: string;
   setReferrals?: React.Dispatch<React.SetStateAction<Referral[]>>;
   active: boolean;
-  onRefetch?: () => void;
+  onSilentRefetch?: (referralId: string) => void;
 }) => {
   useEffect(() => {
     if (!active) return;
@@ -1556,20 +1582,30 @@ const ReferralStepStream = ({
     source.onmessage = (e: MessageEvent) => {
       try {
         const data = JSON.parse(e.data as string) as StepStreamPayload;
+        // Splice the latest values into local state immediately.
+        // Only overwrite link fields when the event carries a real value —
+        // never replace a known URL with null/undefined.
         setReferrals?.((prev) =>
-          prev.map((r) =>
-            r.id === referralId && r.preUser
-              ? {
-                  ...r,
-                  preUser: { ...r.preUser, currentStep: data.currentStep },
-                }
-              : r,
-          ),
+          prev.map((r) => {
+            if (r.id !== referralId || !r.preUser) return r;
+            return {
+              ...r,
+              preUser: {
+                ...r.preUser,
+                currentStep: data.currentStep,
+                ...(data.assetLink ? { assetLink: data.assetLink } : {}),
+                ...(data.surveyLink ? { surveyLink: data.surveyLink } : {}),
+              },
+            };
+          }),
         );
-        // Re-fetch the full referral so assetLink / surveyLink are up to date.
-        // The SSE payload only carries currentStep, so without this the
-        // copy/open buttons stay disabled even after the link is ready.
-        onRefetch?.();
+        // For every step-change event (not the initial "connected" ping),
+        // trigger a silent background refresh. The webhook just nulled
+        // lastCheckedAt so refreshPreUserSteps will immediately re-poll
+        // TeaseMe and splice in the fresh surveyLink / assetLink.
+        if (!data.connected) {
+          onSilentRefetch?.(referralId);
+        }
         if (data.done) {
           source.close();
         }
@@ -1583,7 +1619,7 @@ const ReferralStepStream = ({
     return () => {
       source.close();
     };
-  }, [referralId, active, setReferrals, onRefetch]);
+  }, [referralId, active, setReferrals, onSilentRefetch]);
 
   return null;
 };
@@ -1594,7 +1630,8 @@ const ReferralList = ({
   referrals,
   setReferrals,
   isAdmin: isAdminProp,
-  onRefetch,
+  onRefetch: _onRefetch,
+  onSilentRefetch,
 }: ReferralListProps) => {
   const auth = useAuth();
   const viewerId = auth.user?.id;
@@ -1862,7 +1899,21 @@ const ReferralList = ({
       );
       showToast("success", `Chatters assigned: ${result.chatterGroup.name}`);
       setAssignChattersFor(null);
-      onRefetch?.();
+      // Splice the new chatterGroupId into local state so the button label
+      // flips to "Reassign Chatters" immediately without a full page reload.
+      setReferrals?.((prev) =>
+        prev.map((r) =>
+          r.id === referral.id && r.referredUser
+            ? {
+                ...r,
+                referredUser: {
+                  ...r.referredUser,
+                  chatterGroupId: result.chatterGroup.id,
+                },
+              }
+            : r,
+        ),
+      );
     } catch (err) {
       showToast(
         "error",
@@ -2121,7 +2172,7 @@ const ReferralList = ({
                       referralId={referral.id}
                       setReferrals={setReferrals}
                       active={!isLive && !isTerminalState}
-                      onRefetch={onRefetch}
+                      onSilentRefetch={onSilentRefetch}
                     />
                   </div>
                   <div className="flex items-center gap-2">
