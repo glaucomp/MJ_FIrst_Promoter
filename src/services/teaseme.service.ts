@@ -24,11 +24,15 @@ const TEASEME_API_URL = (
 //   `survey_link` is the in-flight onboarding session URL (populated while the
 //   invitee is mid-survey). `asset_link` is the live landing-page URL
 //   (populated once TeaseMe finishes building the LP). Either may be null.
-const TEASEME_STATUS_URL = (
-  process.env.TEASEME_STATUS_URL ||
-  "https://tmapi.mxjprod.work/mjpromoter/pre-influencers/step-progress"
-).replace(/\/$/, "");
-const TEASEME_STATUS_TIMEOUT_MS = 3_000;
+// Read lazily so dotenv.config() in server.ts has already run by the time
+// the first request fires (module-level constants are evaluated before
+// dotenv runs because imports are hoisted ahead of dotenv.config()).
+const getTeasemeStatusUrl = () =>
+  (
+    process.env.TEASEME_STATUS_URL ||
+    "https://tmapi.mxjprod.work/mjpromoter/pre-influencers/step-progress"
+  ).replace(/\/$/, "");
+const TEASEME_STATUS_TIMEOUT_MS = 10_000;
 // The approve call kicks off real work upstream (LP provisioning + DB writes
 // + email triggers) and routinely takes longer than the cheap /step-progress
 // lookup. Bumped to 30s so a slow upstream doesn't get aborted client-side
@@ -75,30 +79,23 @@ export const fetchTeasemePreUserStatus = async (params: {
   if (inviteCode) payload.invite_code = inviteCode;
   if (email) payload.invitee_email = email;
 
-  let res: Response;
+  let body: unknown = null;
   try {
-    res = await fetch(TEASEME_STATUS_URL, {
-      method: "POST",
-      headers: {
+    const httpRes = await postRawJson(
+      getTeasemeStatusUrl(),
+      payload,
+      {
         "Content-Type": "application/json",
         Accept: "application/json",
         "X-Internal-Token": token,
       },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(TEASEME_STATUS_TIMEOUT_MS),
-    });
-  } catch {
-    return null;
-  }
-
-  if (!res.ok) {
-    if (res.status === 401) clearMjfpCredentialsCache();
-    return null;
-  }
-
-  let body: unknown = null;
-  try {
-    body = await res.json();
+      TEASEME_STATUS_TIMEOUT_MS,
+      "teaseme.step-progress",
+    );
+    if (!httpRes) return null;
+    if (httpRes.status === 401) clearMjfpCredentialsCache();
+    if (httpRes.status < 200 || httpRes.status >= 300) return null;
+    body = httpRes.body;
   } catch {
     return null;
   }
@@ -184,10 +181,11 @@ const TEASEME_ASSIGN_CHATTERS_URL = (
 // Approve endpoint hit by the AM-facing "Order Landing Page" button. Distinct
 // from TEASEME_ORDER_LP_URL because the upstream contract differs (this one
 // flips the pre-influencer to "approved" and kicks off the LP build).
-const MJFP_APPROVE_URL = (
-  process.env.MJFP_APPROVE_URL ||
-  "https://localhost:8000/mjpromoter/pre-influencers/approve"
-).replace(/\/$/, "");
+const getMjfpApproveUrl = () =>
+  (
+    process.env.MJFP_APPROVE_URL ||
+    "https://localhost:8000/mjpromoter/pre-influencers/approve"
+  ).replace(/\/$/, "");
 
 export interface TeasemeActionResult {
   ok: boolean;
@@ -422,7 +420,7 @@ export const approvePreInfluencer = async (params: {
   if (!token) return null;
 
   const result = await postRawJson(
-    MJFP_APPROVE_URL,
+    getMjfpApproveUrl(),
     {
       invite_code: params.inviteCode,
       invitee_email: params.email,

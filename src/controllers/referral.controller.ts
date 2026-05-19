@@ -1,12 +1,16 @@
 import { Prisma, PrismaClient, UserRole, UserType } from "@prisma/client";
-import { timingSafeEqual } from "node:crypto";
 import { Request, Response } from "express";
 import { validationResult } from "express-validator";
 import { nanoid } from "nanoid";
-import { AuthRequest } from "../middleware/auth.middleware";
+import { timingSafeEqual } from "node:crypto";
 import { stepEmitter } from "../lib/step-emitter";
+import { AuthRequest } from "../middleware/auth.middleware";
 import { emailService } from "../services/email.service";
 import { promotePreUserToUser } from "../services/pre-user-promote.service";
+import {
+  findMembershipReferralForPublicCampaign,
+  isUserParticipantOnCampaign,
+} from "../services/referral-membership.service";
 import { getPresignedUrl } from "../services/s3.service";
 import {
   approvePreInfluencer,
@@ -15,10 +19,6 @@ import {
   notifyChattersAssigned,
   reassignPreInfluencer,
 } from "../services/teaseme.service";
-import {
-  findMembershipReferralForPublicCampaign,
-  isUserParticipantOnCampaign,
-} from "../services/referral-membership.service";
 
 const prisma = new PrismaClient();
 
@@ -85,11 +85,15 @@ const STEP_HISTORY_MAX = 20;
 
 type StepHistoryEntry = { step: number; at: string };
 
-const readStepHistory = (raw: Prisma.JsonValue | null | undefined): StepHistoryEntry[] => {
+const readStepHistory = (
+  raw: Prisma.JsonValue | null | undefined,
+): StepHistoryEntry[] => {
   if (!Array.isArray(raw)) return [];
   return raw.filter(
     (e): e is StepHistoryEntry =>
-      !!e && typeof e === "object" && !Array.isArray(e) &&
+      !!e &&
+      typeof e === "object" &&
+      !Array.isArray(e) &&
       typeof (e as StepHistoryEntry).step === "number" &&
       typeof (e as StepHistoryEntry).at === "string",
   );
@@ -234,6 +238,26 @@ const refreshPreUserSteps = async (
           });
           row.preUser = updated;
 
+          // If the step or either link changed, push an SSE event so any
+          // open browser tab refetches the card without a manual reload.
+          const stepChanged = updated.currentStep !== pre.currentStep;
+          const assetLinkChanged = updated.assetLink !== pre.assetLink;
+          const surveyLinkChanged = updated.surveyLink !== pre.surveyLink;
+          const statusChanged = updated.status !== pre.status;
+          if (
+            (stepChanged ||
+              assetLinkChanged ||
+              surveyLinkChanged ||
+              statusChanged) &&
+            updated.referralId
+          ) {
+            stepEmitter.emit(`step:${updated.referralId}`, {
+              currentStep: updated.currentStep,
+              status: updated.status,
+              done: updated.currentStep >= 5,
+            });
+          }
+
           // Note: promoting the PreUser to a real User + sending the
           // welcome email is no longer an automatic side-effect of the
           // 4→5 transition. That work is now driven explicitly by the
@@ -277,7 +301,9 @@ type ReferralMetadata = {
   resendCount?: number;
 };
 
-const readReferralMetadata = (raw: Prisma.JsonValue | null | undefined): ReferralMetadata => {
+const readReferralMetadata = (
+  raw: Prisma.JsonValue | null | undefined,
+): ReferralMetadata => {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
   return raw as ReferralMetadata;
 };
@@ -290,7 +316,9 @@ const assignedAccountManagerMatchesUser = (
   metadata: Prisma.JsonValue | null | undefined,
   userEmail: string,
 ): boolean => {
-  const am = normalizeEmail(readReferralMetadata(metadata).accountManagerEmail ?? null);
+  const am = normalizeEmail(
+    readReferralMetadata(metadata).accountManagerEmail ?? null,
+  );
   const me = normalizeEmail(userEmail);
   return Boolean(am && me && am === me);
 };
@@ -530,7 +558,9 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
     // when they don't have a direct accountManagerId on their User row.
     let level = 1;
     let parentReferralId = null;
-    let userReferral: Awaited<ReturnType<typeof findMembershipReferralForPublicCampaign>> = null;
+    let userReferral: Awaited<
+      ReturnType<typeof findMembershipReferralForPublicCampaign>
+    > = null;
 
     // If the user is an influencer, this is a second-level referral
     if (user.role === UserRole.PROMOTER) {
@@ -655,21 +685,12 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
         },
       });
 
-      const seedInviteUrl = buildInviteUrl(created.campaign, {
-        refCode,
-        inviteCode,
-        inviteeEmail: email as string,
-        inviterEmail: inviter.email,
-        accountManagerEmail,
-      });
-
       await tx.preUser.create({
         data: {
           email: email as string,
           referralId: created.id,
           inviteCode,
           currentStep: 0,
-          surveyLink: seedInviteUrl,
         },
       });
 
@@ -718,10 +739,7 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const resendReferralInvite = async (
-  req: AuthRequest,
-  res: Response,
-) => {
+export const resendReferralInvite = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const user = req.user!;
@@ -836,14 +854,7 @@ export const resendReferralInvite = async (
         referralId: referral.id,
         inviteCode: referral.inviteCode,
         currentStep: 0,
-        surveyLink: inviteUrl,
       },
-    });
-    // Backfill surveyLink only when it hasn't been set yet (i.e. the upsert
-    // hit the update branch and the column is still null).
-    await prisma.preUser.updateMany({
-      where: { referralId: referral.id, surveyLink: null },
-      data: { surveyLink: inviteUrl },
     });
 
     const inviterName =
@@ -883,10 +894,7 @@ export const resendReferralInvite = async (
   }
 };
 
-export const deleteReferralInvite = async (
-  req: AuthRequest,
-  res: Response,
-) => {
+export const deleteReferralInvite = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const user = req.user!;
@@ -1039,7 +1047,9 @@ export const denyReferralInvite = async (req: AuthRequest, res: Response) => {
 
     const loaded = await loadReferralForAction(id, user);
     if (loaded.error) {
-      return res.status(loaded.error.code).json({ error: loaded.error.message });
+      return res
+        .status(loaded.error.code)
+        .json({ error: loaded.error.message });
     }
     const { referral } = loaded;
 
@@ -1062,10 +1072,13 @@ export const denyReferralInvite = async (req: AuthRequest, res: Response) => {
       reason,
     });
     if (!upstream) {
-      console.warn("[denyReferralInvite] upstream deny failed — flipping local status only", {
-        referralId: referral.id,
-        inviteCode: referral.inviteCode,
-      });
+      console.warn(
+        "[denyReferralInvite] upstream deny failed — flipping local status only",
+        {
+          referralId: referral.id,
+          inviteCode: referral.inviteCode,
+        },
+      );
     }
 
     // Schema's ReferralStatus enum is PENDING|ACTIVE|COMPLETED|CANCELLED.
@@ -1103,19 +1116,19 @@ export const reassignReferralInvite = async (
 
     const loaded = await loadReferralForAction(id, user);
     if (loaded.error) {
-      return res.status(loaded.error.code).json({ error: loaded.error.message });
+      return res
+        .status(loaded.error.code)
+        .json({ error: loaded.error.message });
     }
     const { referral } = loaded;
 
     // Reassignment is an AM-level action — a plain promoter inviter must not
     // be able to change commission ownership on their own referrals.
     const isAdminCaller = user.role === UserRole.ADMIN;
-    if (
-      !isAdminCaller &&
-      user.userType !== UserType.ACCOUNT_MANAGER
-    ) {
+    if (!isAdminCaller && user.userType !== UserType.ACCOUNT_MANAGER) {
       return res.status(403).json({
-        error: "Access denied: only account managers or admins can reassign referrals",
+        error:
+          "Access denied: only account managers or admins can reassign referrals",
       });
     }
 
@@ -1128,7 +1141,8 @@ export const reassignReferralInvite = async (
     if (!isAdminCaller) {
       if (referral.status !== "PENDING" || referral.referredUser !== null) {
         return res.status(400).json({
-          error: "Only pending referrals without an accepted invitee can be reassigned",
+          error:
+            "Only pending referrals without an accepted invitee can be reassigned",
         });
       }
     } else if (referral.status === "COMPLETED") {
@@ -1181,10 +1195,13 @@ export const reassignReferralInvite = async (
       newManagerEmail: newReferrer.email,
     });
     if (!upstream) {
-      console.warn("[reassignReferralInvite] upstream reassign failed — flipping local ownership only", {
-        referralId: referral.id,
-        inviteCode: referral.inviteCode,
-      });
+      console.warn(
+        "[reassignReferralInvite] upstream reassign failed — flipping local ownership only",
+        {
+          referralId: referral.id,
+          inviteCode: referral.inviteCode,
+        },
+      );
     }
 
     const metadata = readReferralMetadata(referral.metadata);
@@ -1227,7 +1244,9 @@ export const orderReferralLandingPage = async (
 
     const loaded = await loadReferralForAction(id, user);
     if (loaded.error) {
-      return res.status(loaded.error.code).json({ error: loaded.error.message });
+      return res
+        .status(loaded.error.code)
+        .json({ error: loaded.error.message });
     }
     const { referral } = loaded;
 
@@ -1311,10 +1330,9 @@ export const orderReferralLandingPage = async (
       const history = readStepHistory(referral.preUser.stepHistory);
       const nextHistory =
         status.step > referral.preUser.currentStep
-          ? [
-              ...history,
-              { step: status.step, at: now.toISOString() },
-            ].slice(-STEP_HISTORY_MAX)
+          ? [...history, { step: status.step, at: now.toISOString() }].slice(
+              -STEP_HISTORY_MAX,
+            )
           : history;
 
       updateData = {
@@ -1371,7 +1389,9 @@ export const assignReferralChatters = async (
 
     const loaded = await loadReferralForAction(id, user);
     if (loaded.error) {
-      return res.status(loaded.error.code).json({ error: loaded.error.message });
+      return res
+        .status(loaded.error.code)
+        .json({ error: loaded.error.message });
     }
     const { referral } = loaded;
 
@@ -1382,7 +1402,8 @@ export const assignReferralChatters = async (
       user.userType !== UserType.ACCOUNT_MANAGER
     ) {
       return res.status(403).json({
-        error: "Access denied: only account managers or admins can assign chatter groups",
+        error:
+          "Access denied: only account managers or admins can assign chatter groups",
       });
     }
 
@@ -1451,9 +1472,12 @@ export const assignReferralChatters = async (
       chatterGroupId: chatterGroup.id,
     });
     if (!upstream) {
-      console.warn("[assignReferralChatters] upstream notify returned non-2xx", {
-        referralId: referral.id,
-      });
+      console.warn(
+        "[assignReferralChatters] upstream notify returned non-2xx",
+        {
+          referralId: referral.id,
+        },
+      );
     }
 
     return res.json({
@@ -1467,17 +1491,10 @@ export const assignReferralChatters = async (
 };
 
 /**
- * Manual welcome-email dispatch for the LP Live card. Replaces the
- * previous automatic 4→5 promotion hook in `refreshPreUserSteps`.
+ * sendReferralWelcomeEmail
  *
- * Behaviour:
- *   - First click (`welcomeEmailSentAt` is null) → creates the User row
- *     with a freshly generated temp password, sends the welcome email,
- *     and stamps `welcomeEmailSentAt`.
- *   - Subsequent clicks ("Resend") → re-uses the existing User row,
- *     requests a resend via `forceResend: true`, issues a fresh
- *     set-password token / welcome flow email, and re-stamps
- *     `welcomeEmailSentAt`.
+ * Send (or resend) the promoter welcome email. On first send it promotes
+ * the PreUser to a real User and stamps `welcomeEmailSentAt`.
  *
  * The helper is best-effort on the email-send step but never throws, so
  * a transient SES failure surfaces here as `emailSent: false` and the
@@ -1493,7 +1510,9 @@ export const sendReferralWelcomeEmail = async (
 
     const loaded = await loadReferralForAction(id, user);
     if (loaded.error) {
-      return res.status(loaded.error.code).json({ error: loaded.error.message });
+      return res
+        .status(loaded.error.code)
+        .json({ error: loaded.error.message });
     }
     const { referral } = loaded;
 
@@ -1578,8 +1597,7 @@ export const sendReferralWelcomeEmail = async (
       success: true,
       mode: wasAlreadySent ? "resent" : "sent",
       emailSent: result.emailSent ?? false,
-      welcomeEmailSentAt:
-        updated?.welcomeEmailSentAt?.toISOString() ?? null,
+      welcomeEmailSentAt: updated?.welcomeEmailSentAt?.toISOString() ?? null,
     });
   } catch (error) {
     console.error("Send welcome email error:", error);
@@ -1815,26 +1833,36 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
     // The DB never stores the URL; the key is the only persistent reference.
     const photoKeys = new Set<string>();
     for (const ref of referrals) {
-      if (ref.referredUser?.profilePhotoKey) photoKeys.add(ref.referredUser.profilePhotoKey);
+      if (ref.referredUser?.profilePhotoKey)
+        photoKeys.add(ref.referredUser.profilePhotoKey);
       for (const cr of ref.childReferrals) {
-        if (cr.referredUser?.profilePhotoKey) photoKeys.add(cr.referredUser.profilePhotoKey);
+        if (cr.referredUser?.profilePhotoKey)
+          photoKeys.add(cr.referredUser.profilePhotoKey);
       }
     }
     const photoUrlByKey = new Map<string, string | null>();
     await Promise.all(
       Array.from(photoKeys).map(async (key) => {
         photoUrlByKey.set(key, await getPresignedUrl(key));
-      })
+      }),
     );
-    const hydrateReferredUser = <T extends { profilePhotoKey?: string | null } | null | undefined>(
-      ru: T
-    ): (Omit<NonNullable<T>, "profilePhotoKey"> & { photoUrl: string | null }) | null => {
+    const hydrateReferredUser = <
+      T extends { profilePhotoKey?: string | null } | null | undefined,
+    >(
+      ru: T,
+    ):
+      | (Omit<NonNullable<T>, "profilePhotoKey"> & { photoUrl: string | null })
+      | null => {
       if (!ru) return null;
       const { profilePhotoKey, ...rest } = ru;
       return {
         ...rest,
-        photoUrl: profilePhotoKey ? photoUrlByKey.get(profilePhotoKey) ?? null : null,
-      } as Omit<NonNullable<T>, "profilePhotoKey"> & { photoUrl: string | null };
+        photoUrl: profilePhotoKey
+          ? (photoUrlByKey.get(profilePhotoKey) ?? null)
+          : null,
+      } as Omit<NonNullable<T>, "profilePhotoKey"> & {
+        photoUrl: string | null;
+      };
     };
     // Same ref-code derivation used in `createReferralInvite`. Used below to
     // rebuild `inviteUrl` for pending rows so the UI can offer a "Copy link"
@@ -1857,7 +1885,9 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
       // skip rows missing inviteeEmail (legacy invites created before the
       // email-required change) so we never emit a broken URL.
       const inviteUrl =
-        ref.status === "PENDING" && metadata.inviteeEmail && metadata.inviterEmail
+        ref.status === "PENDING" &&
+        metadata.inviteeEmail &&
+        metadata.inviterEmail
           ? buildInviteUrl(ref.campaign, {
               refCode: refCodeForInvite,
               inviteCode: ref.inviteCode,
@@ -2325,12 +2355,22 @@ export const receiveTeasemeStepWebhook = async (
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  const { email, inviteCode, currentStep, status, referralId } = req.body as {
+  const {
+    email,
+    inviteCode,
+    currentStep,
+    status,
+    referralId,
+    assetLink,
+    surveyLink,
+  } = req.body as {
     email?: string;
     inviteCode?: string;
     currentStep?: number;
     status?: string;
     referralId?: string;
+    assetLink?: string;
+    surveyLink?: string;
   };
 
   if (!email || typeof currentStep !== "number") {
@@ -2342,9 +2382,7 @@ export const receiveTeasemeStepWebhook = async (
   try {
     // Find the PreUser by email (or inviteCode as fallback)
     const preUser = await prisma.preUser.findFirst({
-      where: inviteCode
-        ? { OR: [{ email }, { inviteCode }] }
-        : { email },
+      where: inviteCode ? { OR: [{ email }, { inviteCode }] } : { email },
       include: { referral: { select: { id: true } } },
     });
 
@@ -2357,12 +2395,15 @@ export const receiveTeasemeStepWebhook = async (
     const resolvedReferralId = preUser.referral?.id ?? null;
 
     if (referralId && referralId !== resolvedReferralId) {
-      console.warn("[teaseme-webhook] ignoring mismatched referralId from request", {
-        preUserId: preUser.id,
-        email,
-        requestReferralId: referralId,
-        dbReferralId: resolvedReferralId,
-      });
+      console.warn(
+        "[teaseme-webhook] ignoring mismatched referralId from request",
+        {
+          preUserId: preUser.id,
+          email,
+          requestReferralId: referralId,
+          dbReferralId: resolvedReferralId,
+        },
+      );
     }
 
     await prisma.preUser.update({
@@ -2370,7 +2411,9 @@ export const receiveTeasemeStepWebhook = async (
       data: {
         currentStep,
         ...(status ? { status } : {}),
-        lastCheckedAt: new Date(),
+        ...(typeof assetLink === "string" && assetLink ? { assetLink } : {}),
+        ...(typeof surveyLink === "string" && surveyLink ? { surveyLink } : {}),
+        lastCheckedAt: null,
       },
     });
 
@@ -2379,6 +2422,8 @@ export const receiveTeasemeStepWebhook = async (
       email,
       currentStep,
       status,
+      assetLink: assetLink ?? null,
+      surveyLink: surveyLink ?? null,
       referralId: resolvedReferralId,
     });
 
@@ -2390,7 +2435,53 @@ export const receiveTeasemeStepWebhook = async (
       });
     }
 
-    return res.status(200).json({ ok: true, matched: true });
+    // Respond immediately — don't block TeaseMe on our upstream poll.
+    res.status(200).json({ ok: true, matched: true });
+
+    // Background: poll /step-progress right away to capture surveyLink /
+    // assetLink while TeaseMe still has fresh step data (closes the race
+    // window where the lifecycle advances before the next getMyReferrals).
+    if (currentStep < 5) {
+      void fetchTeasemePreUserStatus({
+        email: preUser.email,
+        inviteCode: preUser.inviteCode ?? undefined,
+      })
+        .then(async (freshStatus) => {
+          if (!freshStatus) return;
+          const freshSurveyLink =
+            freshStatus.surveyLink &&
+            !freshStatus.surveyLink.includes("inviteCode=")
+              ? freshStatus.surveyLink
+              : null;
+          const freshAssetLink = freshStatus.assetLink ?? null;
+          if (!freshSurveyLink && !freshAssetLink) return;
+          await prisma.preUser.update({
+            where: { id: preUser.id },
+            data: {
+              ...(freshSurveyLink ? { surveyLink: freshSurveyLink } : {}),
+              ...(freshAssetLink ? { assetLink: freshAssetLink } : {}),
+              lastCheckedAt: new Date(),
+            },
+          });
+          console.info("[teaseme-webhook] immediate poll saved links", {
+            preUserId: preUser.id,
+            surveyLink: freshSurveyLink,
+            assetLink: freshAssetLink,
+          });
+          if (resolvedReferralId && (freshSurveyLink || freshAssetLink)) {
+            stepEmitter.emit("step:" + resolvedReferralId, {
+              currentStep: freshStatus.step,
+              status: freshStatus.status ?? status ?? preUser.status,
+              surveyLink: freshSurveyLink,
+              assetLink: freshAssetLink,
+              done: freshStatus.step >= 5,
+            });
+          }
+        })
+        .catch((err) => {
+          console.error("[teaseme-webhook] immediate poll failed", { err });
+        });
+    }
   } catch (error) {
     console.error("[teaseme-webhook] error", error);
     return res.status(500).json({ error: "Internal server error" });
@@ -2409,10 +2500,7 @@ export const receiveTeasemeStepWebhook = async (
  * Auth: cookie-based JWT (authenticate middleware). The browser must pass
  * `withCredentials: true` when creating the EventSource.
  */
-export const streamReferralStatus = async (
-  req: AuthRequest,
-  res: Response,
-) => {
+export const streamReferralStatus = async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   const user = req.user!;
 
