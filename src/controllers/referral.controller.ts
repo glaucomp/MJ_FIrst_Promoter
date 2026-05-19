@@ -216,7 +216,13 @@ const refreshPreUserSteps = async (
               // Never null out a previously-known link just because a later
               // poll omits it — TeaseMe populates surveyLink first, then
               // assetLink later in the lifecycle.
-              surveyLink: status.surveyLink ?? pre.surveyLink,
+              // Also guard against TeaseMe accidentally echoing back an
+              // invite-URL-shaped string (contains inviteCode=) — treat
+              // those as null so the seed / previous session URL is kept.
+              surveyLink:
+                (status.surveyLink && !status.surveyLink.includes("inviteCode=")
+                  ? status.surveyLink
+                  : null) ?? pre.surveyLink,
               assetLink: status.assetLink ?? pre.assetLink,
               lastCheckedAt: nextCheckedAt,
               stepHistory: nextHistory as unknown as Prisma.InputJsonValue,
@@ -685,12 +691,29 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
         },
       });
 
+      // Build the invite URL inside the transaction so we can seed
+      // surveyLink immediately. This makes the "Open onboarding" button
+      // on the My Promoters card clickable from the first render instead
+      // of staying disabled until TeaseMe's /step-progress returns its
+      // own session URL. refreshPreUserSteps writes
+      // `surveyLink: status.surveyLink ?? pre.surveyLink` so this seed
+      // is preserved until TeaseMe supplies a real session URL and is
+      // then overwritten forward-only.
+      const seedInviteUrl = buildInviteUrl(created.campaign, {
+        refCode,
+        inviteCode,
+        inviteeEmail: email as string,
+        inviterEmail: inviter.email,
+        accountManagerEmail,
+      });
+
       await tx.preUser.create({
         data: {
           email: email as string,
           referralId: created.id,
           inviteCode,
           currentStep: 0,
+          surveyLink: seedInviteUrl,
         },
       });
 
@@ -854,6 +877,7 @@ export const resendReferralInvite = async (req: AuthRequest, res: Response) => {
         referralId: referral.id,
         inviteCode: referral.inviteCode,
         currentStep: 0,
+        surveyLink: inviteUrl,
       },
     });
 
