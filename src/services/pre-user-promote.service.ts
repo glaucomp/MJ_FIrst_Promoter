@@ -286,6 +286,11 @@ export const promotePreUserToUser = async (
   const tempPassword = generateTemporaryPassword();
   const hashedPassword = await bcrypt.hash(tempPassword, 10);
 
+  // Resolve ownership before both branches so it is available later for the
+  // auto-ChatterGroup creation step (which runs after stepStatus is fetched,
+  // outside the if/else block below).
+  const ownership = await resolveOwnership(prisma, preUser.referralId);
+
   let user;
   if (existing) {
     console.info("[promote-pre-user] user already exists; rotating temp password and resending welcome", {
@@ -314,7 +319,6 @@ export const promotePreUserToUser = async (
     // firstName is not subject to unique constraints, so we always set it
     // even if the username derivation gave up.
     const firstName = sanitizeLocalPart(emailLocal);
-    const ownership = await resolveOwnership(prisma, preUser.referralId);
 
     try {
       user = await prisma.user.create({
@@ -592,6 +596,175 @@ export const promotePreUserToUser = async (
     upstreamUserId: stepStatus?.teasemeUserId ?? null,
     upstreamStep: stepStatus?.step ?? null,
   });
+
+  // Auto-create a default ChatterGroup for the influencer if they don't have
+  // one yet. Uses the TeaseMe public username as the group name when available
+  // (most recognisable to AMs), falling back to firstName / email local-part.
+  // The group is attributed to the account manager responsible for the referral.
+  // This block is non-fatal: a failure here only logs and continues so the
+  // welcome email and user row are never blocked.
+  try {
+    const currentUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: {
+        chatterGroupId: true,
+        username: true,
+        firstName: true,
+        accountManagerId: true,
+      },
+    });
+
+    const influencerName =
+      stepStatus?.username ||
+      currentUser?.username ||
+      currentUser?.firstName ||
+      preUser.email.split("@")[0];
+    const dedicatedGroupName = `${influencerName} - Group`;
+
+    // Skip only if the user is already in their own dedicated group.
+    // If they are linked to a generic/manually-assigned group, still create
+    // the dedicated one and move them to it.
+    let needsGroup = true;
+    if (currentUser?.chatterGroupId) {
+      const existingGroup = await prisma.chatterGroup.findUnique({
+        where: { id: currentUser.chatterGroupId },
+        select: { name: true },
+      });
+      if (existingGroup?.name === dedicatedGroupName) needsGroup = false;
+    }
+
+    if (needsGroup) {
+      // Prefer the AM resolved from the referral chain; fall back to the AM
+      // stored directly on the user row (covers manual AM assignments made
+      // after the referral was created). Never fall back to a plain promoter —
+      // ChatterGroups must be owned by an account manager.
+      const amId =
+        ownership.accountManagerId ??
+        currentUser?.accountManagerId ??
+        null;
+
+      if (amId) {
+        let assignedGroupId: string | null = null;
+        let createdGroup = false;
+
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+          try {
+            const result = await prisma.$transaction(
+              async (tx) => {
+                const latestUser = await tx.user.findUnique({
+                  where: { id: user.id },
+                  select: { chatterGroupId: true },
+                });
+
+                if (latestUser?.chatterGroupId) {
+                  const linkedGroup = await tx.chatterGroup.findUnique({
+                    where: { id: latestUser.chatterGroupId },
+                    select: { id: true, name: true },
+                  });
+                  if (linkedGroup?.name === dedicatedGroupName) {
+                    return { groupId: linkedGroup.id, created: false };
+                  }
+                }
+
+                // Restrict adoption to unlinked groups so we don't
+                // accidentally grab another promoter's dedicated group.
+                const existingNamedGroup = await tx.chatterGroup.findFirst({
+                  where: { name: dedicatedGroupName, promoter: null },
+                  select: { id: true },
+                });
+
+                if (existingNamedGroup) {
+                  try {
+                    await tx.user.update({
+                      where: { id: user.id },
+                      data: { chatterGroupId: existingNamedGroup.id },
+                    });
+                    return { groupId: existingNamedGroup.id, created: false };
+                  } catch (linkError) {
+                    if (
+                      linkError instanceof Prisma.PrismaClientKnownRequestError &&
+                      linkError.code === "P2002"
+                    ) {
+                      // Another user was linked concurrently; fall through to create.
+                    } else {
+                      throw linkError;
+                    }
+                  }
+                }
+
+                const newGroup = await tx.chatterGroup.create({
+                  data: {
+                    name: dedicatedGroupName,
+                    commissionPercentage: 2,
+                    tag: null,
+                    createdById: amId,
+                  },
+                  select: { id: true },
+                });
+
+                await tx.user.update({
+                  where: { id: user.id },
+                  data: { chatterGroupId: newGroup.id },
+                });
+
+                return {
+                  groupId: newGroup.id,
+                  created: true,
+                };
+              },
+              {
+                isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+              },
+            );
+
+            assignedGroupId = result.groupId;
+            createdGroup = result.created;
+            break;
+          } catch (error) {
+            if (
+              error instanceof Prisma.PrismaClientKnownRequestError &&
+              error.code === "P2034" &&
+              attempt < 2
+            ) {
+              continue;
+            }
+            throw error;
+          }
+        }
+
+        if (assignedGroupId) {
+          console.info(
+            createdGroup
+              ? "[promote-pre-user] default chatter group created"
+              : "[promote-pre-user] default chatter group adopted",
+            {
+              preUserId: preUser.id,
+              userId: user.id,
+              groupId: assignedGroupId,
+              groupName: dedicatedGroupName,
+              createdById: amId,
+            },
+          );
+        }
+      } else {
+        console.warn(
+          "[promote-pre-user] no AM resolved; skipping default chatter group creation",
+          { preUserId: preUser.id, userId: user.id },
+        );
+      }
+    }
+  } catch (err) {
+    // Non-fatal — the AM can create the group manually from the Chatter Groups page.
+    console.error(
+      "[promote-pre-user] failed to auto-create default chatter group",
+      {
+        preUserId: preUser.id,
+        userId: user.id,
+        err: err instanceof Error ? err.message : String(err),
+      },
+    );
+  }
+
   if (stepStatus?.username) {
     candidateKeys.push({ source: "step-progress.username", key: stepStatus.username });
   }

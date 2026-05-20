@@ -6,7 +6,7 @@ import { timingSafeEqual } from "node:crypto";
 import { stepEmitter } from "../lib/step-emitter";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { emailService } from "../services/email.service";
-import { promotePreUserToUser } from "../services/pre-user-promote.service";
+import { promotePreUserToUser, resolveOwnership } from "../services/pre-user-promote.service";
 import {
   findMembershipReferralForPublicCampaign,
   isUserParticipantOnCampaign,
@@ -121,6 +121,15 @@ type PreUserRow = {
 };
 
 type ReferralRowWithPreUser = { preUser: PreUserRow | null };
+
+type PendingStep5ReferralBackfillRow = {
+  id: string;
+  status: string;
+  referredUser: { id: string } | null;
+  preUser: PreUserRow | null;
+};
+
+const pendingReferralBackfillByUser = new Set<string>();
 
 /**
  * For each referral in `rows`, check whether the attached PreUser's
@@ -280,6 +289,64 @@ const refreshPreUserSteps = async (
   );
 
   await Promise.allSettled(workers);
+};
+
+const backfillPendingStep5Referrals = (
+  userId: string,
+  rows: PendingStep5ReferralBackfillRow[],
+): void => {
+  if (pendingReferralBackfillByUser.has(userId)) return;
+
+  const pendingAtStep5 = rows.filter(
+    (ref): ref is PendingStep5ReferralBackfillRow & { preUser: PreUserRow } =>
+      ref.status === "PENDING" &&
+      ref.referredUser === null &&
+      ref.preUser !== null &&
+      ref.preUser.currentStep >= 5,
+  );
+
+  if (pendingAtStep5.length === 0) return;
+
+  pendingReferralBackfillByUser.add(userId);
+
+  void (async () => {
+    try {
+      const existingUsers = await prisma.user.findMany({
+        where: { email: { in: pendingAtStep5.map((ref) => ref.preUser.email) } },
+        select: { id: true, email: true },
+      });
+      const userIdByEmail = new Map(existingUsers.map((row) => [row.email, row.id]));
+
+      for (const ref of pendingAtStep5) {
+        const existingUserId = userIdByEmail.get(ref.preUser.email);
+        if (!existingUserId) continue;
+
+        try {
+          const accepted = await prisma.referral.updateMany({
+            where: { id: ref.id, status: "PENDING" },
+            data: {
+              referredUserId: existingUserId,
+              status: "ACTIVE",
+              acceptedAt: new Date(),
+            },
+          });
+          if (accepted.count > 0) {
+            console.info("[getMyReferrals] backfill: referral accepted on step 5", {
+              referralId: ref.id, userId: existingUserId,
+            });
+          }
+        } catch (err) {
+          console.error("[getMyReferrals] backfill (PENDING step-5) failed", {
+            referralId: ref.id, err: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+    } catch (err) {
+      console.error("[getMyReferrals] backfill outer error", err);
+    } finally {
+      pendingReferralBackfillByUser.delete(userId);
+    }
+  })();
 };
 
 const hasAccountManagerAccess = (user: AuthRequest["user"]) => {
@@ -1515,6 +1582,185 @@ export const assignReferralChatters = async (
 };
 
 /**
+ * ensureInfluencerGroup
+ *
+ * Idempotent: if the promoter attached to this referral already has a
+ * dedicated "{name} - Group", return it. Otherwise create it, link it
+ * to the user, and return the new group. The group name is derived from
+ * the TeaseMe public username (best) → DB username → firstName → email.
+ *
+ * This is called by the "Assign Chatters" button so the AM lands on the
+ * Chatters page already opened on the right group.
+ */
+export const ensureInfluencerGroup = async (
+  req: AuthRequest,
+  res: Response,
+) => {
+  try {
+    const { id } = req.params;
+    const user = req.user!;
+
+    if (
+      user.role !== UserRole.ADMIN &&
+      user.userType !== UserType.ACCOUNT_MANAGER
+    ) {
+      return res.status(403).json({
+        error:
+          "Access denied: only account managers or admins can manage chatter groups",
+      });
+    }
+
+    const loaded = await loadReferralForAction(id, user);
+    if (loaded.error) {
+      return res
+        .status(loaded.error.code)
+        .json({ error: loaded.error.message });
+    }
+    const { referral } = loaded;
+
+    const referredUser = referral.referredUser;
+    if (!referredUser) {
+      return res.status(400).json({
+        error:
+          "A chatter group can only be created after the promoter has registered on the platform.",
+      });
+    }
+
+    // Re-read the user to get the full set of fields we need for the name.
+    const promotedUser = await prisma.user.findUnique({
+      where: { id: referredUser.id },
+      select: {
+        id: true,
+        firstName: true,
+        username: true,
+        chatterGroupId: true,
+        accountManagerId: true,
+      },
+    });
+    if (!promotedUser) {
+      return res.status(404).json({ error: "Promoted user not found." });
+    }
+
+    // Fetch the real TeaseMe public handle for the group name.
+    let teasemeUsername: string | null = null;
+    if (referral.preUser) {
+      try {
+        const stepStatus = await fetchTeasemePreUserStatus({
+          email: referral.preUser.email,
+          inviteCode: referral.preUser.inviteCode ?? undefined,
+        });
+        teasemeUsername = stepStatus?.username ?? null;
+      } catch { /* non-fatal */ }
+    }
+
+    const influencerName =
+      teasemeUsername ||
+      promotedUser.username ||
+      promotedUser.firstName ||
+      referredUser.email.split("@")[0];
+    const dedicatedGroupName = `${influencerName} - Group`;
+
+    // Resolve the account manager for createdById (needed before the
+    // transaction so we don't nest an async DB call inside the tx).
+    const { accountManagerId: amFromChain } = await resolveOwnership(
+      prisma,
+      id,
+    );
+    const amId = amFromChain ?? promotedUser.accountManagerId ?? user.id;
+
+    // Atomic find-or-create inside a transaction.
+    // 1. Check if the user's current group is already the dedicated one.
+    // 2. Check if a group with that name already exists anywhere (catches
+    //    race-condition duplicates from concurrent requests or the webhook).
+    // 3. Only create if truly absent.
+    const { group, created } = await prisma.$transaction(async (tx) => {
+      // Fast-path: user is already linked to the dedicated group.
+      if (promotedUser.chatterGroupId) {
+        const linked = await tx.chatterGroup.findUnique({
+          where: { id: promotedUser.chatterGroupId },
+          select: { id: true, name: true, commissionPercentage: true },
+        });
+        if (linked?.name === dedicatedGroupName) {
+          return { group: linked, created: false };
+        }
+      }
+
+      // Check if a safe-to-adopt group with this name already exists
+      // (from a concurrent request, the webhook, or promotePreUserToUser).
+      // Restrict adoption to unowned groups so we do not accidentally grab
+      // another promoter's dedicated group just because the name matches.
+      const byName = await tx.chatterGroup.findFirst({
+        where: { name: dedicatedGroupName, promoter: null },
+        select: { id: true, name: true, commissionPercentage: true },
+      });
+      if (byName) {
+        // Adopt the existing safe group if the user isn't already linked to it.
+        if (promotedUser.chatterGroupId !== byName.id) {
+          try {
+            await tx.user.update({
+              where: { id: promotedUser.id },
+              data: { chatterGroupId: byName.id },
+            });
+          } catch (error) {
+            if (
+              error instanceof Prisma.PrismaClientKnownRequestError &&
+              error.code === "P2002"
+            ) {
+              const fallbackGroup = await tx.chatterGroup.create({
+                data: {
+                  name: dedicatedGroupName,
+                  commissionPercentage: 2,
+                  tag: null,
+                  createdById: amId,
+                },
+                select: { id: true, name: true, commissionPercentage: true },
+              });
+              await tx.user.update({
+                where: { id: promotedUser.id },
+                data: { chatterGroupId: fallbackGroup.id },
+              });
+              return { group: fallbackGroup, created: true };
+            }
+            throw error;
+          }
+        }
+        return { group: byName, created: false };
+      }
+
+      // No group found — create the dedicated one.
+      const newGroup = await tx.chatterGroup.create({
+        data: {
+          name: dedicatedGroupName,
+          commissionPercentage: 2,
+          tag: null,
+          createdById: amId,
+        },
+        select: { id: true, name: true, commissionPercentage: true },
+      });
+      await tx.user.update({
+        where: { id: promotedUser.id },
+        data: { chatterGroupId: newGroup.id },
+      });
+      return { group: newGroup, created: true };
+    });
+
+    if (created) {
+      console.info("[ensureInfluencerGroup] dedicated group created", {
+        referralId: id,
+        userId: promotedUser.id,
+        groupId: group.id,
+        groupName: group.name,
+      });
+    }
+
+    return res.json({ success: true, group, created });
+  } catch (error) {
+    console.error("ensureInfluencerGroup error:", error);
+    return res.status(500).json({ error: "Failed to ensure chatter group" });
+  }
+};
+
+/**
  * sendReferralWelcomeEmail
  *
  * Send (or resend) the promoter welcome email. On first send it promotes
@@ -1822,6 +2068,16 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
     // chip. Mutates each ref.preUser in-place; no-op for rows already inside
     // TTL or for rows already registered (no PreUser attached).
     await refreshPreUserSteps(allReferrals);
+
+    // Backfill: for any PENDING referral at step >= 5 whose promoter User
+    // already exists in the DB, accept the referral (PENDING → ACTIVE) so
+    // the card flips to LP Live via referral.status. Group creation is NOT
+    // done here; this backfill only updates referral state. Default chatter
+    // groups may be created via the explicit AM button
+    // (POST /referrals/:id/ensure-group) or other lifecycle flows elsewhere,
+    // and avoiding creation here helps prevent race-condition duplicates when
+    // this endpoint is called multiple times in quick succession.
+    backfillPendingStep5Referrals(user.id, allReferrals);
 
     // Filter out:
     // 1. Self-referrals (referredUserId === own id, e.g. username-based tracking records)
@@ -2461,6 +2717,162 @@ export const receiveTeasemeStepWebhook = async (
 
     // Respond immediately — don't block TeaseMe on our upstream poll.
     res.status(200).json({ ok: true, matched: true });
+
+    // Background: when LP goes live (step >= 5), if a User already exists for
+    // this email (e.g. created via the FirstPromoter API before the welcome
+    // email was sent), accept the parent referral and auto-create the default
+    // ChatterGroup without waiting for the AM to click "Send Welcome Email".
+    if (currentStep >= 5) {
+      void (async () => {
+        try {
+          const promotedUser = await prisma.user.findUnique({
+            where: { email: preUser.email },
+            select: {
+              id: true,
+              firstName: true,
+              username: true,
+              chatterGroupId: true,
+              accountManagerId: true,
+            },
+          });
+          if (!promotedUser) return; // no User yet — "Send Welcome Email" will handle it
+
+          // Accept the referral if it is still PENDING so the card flips to
+          // LP Live via referral.status rather than preUser.currentStep alone.
+          if (resolvedReferralId) {
+            const accepted = await prisma.referral.updateMany({
+              where: { id: resolvedReferralId, status: "PENDING" },
+              data: {
+                referredUserId: promotedUser.id,
+                status: "ACTIVE",
+                acceptedAt: new Date(),
+              },
+            });
+            if (accepted.count > 0) {
+              console.info("[teaseme-webhook] referral accepted on step 5", {
+                preUserId: preUser.id,
+                referralId: resolvedReferralId,
+                userId: promotedUser.id,
+              });
+            }
+          }
+
+          // Auto-create the dedicated ChatterGroup if the user doesn't
+          // already have one named "{name} - Group". If they are linked to
+          // a generic/manually-assigned group, we still create the dedicated
+          // one and move them to it.
+          //
+          // Fetch the TeaseMe public username (the influencer's real handle)
+          // so the group name reflects their actual identity rather than the
+          // email-derived local username stored in our DB.
+          let teasemeUsername: string | null = null;
+          try {
+            const stepStatus = await fetchTeasemePreUserStatus({
+              email: preUser.email,
+              inviteCode: preUser.inviteCode ?? undefined,
+            });
+            teasemeUsername = stepStatus?.username ?? null;
+          } catch {
+            // Non-fatal — fall back to DB username below.
+          }
+
+          const influencerName =
+            teasemeUsername ||
+            promotedUser.username ||
+            promotedUser.firstName ||
+            preUser.email.split("@")[0];
+          const dedicatedGroupName = `${influencerName} - Group`;
+
+          // Atomic find-or-create: check user's current group, then search
+          // by name, then create only if absent. Prevents duplicates when the
+          // webhook fires concurrently with the "Assign Chatters" button.
+          const { accountManagerId: amFromChain } = await resolveOwnership(
+            prisma,
+            resolvedReferralId,
+          );
+          const amId = amFromChain ?? promotedUser.accountManagerId ?? null;
+
+          if (!amId) {
+            console.warn(
+              "[teaseme-webhook] step-5: no AM resolved; skipping default chatter group",
+              { preUserId: preUser.id, userId: promotedUser.id },
+            );
+            return;
+          }
+
+          await prisma.$transaction(async (tx) => {
+            // Fast-path: already linked to the dedicated group.
+            if (promotedUser.chatterGroupId) {
+              const linked = await tx.chatterGroup.findUnique({
+                where: { id: promotedUser.chatterGroupId },
+                select: { id: true, name: true },
+              });
+              if (linked?.name === dedicatedGroupName) return;
+            }
+
+            const createAndLinkDedicatedGroup = async () => {
+              const group = await tx.chatterGroup.create({
+                data: {
+                  name: dedicatedGroupName,
+                  commissionPercentage: 2,
+                  tag: null,
+                  createdById: amId,
+                },
+                select: { id: true },
+              });
+              await tx.user.update({
+                where: { id: promotedUser.id },
+                data: { chatterGroupId: group.id },
+              });
+              console.info("[teaseme-webhook] default chatter group created on step 5", {
+                preUserId: preUser.id,
+                userId: promotedUser.id,
+                groupId: group.id,
+                groupName: dedicatedGroupName,
+                createdById: amId,
+              });
+            };
+
+            // Adopt an existing safe unlinked group with this name if one already exists.
+            const byName = await tx.chatterGroup.findFirst({
+              where: {
+                name: dedicatedGroupName,
+                promoter: null,
+              },
+              select: { id: true },
+            });
+            if (byName) {
+              if (promotedUser.chatterGroupId !== byName.id) {
+                try {
+                  await tx.user.update({
+                    where: { id: promotedUser.id },
+                    data: { chatterGroupId: byName.id },
+                  });
+                } catch (error) {
+                  if (
+                    error instanceof Prisma.PrismaClientKnownRequestError &&
+                    error.code === "P2002"
+                  ) {
+                    await createAndLinkDedicatedGroup();
+                    return;
+                  }
+                  throw error;
+                }
+              }
+              return;
+            }
+
+            // Create the dedicated group.
+            await createAndLinkDedicatedGroup();
+          });
+        } catch (err) {
+          console.error(
+            "[teaseme-webhook] step-5 chatter group / referral acceptance failed",
+            { preUserId: preUser.id, err: err instanceof Error ? err.message : String(err) },
+          );
+        }
+      })();
+    }
 
     // Background: poll /step-progress right away to capture surveyLink /
     // assetLink while TeaseMe still has fresh step data (closes the race
