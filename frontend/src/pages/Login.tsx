@@ -104,7 +104,7 @@ export const Login = () => {
                     onChange={(e) => setEmail(e.target.value)}
                     required
                     tabIndex={1}
-                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-4 py-[12px] text-base text-white focus:outline-none focus:border--tm-primary-color04 transition-colors"
+                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-4 py-[12px] text-base text-white focus:outline-none focus:border-tm-primary-color04 transition-colors"
                     placeholder="your@email.com"
                   />
                 </div>
