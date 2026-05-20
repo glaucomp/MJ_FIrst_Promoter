@@ -638,26 +638,89 @@ export const promotePreUserToUser = async (
         null;
 
       if (amId) {
-        const group = await prisma.chatterGroup.create({
-          data: {
-            name: dedicatedGroupName,
-            commissionPercentage: 2,
-            tag: null,
-            createdById: amId,
-          },
-          select: { id: true },
-        });
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { chatterGroupId: group.id },
-        });
-        console.info("[promote-pre-user] default chatter group created", {
-          preUserId: preUser.id,
-          userId: user.id,
-          groupId: group.id,
-          groupName: dedicatedGroupName,
-          createdById: amId,
-        });
+        let assignedGroupId: string | null = null;
+        let createdGroup = false;
+
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+          try {
+            const result = await prisma.$transaction(
+              async (tx) => {
+                const latestUser = await tx.user.findUnique({
+                  where: { id: user.id },
+                  select: { chatterGroupId: true },
+                });
+
+                if (latestUser?.chatterGroupId) {
+                  const linkedGroup = await tx.chatterGroup.findUnique({
+                    where: { id: latestUser.chatterGroupId },
+                    select: { id: true, name: true },
+                  });
+                  if (linkedGroup?.name === dedicatedGroupName) {
+                    return { groupId: linkedGroup.id, created: false };
+                  }
+                }
+
+                const existingNamedGroup = await tx.chatterGroup.findFirst({
+                  where: { name: dedicatedGroupName },
+                  select: { id: true },
+                });
+
+                const group =
+                  existingNamedGroup ??
+                  (await tx.chatterGroup.create({
+                    data: {
+                      name: dedicatedGroupName,
+                      commissionPercentage: 2,
+                      tag: null,
+                      createdById: amId,
+                    },
+                    select: { id: true },
+                  }));
+
+                await tx.user.update({
+                  where: { id: user.id },
+                  data: { chatterGroupId: group.id },
+                });
+
+                return {
+                  groupId: group.id,
+                  created: !existingNamedGroup,
+                };
+              },
+              {
+                isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+              },
+            );
+
+            assignedGroupId = result.groupId;
+            createdGroup = result.created;
+            break;
+          } catch (error) {
+            if (
+              error instanceof Prisma.PrismaClientKnownRequestError &&
+              error.code === "P2034" &&
+              attempt < 2
+            ) {
+              continue;
+            }
+            throw error;
+          }
+        }
+
+        if (assignedGroupId) {
+          console.info(
+            createdGroup
+              ? "[promote-pre-user] default chatter group created"
+              : "[promote-pre-user] default chatter group adopted",
+            {
+              preUserId: preUser.id,
+              userId: user.id,
+              groupId: assignedGroupId,
+              groupName: dedicatedGroupName,
+              createdById: amId,
+            },
+          );
+        }
       } else {
         console.warn(
           "[promote-pre-user] no AM resolved; skipping default chatter group creation",
