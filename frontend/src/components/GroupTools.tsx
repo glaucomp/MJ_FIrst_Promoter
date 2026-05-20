@@ -166,7 +166,7 @@ export const LinkGenerator = ({ username }: LinkGeneratorProps) => {
       {/* Section header */}
       <div className="flex items-center gap-[8px]">
         <svg
-          className="w-[14px] h-[14px] text-[#ff2a71]"
+          className="w-[14px] h-[14px] text-tm-primary-color04 "
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -178,7 +178,7 @@ export const LinkGenerator = ({ username }: LinkGeneratorProps) => {
             d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
           />
         </svg>
-        <p className="text-xs font-bold uppercase text-[#9e9e9e]">
+        <p className="text-xs font-bold uppercase text-tm-text-color08">
           Invite Link
         </p>
       </div>
@@ -190,7 +190,7 @@ export const LinkGenerator = ({ username }: LinkGeneratorProps) => {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Name"
-          className="buttonXl inputMJ text-white focus:outline-none focus:border--tm-primary-color04 placeholder-[#9e9e9e]"
+          className="buttonXl inputMJ text-white focus:outline-none focus:border--tm-primary-color04 placeholder-tm-text-color08"
         />
         <input
           type="text"
@@ -199,7 +199,7 @@ export const LinkGenerator = ({ username }: LinkGeneratorProps) => {
           value={telegramId}
           onChange={(e) => setTelegramId(e.target.value.replaceAll(/\D/g, ""))}
           placeholder="Telegram ID"
-          className="buttonXl inputMJ text-white focus:outline-none focus:border--tm-primary-color04 placeholder-[#9e9e9e]"
+          className="buttonXl inputMJ text-white focus:outline-none focus:border--tm-primary-color04 placeholder-tm-text-color08"
         />
       </div>
 
@@ -225,14 +225,14 @@ export const LinkGenerator = ({ username }: LinkGeneratorProps) => {
             onChange={(e) => setEmail(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
             placeholder="Email"
-            className="buttonXl inputIcon w-full inputMJ text-white focus:outline-none focus:border--tm-primary-color04 placeholder-[#9e9e9e]"
+            className="buttonXl inputIcon w-full inputMJ text-white focus:outline-none focus:border--tm-primary-color04 placeholder-tm-text-color08"
           />
         </div>
         <button
           onClick={handleReset}
           title="Reset form"
           aria-label="Reset form"
-          className="lg:w-[56px] buttonSubtle buttonXl rounded-full flex items-center justify-center bg-[#141414] border border-[rgba(255,255,255,0.1)]  text-[#555] hover:text-[#9e9e9e] hover:border-[rgba(255,255,255,0.2)] transition-all shrink-0"
+          className="lg:w-[56px] buttonSubtle buttonXl rounded-full flex items-center justify-center bg-[#141414] border border-[rgba(255,255,255,0.1)]  text-[#555] hover:text-tm-text-color08 hover:border-[rgba(255,255,255,0.2)] transition-all shrink-0"
         >
           <svg
             className="w-[15px] h-[15px]"
@@ -259,7 +259,7 @@ export const LinkGenerator = ({ username }: LinkGeneratorProps) => {
 
       {/* Error message */}
       {errorMessage && (
-        <div className="flex items-start gap-2 border border-[rgba(255,15,95,0.35)] bg-[rgba(255,15,95,0.08)] text-[#ff6b99] text-xs px-4 py-3 rounded-sm">
+        <div className="flex items-start gap-2 border border-[rgba(255,15,95,0.35)] bg-[rgba(255,15,95,0.08)] text-tm-primary-color01 text-xs px-4 py-3 rounded-sm">
           <svg
             className="w-[14px] h-[14px] mt-[2px] shrink-0"
             fill="none"
@@ -281,7 +281,7 @@ export const LinkGenerator = ({ username }: LinkGeneratorProps) => {
       {generatedLink && (
         <div className="flex flex-col gap-4 border border-neutral-800 p-8 rounded-xl bg-tm-neutral-color08 min-w-0 w-full overflow-hidden">
           <div className="flex flex-row w-full">
-            <p className="text-xs font-bold uppercase text-[#9e9e9e]">
+            <p className="text-xs font-bold uppercase text-tm-text-color08">
               Generated Link
             </p>
           </div>
@@ -300,7 +300,7 @@ export const LinkGenerator = ({ username }: LinkGeneratorProps) => {
                   d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
                 />
               </svg>
-              <p className="flex-1 min-w-0 text-[#9e9e9e] text-sm truncate font-mono">
+              <p className="flex-1 min-w-0 text-tm-text-color08 text-sm truncate font-mono">
                 {generatedLink}
               </p>
             </div>
@@ -658,7 +658,7 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
       {/* Section header */}
       <div className="flex items-center gap-[8px]">
         <svg
-          className="w-[14px] h-[14px] text-[#ff2a71]"
+          className="w-[14px] h-[14px] text-tm-primary-color04 "
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -670,7 +670,7 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
             d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
           />
         </svg>
-        <p className="text-xs font-bold uppercase text-[#9e9e9e]">
+        <p className="text-xs font-bold uppercase text-tm-text-color08">
           Talk Like {displayName}
         </p>
       </div>
@@ -749,7 +749,7 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
                       : "Record voice"
                   }
                   aria-label="Record voice"
-                  className="lg:absolute right-2 lg:-top-7 w-14 h-14 buttonSubtle buttonXl rounded-full flex items-center justify-center bg-[#141414] border border-[rgba(255,255,255,0.1)]  text-[#555] hover:text-[#9e9e9e] hover:border-[rgba(255,255,255,0.2)] transition-all shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="lg:absolute right-2 lg:-top-7 w-14 h-14 buttonSubtle buttonXl rounded-full flex items-center justify-center bg-[#141414] border border-[rgba(255,255,255,0.1)]  text-[#555] hover:text-tm-text-color08 hover:border-[rgba(255,255,255,0.2)] transition-all shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <svg
                     className="w-[16px] h-[16px]"
@@ -781,7 +781,7 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
               disabled={busy}
               title="Clear text"
               aria-label="Clear text"
-              className="w-full buttonSubtle buttonXl rounded-sm flex items-center justify-center bg-[#141414] border border-[rgba(255,255,255,0.1)]  text-[#555] hover:text-[#9e9e9e] hover:border-[rgba(255,255,255,0.2)] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-full buttonSubtle buttonXl rounded-sm flex items-center justify-center bg-[#141414] border border-[rgba(255,255,255,0.1)]  text-[#555] hover:text-tm-text-color08 hover:border-[rgba(255,255,255,0.2)] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <svg
                 className="w-[15px] h-[15px]"
@@ -803,7 +803,7 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
           {/* === ROW 3: Generate Voice & Play Sound (Stacked Div) === */}
           <div className="flex flex-col gap-4 shrink-0">
             <div className="flex"> {isRecording && (
-              <p className="text-[#ff2a71] text-sm font-medium animate-pulse">
+              <p className="text-tm-primary-color04  text-sm font-medium animate-pulse">
                 ● Recording — {fmtTime(recordingSeconds)} — tap mic to stop
               </p>
             )}</div>
@@ -853,7 +853,7 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
                   }`}
               >
                 <svg
-                  className={`w-[14px] h-[14px] ${audioUrl ? "text-[#ff2a71]" : "text-[#444]"}`}
+                  className={`w-[14px] h-[14px] ${audioUrl ? "text-tm-primary-color04 " : "text-[#444]"}`}
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -882,7 +882,7 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
             {/* Countdown & Playing Status Text (Same row as button) */}
             <div className="flex flex-col gap-[4px] min-w-[60px]">
               {countdown !== null && (
-                <p className="text-[#ff2a71] text-lg font-bold animate-pulse w-[32px] text-center">
+                <p className="text-tm-primary-color04  text-lg font-bold animate-pulse w-[32px] text-center">
                   {countdown}
                 </p>
               )}
@@ -917,7 +917,7 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
               }
               className={`buttonSubtle buttonMd flex items-center justify-center gap-2  rounded-full text-sm transition-all active:scale-95  ${selectedMood === m.value
                 ? "bg-tm-primary-color11 border border-tm-primary-color09 text-white"
-                : "bg-tm-neutral-color05 hover:bg-tm-neutral-color03 border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:border-tm-primary-color06"
+                : "bg-tm-neutral-color05 hover:bg-tm-neutral-color03 border-[rgba(255,255,255,0.1)] text-tm-text-color08 hover:border-tm-primary-color06"
                 }`}
             >
               <span>{m.emoji}</span>
@@ -939,7 +939,7 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
                 className={`buttonSubtle buttonMd flex items-center justify-center gap-2 rounded-full text-sm transition-all active:scale-95 ${
                   selectedLanguage === lang.code
                     ? "bg-tm-primary-color11 border border-tm-primary-color09 text-white"
-                    : "bg-tm-neutral-color05 hover:bg-tm-neutral-color03 border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:border-tm-primary-color06"
+                    : "bg-tm-neutral-color05 hover:bg-tm-neutral-color03 border-[rgba(255,255,255,0.1)] text-tm-text-color08 hover:border-tm-primary-color06"
                 }`}
               >
                 <span>{lang.flag}</span>

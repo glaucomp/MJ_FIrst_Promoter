@@ -23,7 +23,7 @@ export const QuickTaskCard = ({
       </div>
       <div className="flex flex-col  flex-1 min-w-0">
         <p className="text-[#e6e6e6] text-base leading-[1.4] font-medium">{title}</p>
-        <p className="text-[#9e9e9e] text-sm leading-[1.4] font-medium">
+        <p className="text-tm-text-color08 text-sm leading-[1.4] font-medium">
           {description}
         </p>
       </div>

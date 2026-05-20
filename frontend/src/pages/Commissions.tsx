@@ -22,7 +22,7 @@ const StatusBadge = ({ status }: { status: Commission['status'] }) => {
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.75 rounded-full text-xs font-semibold text-[#9e9e9e] bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.08)]">
+    <span className="inline-flex items-center gap-1 px-2 py-0.75 rounded-full text-xs font-semibold text-tm-text-color08 bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.08)]">
       ○ Unpaid
     </span>
   );
@@ -119,7 +119,7 @@ export const Commissions = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-15">
-        <div className="text-[#9e9e9e] text-base">Loading commissions…</div>
+        <div className="text-tm-text-color08 text-base">Loading commissions…</div>
       </div>
     );
   }
@@ -131,7 +131,7 @@ export const Commissions = () => {
         <h1 className="text-3xl leading-9 font-semibold text-white font-['DM_Sans',sans-serif] lg:w-full">
           Commissions
         </h1>
-        <p className="text-sm text-[#9e9e9e] mt-1">
+        <p className="text-sm text-tm-text-color08 mt-1">
           {user?.baseRole === 'admin' ? 'All promoters' : 'Your earnings'} — tier 1 &amp; tier 2
         </p>
       </div>
@@ -148,7 +148,7 @@ export const Commissions = () => {
         >
           <span className="text-xs text-[#fbbf24] font-medium uppercase tracking-widest">Pending Earnings</span>
           <span className="text-xl font-bold text-white leading-none">${pendingEarnings.toFixed(2)}</span>
-          <span className="text-xs text-[#9e9e9e]">Tier 1 sales revenue</span>
+          <span className="text-xs text-tm-text-color08">Tier 1 sales revenue</span>
         </div>
 
         {/* Pending Commissions */}
@@ -161,7 +161,7 @@ export const Commissions = () => {
         >
           <span className="text-xs text-[#a78bfa] font-medium uppercase tracking-widest">Pending Commissions</span>
           <span className="text-xl font-bold text-white leading-none">${pendingCommissions.toFixed(2)}</span>
-          <span className="text-xs text-[#9e9e9e]">Tier 1 + tier 2 total</span>
+          <span className="text-xs text-tm-text-color08">Tier 1 + tier 2 total</span>
         </div>
 
         {/* Completed Earnings */}
@@ -174,7 +174,7 @@ export const Commissions = () => {
         >
           <span className="text-xs text-[#10b981] font-medium uppercase tracking-widest">Completed Earnings</span>
           <span className="text-xl font-bold text-white leading-none">${completedEarnings.toFixed(2)}</span>
-          <span className="text-xs text-[#9e9e9e]">Tier 1 sales paid</span>
+          <span className="text-xs text-tm-text-color08">Tier 1 sales paid</span>
         </div>
 
         {/* Completed Commissions */}
@@ -187,12 +187,12 @@ export const Commissions = () => {
         >
           <span className="text-xs text-[#059669] font-medium uppercase tracking-widest">Completed Commissions</span>
           <span className="text-xl font-bold text-white leading-none">${completedCommissions.toFixed(2)}</span>
-          <span className="text-xs text-[#9e9e9e]">Tier 1 + tier 2 paid</span>
+          <span className="text-xs text-tm-text-color08">Tier 1 + tier 2 paid</span>
         </div>
       </div>
 
       {error && (
-        <div className="bg-[#3a0000] border border-tm-danger-color09 rounded-lg p-3 text-[#ff8080] text-sm">
+        <div className="bg-[#3a0000] border border-tm-danger-color09 rounded-lg p-3 text-tm-danger-color01 text-sm">
           {error}
         </div>
       )}
@@ -214,7 +214,7 @@ export const Commissions = () => {
               onClick={() => setFilter(tab)}
               className={`px-4 py-3.5 text-sm font-medium border-b-2 transition-colors capitalize -mb-px ${filter === tab
                 ? 'border--tm-primary-color04 text--tm-primary-color04'
-                : 'border-transparent text-[#9e9e9e] hover:text-white'
+                : 'border-transparent text-tm-text-color08 hover:text-white'
                 }`}
             >
               {tab} <span className="opacity-50 ml-1">({tabCounts[tab]})</span>
@@ -225,13 +225,13 @@ export const Commissions = () => {
         {/* Search */}
         <div className="px-4 py-3 border-b border-[rgba(255,255,255,0.05)]">
           <div className="relative">
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#9e9e9e] text-sm">🔍</span>
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-tm-text-color08 text-sm">🔍</span>
             <input
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search by name, email, campaign…"
-              className="w-full bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-[34px] pl-9 pr-3 py-[8px] text-sm text-white placeholder-[#9e9e9e] focus:outline-none focus:border-[rgba(255,15,95,0.4)]"
+              className="w-full bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-[34px] pl-9 pr-3 py-[8px] text-sm text-white placeholder-tm-text-color08 focus:outline-none focus:border-[rgba(255,15,95,0.4)]"
             />
           </div>
         </div>
@@ -286,7 +286,7 @@ export const Commissions = () => {
                           <div className="text-sm font-medium text-white">
                             {commission.user.firstName} {commission.user.lastName}
                           </div>
-                          <div className="text-xs text-[#9e9e9e]">{commission.user.email}</div>
+                          <div className="text-xs text-tm-text-color08">{commission.user.email}</div>
                         </div>
                       </div>
                     </td>
@@ -307,7 +307,7 @@ export const Commissions = () => {
                       {!tier1 && commission.description && (() => {
                         const match = /From (.+?)'s sale/.exec(commission.description ?? '');
                         return (
-                          <div className="text-xs text-[#9e9e9e] mt-[2px]">
+                          <div className="text-xs text-tm-text-color08 mt-[2px]">
                             {match?.[1] ? `from ${match[1]}` : commission.description}
                           </div>
                         );
@@ -327,7 +327,7 @@ export const Commissions = () => {
                           {tier1 ? '1' : '2'}
                         </span>
                       </div>
-                      <div className="text-xs text-[#9e9e9e] text-right">{commission.percentage}%</div>
+                      <div className="text-xs text-tm-text-color08 text-right">{commission.percentage}%</div>
                     </td>
 
                     {/* Date */}
@@ -337,7 +337,7 @@ export const Commissions = () => {
                           day: 'numeric', month: 'short', year: 'numeric',
                         })}
                       </div>
-                      <div className="text-xs text-[#9e9e9e]">
+                      <div className="text-xs text-tm-text-color08">
                         {new Date(commission.createdAt).toLocaleTimeString('en-US', {
                           hour: '2-digit', minute: '2-digit', hour12: true,
                         })}
@@ -347,7 +347,7 @@ export const Commissions = () => {
                     {/* Customer */}
                     <td className="px-[16px] py-[14px]">
                       <div className="text-sm text-white">{commission.customer?.name || '—'}</div>
-                      <div className="text-xs text-[#9e9e9e]">{commission.customer?.email || ''}</div>
+                      <div className="text-xs text-tm-text-color08">{commission.customer?.email || ''}</div>
                     </td>
 
                     {/* Campaign */}
@@ -373,7 +373,7 @@ export const Commissions = () => {
                           <button
                             onClick={() => setOpenMenuId(openMenuId === commission.id ? null : commission.id)}
                             disabled={isUpdating}
-                            className="w-[28px] h-[28px] flex items-center justify-center rounded-sm text-[#9e9e9e] hover:bg-[rgba(255,255,255,0.08)] hover:text-white transition-all text-base disabled:opacity-40"
+                            className="w-[28px] h-[28px] flex items-center justify-center rounded-sm text-tm-text-color08 hover:bg-[rgba(255,255,255,0.08)] hover:text-white transition-all text-base disabled:opacity-40"
                           >
                             {isUpdating ? '…' : '⋮'}
                           </button>
@@ -428,7 +428,7 @@ export const Commissions = () => {
             <div className="flex flex-col items-center justify-center py-[60px] gap-[12px]">
               <span className="text-3xl">💰</span>
               <p className="text-base font-medium text-white">No commissions found</p>
-              <p className="text-sm text-[#9e9e9e]">
+              <p className="text-sm text-tm-text-color08">
                 {filter === 'all'
                   ? 'Commissions will appear here once sales are made.'
                   : `No ${filter} commissions right now.`}

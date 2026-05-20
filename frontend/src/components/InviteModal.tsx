@@ -138,7 +138,7 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
             <h2 className="text-lg leading-[1.4] font-bold text-white">{title}</h2>
             <button
               onClick={handleClose}
-              className="text-[#9e9e9e] hover:text-white text-xl leading-none"
+              className="text-tm-text-color08 hover:text-white text-xl leading-none"
             >
               ×
             </button>
@@ -147,7 +147,7 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
           {!generatedUrl ? (
             <>
               <div className="flex flex-col gap-[8px]">
-                <label className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase">
+                <label className="text-tm-text-color08 text-sm leading-[1.4] font-bold uppercase">
                   Campaign
                 </label>
                 <select
@@ -173,7 +173,7 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
 
               {quota && !quota.unlimited && (
                 <div className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px]">
-                  <p className="text-sm text-[#9e9e9e]">
+                  <p className="text-sm text-tm-text-color08">
                     Remaining invites: <span className="text-white font-bold">{quota.remaining}</span> / {quota.used + quota.remaining}
                   </p>
                 </div>
@@ -181,7 +181,7 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
 
               {type === 'referral' && (
                 <div className="flex flex-col gap-[8px]">
-                  <label className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase">
+                  <label className="text-tm-text-color08 text-sm leading-[1.4] font-bold uppercase">
                     Email
                   </label>
                   <input
@@ -224,7 +224,7 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
 
               {type === 'referral' && emailSent === true && (
                 <div className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px]">
-                  <p className="text-[#9e9e9e] text-sm leading-[1.4]">
+                  <p className="text-tm-text-color08 text-sm leading-[1.4]">
                     Invite email sent to <span className="text-white font-medium">{sentToEmail}</span>
                   </p>
                 </div>
@@ -239,7 +239,7 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
               )}
 
               <div className="flex flex-col gap-[8px]">
-                <label className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase">
+                <label className="text-tm-text-color08 text-sm leading-[1.4] font-bold uppercase">
                   {type === 'referral' ? 'Invite Code' : 'Short Code'}
                 </label>
                 <div className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] text-white font-mono">
@@ -248,7 +248,7 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
               </div>
 
               <div className="flex flex-col gap-[8px]">
-                <label className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase">
+                <label className="text-tm-text-color08 text-sm leading-[1.4] font-bold uppercase">
                   URL
                 </label>
                 <div className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] text-white break-all text-sm">

@@ -174,7 +174,7 @@ export const Campaigns = () => {
           Campaigns
         </h1>
         <div className="flex flex-col lg:flex-row lg:items-center gap-4  justify-between lg:justify-end w-full">
-          <p className="text-base text-[#9e9e9e]">{campaigns.length} total</p>
+          <p className="text-base text-tm-text-color08">{campaigns.length} total</p>
           <button
             onClick={openCreate}
             className="btn-primary-cta rounded-lg px-4 py-3 text-sm font-bold leading-[1.4]  active:scale-[0.98] transition-all"
@@ -191,7 +191,7 @@ export const Campaigns = () => {
       )}
 
       {isLoading ? (
-        <p className="text-[#9e9e9e] text-base">Loading...</p>
+        <p className="text-tm-text-color08 text-base">Loading...</p>
       ) : (
         <div className="flex flex-col gap-3 lg:gap-6">
           {campaigns.map((c) => (
@@ -223,7 +223,7 @@ export const Campaigns = () => {
                       disabled={togglingId === c.id}
                       className={`px-3 py-1 rounded-full text-xs font-bold border transition-all ${c.isActive
                         ? "bg-tm-success-color12 border-tm-success-color09 text-tm-success-color05 hover:bg-[#005518] hover:scale-95"
-                        : "bg-[#333] border-[#555] text-[#9e9e9e] hover:bg-[#3a3a3a]"
+                        : "bg-[#333] border-[#555] text-tm-text-color08 hover:bg-[#3a3a3a]"
                         } disabled:opacity-50`}
                     >
                       {togglingId === c.id
@@ -237,7 +237,7 @@ export const Campaigns = () => {
                     <span
                       className={`px-3 py-1 rounded-full text-xs font-bold border ${c.visibleToPromoters
                         ? "bg-tm-secondary-color11 border-tm-secondary-color05 text-tm-secondary-color03"
-                        : "bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]"
+                        : "bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-tm-text-color08"
                         }`}
                     >
                       {c.visibleToPromoters ? "Public" : "Hidden"}
@@ -248,7 +248,7 @@ export const Campaigns = () => {
                     {!c.visibleToPromoters && c.linkedCampaign && (
                       <span
                         title={`Linked to ${c.linkedCampaign.name}`}
-                        className="px-3 py-1.5 rounded-full text-xs font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e] max-w-55 truncate"
+                        className="px-3 py-1.5 rounded-full text-xs font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-tm-text-color08 max-w-55 truncate"
                       >
                         Linked → {c.linkedCampaign.name}
                       </span>
@@ -328,14 +328,14 @@ export const Campaigns = () => {
                 <div className="flex items-center justify-end gap-4 pt-6 pb-4 mt-4 border-t border-[rgba(255,255,255,0.05)]">
                   <button
                     onClick={() => openEdit(c)}
-                    className="text-[#9e9e9e] text-sm lg:text-base hover:text-white hover:-translate-y-0.5 transition-all"
+                    className="text-tm-text-color08 text-sm lg:text-base hover:text-white hover:-translate-y-0.5 transition-all"
                   >
                     Edit
                   </button>
 
                   {confirmDeleteId === c.id ? (
                     <div className="flex items-center gap-2">
-                      <span className="text-[#9e9e9e] text-xs">
+                      <span className="text-tm-text-color08 text-xs">
                         Delete?
                       </span>
                       <button
@@ -347,7 +347,7 @@ export const Campaigns = () => {
                       </button>
                       <button
                         onClick={() => setConfirmDeleteId(null)}
-                        className="px-2.5 py-1 rounded-md text-xs bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white transition-colors"
+                        className="px-2.5 py-1 rounded-md text-xs bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-tm-text-color08 hover:text-white transition-colors"
                       >
                         No
                       </button>
@@ -367,7 +367,7 @@ export const Campaigns = () => {
 
           {campaigns.length === 0 && (
             <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-lg p-6 text-center">
-              <p className="text-[#9e9e9e] text-base">
+              <p className="text-tm-text-color08 text-base">
                 No campaigns yet. Create the first one.
               </p>
             </div>
@@ -387,7 +387,7 @@ export const Campaigns = () => {
                 </h2>
                 <button
                   onClick={() => setIsModalOpen(false)}
-                  className="text-[#9e9e9e] hover:text-white text-xl leading-none"
+                  className="text-tm-text-color08 hover:text-white text-xl leading-none"
                 >
                   ×
                 </button>
@@ -646,7 +646,7 @@ const Field = ({
   className?: string;
 }) => (
   <div className={`flex flex-col gap-1.5 ${className}`}>
-    <label className="text-[#9e9e9e] text-xs font-bold uppercase" >
+    <label className="text-tm-text-color08 text-xs font-bold uppercase" >
       {label}
     </label>
     {children}
@@ -670,7 +670,7 @@ const Toggle = ({
       }`}
   >
     <span
-      className={`text-sm font-bold ${value ? "text-tm-primary-color05" : "text-[#9e9e9e]"}`}
+      className={`text-sm font-bold ${value ? "text-tm-primary-color05" : "text-tm-text-color08"}`}
     >
       {label}
     </span>

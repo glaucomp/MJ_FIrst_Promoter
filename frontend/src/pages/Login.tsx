@@ -78,7 +78,7 @@ export const Login = () => {
           <div className="flex flex-col gap-[12px] items-center">
             <h1 className="sr-only">{mode === 'login' ? 'Login' : 'Forgot password'}</h1>
             <LogoLottie height={56} width={220} />
-            <p className="text-base leading-[1.4] text-[#9e9e9e] font-medium ">
+            <p className="text-base leading-[1.4] text-tm-text-color08 font-medium ">
               {mode === 'login'
                 ? 'Sign in to your account'
                 : 'Enter your email and we\u2019ll send a reset link'}
@@ -93,7 +93,7 @@ export const Login = () => {
                 <div className="flex flex-col gap-[8px]">
                   <label
                     htmlFor="email"
-                    className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase "
+                    className="text-tm-text-color08 text-sm leading-[1.4] font-bold uppercase "
                   >
                     Email
                   </label>
@@ -113,7 +113,7 @@ export const Login = () => {
                   <div className="flex items-center justify-between">
                     <label
                       htmlFor="password"
-                      className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase "
+                      className="text-tm-text-color08 text-sm leading-[1.4] font-bold uppercase "
                     >
                       Password
                     </label>
@@ -160,7 +160,7 @@ export const Login = () => {
                 </button>
               </div>
 
-              <p className="text-center text-sm leading-[1.4] text-[#9e9e9e] ">
+              <p className="text-center text-sm leading-[1.4] text-tm-text-color08 ">
                 Need help? Contact support
               </p>
             </form>
@@ -172,7 +172,7 @@ export const Login = () => {
                 <div className="flex flex-col gap-[8px]">
                   <label
                     htmlFor="forgot-email"
-                    className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase "
+                    className="text-tm-text-color08 text-sm leading-[1.4] font-bold uppercase "
                   >
                     Email
                   </label>
@@ -218,7 +218,7 @@ export const Login = () => {
                     setError('');
                     setForgotMessage('');
                   }}
-                  className="text-center text-sm leading-[1.4] text-[#9e9e9e] hover:text-white "
+                  className="text-center text-sm leading-[1.4] text-tm-text-color08 hover:text-white "
                 >
                   ← Back to sign in
                 </button>
