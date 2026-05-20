@@ -227,7 +227,7 @@ export const EditAccountManagerModal = ({
                   id="edit-am-campaign"
                   value={campaignId}
                   onChange={(e) => setCampaignId(e.target.value)}
-                  className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[14px] py-[11px] text-base text-white focus:outline-none focus:border--tm-primary-color04"
+                  className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[14px] py-[11px] text-base text-white focus:outline-none focus:border-tm-primary-color04"
                 >
                   <option value="">— Select a campaign —</option>
                   {campaigns.map((c) => (
