@@ -2786,42 +2786,60 @@ export const receiveTeasemeStepWebhook = async (
               if (linked?.name === dedicatedGroupName) return;
             }
 
-            // Adopt an existing group with this name if one already exists.
+            const createAndLinkDedicatedGroup = async () => {
+              const group = await tx.chatterGroup.create({
+                data: {
+                  name: dedicatedGroupName,
+                  commissionPercentage: 2,
+                  tag: null,
+                  createdById: amId,
+                },
+                select: { id: true },
+              });
+              await tx.user.update({
+                where: { id: promotedUser.id },
+                data: { chatterGroupId: group.id },
+              });
+              console.info("[teaseme-webhook] default chatter group created on step 5", {
+                preUserId: preUser.id,
+                userId: promotedUser.id,
+                groupId: group.id,
+                groupName: dedicatedGroupName,
+                createdById: amId,
+              });
+            };
+
+            // Adopt an existing safe unlinked group with this name if one already exists.
             const byName = await tx.chatterGroup.findFirst({
-              where: { name: dedicatedGroupName },
+              where: {
+                name: dedicatedGroupName,
+                promoter: null,
+              },
               select: { id: true },
             });
             if (byName) {
               if (promotedUser.chatterGroupId !== byName.id) {
-                await tx.user.update({
-                  where: { id: promotedUser.id },
-                  data: { chatterGroupId: byName.id },
-                });
+                try {
+                  await tx.user.update({
+                    where: { id: promotedUser.id },
+                    data: { chatterGroupId: byName.id },
+                  });
+                } catch (error) {
+                  if (
+                    error instanceof Prisma.PrismaClientKnownRequestError &&
+                    error.code === "P2002"
+                  ) {
+                    await createAndLinkDedicatedGroup();
+                    return;
+                  }
+                  throw error;
+                }
               }
               return;
             }
 
             // Create the dedicated group.
-            const group = await tx.chatterGroup.create({
-              data: {
-                name: dedicatedGroupName,
-                commissionPercentage: 2,
-                tag: null,
-                createdById: amId,
-              },
-              select: { id: true },
-            });
-            await tx.user.update({
-              where: { id: promotedUser.id },
-              data: { chatterGroupId: group.id },
-            });
-            console.info("[teaseme-webhook] default chatter group created on step 5", {
-              preUserId: preUser.id,
-              userId: promotedUser.id,
-              groupId: group.id,
-              groupName: dedicatedGroupName,
-              createdById: amId,
-            });
+            await createAndLinkDedicatedGroup();
           });
         } catch (err) {
           console.error(
