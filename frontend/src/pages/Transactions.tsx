@@ -255,7 +255,7 @@ export const Transactions = () => {
       </div>
 
       {error && (
-        <div className="bg-[#3a0000] border border-tm-danger-color09 rounded-sm p-[12px] text-tm-primary-color01 text-sm">
+        <div className="bg-[#3a0000] border border-tm-danger-color09 rounded-sm p-[12px] text-tm-danger-color01 text-sm">
           {error}
         </div>
       )}
