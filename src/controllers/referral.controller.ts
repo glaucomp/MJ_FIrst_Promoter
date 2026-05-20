@@ -122,6 +122,15 @@ type PreUserRow = {
 
 type ReferralRowWithPreUser = { preUser: PreUserRow | null };
 
+type PendingStep5ReferralBackfillRow = {
+  id: string;
+  status: string;
+  referredUser: { id: string } | null;
+  preUser: PreUserRow | null;
+};
+
+const pendingReferralBackfillByUser = new Set<string>();
+
 /**
  * For each referral in `rows`, check whether the attached PreUser's
  * TeaseMe-derived state is stale (TTL elapsed) and, if so, re-poll tmapi.
@@ -280,6 +289,64 @@ const refreshPreUserSteps = async (
   );
 
   await Promise.allSettled(workers);
+};
+
+const backfillPendingStep5Referrals = (
+  userId: string,
+  rows: PendingStep5ReferralBackfillRow[],
+): void => {
+  if (pendingReferralBackfillByUser.has(userId)) return;
+
+  const pendingAtStep5 = rows.filter(
+    (ref): ref is PendingStep5ReferralBackfillRow & { preUser: PreUserRow } =>
+      ref.status === "PENDING" &&
+      ref.referredUser === null &&
+      ref.preUser !== null &&
+      ref.preUser.currentStep >= 5,
+  );
+
+  if (pendingAtStep5.length === 0) return;
+
+  pendingReferralBackfillByUser.add(userId);
+
+  void (async () => {
+    try {
+      const existingUsers = await prisma.user.findMany({
+        where: { email: { in: pendingAtStep5.map((ref) => ref.preUser.email) } },
+        select: { id: true, email: true },
+      });
+      const userIdByEmail = new Map(existingUsers.map((row) => [row.email, row.id]));
+
+      for (const ref of pendingAtStep5) {
+        const existingUserId = userIdByEmail.get(ref.preUser.email);
+        if (!existingUserId) continue;
+
+        try {
+          const accepted = await prisma.referral.updateMany({
+            where: { id: ref.id, status: "PENDING" },
+            data: {
+              referredUserId: existingUserId,
+              status: "ACTIVE",
+              acceptedAt: new Date(),
+            },
+          });
+          if (accepted.count > 0) {
+            console.info("[getMyReferrals] backfill: referral accepted on step 5", {
+              referralId: ref.id, userId: existingUserId,
+            });
+          }
+        } catch (err) {
+          console.error("[getMyReferrals] backfill (PENDING step-5) failed", {
+            referralId: ref.id, err: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+    } catch (err) {
+      console.error("[getMyReferrals] backfill outer error", err);
+    } finally {
+      pendingReferralBackfillByUser.delete(userId);
+    }
+  })();
 };
 
 const hasAccountManagerAccess = (user: AuthRequest["user"]) => {
@@ -2010,50 +2077,7 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
     // (POST /referrals/:id/ensure-group) or other lifecycle flows elsewhere,
     // and avoiding creation here helps prevent race-condition duplicates when
     // this endpoint is called multiple times in quick succession.
-    void (async () => {
-      try {
-        const pendingAtStep5 = allReferrals.filter(
-          (ref) =>
-            ref.status === "PENDING" &&
-            ref.referredUser === null &&
-            ref.preUser !== null &&
-            ref.preUser.currentStep >= 5,
-        );
-
-        if (pendingAtStep5.length === 0) return;
-
-        for (const ref of pendingAtStep5) {
-          if (!ref.preUser) continue;
-          try {
-            const existingUser = await prisma.user.findUnique({
-              where: { email: ref.preUser.email },
-              select: { id: true },
-            });
-            if (!existingUser) continue;
-
-            const accepted = await prisma.referral.updateMany({
-              where: { id: ref.id, status: "PENDING" },
-              data: {
-                referredUserId: existingUser.id,
-                status: "ACTIVE",
-                acceptedAt: new Date(),
-              },
-            });
-            if (accepted.count > 0) {
-              console.info("[getMyReferrals] backfill: referral accepted on step 5", {
-                referralId: ref.id, userId: existingUser.id,
-              });
-            }
-          } catch (err) {
-            console.error("[getMyReferrals] backfill (PENDING step-5) failed", {
-              referralId: ref.id, err: err instanceof Error ? err.message : String(err),
-            });
-          }
-        }
-      } catch (err) {
-        console.error("[getMyReferrals] backfill outer error", err);
-      }
-    })();
+    backfillPendingStep5Referrals(user.id, allReferrals);
 
     // Filter out:
     // 1. Self-referrals (referredUserId === own id, e.g. username-based tracking records)
