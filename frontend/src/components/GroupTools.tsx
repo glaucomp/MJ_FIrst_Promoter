@@ -190,7 +190,7 @@ export const LinkGenerator = ({ username }: LinkGeneratorProps) => {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Name"
-          className="buttonXl inputMJ text-white focus:outline-none focus:border--tm-primary-color04 placeholder-tm-text-color08"
+          className="buttonXl inputMJ text-white focus:outline-none focus:border-tm-primary-color04 placeholder-tm-text-color08"
         />
         <input
           type="text"
@@ -199,7 +199,7 @@ export const LinkGenerator = ({ username }: LinkGeneratorProps) => {
           value={telegramId}
           onChange={(e) => setTelegramId(e.target.value.replaceAll(/\D/g, ""))}
           placeholder="Telegram ID"
-          className="buttonXl inputMJ text-white focus:outline-none focus:border--tm-primary-color04 placeholder-tm-text-color08"
+          className="buttonXl inputMJ text-white focus:outline-none focus:border-tm-primary-color04 placeholder-tm-text-color08"
         />
       </div>
 
@@ -225,7 +225,7 @@ export const LinkGenerator = ({ username }: LinkGeneratorProps) => {
             onChange={(e) => setEmail(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
             placeholder="Email"
-            className="buttonXl inputIcon w-full inputMJ text-white focus:outline-none focus:border--tm-primary-color04 placeholder-tm-text-color08"
+            className="buttonXl inputIcon w-full inputMJ text-white focus:outline-none focus:border-tm-primary-color04 placeholder-tm-text-color08"
           />
         </div>
         <button
