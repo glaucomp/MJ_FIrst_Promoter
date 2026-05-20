@@ -83,6 +83,14 @@ router.post(
   referralController.assignReferralChatters,
 );
 
+// Ensure the influencer has a dedicated chatter group (create if missing).
+// Returns the group so the UI can navigate directly to it.
+router.post(
+  "/:id/ensure-group",
+  authenticate,
+  referralController.ensureInfluencerGroup,
+);
+
 // Send (or resend) the promoter welcome email. Replaces the automatic
 // 4→5 promotion hook with an explicit AM-driven action.
 router.post(

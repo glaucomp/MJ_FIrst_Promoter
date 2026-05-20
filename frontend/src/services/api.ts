@@ -529,6 +529,27 @@ export const modelsApi = {
 
 
   /**
+   * Ensure the influencer linked to this referral has a dedicated chatter
+   * group. Creates "{influencerName} - Group" if it doesn't exist yet, links
+   * it to the user, and returns the group. Idempotent — safe to call even if
+   * the group was already auto-created by the backfill.
+   */
+  async ensureInfluencerGroup(referralId: string): Promise<{
+    success: true;
+    group: { id: string; name: string; commissionPercentage: number };
+    created: boolean;
+  }> {
+    const response = await apiFetch(
+      `${API_URL}/referrals/${referralId}/ensure-group`,
+      {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      },
+    );
+    return handleResponse(response, 'Failed to ensure chatter group');
+  },
+
+  /**
    * Manually trigger (or re-trigger) the promoter welcome email for an
    * LP-Live referral. Replaces the previous automatic 4→5 promotion hook.
    *
