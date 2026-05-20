@@ -257,19 +257,19 @@ export const Settings = () => {
           Preferences
         </h2>
         <div className="flex flex-col gap-[16px]">
-          <label className="flex items-center justify-between p-[16px] bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm cursor-pointer hover:border--tm-primary-color04 transition-colors">
+          <label className="flex items-center justify-between p-[16px] bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm cursor-pointer hover:border-tm-primary-color04 transition-colors">
             <span className="text-white text-base font-medium">Email Notifications</span>
             <input 
               type="checkbox" 
-              className="w-[24px] h-[24px] accent--tm-primary-color04 cursor-pointer" 
+              className="w-[24px] h-[24px] accent-tm-primary-color04 cursor-pointer" 
               defaultChecked 
             />
           </label>
-          <label className="flex items-center justify-between p-[16px] bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm cursor-pointer hover:border--tm-primary-color04 transition-colors">
+          <label className="flex items-center justify-between p-[16px] bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm cursor-pointer hover:border-tm-primary-color04 transition-colors">
             <span className="text-white text-base font-medium">Push Notifications</span>
             <input 
               type="checkbox" 
-              className="w-[24px] h-[24px] accent--tm-primary-color04 cursor-pointer" 
+              className="w-[24px] h-[24px] accent-tm-primary-color04 cursor-pointer" 
               defaultChecked 
             />
           </label>
