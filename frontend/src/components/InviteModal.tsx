@@ -154,7 +154,7 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
                   value={selectedCampaignId}
                   onChange={(e) => setSelectedCampaignId(e.target.value)}
                   disabled={campaigns.length === 0 || userRole === 'account_manager'}
-                  className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] text-base text-white focus:outline-none focus:border--tm-primary-color04 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] text-base text-white focus:outline-none focus:border-tm-primary-color04 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {campaigns.map((campaign) => (
                     <option key={campaign.id} value={campaign.id}>
