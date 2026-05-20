@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { chattersApi, chatterGroupsApi, modelsApi, type ApiUser } from '../services/api';
 import type { ChatterGroup, Chatter } from '../types';
@@ -770,6 +771,11 @@ const isGroupSortBy = (value: string): value is GroupSortBy =>
 
 export const ChatterGroups = () => {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  // ?group=<id> — when navigated here from "Assign Chatters", scroll to and
+  // highlight this group so the AM can immediately add chatters.
+  const [focusGroupId] = useState(() => searchParams.get('group'));
+
   const [groups, setGroups] = useState<ChatterGroup[]>([]);
   const [chatters, setChatters] = useState<Chatter[]>([]);
   const [promoters, setPromoters] = useState<ApiUser[]>([]);
@@ -784,6 +790,9 @@ export const ChatterGroups = () => {
   const [linkingGroup, setLinkingGroup] = useState<ChatterGroup | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  // Ref map: groupId → DOM element, used to scroll into view after load.
+  const groupRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const canManage = user?.baseRole === 'admin' || user?.baseRole === 'account_manager';
 
@@ -809,6 +818,32 @@ export const ChatterGroups = () => {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // When a focusGroupId is present and data has loaded, scroll that group card
+  // into view, expand its "Add Chatters" panel, and clear the URL param.
+  useEffect(() => {
+    if (isLoading || !focusGroupId) return;
+    const el = groupRefs.current.get(focusGroupId);
+    // Auto-expand the Add Chatters panel for the focused group.
+    setExpandedMembersId(focusGroupId);
+    if (el) {
+      const timer = setTimeout(() => {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 150);
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('group');
+        return next;
+      }, { replace: true });
+      return () => clearTimeout(timer);
+    }
+    // Clear the param even if the ref isn't mounted yet.
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('group');
+      return next;
+    }, { replace: true });
+  }, [isLoading, focusGroupId, setSearchParams]);
 
   const handleDelete = async (id: string) => {
     setDeletingId(id);
@@ -959,7 +994,16 @@ export const ChatterGroups = () => {
           {sortedGroups.map(group => (
             <div
               key={group.id}
-              className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-2xl flex flex-col overflow-hidden"
+              ref={(el) => {
+                if (el) groupRefs.current.set(group.id, el);
+                else groupRefs.current.delete(group.id);
+              }}
+              className={[
+                "bg-[#1a1a1c] border rounded-2xl flex flex-col overflow-hidden transition-all duration-500",
+                group.id === focusGroupId
+                  ? "border-[#ff0f5f] shadow-[0_0_0_2px_rgba(255,15,95,0.25)]"
+                  : "border-[rgba(255,255,255,0.07)]",
+              ].join(' ')}
             >
               {/* Card header — static */}
               <div className="p-7 flex flex-col-reverse lg:flex-row lg:items-start justify-between gap-4">

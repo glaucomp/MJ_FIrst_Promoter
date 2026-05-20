@@ -5,20 +5,18 @@ import {
   useState,
   type DragEventHandler,
 } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { CreateUserModal } from "../components/CreateUserModal";
 import { EditAccountManagerModal } from "../components/EditAccountManagerModal";
 import { InviteModal } from "../components/InviteModal";
 import { useAuth } from "../contexts/AuthContext";
 import {
-  chatterGroupsApi,
   modelsApi,
   usersApi,
   type AccountManagerSummary,
   type ApiUser,
   type Referral,
 } from "../services/api";
-import type { ChatterGroup } from "../types";
 
 const formatManagerName = (m: {
   firstName: string | null;
@@ -1649,13 +1647,10 @@ const ReferralList = ({
   // isn't expired" — expired rows are only visible when the user clicks the
   // Expired pill explicitly.
   const [filter, setFilter] = useState<ReferralFilter>("all");
-  // Reassign / Assign-Chatters modals share this opaque "in-flight referral".
-  // Keeping them as siblings rather than nested avoids re-rendering the whole
-  // grid when either opens/closes.
+  const navigate = useNavigate();
+
+  // Reassign modal state.
   const [reassignFor, setReassignFor] = useState<Referral | null>(null);
-  const [assignChattersFor, setAssignChattersFor] = useState<Referral | null>(
-    null,
-  );
 
   // Expired and Denied are separate filter pills: expired is a passive
   // lifecycle event (invite window lapsed), denied is an explicit AM
@@ -1888,19 +1883,14 @@ const ReferralList = ({
     }
   };
 
-  const handleAssignChattersSubmit = async (chatterGroupId: string) => {
-    const referral = assignChattersFor;
-    if (!referral) return;
+  // "Assign Chatters" button — ensure the influencer has a dedicated group,
+  // then navigate to the Chatters page opened on that group.
+  const handleAssignChatters = async (referral: Referral) => {
     setBusyId(referral.id);
     try {
-      const result = await modelsApi.assignReferralChatters(
-        referral.id,
-        chatterGroupId,
-      );
-      showToast("success", `Chatters assigned: ${result.chatterGroup.name}`);
-      setAssignChattersFor(null);
-      // Splice the new chatterGroupId into local state so the button label
-      // flips to "Reassign Chatters" immediately without a full page reload.
+      const result = await modelsApi.ensureInfluencerGroup(referral.id);
+      // Splice the groupId into local state so the button reflects the
+      // assignment on the next render without requiring a full page reload.
       setReferrals?.((prev) =>
         prev.map((r) =>
           r.id === referral.id && r.referredUser
@@ -1908,16 +1898,17 @@ const ReferralList = ({
                 ...r,
                 referredUser: {
                   ...r.referredUser,
-                  chatterGroupId: result.chatterGroup.id,
+                  chatterGroupId: result.group.id,
                 },
               }
             : r,
         ),
       );
+      navigate(`/chatter-groups?group=${result.group.id}`);
     } catch (err) {
       showToast(
         "error",
-        err instanceof Error ? err.message : "Failed to assign chatters",
+        err instanceof Error ? err.message : "Failed to prepare chatter group",
       );
     } finally {
       setBusyId(null);
@@ -2285,13 +2276,13 @@ const ReferralList = ({
                 referral={referral}
                 busy={isBusy}
                 canOrderLandingPage={canOrderLandingPage}
-                canAssignChatters={canOrderLandingPage}
+                canAssignChatters={isAccountManagerViewer}
                 isAdmin={isAdmin}
                 onDelete={handleDelete}
                 onDeny={handleDeny}
                 onReassign={(r) => setReassignFor(r)}
                 onOrderLandingPage={handleOrderLandingPage}
-                onAssignChatters={(r) => setAssignChattersFor(r)}
+                onAssignChatters={handleAssignChatters}
                 onSendWelcomeEmail={handleSendWelcomeEmail}
               />
             </div>
@@ -2305,14 +2296,6 @@ const ReferralList = ({
           busy={busyId === reassignFor.id}
           onClose={() => setReassignFor(null)}
           onSubmit={handleReassignSubmit}
-        />
-      )}
-      {assignChattersFor && (
-        <AssignChattersModal
-          referral={assignChattersFor}
-          busy={busyId === assignChattersFor.id}
-          onClose={() => setAssignChattersFor(null)}
-          onSubmit={handleAssignChattersSubmit}
         />
       )}
     </div>
@@ -2622,15 +2605,12 @@ const CardActions = ({
       )}
       {canAssignChatters ? (
         referral.referredUser?.chatterGroupId ? (
-          <SecondaryButton
-            onClick={() => onAssignChatters(referral)}
-            disabled={busy}
-          >
-            {busy ? "Assigning…" : "Reassign Chatters"}
+          <SecondaryButton onClick={() => onAssignChatters(referral)} disabled={busy}>
+            {busy ? "Loading…" : "Manage Chatters"}
           </SecondaryButton>
         ) : (
           <PinkCta onClick={() => onAssignChatters(referral)} disabled={busy}>
-            {busy ? "Assigning…" : "Assign Chatters"}
+            {busy ? "Loading…" : "Assign Chatters"}
           </PinkCta>
         )
       ) : (
@@ -2780,109 +2760,6 @@ const ReassignModal = ({
           className="px-4 py-2 rounded-md btn-primary-cta  text-base font-bold  disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {busy ? "Reassigning…" : "Reassign"}
-        </button>
-      </div>
-    </ModalShell>
-  );
-};
-
-// ── Assign Chatters modal ─────────────────────────────────────────────────
-
-const AssignChattersModal = ({
-  referral,
-  busy,
-  onClose,
-  onSubmit,
-}: {
-  referral: Referral;
-  busy: boolean;
-  onClose: () => void;
-  onSubmit: (chatterGroupId: string) => void;
-}) => {
-  const [groups, setGroups] = useState<ChatterGroup[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string>("");
-
-  useEffect(() => {
-    let alive = true;
-    setLoading(true);
-    chatterGroupsApi
-      .list()
-      .then(({ groups }) => {
-        if (!alive) return;
-        setGroups(groups);
-        setError(null);
-      })
-      .catch((err: unknown) => {
-        if (!alive) return;
-        setError(
-          err instanceof Error ? err.message : "Failed to load chatter groups",
-        );
-      })
-      .finally(() => {
-        if (alive) setLoading(false);
-      });
-    return () => {
-      alive = false;
-    };
-  }, []);
-
-  const subject =
-    referral.referredUser?.email ??
-    referral.metadata?.inviteeEmail ??
-    referral.inviteCode;
-
-  return (
-    <ModalShell
-      title="Assign chatters"
-      subtitle={`Link a chatter group to ${subject}`}
-      onClose={onClose}
-    >
-      {loading ? (
-        <p className="text-tm-text-color08 text-sm">Loading chatter groups…</p>
-      ) : error ? (
-        <p className="text-tm-danger-color05 text-sm">{error}</p>
-      ) : groups.length === 0 ? (
-        <p className="text-tm-text-color08 text-sm">
-          No chatter groups yet. Create one on the Chatters page first.
-        </p>
-      ) : (
-        <label className="flex flex-col gap-2">
-          <span className="text-xs uppercase tracking-widest text-tm-text-color08 font-bold">
-            Chatter group
-          </span>
-          <select
-            value={selectedId}
-            onChange={(e) => setSelectedId(e.target.value)}
-            className="bg-[#0f0f0f] border border-[rgba(255,255,255,0.1)] rounded-md px-3 py-3 text-white text-sm focus:outline-none focus:border--tm-primary-color04"
-          >
-            <option value="" disabled>
-              Select…
-            </option>
-            {groups.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.name}
-                {g.tag ? ` · ${g.tag}` : ""} ({g.commissionPercentage}%)
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-      <div className="flex justify-end gap-2 pt-1">
-        <button
-          onClick={onClose}
-          disabled={busy}
-          className="px-4 py-2 rounded-md border border-[rgba(255,255,255,0.1)] text-tm-text-color08 text-base font-bold hover:text-white"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={() => selectedId && onSubmit(selectedId)}
-          disabled={busy || !selectedId}
-          className="px-4 py-2 rounded-md btn-primary-cta  text-base font-bold disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {busy ? "Assigning…" : "Assign"}
         </button>
       </div>
     </ModalShell>
