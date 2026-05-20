@@ -634,7 +634,7 @@ function secondaryRateLabelForCampaign(visibleToPromoters: boolean): string {
 }
 
 const inputCls =
-  "bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[14px] py-[11px] text-sm text-white focus:outline-none focus:border--tm-primary-color04 placeholder-[#555] w-full";
+  "bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[14px] py-[11px] text-sm text-white focus:outline-none focus:border-tm-primary-color04 placeholder-[#555] w-full";
 
 const Field = ({
   label,
@@ -665,7 +665,7 @@ const Toggle = ({
   <button
     onClick={() => onChange(!value)}
     className={`flex-1 flex items-center justify-between rounded-lg px-3.5 py-3 border transition-all ${value
-      ? "bg--tm-primary-color04/10 border--tm-primary-color04"
+      ? "bg-tm-primary-color04/10 border-tm-primary-color04"
       : "bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.2)]"
       }`}
   >
@@ -675,7 +675,7 @@ const Toggle = ({
       {label}
     </span>
     <div
-      className={`w-4 h-4 rounded-full border-2 ${value ? "border--tm-primary-color04 bg--tm-primary-color04" : "border-[#555]"
+      className={`w-4 h-4 rounded-full border-2 ${value ? "border-tm-primary-color04 bg-tm-primary-color04" : "border-[#555]"
         }`}
     />
   </button>
