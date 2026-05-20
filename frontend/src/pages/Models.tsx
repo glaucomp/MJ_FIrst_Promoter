@@ -505,7 +505,7 @@ export const Models = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Name, email, or account manager…"
-              className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.08)] rounded-lg px-4 py-4 text-base text-white focus:outline-none focus:border--tm-primary-color04 placeholder-[#555]"
+              className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.08)] rounded-lg px-4 py-4 text-base text-white focus:outline-none focus:border-tm-primary-color04 placeholder-[#555]"
             />
           </div>
 
@@ -751,7 +751,7 @@ export const Models = () => {
                   <div
                     className={`flex flex-col justify-center align-center gap-3  min-h-8 bg-tm-neutral-color08 px-3 py-4 lg:px-6 lg:py-8 rounded-b-xl overflow-clip  ${
                       isDropTarget
-                        ? "border--tm-primary-color04"
+                        ? "border-tm-primary-color04"
                         : isNeeds
                           ? "border-[#b8860b]/40"
                           : "border-[rgba(255,255,255,0.05)]"
