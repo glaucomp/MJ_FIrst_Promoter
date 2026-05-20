@@ -1601,7 +1601,7 @@ export const ensureInfluencerGroup = async (
     );
     const amId = amFromChain ?? promotedUser.accountManagerId ?? user.id;
 
-    // Atomic find-or-create inside a serializable transaction.
+    // Atomic find-or-create inside a transaction.
     // 1. Check if the user's current group is already the dedicated one.
     // 2. Check if a group with that name already exists anywhere (catches
     //    race-condition duplicates from concurrent requests or the webhook).
