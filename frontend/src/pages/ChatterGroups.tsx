@@ -77,7 +77,7 @@ const GroupFormModal = ({ isOpen, onClose, onSaved, editing }: GroupFormModalPro
             value={name}
             onChange={e => setName(e.target.value)}
             placeholder="e.g. Night Shift Team"
-            className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-lg px-4 py-3 text-base text-white focus:outline-none focus:border--tm-primary-color04 placeholder-[#555]"
+            className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-lg px-4 py-3 text-base text-white focus:outline-none focus:border-tm-primary-color04 placeholder-[#555]"
           />
         </div>
 
@@ -88,7 +88,7 @@ const GroupFormModal = ({ isOpen, onClose, onSaved, editing }: GroupFormModalPro
             value={tag}
             onChange={e => setTag(e.target.value)}
             placeholder="e.g. night-shift, vip"
-            className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-md px-4 py-3 text-base text-white focus:outline-none focus:border--tm-primary-color04 placeholder-[#555]"
+            className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-md px-4 py-3 text-base text-white focus:outline-none focus:border-tm-primary-color04 placeholder-[#555]"
           />
           <p className="text-tm-text-color08 text-xs">A short label to identify or filter this group.</p>
         </div>
@@ -103,7 +103,7 @@ const GroupFormModal = ({ isOpen, onClose, onSaved, editing }: GroupFormModalPro
             value={pct}
             onChange={e => setPct(e.target.value)}
             placeholder="e.g. 2"
-            className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-lg px-4 py-3 text-base text-white focus:outline-none focus:border--tm-primary-color04 placeholder-[#555]"
+            className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-lg px-4 py-3 text-base text-white focus:outline-none focus:border-tm-primary-color04 placeholder-[#555]"
           />
           <p className="text-tm-text-color08 text-xs">
             This percentage of every sale is split equally among all chatters in the group. Maximum{' '}
@@ -197,7 +197,7 @@ const EditChatterModal = ({ chatter, onClose, onSaved }: EditChatterModalProps) 
               value={firstName}
               onChange={e => setFirstName(e.target.value)}
               placeholder="First name"
-              className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border--tm-primary-color04 placeholder-[#555]"
+              className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-tm-primary-color04 placeholder-[#555]"
             />
           </div>
           <div className="flex flex-col gap-1.5 flex-1">
@@ -207,7 +207,7 @@ const EditChatterModal = ({ chatter, onClose, onSaved }: EditChatterModalProps) 
               value={lastName}
               onChange={e => setLastName(e.target.value)}
               placeholder="Last name"
-              className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border--tm-primary-color04 placeholder-[#555]"
+              className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-tm-primary-color04 placeholder-[#555]"
             />
           </div>
         </div>
@@ -346,7 +346,7 @@ const CreateChatterPanel = ({ onChatterCreated, onChatterUpdated, onChatterDelet
           value={email}
           onChange={e => { setEmail(e.target.value); setError(''); setSuccess(''); }}
           placeholder="Email address *"
-          className="flex-1 bg-[#141416] lg:min-w-90 border border-[rgba(255,255,255,0.08)] rounded-lg px-3 py-3 text-white text-sm placeholder-[#555] outline-none focus:border--tm-primary-color04 transition-colors"
+          className="flex-1 bg-[#141416] lg:min-w-90 border border-[rgba(255,255,255,0.08)] rounded-lg px-3 py-3 text-white text-sm placeholder-[#555] outline-none focus:border-tm-primary-color04 transition-colors"
         />
 
         <button
@@ -687,7 +687,7 @@ const LinkPromoterModal = ({ isOpen, onClose, group, allPromoters, onGroupUpdate
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search by name or email..."
-            className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border--tm-primary-color04 placeholder-[#555]"
+            className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-tm-primary-color04 placeholder-[#555]"
           />
           {availablePromoters.length === 0 ? (
             <p className="text-tm-text-color08 text-sm">{search ? 'No promoters match your search.' : 'No promoters available.'}</p>
@@ -974,7 +974,7 @@ export const ChatterGroups = () => {
                     setSortBy(nextSortBy);
                   }
                 }}
-                className="bg-[#1c1c1e] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border--tm-primary-color04 appearance-none cursor-pointer pr-7 w-full"
+                className="bg-[#1c1c1e] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-tm-primary-color04 appearance-none cursor-pointer pr-7 w-full"
                 style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239e9e9e' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}
               >
                 <option value="name">Name</option>
