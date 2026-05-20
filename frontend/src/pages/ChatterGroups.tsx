@@ -705,7 +705,7 @@ const LinkPromoterModal = ({ isOpen, onClose, group, allPromoters, onGroupUpdate
                     <button
                       onClick={() => handleLink(p.id)}
                       disabled={isLinking === p.id}
-                      className="text--tm-primary-color04 text-xs font-bold hover:text-tm-primary-color02 disabled:opacity-50"
+                      className="text-tm-primary-color04 text-xs font-bold hover:text-tm-primary-color02 disabled:opacity-50"
                     >
                       {isLinking === p.id ? 'Linking...' : 'Link'}
                     </button>
