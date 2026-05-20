@@ -606,11 +606,17 @@ export const promotePreUserToUser = async (
   try {
     const currentUser = await prisma.user.findUnique({
       where: { id: user.id },
-      select: { chatterGroupId: true, firstName: true, accountManagerId: true },
+      select: {
+        chatterGroupId: true,
+        username: true,
+        firstName: true,
+        accountManagerId: true,
+      },
     });
 
     const influencerName =
       stepStatus?.username ||
+      currentUser?.username ||
       currentUser?.firstName ||
       preUser.email.split("@")[0];
     const dedicatedGroupName = `${influencerName} - Group`;
