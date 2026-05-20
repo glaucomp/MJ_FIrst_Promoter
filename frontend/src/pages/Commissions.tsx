@@ -213,7 +213,7 @@ export const Commissions = () => {
               key={tab}
               onClick={() => setFilter(tab)}
               className={`px-4 py-3.5 text-sm font-medium border-b-2 transition-colors capitalize -mb-px ${filter === tab
-                ? 'border--tm-primary-color04 text--tm-primary-color04'
+                ? 'border-tm-primary-color04 text-tm-primary-color04'
                 : 'border-transparent text-tm-text-color08 hover:text-white'
                 }`}
             >
