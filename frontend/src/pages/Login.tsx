@@ -125,7 +125,7 @@ export const Login = () => {
                         setError('');
                         setForgotMessage('');
                       }}
-                      className="text-sm leading-[1.4] text--tm-primary-color04 hover:underline font-semibold"
+                      className="text-sm leading-[1.4] text-tm-primary-color04 hover:underline font-semibold"
                     >
                       Forgot password?
                     </button>
