@@ -63,7 +63,7 @@ export const TopBar = () => {
                 onClick={() => navigate(item.path)}
                 className={`flex items-center gap-[6px] px-[16px] py-[8px] rounded-sm hover:-translate-y-0.5 transition-all select-none whitespace-nowrap ${
                   isActive
-                    ? 'bg-[#660022] border border-[#ff2a71]'
+                    ? 'bg-tm-primary-color12 border border-tm-primary-color06'
                     : 'hover:bg-[#292929]/50'
                 }`}
               >

@@ -207,10 +207,10 @@ function AppRoutes() {
         element={
           <div className="min-h-screen bg-[var(--color-bg)] flex flex-col items-center justify-center gap-[16px]">
             <p className="text-white text-3xl font-bold">404</p>
-            <p className="text-[#9e9e9e] text-base">Page not found</p>
+            <p className="text-tm-text-color08 text-base">Page not found</p>
             <Link
               to="/"
-              className="mt-[8px] text-[#ff2a71] text-sm font-semibold hover:underline"
+              className="mt-[8px] text-tm-primary-color04 text-sm font-semibold hover:underline"
             >
               Back to app
             </Link>

@@ -106,7 +106,7 @@ export const SetPassword = () => {
 
           <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-sm p-[24px] shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-[20px]">
             {tokenState.status === 'loading' && (
-              <p className="text-[#9e9e9e] text-sm text-center py-[24px]">
+              <p className="text-tm-text-color08 text-sm text-center py-[24px]">
                 Checking your link…
               </p>
             )}
@@ -116,7 +116,7 @@ export const SetPassword = () => {
                 <h2 className="text-white text-lg font-bold text-center">
                   Link expired or invalid
                 </h2>
-                <p className="text-[#9e9e9e] text-sm leading-normal text-center">
+                <p className="text-tm-text-color08 text-sm leading-normal text-center">
                   This invite / reset link is no longer valid. Ask whoever
                   invited you for a new link, or request a password reset from
                   the login page.
@@ -135,7 +135,7 @@ export const SetPassword = () => {
               <form onSubmit={handleSubmit} className="flex flex-col gap-[20px]">
                 <div className="flex flex-col gap-[4px]">
                   <h2 className="text-white text-lg font-bold">{heading}</h2>
-                  <p className="text-[#9e9e9e] text-sm leading-normal">
+                  <p className="text-tm-text-color08 text-sm leading-normal">
                     {intro}
                   </p>
                 </div>
@@ -143,7 +143,7 @@ export const SetPassword = () => {
                 <div className="flex flex-col gap-[8px]">
                   <label
                     htmlFor="new-password"
-                    className="text-[#9e9e9e] text-xs leading-[1.4] font-bold uppercase "
+                    className="text-tm-text-color08 text-xs leading-[1.4] font-bold uppercase "
                   >
                     New Password
                   </label>
@@ -155,7 +155,7 @@ export const SetPassword = () => {
                     autoComplete="new-password"
                     required
                     minLength={8}
-                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] text-base text-white focus:outline-none focus:border-[#ff0f5f] transition-colors"
+                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] text-base text-white focus:outline-none focus:border-tm-primary-color04 transition-colors"
                     placeholder="At least 8 characters"
                   />
                 </div>
@@ -163,7 +163,7 @@ export const SetPassword = () => {
                 <div className="flex flex-col gap-[8px]">
                   <label
                     htmlFor="confirm-password"
-                    className="text-[#9e9e9e] text-xs leading-[1.4] font-bold uppercase "
+                    className="text-tm-text-color08 text-xs leading-[1.4] font-bold uppercase "
                   >
                     Confirm Password
                   </label>
@@ -175,7 +175,7 @@ export const SetPassword = () => {
                     autoComplete="new-password"
                     required
                     minLength={8}
-                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] text-base text-white focus:outline-none focus:border-[#ff0f5f] transition-colors"
+                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] text-base text-white focus:outline-none focus:border-tm-primary-color04 transition-colors"
                     placeholder="Repeat the password"
                   />
                 </div>

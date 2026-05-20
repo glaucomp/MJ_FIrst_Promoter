@@ -112,7 +112,7 @@ const PersonRow = ({
     {isT2 && (
       <>
         {/* vertical line — cut at the midpoint of the last item */}
-        <div
+        <div className='bg-tm-primary-color05/30'
           style={{
             position: 'absolute',
             left: 16,
@@ -120,24 +120,24 @@ const PersonRow = ({
             bottom: isLastT2 ? '50%' : 0,
             height: isLastT2 ? '50%' : undefined,
             width: 1,
-            background: 'rgba(255,42,113,0.25)',
+           
           }}
         />
         {/* horizontal branch */}
-        <div
+        <div className='bg-tm-primary-color05/50'
           style={{
             position: 'absolute',
             left: 16,
             top: '50%',
             width: 14,
             height: 1,
-            background: 'rgba(255,42,113,0.25)',
+         
           }}
         />
       </>
     )}
 
-    <div
+    <div 
       style={{
         flex: 1,
         marginLeft: isT2 ? 36 : 0,
@@ -204,7 +204,7 @@ const PersonRow = ({
           ${money(earned)}
         </span>
       ) : (
-        <span style={{ fontSize: '14px', color: 'rgba(255,255,255,0.18)', flexShrink: 0 }}>—</span>
+        <span className='text-tm-text-color09' style={{ fontSize: '14px', flexShrink: 0 }}>—</span>
       )}
 
       {expandButton}
@@ -282,14 +282,14 @@ const T1Entry = ({ referral, colorIdx }: { referral: Referral; colorIdx: number 
       {open && t2.length > 0 && (
         <div style={{ position: 'relative', paddingLeft: 0 }}>
           {/* full vertical line behind all T2 items */}
-          <div
+          <div className='bg-tm-primary-color05/30'
             style={{
               position: 'absolute',
               left: 16,
               top: 0,
               bottom: 0,
               width: 1,
-              background: 'rgba(255,42,113,0.25)',
+              
               pointerEvents: 'none',
             }}
           />
@@ -364,12 +364,11 @@ export const Network = () => {
       {loading && (
         <div className='grid grid-cols-2 gap-4'>
           {[1, 2, 3].map((i) => (
-            <div
+            <div className='bg-tm-text-color01/50'
               key={i}
               style={{
                 height: 44,
                 borderRadius: 100,
-                background: 'rgba(255,255,255,0.05)',
                 animation: 'pulse 1.5s ease-in-out infinite',
               }}
             />
@@ -454,26 +453,25 @@ export const Network = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {/* T1 section label */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div
-                  style={{ flex: 1, height: 1, background: 'rgba(255,42,113,0.2)' }}
+                <div className='bg-tm-primary-color07/50'
+                  style={{ flex: 1, height: 1, }}
                 />
                 <span className='text-base'
                 >
                   Direct Invites
                 </span>
-                <span className='text-sm'
+                <span className='text-sm bg-tm-primary-color06'
                   style={{
      
                     padding: '2px 7px',
-                    borderRadius: 100,
-                    background: 'rgba(255,42,113,0.15)',
+                    borderRadius: 100,                
                     color: 'var(--color-accent-bright)',
                   }}
                 >
                   {t1.length}
                 </span>
-                <div
-                  style={{ flex: 1, height: 1, background: 'rgba(255,42,113,0.2)' }}
+                <div className='bg-tm-primary-color07/50'
+                  style={{ flex: 1, height: 1 }}
                 />
               </div>
 

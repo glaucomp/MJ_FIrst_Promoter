@@ -28,7 +28,7 @@ const Field = ({
   placeholder?: string; type?: string; hint?: string; required?: boolean;
 }) => (
   <div className="flex flex-col gap-[6px]">
-    <label className="text-[#9e9e9e] text-xs font-bold uppercase">
+    <label className="text-tm-text-color08 text-xs font-bold uppercase">
       {label}{required && <span className="text-[#9fe870] ml-[2px]">*</span>}
     </label>
     <input
@@ -186,7 +186,7 @@ export const Settings = () => {
         </h2>
         <div className="flex flex-col gap-[16px]">
           <div className="flex flex-col gap-[8px]">
-            <label htmlFor="profileName" className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase">
+            <label htmlFor="profileName" className="text-tm-text-color08 text-sm leading-[1.4] font-bold uppercase">
               Name
             </label>
             <input
@@ -198,7 +198,7 @@ export const Settings = () => {
             />
           </div>
           <div className="flex flex-col gap-[8px]">
-            <label htmlFor="profileUsername" className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase">
+            <label htmlFor="profileUsername" className="text-tm-text-color08 text-sm leading-[1.4] font-bold uppercase">
               Username
             </label>
             <div className="relative">
@@ -214,7 +214,7 @@ export const Settings = () => {
               <span
                 aria-hidden="true"
                 title="Username cannot be changed"
-                className="absolute right-[14px] top-1/2 -translate-y-1/2 text-[#9e9e9e]"
+                className="absolute right-[14px] top-1/2 -translate-y-1/2 text-tm-text-color08"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M6 10V8a6 6 0 1 1 12 0v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -224,7 +224,7 @@ export const Settings = () => {
             </div>
           </div>
           <div className="flex flex-col gap-[8px]">
-            <label htmlFor="profileEmail" className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase">
+            <label htmlFor="profileEmail" className="text-tm-text-color08 text-sm leading-[1.4] font-bold uppercase">
               Email
             </label>
             <input
@@ -236,7 +236,7 @@ export const Settings = () => {
             />
           </div>
           <div className="flex flex-col gap-[8px]">
-            <span className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase">
+            <span className="text-tm-text-color08 text-sm leading-[1.4] font-bold uppercase">
               Role
             </span>
             <div className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] flex items-center gap-[8px]">
@@ -257,19 +257,19 @@ export const Settings = () => {
           Preferences
         </h2>
         <div className="flex flex-col gap-[16px]">
-          <label className="flex items-center justify-between p-[16px] bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm cursor-pointer hover:border-[#ff0f5f] transition-colors">
+          <label className="flex items-center justify-between p-[16px] bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm cursor-pointer hover:border-tm-primary-color04 transition-colors">
             <span className="text-white text-base font-medium">Email Notifications</span>
             <input 
               type="checkbox" 
-              className="w-[24px] h-[24px] accent-[#ff0f5f] cursor-pointer" 
+              className="w-[24px] h-[24px] accent-tm-primary-color04 cursor-pointer" 
               defaultChecked 
             />
           </label>
-          <label className="flex items-center justify-between p-[16px] bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm cursor-pointer hover:border-[#ff0f5f] transition-colors">
+          <label className="flex items-center justify-between p-[16px] bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm cursor-pointer hover:border-tm-primary-color04 transition-colors">
             <span className="text-white text-base font-medium">Push Notifications</span>
             <input 
               type="checkbox" 
-              className="w-[24px] h-[24px] accent-[#ff0f5f] cursor-pointer" 
+              className="w-[24px] h-[24px] accent-tm-primary-color04 cursor-pointer" 
               defaultChecked 
             />
           </label>
@@ -291,7 +291,7 @@ export const Settings = () => {
           </div>
           <div className="flex flex-col gap-[2px]">
             <h2 className="text-lg leading-[1.4] font-bold text-white">Wise Payout</h2>
-            <p className="text-sm text-[#9e9e9e]">
+            <p className="text-sm text-tm-text-color08">
               Enter your bank details — we'll create a Wise recipient account automatically
             </p>
           </div>
@@ -323,7 +323,7 @@ export const Settings = () => {
 
         {/* Bank type selector */}
         <div className="flex flex-col gap-[8px]">
-          <span className="text-[#9e9e9e] text-xs font-bold uppercase">
+          <span className="text-tm-text-color08 text-xs font-bold uppercase">
             Bank Account Type
           </span>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-[8px]">
@@ -385,7 +385,7 @@ export const Settings = () => {
               <Field label="Account Number" value={accountNumber} onChange={setAccountNumber} placeholder="12345678" />
             </div>
             <div className="flex flex-col gap-[6px]">
-              <span className="text-[#9e9e9e] text-xs font-bold uppercase">
+              <span className="text-tm-text-color08 text-xs font-bold uppercase">
                 Account Type<span className="text-[#9fe870] ml-[2px]">*</span>
               </span>
               <div className="flex gap-[8px]">
@@ -412,7 +412,7 @@ export const Settings = () => {
               <div className="flex flex-col gap-[6px]">
                 <label
                   htmlFor="stateSelect"
-                  className="text-[#9e9e9e] text-xs font-bold uppercase"
+                  className="text-tm-text-color08 text-xs font-bold uppercase"
                 >
                   State<span className="text-[#9fe870] ml-[2px]">*</span>
                 </label>

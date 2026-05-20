@@ -55,7 +55,7 @@ export const ChatterDashboard = () => {
       {/* Header */}
       <div>
         <h1 className="text-xl font-bold text-white leading-[1.3]">My Groups</h1>
-        <p className="text-[#9e9e9e] text-sm lg:text-base mt-1">
+        <p className="text-tm-text-color08 text-sm lg:text-base mt-1">
           {groups.length === 0
             ? 'Your assigned chatter groups'
             : `${groups.length} group${groups.length === 1 ? '' : 's'} — commissions split equally among group members`}
@@ -64,7 +64,7 @@ export const ChatterDashboard = () => {
 
       {isLoading && (
         <div className="flex items-center justify-center py-12">
-          <div className="w-8 h-8 border-2 border-[#ff0f5f] border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-tm-primary-color04 border-t-transparent rounded-full animate-spin" />
         </div>
       )}
 
@@ -76,7 +76,7 @@ export const ChatterDashboard = () => {
 
       {!isLoading && !error && groups.length === 0 && (
         <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-2xl p-8 text-center">
-          <p className="text-[#9e9e9e] text-base">You are not assigned to any group yet.</p>
+          <p className="text-tm-text-color08 text-base">You are not assigned to any group yet.</p>
         </div>
       )}
 
@@ -108,13 +108,13 @@ export const ChatterDashboard = () => {
                 {/* Card header */}
                 <div className="p-7 flex flex-col items-start justify-between gap-4">
                   <div className="flex items-baseline gap-1.25 self-end">
-                    <span className="text-[#9e9e9e] text-sm">Referral Bonus</span>
+                    <span className="text-tm-text-color08 text-sm">Referral Bonus</span>
                     <span className="text-white text-sm font-bold">{group.commissionPercentage}%</span>
                   </div>
                   <div className="flex flex-col lg:flex-row justify-between w-full gap-6">
                     <div className="flex items-center gap-3.5">
                       {/* Promoter avatar */}
-                      <div className="w-14 h-14 rounded-full bg-linear-to-br from-[#ff0f5f] to-[#cc0047] flex items-center justify-center shrink-0 overflow-hidden border border-[rgba(255,255,255,0.08)]">
+                      <div className="w-14 h-14 rounded-full bg-linear-to-br from-tm-primary-color04 to-tm-primary-color08 flex items-center justify-center shrink-0 overflow-hidden border border-[rgba(255,255,255,0.08)]">
                         {promoterPhoto ? (
                           <img
                             src={promoterPhoto}
@@ -150,7 +150,7 @@ export const ChatterDashboard = () => {
                 {/* Card body — team members */}
                 <div className="px-7 pb-6 flex flex-col gap-4">
                   <div className="flex flex-col gap-4">
-                    <p className="text-[#9e9e9e] text-sm font-semibold">Team Members</p>
+                    <p className="text-tm-text-color08 text-sm font-semibold">Team Members</p>
                     {(group.members ?? []).length === 0 ? (
                       <p className="text-[#555] text-sm">No chatters assigned yet.</p>
                     ) : (

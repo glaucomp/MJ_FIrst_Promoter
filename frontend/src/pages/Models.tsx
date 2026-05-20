@@ -41,13 +41,13 @@ const USER_TYPE_OPTIONS: { value: string; label: string }[] = [
 const SessionExpiredBanner = ({ onLogout }: { onLogout: () => void }) => (
   <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-lg p-4 flex flex-col gap-3">
     <p className="text-tm-danger-color05 text-sm font-bold">Session expired</p>
-    <p className="text-[#ff8080] text-base">
+    <p className="text-tm-danger-color02 text-base">
       Your login session is no longer valid. This usually happens after the
       server restarts. Please log out and log back in to continue.
     </p>
     <button
       onClick={onLogout}
-      className="self-start bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-3 text-white text-sm font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+      className="self-start btn-primary-cta rounded-lg px-4 py-3  text-sm font-bold  active:scale-[0.98] transition-all"
     >
       Log out &amp; log back in
     </button>
@@ -456,10 +456,10 @@ export const Models = () => {
   if (isLoading) {
     return (
       <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
-        <h1 className="text-3xl leading-9 font-semibold text-white lg:w-full">
+        <h1 className="text-3xl leading-9 font-semibold text-white lg:w-auto">
           Models
         </h1>
-        <p className="text-base text-[#9e9e9e]">Loading...</p>
+        <p className="text-base text-tm-text-color08">Loading...</p>
       </div>
     );
   }
@@ -472,18 +472,18 @@ export const Models = () => {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
-          <h1 className="text-3xl leading-9 font-semibold text-white lg:w-full">
+          <h1 className="text-3xl leading-9 font-semibold text-white lg:w-auto">
             All Users
           </h1>
           <div className="flex flex-col lg:flex-row lg:items-center gap-4  justify-between lg:justify-end w-full">
-            <p className="text-base text-[#9e9e9e]">
+            <p className="text-base text-tm-text-color08">
               {totalVisibleUsers} user{totalVisibleUsers !== 1 ? "s" : ""} ·{" "}
               {accountManagers.length} account manager
               {accountManagers.length !== 1 ? "s" : ""}
             </p>
             <button
               onClick={() => setIsCreateUserModalOpen(true)}
-              className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-3 text-white text-sm font-bold leading-[1.4]  hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+              className="btn-primary-cta rounded-lg px-4 py-3  text-sm font-bold leading-[1.4] active:scale-[0.98] transition-all"
             >
               + Create User
             </button>
@@ -495,7 +495,7 @@ export const Models = () => {
           <div className="flex flex-col gap-2 flex-1 min-w-50">
             <label
               htmlFor="admin-users-search"
-              className="text-[#9e9e9e] text-xs font-bold uppercase "
+              className="text-tm-text-color08 text-xs font-bold uppercase "
             >
               Search
             </label>
@@ -505,14 +505,14 @@ export const Models = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Name, email, or account manager…"
-              className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.08)] rounded-lg px-4 py-4 text-base text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
+              className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.08)] rounded-lg px-4 py-4 text-base text-white focus:outline-none focus:border-tm-primary-color04 placeholder-[#555]"
             />
           </div>
 
           <div className="flex flex-col gap-2 min-w-40">
             <label
               htmlFor="admin-users-type"
-              className="text-[#9e9e9e] text-xs font-bold uppercase "
+              className="text-tm-text-color08 text-xs font-bold uppercase "
             >
               User Type
             </label>
@@ -520,7 +520,7 @@ export const Models = () => {
               id="admin-users-type"
               value={selectedUserType}
               onChange={(e) => setSelectedUserType(e.target.value)}
-              className="bg-[#1c1c1e] border border-[rgba(255,255,255,0.1)] rounded-lg px-4 py-4 text-white text-base focus:outline-none focus:border-[#ff0f5f] appearance-none cursor-pointer "
+              className="bg-[#1c1c1e] border border-[rgba(255,255,255,0.1)] rounded-lg px-4 py-4 text-white text-base focus:outline-none focus:border--tm-primary-color04 appearance-none cursor-pointer "
               style={{
                 backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239e9e9e' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
                 backgroundRepeat: "no-repeat",
@@ -542,7 +542,7 @@ export const Models = () => {
                 setSelectedUserType("");
                 setSearch("");
               }}
-              className="text-[#9e9e9e] hover:text-white text-xs underline self-start lg:self-center "
+              className="text-tm-text-color08 hover:text-white text-xs underline self-start lg:self-center "
             >
               Clear filters
             </button>
@@ -559,8 +559,8 @@ export const Models = () => {
 
         {needsAssignmentCount > 0 && (
           <div className="bg-[#3a2a0a] border border-[#b8860b]/50 rounded-lg px-4 py-3 flex items-center gap-3">
-            <span className="text-[#ffb84d] text-sm">⚠</span>
-            <p className="text-[#ffd27a] text-base">
+            <span className="text-tm-warning-color02 text-sm">⚠</span>
+            <p className="text-tm-warning-color02 text-base">
               {needsAssignmentCount} user{needsAssignmentCount !== 1 ? "s" : ""}{" "}
               need
               {needsAssignmentCount === 1 ? "s" : ""} to be assigned. Drag them
@@ -648,7 +648,7 @@ export const Models = () => {
                     <span
                       className={`inline-block text-2xl transition-transform ${
                         isCollapsed ? "" : "rotate-90"
-                      } ${isNeeds ? "text-[#ffb84d]" : "text-tm-primary-color05"}`}
+                      } ${isNeeds ? "text-tm-warning-color05" : "text-tm-primary-color05"}`}
                       aria-hidden
                     >
                       ▸
@@ -656,7 +656,7 @@ export const Models = () => {
                     <div className="flex flex-col min-w-0">
                       <p
                         className={`text-xl truncate ${
-                          isNeeds ? "text-[#ffd27a]" : "text-white"
+                          isNeeds ? "text-tm-warning-color02" : "text-white"
                         }`}
                       >
                         {headerLabel}
@@ -690,7 +690,7 @@ export const Models = () => {
                       <div className="flex items-center gap-2 pl-2 ml-1 border-l border-[rgba(255,255,255,0.08)]">
                         {confirmDeleteManagerId === section.manager.id ? (
                           <>
-                            <span className="text-[#9e9e9e] text-xs hidden lg:inline">
+                            <span className="text-tm-text-color08 text-xs hidden lg:inline">
                               Delete?
                             </span>
                             <button
@@ -711,7 +711,7 @@ export const Models = () => {
                             <button
                               type="button"
                               onClick={() => setConfirmDeleteManagerId(null)}
-                              className="px-3 py-1 rounded-md text-xs font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white transition-colors"
+                              className="px-3 py-1 rounded-md text-xs font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-tm-text-color08 hover:text-white transition-colors"
                             >
                               No
                             </button>
@@ -724,7 +724,7 @@ export const Models = () => {
                                 if (section.manager)
                                   setEditingManager(section.manager);
                               }}
-                              className="px-3 py-1 rounded-md text-xs font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white hover:border-[rgba(255,255,255,0.2)] transition-colors"
+                              className="px-3 py-1 rounded-md text-xs font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-tm-text-color08 hover:text-white hover:border-[rgba(255,255,255,0.2)] transition-colors"
                               title="Edit account manager"
                             >
                               Edit
@@ -751,7 +751,7 @@ export const Models = () => {
                   <div
                     className={`flex flex-col justify-center align-center gap-3  min-h-8 bg-tm-neutral-color08 px-3 py-4 lg:px-6 lg:py-8 rounded-b-xl overflow-clip  ${
                       isDropTarget
-                        ? "border-[#ff0f5f]"
+                        ? "border-tm-primary-color04"
                         : isNeeds
                           ? "border-[#b8860b]/40"
                           : "border-[rgba(255,255,255,0.05)]"
@@ -840,7 +840,7 @@ export const Models = () => {
                                     {apiUser.firstName} {apiUser.lastName}
                                   </p>
                                 </div>
-                                <p className="text-[#9e9e9e] text-sm">
+                                <p className="text-tm-text-color08 text-sm">
                                   {apiUser.email}
                                 </p>
                                 <div className="flex items-center gap-2 w-full">
@@ -853,7 +853,7 @@ export const Models = () => {
                                   >
                                     {apiUser.isActive ? "Active" : "Inactive"}
                                   </span>
-                                  <span className="px-3 py-2 rounded-full text-xs font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]">
+                                  <span className="px-3 py-2 rounded-full text-xs font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-tm-text-color08">
                                     {apiUser.userType?.toUpperCase() ===
                                     "TEAM_MANAGER"
                                       ? "PROMOTER +"
@@ -867,13 +867,13 @@ export const Models = () => {
                               <div className="flex flex-col items-start lg:items-end gap-2 w-full">
                                 {apiUser.stats && !isPayers && (
                                   <div className="text-left flex flex-col gap-1 w-full lg:text-right">
-                                    <p className="text-[#9e9e9e] text-xs uppercase">
+                                    <p className="text-tm-text-color08 text-xs uppercase">
                                       Earnings
                                     </p>
                                     <p className="text-white text-xl lg:text-2xl font-bold">
                                       ${apiUser.stats.totalEarnings.toFixed(2)}
                                     </p>
-                                    <p className="text-[#9e9e9e] text-sm">
+                                    <p className="text-tm-text-color08 text-sm">
                                       {apiUser.stats.activeReferrals} active
                                       referrals
                                     </p>
@@ -882,7 +882,7 @@ export const Models = () => {
 
                                 {confirmDeleteId === apiUser.id ? (
                                   <div className="flex items-center gap-2 mt-1">
-                                    <span className="text-[#9e9e9e] text-xs">
+                                    <span className="text-tm-text-color08 text-xs">
                                       Delete?
                                     </span>
                                     <button
@@ -898,7 +898,7 @@ export const Models = () => {
                                     </button>
                                     <button
                                       onClick={() => setConfirmDeleteId(null)}
-                                      className="px-3 py-1 rounded-md text-xs font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white transition-colors"
+                                      className="px-3 py-1 rounded-md text-xs font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-tm-text-color08 hover:text-white transition-colors"
                                     >
                                       No
                                     </button>
@@ -927,7 +927,7 @@ export const Models = () => {
 
           {adminSections.length === 0 && (
             <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-lg p-6 text-center">
-              <p className="text-[#9e9e9e] text-base">
+              <p className="text-tm-text-color08 text-base">
                 {allUsers.length === 0
                   ? "No users found."
                   : "No users match your filters."}
@@ -963,17 +963,17 @@ export const Models = () => {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
-          <h1 className="text-3xl leading-9 font-semibold text-white lg:w-full">
+          <h1 className="text-3xl leading-9 font-semibold text-white lg:w-auto">
             My Users
           </h1>
           <div className="flex items-center justify-between lg:justify-end lg:gap-4 w-full">
-            <p className="text-base text-[#9e9e9e]">
+            <p className="text-base text-tm-text-color08">
               {visibleAdminUsers.length} user
               {visibleAdminUsers.length !== 1 ? "s" : ""}
             </p>
             <button
               onClick={() => setIsCreateUserModalOpen(true)}
-              className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-3 text-white text-sm font-bold leading-[1.4]  hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+              className="btn-primary-cta rounded-lg px-4 py-3 text-sm font-bold leading-[1.4]  active:scale-[0.98] transition-all"
             >
               + Create Chatter
             </button>
@@ -984,7 +984,7 @@ export const Models = () => {
           <div className="flex flex-col gap-1.5 flex-1 min-w-50">
             <label
               htmlFor="am-users-search"
-              className="text-[#9e9e9e] text-xs font-bold uppercase "
+              className="text-tm-text-color08 text-xs font-bold uppercase "
             >
               Search
             </label>
@@ -994,14 +994,14 @@ export const Models = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Name or email…"
-              className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.08)] rounded-lg px-3 py-3 text-sm text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
+              className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.08)] rounded-lg px-3 py-3 text-sm text-white focus:outline-none focus:border--tm-primary-color04 placeholder-[#555]"
             />
           </div>
 
           <div className="flex flex-col gap-2 min-w-40">
             <label
               htmlFor="am-users-type"
-              className="text-[#9e9e9e] text-xs font-bold uppercase "
+              className="text-tm-text-color08 text-xs font-bold uppercase "
             >
               User Type
             </label>
@@ -1009,7 +1009,7 @@ export const Models = () => {
               id="am-users-type"
               value={selectedUserType}
               onChange={(e) => setSelectedUserType(e.target.value)}
-              className="bg-[#1c1c1e] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-3 text-white text-sm focus:outline-none focus:border-[#ff0f5f] appearance-none cursor-pointer pr-7"
+              className="bg-[#1c1c1e] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-3 text-white text-sm focus:outline-none focus:border--tm-primary-color04 appearance-none cursor-pointer pr-7"
               style={{
                 backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239e9e9e' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
                 backgroundRepeat: "no-repeat",
@@ -1033,7 +1033,7 @@ export const Models = () => {
                 setSelectedUserType("");
                 setSearch("");
               }}
-              className="text-[#9e9e9e] hover:text-white text-xs underline self-start lg:self-end lg:mb-3"
+              className="text-tm-text-color08 hover:text-white text-xs underline self-start lg:self-end lg:mb-3"
             >
               Clear filters
             </button>
@@ -1051,7 +1051,7 @@ export const Models = () => {
         <div className="flex flex-col gap-5">
           {visibleAdminUsers.length === 0 ? (
             <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-lg p-6 text-center">
-              <p className="text-[#9e9e9e] text-base">
+              <p className="text-tm-text-color08 text-base">
                 {allUsers.length === 0
                   ? "You have no users yet."
                   : "No users match your filters."}
@@ -1079,7 +1079,7 @@ export const Models = () => {
                           <p className="text-white text-base font-semibold">
                             {apiUser.firstName} {apiUser.lastName}
                           </p>
-                          <p className="text-[#9e9e9e] text-sm">
+                          <p className="text-tm-text-color08 text-sm">
                             {apiUser.email}
                           </p>
                           <div className="flex items-center gap-2 w-full">
@@ -1106,13 +1106,13 @@ export const Models = () => {
                         {apiUser.stats && (
                           <div className="flex flex-col items-start lg:items-end gap-2 w-full">
                             <div className="text-left flex flex-col gap-1 w-full lg:text-right">
-                              <p className="text-[#9e9e9e] text-xs uppercase">
+                              <p className="text-tm-text-color08 text-xs uppercase">
                                 Earnings
                               </p>
                               <p className="text-white text-lg font-bold">
                                 ${apiUser.stats.totalEarnings.toFixed(2)}
                               </p>
-                              <p className="text-[#9e9e9e] text-xs">
+                              <p className="text-tm-text-color08 text-xs">
                                 {apiUser.stats.activeReferrals} active referrals
                               </p>
                             </div>
@@ -1146,13 +1146,12 @@ export const Models = () => {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
-          <h1 className="text-3xl leading-9 font-semibold text-white lg:w-full">
+          <h1 className="text-3xl leading-9 font-semibold text-white lg:w-auto">
             My Promoters
           </h1>
           <button
             onClick={() => handleOpenInviteModal("referral")}
-            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-2 text-white text-base font-bold leading-[1.4]  hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all 
-whitespace-nowrap"
+            className="btn-primary-cta rounded-lg px-4 py-2  text-base font-bold leading-[1.4]  active:scale-[0.98] transition-all whitespace-nowrap"
           >
             + Create Referral Link
           </button>
@@ -1166,7 +1165,7 @@ whitespace-nowrap"
           </div>
         ) : null}
 
-        <p className="text-sm text-[#9e9e9e]">
+        <p className="text-sm text-tm-text-color08">
           {myReferrals.length} total referrals
         </p>
 
@@ -1187,12 +1186,12 @@ whitespace-nowrap"
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
-          <h1 className="text-3xl leading-9 font-semibold text-white lg:w-full">
+          <h1 className="text-3xl leading-9 font-semibold text-white lg:w-auto">
             My Team
           </h1>
           <button
             onClick={() => handleOpenInviteModal("referral")}
-            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-3 text-white text-sm font-bold leading-[1.4]  hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+            className="btn-primary-cta rounded-lg px-4 py-3  text-sm font-bold leading-[1.4] active:scale-[0.98] transition-all"
           >
             + Create Referral Link
           </button>
@@ -1206,7 +1205,7 @@ whitespace-nowrap"
           </div>
         ) : null}
 
-        <p className="text-sm text-[#9e9e9e]">
+        <p className="text-sm text-tm-text-color08">
           {myReferrals.length} total referrals
         </p>
 
@@ -1231,12 +1230,12 @@ whitespace-nowrap"
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
-          <h1 className="text-3xl leading-9 font-semibold text-white lg:w-full">
+          <h1 className="text-3xl leading-9 font-semibold text-white lg:w-auto">
             My Promoters
           </h1>
           <button
             onClick={() => handleOpenInviteModal("referral")}
-            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-3 text-white text-base font-bold leading-[1.4]  hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all whitespace-nowrap"
+            className="btn-primary-cta rounded-lg px-4 py-3  text-base font-bold leading-[1.4] active:scale-[0.98] transition-all whitespace-nowrap"
           >
             + Create Referral Link
           </button>
@@ -1250,7 +1249,7 @@ whitespace-nowrap"
           </div>
         ) : null}
 
-        <p className="text-sm text-[#9e9e9e]">
+        <p className="text-sm text-tm-text-color08">
           {myReferrals.length} total referrals
         </p>
 
@@ -1268,10 +1267,10 @@ whitespace-nowrap"
 
   return (
     <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
-      <h1 className="text-3xl leading-9 font-semibold text-white lg:w-full">
+      <h1 className="text-3xl leading-9 font-semibold text-white lg:w-auto">
         Models
       </h1>
-      <p className="text-[#9e9e9e] text-base">Access denied</p>
+      <p className="text-tm-text-color08 text-base">Access denied</p>
     </div>
   );
 };
@@ -1960,7 +1959,7 @@ const ReferralList = ({
   if (referrals.length === 0) {
     return (
       <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-lg p-6 text-center">
-        <p className="text-[#9e9e9e] text-base">
+        <p className="text-tm-text-color08 text-base">
           No referrals yet. Create a referral link to get started.
         </p>
       </div>
@@ -1991,7 +1990,7 @@ const ReferralList = ({
               className={`px-4 py-2 rounded-lg text-sm  border transition-colors ${
                 isSelected
                   ? "bg-tm-primary-color12 border-tm-primary-color10 text-tm-primary-color02"
-                  : "bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:text-white hover:border-[rgba(255,255,255,0.3)]"
+                  : "bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-tm-text-color08 hover:text-white hover:border-[rgba(255,255,255,0.3)]"
               }`}
             >
               {opt.label}
@@ -2019,7 +2018,7 @@ const ReferralList = ({
 
       {visibleReferrals.length === 0 && (
         <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-lg p-6 text-center">
-          <p className="text-[#9e9e9e] text-sm">
+          <p className="text-tm-text-color08 text-sm">
             No {filter === "all" ? "active or pending" : filter} referrals
             {filter === "all" && (counts.expired > 0 || counts.denied > 0)
               ? ` — ${[
@@ -2093,7 +2092,7 @@ const ReferralList = ({
               {/* Header: chip on the left, LEVEL N on the right */}
               <div className="flex flex-row items-center justify-between">
                 <StatusChip state={chipState} />
-                <div className="flex items-center gap-2 text-[#9e9e9e]">
+                <div className="flex items-center gap-2 text-tm-text-color08">
                   <span className="text-sm uppercase tracking-tight font-bold">
                     Level
                   </span>
@@ -2107,11 +2106,11 @@ const ReferralList = ({
               <div className="flex flex-col min-w-0 gap-1">
                 {showReferredByLine && (
                   <div className="flex flex-col gap-2 min-w-0">
-                    <p className="text-[#ff4d8d] text-sm font-medium truncate">
+                    <p className="text-tm-primary-color02  text-sm font-medium truncate">
                       Referred by {referrerLabel}
                     </p>
                     {isAccountManagerViewer && (
-                      <p className="text-[#9e9e9e] text-xs font-medium leading-snug">
+                      <p className="text-tm-text-color08 text-xs font-medium leading-snug">
                         They were invited through this promoter&apos;s link, not
                         through your account manager invite.
                       </p>
@@ -2352,7 +2351,7 @@ const AdminOverrideRow = ({
 }) => (
   <div className="flex items-center justify-between gap-2 pt-2 mt-1 border-t border-[rgba(255,255,255,0.06)]">
     <span
-      className="text-[#9e9e9e] text-xs uppercase"
+      className="text-tm-text-color08 text-xs uppercase"
       title="Admin-only overrides"
     >
       Admin
@@ -2430,7 +2429,7 @@ const PinkCta = ({
   <button
     onClick={onClick}
     disabled={disabled}
-    className="w-full bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-full px-8 py-3 text-white text-base font-bold hover:from-[#ff1f69] hover:to-[#d10050] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+    className="w-full btn-primary-cta rounded-full px-8 py-3  text-base font-bold  disabled:opacity-50 disabled:cursor-not-allowed transition-all"
   >
     {children}
   </button>
@@ -2478,11 +2477,11 @@ const CardActions = ({
         : "This invite has been denied.";
     return (
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[#9e9e9e] text-base">{message}</span>
+        <span className="text-tm-text-color08 text-base">{message}</span>
         <button
           onClick={() => onDelete(referral)}
           disabled={busy}
-          className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-md px-4 py-2 text-[#9e9e9e] text-base font-bold hover:text-tm-danger-color05 hover:border-tm-danger-color09 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-md px-4 py-2 text-tm-text-color08 text-base font-bold hover:text-tm-danger-color05 hover:border-tm-danger-color09 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           Delete
         </button>
@@ -2531,7 +2530,7 @@ const CardActions = ({
     if (!canOrderLandingPage) {
       return (
         <div className="flex flex-col gap-2">
-          <p className="w-full rounded-md border border-[rgba(255,255,255,0.12)] bg-[#1a1a1a] px-4 py-3 text-[#9e9e9e] text-base font-medium text-center">
+          <p className="w-full rounded-md border border-[rgba(255,255,255,0.12)] bg-[#1a1a1a] px-4 py-3 text-tm-text-color08 text-base font-medium text-center">
             Onboarding is complete. Your account manager will order the landing
             page next.
           </p>
@@ -2614,7 +2613,7 @@ const CardActions = ({
           </PinkCta>
         )
       ) : (
-        <p className="w-full rounded-md border border-[rgba(255,255,255,0.12)] bg-[#1a1a1a] px-4 py-3 text-[#9e9e9e] text-base font-medium text-center">
+        <p className="w-full rounded-md border border-[rgba(255,255,255,0.12)] bg-[#1a1a1a] px-4 py-3 text-tm-text-color08 text-base font-medium text-center">
           Your account manager will assign chatters.
         </p>
       )}
@@ -2648,13 +2647,13 @@ const ModalShell = ({
         <div className="flex flex-col gap-1 min-w-0">
           <h3 className="text-white text-base font-bold">{title}</h3>
           {subtitle ? (
-            <p className="text-[#9e9e9e] text-base truncate">{subtitle}</p>
+            <p className="text-tm-text-color08 text-base truncate">{subtitle}</p>
           ) : null}
         </div>
         <button
           onClick={onClose}
           aria-label="Close"
-          className="text-[#9e9e9e] hover:text-white text-lg leading-none px-2"
+          className="text-tm-text-color08 hover:text-white text-lg leading-none px-2"
         >
           &#x2715;
         </button>
@@ -2718,22 +2717,22 @@ const ReassignModal = ({
       onClose={onClose}
     >
       {loading ? (
-        <p className="text-[#9e9e9e] text-sm">Loading account managers…</p>
+        <p className="text-tm-text-color08 text-sm">Loading account managers…</p>
       ) : error ? (
         <p className="text-tm-danger-color05 text-sm">{error}</p>
       ) : managers.length === 0 ? (
-        <p className="text-[#9e9e9e] text-sm">
+        <p className="text-tm-text-color08 text-sm">
           No account managers available to reassign to.
         </p>
       ) : (
         <label className="flex flex-col gap-2">
-          <span className="text-xs uppercase tracking-widest text-[#9e9e9e] font-bold">
+          <span className="text-xs uppercase tracking-widest text-tm-text-color08 font-bold">
             New account manager
           </span>
           <select
             value={selectedId}
             onChange={(e) => setSelectedId(e.target.value)}
-            className="bg-[#0f0f0f] border border-[rgba(255,255,255,0.1)] rounded-md px-3 py-3 text-white text-sm focus:outline-none focus:border-[#ff0f5f]"
+            className="bg-[#0f0f0f] border border-[rgba(255,255,255,0.1)] rounded-md px-3 py-3 text-white text-sm focus:outline-none focus:border--tm-primary-color04"
           >
             <option value="" disabled>
               Select…
@@ -2750,14 +2749,14 @@ const ReassignModal = ({
         <button
           onClick={onClose}
           disabled={busy}
-          className="px-4 py-2 rounded-md border border-[rgba(255,255,255,0.1)] text-[#9e9e9e] text-base font-bold hover:text-white"
+          className="px-4 py-2 rounded-md border border-[rgba(255,255,255,0.1)] text-tm-text-color08 text-base font-bold hover:text-white"
         >
           Cancel
         </button>
         <button
           onClick={() => selectedId && onSubmit(selectedId)}
           disabled={busy || !selectedId}
-          className="px-4 py-2 rounded-md bg-linear-to-b from-[#ff0f5f] to-[#cc0047] text-white text-base font-bold hover:from-[#ff1f69] hover:to-[#d10050] disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 py-2 rounded-md btn-primary-cta  text-base font-bold  disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {busy ? "Reassigning…" : "Reassign"}
         </button>
@@ -2765,4 +2764,3 @@ const ReassignModal = ({
     </ModalShell>
   );
 };
-
