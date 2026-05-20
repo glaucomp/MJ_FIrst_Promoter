@@ -774,7 +774,7 @@ export const ChatterGroups = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   // ?group=<id> — when navigated here from "Assign Chatters", scroll to and
   // highlight this group so the AM can immediately add chatters.
-  const focusGroupId = searchParams.get('group');
+  const [focusGroupId] = useState(() => searchParams.get('group'));
 
   const [groups, setGroups] = useState<ChatterGroup[]>([]);
   const [chatters, setChatters] = useState<Chatter[]>([]);
