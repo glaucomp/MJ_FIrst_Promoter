@@ -2005,9 +2005,11 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
     // Backfill: for any PENDING referral at step >= 5 whose promoter User
     // already exists in the DB, accept the referral (PENDING → ACTIVE) so
     // the card flips to LP Live via referral.status. Group creation is NOT
-    // done here — it is handled exclusively by the explicit AM button
-    // (POST /referrals/:id/ensure-group) to avoid race-condition duplicates
-    // when this endpoint is called multiple times in quick succession.
+    // done here; this backfill only updates referral state. Default chatter
+    // groups may be created via the explicit AM button
+    // (POST /referrals/:id/ensure-group) or other lifecycle flows elsewhere,
+    // and avoiding creation here helps prevent race-condition duplicates when
+    // this endpoint is called multiple times in quick succession.
     void (async () => {
       try {
         const pendingAtStep5 = allReferrals.filter(
