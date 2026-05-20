@@ -1618,19 +1618,44 @@ export const ensureInfluencerGroup = async (
         }
       }
 
-      // Check if a group with this name already exists (from a concurrent
-      // request, the webhook, or promotePreUserToUser).
+      // Check if a safe-to-adopt group with this name already exists
+      // (from a concurrent request, the webhook, or promotePreUserToUser).
+      // Restrict adoption to unowned groups so we do not accidentally grab
+      // another promoter's dedicated group just because the name matches.
       const byName = await tx.chatterGroup.findFirst({
-        where: { name: dedicatedGroupName },
+        where: { name: dedicatedGroupName, promoter: null },
         select: { id: true, name: true, commissionPercentage: true },
       });
       if (byName) {
-        // Adopt the existing group if the user isn't already linked to it.
+        // Adopt the existing safe group if the user isn't already linked to it.
         if (promotedUser.chatterGroupId !== byName.id) {
-          await tx.user.update({
-            where: { id: promotedUser.id },
-            data: { chatterGroupId: byName.id },
-          });
+          try {
+            await tx.user.update({
+              where: { id: promotedUser.id },
+              data: { chatterGroupId: byName.id },
+            });
+          } catch (error) {
+            if (
+              error instanceof Prisma.PrismaClientKnownRequestError &&
+              error.code === "P2002"
+            ) {
+              const fallbackGroup = await tx.chatterGroup.create({
+                data: {
+                  name: dedicatedGroupName,
+                  commissionPercentage: 2,
+                  tag: null,
+                  createdById: amId,
+                },
+                select: { id: true, name: true, commissionPercentage: true },
+              });
+              await tx.user.update({
+                where: { id: promotedUser.id },
+                data: { chatterGroupId: fallbackGroup.id },
+              });
+              return { group: fallbackGroup, created: true };
+            }
+            throw error;
+          }
         }
         return { group: byName, created: false };
       }
