@@ -666,31 +666,50 @@ export const promotePreUserToUser = async (
                   }
                 }
 
+                // Restrict adoption to unlinked groups so we don't
+                // accidentally grab another promoter's dedicated group.
                 const existingNamedGroup = await tx.chatterGroup.findFirst({
-                  where: { name: dedicatedGroupName },
+                  where: { name: dedicatedGroupName, promoter: null },
                   select: { id: true },
                 });
 
-                const group =
-                  existingNamedGroup ??
-                  (await tx.chatterGroup.create({
-                    data: {
-                      name: dedicatedGroupName,
-                      commissionPercentage: 2,
-                      tag: null,
-                      createdById: amId,
-                    },
-                    select: { id: true },
-                  }));
+                if (existingNamedGroup) {
+                  try {
+                    await tx.user.update({
+                      where: { id: user.id },
+                      data: { chatterGroupId: existingNamedGroup.id },
+                    });
+                    return { groupId: existingNamedGroup.id, created: false };
+                  } catch (linkError) {
+                    if (
+                      linkError instanceof Prisma.PrismaClientKnownRequestError &&
+                      linkError.code === "P2002"
+                    ) {
+                      // Another user was linked concurrently; fall through to create.
+                    } else {
+                      throw linkError;
+                    }
+                  }
+                }
+
+                const newGroup = await tx.chatterGroup.create({
+                  data: {
+                    name: dedicatedGroupName,
+                    commissionPercentage: 2,
+                    tag: null,
+                    createdById: amId,
+                  },
+                  select: { id: true },
+                });
 
                 await tx.user.update({
                   where: { id: user.id },
-                  data: { chatterGroupId: group.id },
+                  data: { chatterGroupId: newGroup.id },
                 });
 
                 return {
-                  groupId: group.id,
-                  created: !existingNamedGroup,
+                  groupId: newGroup.id,
+                  created: true,
                 };
               },
               {
