@@ -1151,8 +1151,7 @@ export const Models = () => {
           </h1>
           <button
             onClick={() => handleOpenInviteModal("referral")}
-            className="btn-primary-cta rounded-lg px-4 py-2  text-base font-bold leading-[1.4]  active:scale-[0.98] transition-all 
-whitespace-nowrap"
+            className="btn-primary-cta rounded-lg px-4 py-2  text-base font-bold leading-[1.4]  active:scale-[0.98] transition-all whitespace-nowrap"
           >
             + Create Referral Link
           </button>
