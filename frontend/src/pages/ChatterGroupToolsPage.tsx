@@ -26,7 +26,7 @@ const InitialsAvatar = ({
   }
 
   return (
-    <div className="w-9 h-9 rounded-full bg-linear-to-br from-[#ff0f5f] to-[#cc0047] flex items-center justify-center shrink-0">
+    <div className="w-9 h-9 rounded-full bg-linear-to-br from-tm-primary-color04 to-tm-primary-color02 flex items-center justify-center shrink-0">
       <span className="text-white text-sm font-bold leading-none">
         {initials}
       </span>
@@ -115,7 +115,7 @@ const SocialIcon = ({ platform }: { platform: string }) => {
     default:
       return (
         <svg
-          className="w-5.5 h-5.5 text-[#9e9e9e]"
+          className="w-5.5 h-5.5 text-tm-text-color08"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -219,10 +219,10 @@ export const ChatterGroupToolsPage = () => {
   if (!group) {
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-4">
-        <p className="text-[#9e9e9e] text-base">Group not found.</p>
+        <p className="text-tm-text-color08 text-base">Group not found.</p>
         <button
           onClick={() => navigate("/chatter-portal")}
-          className="text-[#ff2a71] text-sm font-semibold hover:underline"
+          className="text-tm-primary-color04  text-sm font-semibold hover:underline"
         >
           ← Back to groups
         </button>
@@ -251,7 +251,7 @@ export const ChatterGroupToolsPage = () => {
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate("/chatter-portal")}
-            className="text-[#9e9e9e] hover:text-white transition-colors shrink-0"
+            className="text-tm-text-color08 hover:text-white transition-colors shrink-0"
             aria-label="Back"
           >
             <svg
@@ -285,7 +285,7 @@ export const ChatterGroupToolsPage = () => {
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
                 <svg
-                  className="w-3.5 h-3.5 text-[#ff2a71]"
+                  className="w-3.5 h-3.5 text-tm-primary-color04 "
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -297,7 +297,7 @@ export const ChatterGroupToolsPage = () => {
                     d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
                   />
                 </svg>
-                <p className="text-xs font-bold uppercase text-[#9e9e9e]">
+                <p className="text-xs font-bold uppercase text-tm-text-color08">
                   Invite Link
                 </p>
               </div>
@@ -320,7 +320,7 @@ export const ChatterGroupToolsPage = () => {
           <div className="flex items-center gap-2.5">
             {/* Waveform icon */}
             <svg
-              className="w-4.5 h-3.5 shrink-0 text-[#ff2a71]"
+              className="w-4.5 h-3.5 shrink-0 text-tm-primary-color04 "
               viewBox="0 0 18 14"
               fill="currentColor"
             >
@@ -340,7 +340,7 @@ export const ChatterGroupToolsPage = () => {
           <div className="flex gap-4 ">
             {/* Profile picture card */}
             <div className="flex-1 bg-[#141416] border border-[rgba(255,255,255,0.06)] rounded-2xl p-5 flex items-center gap-4.5">
-              <div className="w-14 lg:w-15 h-14 lg:h-15 rounded-full bg-linear-to-br from-[#ff0f5f] to-[#cc0047] flex items-center justify-center shrink-0 overflow-hidden">
+              <div className="w-14 lg:w-15 h-14 lg:h-15 rounded-full bg-linear-to-br from-tm-primary-color04 to-tm-primary-color02 flex items-center justify-center shrink-0 overflow-hidden">
                 {photoUrl ? (
                   <img
                     src={photoUrl}

@@ -218,7 +218,7 @@ export const CreateUserModal = ({
             </h2>
             <button
               onClick={handleClose}
-              className="text-[#9e9e9e] hover:text-white text-xl leading-none"
+              className="text-tm-text-color08 hover:text-white text-xl leading-none"
             >
               ×
             </button>
@@ -236,7 +236,7 @@ export const CreateUserModal = ({
                 </div>
               ) : (
                 <div className="bg-[#4a2a00] border border-[#ff9800] rounded-sm px-[16px] py-[12px]">
-                  <p className="text-[#ffb74d] text-sm font-medium">
+                  <p className="text-tm-warning-color05 text-sm font-medium">
                     User created, but the invite email could not be sent.
                     Please ask an admin to re-send the invite.
                   </p>
@@ -248,8 +248,8 @@ export const CreateUserModal = ({
                   <p className="text-white text-base font-semibold">
                     {success.firstName} {success.lastName}
                   </p>
-                  <p className="text-[#9e9e9e] text-sm">{success.email}</p>
-                  <span className="self-start mt-[4px] px-4 py-[2px] rounded-full text-xs font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-[#9e9e9e]">
+                  <p className="text-tm-text-color08 text-sm">{success.email}</p>
+                  <span className="self-start mt-[4px] px-4 py-[2px] rounded-full text-xs font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-tm-text-color08">
                     {success.userType?.toLowerCase().replace("_", " ")}
                   </span>
                 </div>
@@ -271,7 +271,7 @@ export const CreateUserModal = ({
                 </button>
                 <button
                   onClick={handleClose}
-                  className="flex-1 bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-sm px-[16px] py-[12px] text-white text-sm font-bold hover:from-[#ff1f69] hover:to-[#d10050] transition-all"
+                  className="flex-1 btn-primary-cta rounded-sm px-[16px] py-[12px]  text-sm font-bold transition-all"
                 >
                   Done
                 </button>
@@ -282,7 +282,7 @@ export const CreateUserModal = ({
               {/* Name row */}
               <div className="flex gap-[12px] flex-col lg:flex-row">
                 <div className="flex flex-col gap-[8px] flex-1">
-                  <label className="text-[#9e9e9e] text-xs font-bold uppercase">
+                  <label className="text-tm-text-color08 text-xs font-bold uppercase">
                     First Name
                   </label>
                   <input
@@ -290,11 +290,11 @@ export const CreateUserModal = ({
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
                     autoComplete="off"
-                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[14px] py-[11px] text-base text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
+                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[14px] py-[11px] text-base text-white focus:outline-none focus:border-tm-primary-color04 placeholder-[#555]"
                   />
                 </div>
                 <div className="flex flex-col gap-[8px] flex-1">
-                  <label className="text-[#9e9e9e] text-xs font-bold uppercase">
+                  <label className="text-tm-text-color08 text-xs font-bold uppercase">
                     Last Name
                   </label>
                   <input
@@ -302,14 +302,14 @@ export const CreateUserModal = ({
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
                     autoComplete="off"
-                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[14px] py-[11px] text-base text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
+                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[14px] py-[11px] text-base text-white focus:outline-none focus:border-tm-primary-color04 placeholder-[#555]"
                   />
                 </div>
               </div>
 
               {/* Email */}
               <div className="flex flex-col gap-[8px]">
-                <label className="text-[#9e9e9e] text-xs font-bold uppercase">
+                <label className="text-tm-text-color08 text-xs font-bold uppercase">
                   Email
                 </label>
                 <input
@@ -317,9 +317,9 @@ export const CreateUserModal = ({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   autoComplete="off"
-                  className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[14px] py-[11px] text-base text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
+                  className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[14px] py-[11px] text-base text-white focus:outline-none focus:border-tm-primary-color04 placeholder-[#555]"
                 />
-                <p className="text-[#9e9e9e] text-xs leading-[1.4]">
+                <p className="text-tm-text-color08 text-xs leading-[1.4]">
                   We'll send an invite email with a link for them to set their
                   own password.
                 </p>
@@ -327,7 +327,7 @@ export const CreateUserModal = ({
 
               {/* User type */}
               <div className="flex flex-col gap-[8px]">
-                <label className="text-[#9e9e9e] text-xs font-bold uppercase">
+                <label className="text-tm-text-color08 text-xs font-bold uppercase">
                   Role
                 </label>
                 <div className="flex flex-col gap-[8px]">
@@ -340,18 +340,18 @@ export const CreateUserModal = ({
                         onClick={() => setUserType(value)}
                         className={`flex items-center justify-between rounded-sm px-[14px] py-[12px] border text-left transition-all ${
                           selected
-                            ? "bg-[#ff0f5f]/10 border-[#ff0f5f] "
+                            ? "bg-tm-primary-color04/10 border-tm-primary-color04 "
                             : "bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.2)]"
                         }`}
                       >
                         <div>
                           <p
-                            className={`text-base font-bold ${selected ? "text-tm-primary-color05" : "text-[#9e9e9e]"}`}
+                            className={`text-base font-bold ${selected ? "text-tm-primary-color05" : "text-tm-text-color08"}`}
                           >
                             {meta.label}
                           </p>
                           <p
-                            className={`text-sm ${selected ? "text-white" : "text-[#9e9e9e]"}`}
+                            className={`text-sm ${selected ? "text-white" : "text-tm-text-color08"}`}
                           >
                             {meta.description}
                           </p>
@@ -359,7 +359,7 @@ export const CreateUserModal = ({
                         <div
                           className={`w-[16px] h-[16px] rounded-full border-2 shrink-0 ${
                             selected
-                              ? "border-[#ff0f5f] bg-[#ff0f5f]"
+                              ? "border-tm-primary-color04 bg-tm-primary-color04"
                               : "border-[#555]"
                           }`}
                         />
@@ -375,16 +375,16 @@ export const CreateUserModal = ({
                   promoters straight after activation. */}
               {isAccountManager && (
                 <div className="flex flex-col gap-[8px]">
-                  <label className="text-[#9e9e9e] text-xs font-bold uppercase">
+                  <label className="text-tm-text-color08 text-xs font-bold uppercase">
                     Campaign
                   </label>
                   {campaignsLoading && (
-                    <p className="text-[#9e9e9e] text-sm">
+                    <p className="text-tm-text-color08 text-sm">
                       Loading campaigns…
                     </p>
                   )}
                   {!campaignsLoading && amCampaigns.length === 0 && (
-                    <p className="text-[#ffcc33] text-sm leading-[1.4]">
+                    <p className="text-tm-warning-color05 text-sm leading-[1.4]">
                       No hidden Account Manager campaigns exist yet. Create
                       one on the Campaigns page (toggle "Visible to
                       Promoters" off and link it to a public campaign), then
@@ -396,7 +396,7 @@ export const CreateUserModal = ({
                       <select
                         value={campaignId}
                         onChange={(e) => setCampaignId(e.target.value)}
-                        className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[14px] py-[11px] text-base text-white focus:outline-none focus:border-[#ff0f5f]"
+                        className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[14px] py-[11px] text-base text-white focus:outline-none focus:border-tm-primary-color04"
                       >
                         <option value="">— Select a campaign —</option>
                         {amCampaigns.map((c) => (
@@ -409,7 +409,7 @@ export const CreateUserModal = ({
                         ))}
                       </select>
                       {selectedAmCampaign && !selectedAmCampaign.linkedCampaign && (
-                        <p className="text-[#ffcc33] text-xs leading-[1.4]">
+                        <p className="text-tm-warning-color02 text-xs leading-[1.4]">
                           This campaign isn't linked to a public campaign
                           yet, so the new AM won't see anything to invite
                           into. Set the linked campaign on the Campaigns
@@ -417,7 +417,7 @@ export const CreateUserModal = ({
                         </p>
                       )}
                       {selectedAmCampaign?.linkedCampaign && (
-                        <p className="text-[#9e9e9e] text-xs leading-[1.4]">
+                        <p className="text-tm-text-color08 text-xs leading-[1.4]">
                           The new AM will be able to invite promoters into{" "}
                           <span className="text-white font-medium">
                             {selectedAmCampaign.linkedCampaign.name}
@@ -449,7 +449,7 @@ export const CreateUserModal = ({
                   !email ||
                   (isAccountManager && !campaignId)
                 }
-                className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-sm px-[24px] py-[14px] text-white text-base font-bold leading-[1.4] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="btn-primary-cta rounded-sm px-[24px] py-[14px]  text-base font-bold leading-[1.4]  active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? "Creating..." : "Send Invite"}
               </button>

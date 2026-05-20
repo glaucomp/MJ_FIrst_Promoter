@@ -78,7 +78,7 @@ export const Login = () => {
           <div className="flex flex-col gap-[12px] items-center">
             <h1 className="sr-only">{mode === 'login' ? 'Login' : 'Forgot password'}</h1>
             <LogoLottie height={56} width={220} />
-            <p className="text-base leading-[1.4] text-[#9e9e9e] font-medium ">
+            <p className="text-base leading-[1.4] text-tm-text-color08 font-medium ">
               {mode === 'login'
                 ? 'Sign in to your account'
                 : 'Enter your email and we\u2019ll send a reset link'}
@@ -93,7 +93,7 @@ export const Login = () => {
                 <div className="flex flex-col gap-[8px]">
                   <label
                     htmlFor="email"
-                    className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase "
+                    className="text-tm-text-color08 text-sm leading-[1.4] font-bold uppercase "
                   >
                     Email
                   </label>
@@ -104,7 +104,7 @@ export const Login = () => {
                     onChange={(e) => setEmail(e.target.value)}
                     required
                     tabIndex={1}
-                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-4 py-[12px] text-base text-white focus:outline-none focus:border-[#ff0f5f] transition-colors"
+                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-4 py-[12px] text-base text-white focus:outline-none focus:border-tm-primary-color04 transition-colors"
                     placeholder="your@email.com"
                   />
                 </div>
@@ -113,7 +113,7 @@ export const Login = () => {
                   <div className="flex items-center justify-between">
                     <label
                       htmlFor="password"
-                      className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase "
+                      className="text-tm-text-color08 text-sm leading-[1.4] font-bold uppercase "
                     >
                       Password
                     </label>
@@ -125,7 +125,7 @@ export const Login = () => {
                         setError('');
                         setForgotMessage('');
                       }}
-                      className="text-sm leading-[1.4] text-[#ff0f5f] hover:underline font-semibold"
+                      className="text-sm leading-[1.4] text-tm-primary-color04 hover:underline font-semibold"
                     >
                       Forgot password?
                     </button>
@@ -137,7 +137,7 @@ export const Login = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     tabIndex={2}
-                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] text-base text-white focus:outline-none focus:border-[#ff0f5f] transition-colors"
+                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] text-base text-white focus:outline-none focus:border--tm-primary-color04 transition-colors"
                     placeholder="••••••••"
                   />
                 </div>
@@ -160,7 +160,7 @@ export const Login = () => {
                 </button>
               </div>
 
-              <p className="text-center text-sm leading-[1.4] text-[#9e9e9e] ">
+              <p className="text-center text-sm leading-[1.4] text-tm-text-color08 ">
                 Need help? Contact support
               </p>
             </form>
@@ -172,7 +172,7 @@ export const Login = () => {
                 <div className="flex flex-col gap-[8px]">
                   <label
                     htmlFor="forgot-email"
-                    className="text-[#9e9e9e] text-sm leading-[1.4] font-bold uppercase "
+                    className="text-tm-text-color08 text-sm leading-[1.4] font-bold uppercase "
                   >
                     Email
                   </label>
@@ -182,7 +182,7 @@ export const Login = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] text-base text-white focus:outline-none focus:border-[#ff0f5f] transition-colors"
+                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] text-base text-white focus:outline-none focus:border--tm-primary-color04 transition-colors"
                     placeholder="your@email.com"
                   />
                 </div>
@@ -218,7 +218,7 @@ export const Login = () => {
                     setError('');
                     setForgotMessage('');
                   }}
-                  className="text-center text-sm leading-[1.4] text-[#9e9e9e] hover:text-white "
+                  className="text-center text-sm leading-[1.4] text-tm-text-color08 hover:text-white "
                 >
                   ← Back to sign in
                 </button>

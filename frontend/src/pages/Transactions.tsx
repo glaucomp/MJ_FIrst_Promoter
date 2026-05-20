@@ -249,13 +249,13 @@ export const Transactions = () => {
         <h1 className="text-3xl leading-[36px] font-semibold text-white font-['DM_Sans',sans-serif] lg:w-full">
           Transactions
         </h1>
-        <p className="text-sm text-[#9e9e9e] mt-[4px]">
+        <p className="text-sm text-tm-text-color08 mt-[4px]">
           {total > 0 ? buildCountLabel(total) : 'Sale and refund history'}
         </p>
       </div>
 
       {error && (
-        <div className="bg-[#3a0000] border border-tm-danger-color09 rounded-sm p-[12px] text-[#ff8080] text-sm">
+        <div className="bg-[#3a0000] border border-tm-danger-color09 rounded-sm p-[12px] text-tm-danger-color01 text-sm">
           {error}
         </div>
       )}

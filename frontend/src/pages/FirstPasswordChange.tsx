@@ -90,7 +90,7 @@ export const FirstPasswordChange = () => {
             <form onSubmit={handleSubmit} className="flex flex-col gap-[20px]">
               <div className="flex flex-col gap-[4px]">
                 <h2 className="text-white text-lg font-bold">{greeting}</h2>
-                <p className="text-[#9e9e9e] text-sm leading-normal">
+                <p className="text-tm-text-color08 text-sm leading-normal">
                   {intro}
                 </p>
               </div>
@@ -98,7 +98,7 @@ export const FirstPasswordChange = () => {
               <div className="flex flex-col gap-[8px]">
                 <label
                   htmlFor="new-password"
-                  className="text-[#9e9e9e] text-xs leading-[1.4] font-bold uppercase"
+                  className="text-tm-text-color08 text-xs leading-[1.4] font-bold uppercase"
                 >
                   New Password
                 </label>
@@ -118,7 +118,7 @@ export const FirstPasswordChange = () => {
               <div className="flex flex-col gap-[8px]">
                 <label
                   htmlFor="confirm-password"
-                  className="text-[#9e9e9e] text-xs leading-[1.4] font-bold uppercase"
+                  className="text-tm-text-color08 text-xs leading-[1.4] font-bold uppercase"
                 >
                   Confirm Password
                 </label>
