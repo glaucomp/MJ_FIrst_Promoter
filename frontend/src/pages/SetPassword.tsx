@@ -155,7 +155,7 @@ export const SetPassword = () => {
                     autoComplete="new-password"
                     required
                     minLength={8}
-                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] text-base text-white focus:outline-none focus:border-[#ff0f5f] transition-colors"
+                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] text-base text-white focus:outline-none focus:border--tm-primary-color04 transition-colors"
                     placeholder="At least 8 characters"
                   />
                 </div>
@@ -175,7 +175,7 @@ export const SetPassword = () => {
                     autoComplete="new-password"
                     required
                     minLength={8}
-                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] text-base text-white focus:outline-none focus:border-[#ff0f5f] transition-colors"
+                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] text-base text-white focus:outline-none focus:border--tm-primary-color04 transition-colors"
                     placeholder="Repeat the password"
                   />
                 </div>

@@ -64,7 +64,7 @@ export const ChatterDashboard = () => {
 
       {isLoading && (
         <div className="flex items-center justify-center py-12">
-          <div className="w-8 h-8 border-2 border-[#ff0f5f] border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border--tm-primary-color04 border-t-transparent rounded-full animate-spin" />
         </div>
       )}
 
@@ -114,7 +114,7 @@ export const ChatterDashboard = () => {
                   <div className="flex flex-col lg:flex-row justify-between w-full gap-6">
                     <div className="flex items-center gap-3.5">
                       {/* Promoter avatar */}
-                      <div className="w-14 h-14 rounded-full bg-linear-to-br from-[#ff0f5f] to-[#cc0047] flex items-center justify-center shrink-0 overflow-hidden border border-[rgba(255,255,255,0.08)]">
+                      <div className="w-14 h-14 rounded-full bg-linear-to-br from-tm-primary-color04 to-tm-primary-color08 flex items-center justify-center shrink-0 overflow-hidden border border-[rgba(255,255,255,0.08)]">
                         {promoterPhoto ? (
                           <img
                             src={promoterPhoto}

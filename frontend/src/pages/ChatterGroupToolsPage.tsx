@@ -26,7 +26,7 @@ const InitialsAvatar = ({
   }
 
   return (
-    <div className="w-9 h-9 rounded-full bg-linear-to-br from-[#ff0f5f] to-[#cc0047] flex items-center justify-center shrink-0">
+    <div className="w-9 h-9 rounded-full bg-linear-to-br from-tm-primary-color04 to-tm-primary-color02 flex items-center justify-center shrink-0">
       <span className="text-white text-sm font-bold leading-none">
         {initials}
       </span>
@@ -340,7 +340,7 @@ export const ChatterGroupToolsPage = () => {
           <div className="flex gap-4 ">
             {/* Profile picture card */}
             <div className="flex-1 bg-[#141416] border border-[rgba(255,255,255,0.06)] rounded-2xl p-5 flex items-center gap-4.5">
-              <div className="w-14 lg:w-15 h-14 lg:h-15 rounded-full bg-linear-to-br from-[#ff0f5f] to-[#cc0047] flex items-center justify-center shrink-0 overflow-hidden">
+              <div className="w-14 lg:w-15 h-14 lg:h-15 rounded-full bg-linear-to-br from-tm-primary-color04 to-tm-primary-color02 flex items-center justify-center shrink-0 overflow-hidden">
                 {photoUrl ? (
                   <img
                     src={photoUrl}

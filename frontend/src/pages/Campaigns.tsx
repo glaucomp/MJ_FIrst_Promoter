@@ -170,14 +170,14 @@ export const Campaigns = () => {
     <div className="flex flex-col gap-6">
       {/* Header */}
       <div className="flex items-start justify-between flex-col lg:flex-row gap-3">
-        <h1 className="text-3xl leading-9 font-semibold text-white lg:w-full">
+        <h1 className="text-3xl leading-9 font-semibold text-white lg:w-auto">
           Campaigns
         </h1>
         <div className="flex flex-col lg:flex-row lg:items-center gap-4  justify-between lg:justify-end w-full">
           <p className="text-base text-[#9e9e9e]">{campaigns.length} total</p>
           <button
             onClick={openCreate}
-            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-3 text-white text-sm font-bold leading-[1.4] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+            className="btn-primary-cta rounded-lg px-4 py-3 text-sm font-bold leading-[1.4]  active:scale-[0.98] transition-all"
           >
             + Create Campaign
           </button>
@@ -610,7 +610,7 @@ export const Campaigns = () => {
               <button
                 onClick={handleSave}
                 disabled={isSaving}
-                className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-6 py-3.5 text-white text-base font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="btn-primary-cta rounded-lg px-6 py-3.5  text-base font-bold  active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSaving
                   ? "Saving..."
@@ -634,7 +634,7 @@ function secondaryRateLabelForCampaign(visibleToPromoters: boolean): string {
 }
 
 const inputCls =
-  "bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[14px] py-[11px] text-sm text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555] w-full";
+  "bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[14px] py-[11px] text-sm text-white focus:outline-none focus:border--tm-primary-color04 placeholder-[#555] w-full";
 
 const Field = ({
   label,
@@ -665,7 +665,7 @@ const Toggle = ({
   <button
     onClick={() => onChange(!value)}
     className={`flex-1 flex items-center justify-between rounded-lg px-3.5 py-3 border transition-all ${value
-      ? "bg-[#ff0f5f]/10 border-[#ff0f5f]"
+      ? "bg--tm-primary-color04/10 border--tm-primary-color04"
       : "bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.2)]"
       }`}
   >
@@ -675,7 +675,7 @@ const Toggle = ({
       {label}
     </span>
     <div
-      className={`w-4 h-4 rounded-full border-2 ${value ? "border-[#ff0f5f] bg-[#ff0f5f]" : "border-[#555]"
+      className={`w-4 h-4 rounded-full border-2 ${value ? "border--tm-primary-color04 bg--tm-primary-color04" : "border-[#555]"
         }`}
     />
   </button>

@@ -104,7 +104,7 @@ export const Login = () => {
                     onChange={(e) => setEmail(e.target.value)}
                     required
                     tabIndex={1}
-                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-4 py-[12px] text-base text-white focus:outline-none focus:border-[#ff0f5f] transition-colors"
+                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-4 py-[12px] text-base text-white focus:outline-none focus:border--tm-primary-color04 transition-colors"
                     placeholder="your@email.com"
                   />
                 </div>
@@ -125,7 +125,7 @@ export const Login = () => {
                         setError('');
                         setForgotMessage('');
                       }}
-                      className="text-sm leading-[1.4] text-[#ff0f5f] hover:underline font-semibold"
+                      className="text-sm leading-[1.4] text--tm-primary-color04 hover:underline font-semibold"
                     >
                       Forgot password?
                     </button>
@@ -137,7 +137,7 @@ export const Login = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     tabIndex={2}
-                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] text-base text-white focus:outline-none focus:border-[#ff0f5f] transition-colors"
+                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] text-base text-white focus:outline-none focus:border--tm-primary-color04 transition-colors"
                     placeholder="••••••••"
                   />
                 </div>
@@ -182,7 +182,7 @@ export const Login = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] text-base text-white focus:outline-none focus:border-[#ff0f5f] transition-colors"
+                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] text-base text-white focus:outline-none focus:border--tm-primary-color04 transition-colors"
                     placeholder="your@email.com"
                   />
                 </div>

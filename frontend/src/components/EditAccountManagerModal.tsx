@@ -159,7 +159,7 @@ export const EditAccountManagerModal = ({
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 autoComplete="off"
-                className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[14px] py-[11px] text-base text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
+                className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[14px] py-[11px] text-base text-white focus:outline-none focus:border--tm-primary-color04 placeholder-[#555]"
               />
             </div>
             <div className="flex flex-col gap-[8px] flex-1">
@@ -175,7 +175,7 @@ export const EditAccountManagerModal = ({
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 autoComplete="off"
-                className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[14px] py-[11px] text-base text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
+                className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[14px] py-[11px] text-base text-white focus:outline-none focus:border--tm-primary-color04 placeholder-[#555]"
               />
             </div>
           </div>
@@ -227,7 +227,7 @@ export const EditAccountManagerModal = ({
                   id="edit-am-campaign"
                   value={campaignId}
                   onChange={(e) => setCampaignId(e.target.value)}
-                  className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[14px] py-[11px] text-base text-white focus:outline-none focus:border-[#ff0f5f]"
+                  className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[14px] py-[11px] text-base text-white focus:outline-none focus:border--tm-primary-color04"
                 >
                   <option value="">— Select a campaign —</option>
                   {campaigns.map((c) => (
@@ -281,7 +281,7 @@ export const EditAccountManagerModal = ({
             <button
               onClick={handleSubmit}
               disabled={isLoading || !campaignId}
-              className="flex-1 bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-sm px-[16px] py-[12px] text-white text-sm font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 btn-primary-cta rounded-sm px-[16px] py-[12px]  text-sm font-bold  active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? "Saving..." : "Save Changes"}
             </button>

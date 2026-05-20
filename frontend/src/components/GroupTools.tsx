@@ -190,7 +190,7 @@ export const LinkGenerator = ({ username }: LinkGeneratorProps) => {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Name"
-          className="buttonXl inputMJ text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#9e9e9e]"
+          className="buttonXl inputMJ text-white focus:outline-none focus:border--tm-primary-color04 placeholder-[#9e9e9e]"
         />
         <input
           type="text"
@@ -199,7 +199,7 @@ export const LinkGenerator = ({ username }: LinkGeneratorProps) => {
           value={telegramId}
           onChange={(e) => setTelegramId(e.target.value.replaceAll(/\D/g, ""))}
           placeholder="Telegram ID"
-          className="buttonXl inputMJ text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#9e9e9e]"
+          className="buttonXl inputMJ text-white focus:outline-none focus:border--tm-primary-color04 placeholder-[#9e9e9e]"
         />
       </div>
 
@@ -225,7 +225,7 @@ export const LinkGenerator = ({ username }: LinkGeneratorProps) => {
             onChange={(e) => setEmail(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
             placeholder="Email"
-            className="buttonXl inputIcon w-full inputMJ text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#9e9e9e]"
+            className="buttonXl inputIcon w-full inputMJ text-white focus:outline-none focus:border--tm-primary-color04 placeholder-[#9e9e9e]"
           />
         </div>
         <button
@@ -251,7 +251,7 @@ export const LinkGenerator = ({ username }: LinkGeneratorProps) => {
         <button
           onClick={handleGenerate}
           disabled={!canGenerate}
-          className="buttonSubtle bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-full px-[20px] py-[11px] text-white text-sm font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0 whitespace-nowrap"
+          className="buttonSubtle btn-primary-cta rounded-full px-[20px] py-[11px] text-sm font-bold  active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0 whitespace-nowrap"
         >
           {loading ? "Generating..." : "Generate Link"}
         </button>
@@ -735,7 +735,7 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
                   onClick={stopRecording}
                   title="Stop recording"
                   aria-label="Stop recording"
-                  className="lg:absolute right-2 w-14 h-14  lg:-top-7  buttonSubtle buttonXl rounded-full flex items-center justify-center bg-[#660022] border border-[#ff2a71]  text-white shrink-0 hover:bg-[#7a0029] transition-all"
+                  className="lg:absolute right-2 w-14 h-14  lg:-top-7  buttonSubtle buttonXl rounded-full flex items-center justify-center  bg-tm-primary-color12 border border-tm-primary-color06  text-white shrink-0 hover:bg-[#7a0029] transition-all"
                 >
                   <span className="w-4 h-4 rounded-full bg-tm-primary-color01 animate-pulse" />
                 </button>
@@ -816,7 +816,7 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
                   ? undefined
                   : "No voice configured for this model — ask an admin to sync from TeaseMe"
               }
-              className="flex items-center justify-center gap-[7px] rounded-lg bg-linear-to-b from-[#ff0f5f] to-[#cc0047]  px-[18px] py-[11px] text-white text-sm font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center justify-center gap-[7px] rounded-lg btn-primary-cta  px-[18px] py-[11px]  text-sm font-bold  active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {isGenerating ? (
                 <span className="w-[13px] h-[13px] border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -917,7 +917,7 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
               }
               className={`buttonSubtle buttonMd flex items-center justify-center gap-2  rounded-full text-sm transition-all active:scale-95  ${selectedMood === m.value
                 ? "bg-tm-primary-color11 border border-tm-primary-color09 text-white"
-                : "bg-tm-neutral-color05 hover:bg-tm-neutral-color03 border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:border-[#ff2a71]"
+                : "bg-tm-neutral-color05 hover:bg-tm-neutral-color03 border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:border-tm-primary-color06"
                 }`}
             >
               <span>{m.emoji}</span>
@@ -939,7 +939,7 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
                 className={`buttonSubtle buttonMd flex items-center justify-center gap-2 rounded-full text-sm transition-all active:scale-95 ${
                   selectedLanguage === lang.code
                     ? "bg-tm-primary-color11 border border-tm-primary-color09 text-white"
-                    : "bg-tm-neutral-color05 hover:bg-tm-neutral-color03 border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:border-[#ff2a71]"
+                    : "bg-tm-neutral-color05 hover:bg-tm-neutral-color03 border-[rgba(255,255,255,0.1)] text-[#9e9e9e] hover:border-tm-primary-color06"
                 }`}
               >
                 <span>{lang.flag}</span>

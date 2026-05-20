@@ -154,7 +154,7 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
                   value={selectedCampaignId}
                   onChange={(e) => setSelectedCampaignId(e.target.value)}
                   disabled={campaigns.length === 0 || userRole === 'account_manager'}
-                  className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] text-base text-white focus:outline-none focus:border-[#ff0f5f] disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] text-base text-white focus:outline-none focus:border--tm-primary-color04 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {campaigns.map((campaign) => (
                     <option key={campaign.id} value={campaign.id}>
@@ -190,7 +190,7 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="promoter@example.com"
-                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] text-base text-white focus:outline-none focus:border-[#ff0f5f]"
+                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] text-base text-white focus:outline-none focus:border--tm-primary-color04"
                   />
                 </div>
               )}
@@ -209,7 +209,7 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
                   (type === 'referral' && !isEmailValid) ||
                   (quota?.remaining === 0 && !quota?.unlimited)
                 }
-                className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-sm px-[24px] py-[14px] text-white text-base font-bold leading-[1.4] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="btn-primary-cta rounded-lg px-[24px] py-[14px] text-base font-bold leading-[1.4] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? 'Generating...' : 'Generate Link'}
               </button>
@@ -259,7 +259,7 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
               <div className="flex gap-[12px]">
                 <button
                   onClick={handleCopyUrl}
-                  className="flex-1 bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-sm px-[24px] py-[14px] text-white text-base font-bold leading-[1.4] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+                  className="flex-1 btn-primary-cta rounded-sm px-[24px] py-[14px] text-base font-bold leading-[1.4]  active:scale-[0.98] transition-all"
                 >
                   Copy URL
                 </button>

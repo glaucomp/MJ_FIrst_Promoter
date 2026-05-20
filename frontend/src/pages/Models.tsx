@@ -49,7 +49,7 @@ const SessionExpiredBanner = ({ onLogout }: { onLogout: () => void }) => (
     </p>
     <button
       onClick={onLogout}
-      className="self-start bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-3 text-white text-sm font-bold hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+      className="self-start btn-primary-cta rounded-lg px-4 py-3  text-sm font-bold  active:scale-[0.98] transition-all"
     >
       Log out &amp; log back in
     </button>
@@ -458,7 +458,7 @@ export const Models = () => {
   if (isLoading) {
     return (
       <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
-        <h1 className="text-3xl leading-9 font-semibold text-white lg:w-full">
+        <h1 className="text-3xl leading-9 font-semibold text-white lg:w-auto">
           Models
         </h1>
         <p className="text-base text-[#9e9e9e]">Loading...</p>
@@ -474,7 +474,7 @@ export const Models = () => {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
-          <h1 className="text-3xl leading-9 font-semibold text-white lg:w-full">
+          <h1 className="text-3xl leading-9 font-semibold text-white lg:w-auto">
             All Users
           </h1>
           <div className="flex flex-col lg:flex-row lg:items-center gap-4  justify-between lg:justify-end w-full">
@@ -485,7 +485,7 @@ export const Models = () => {
             </p>
             <button
               onClick={() => setIsCreateUserModalOpen(true)}
-              className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-3 text-white text-sm font-bold leading-[1.4]  hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+              className="btn-primary-cta rounded-lg px-4 py-3  text-sm font-bold leading-[1.4] active:scale-[0.98] transition-all"
             >
               + Create User
             </button>
@@ -507,7 +507,7 @@ export const Models = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Name, email, or account manager…"
-              className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.08)] rounded-lg px-4 py-4 text-base text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
+              className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.08)] rounded-lg px-4 py-4 text-base text-white focus:outline-none focus:border--tm-primary-color04 placeholder-[#555]"
             />
           </div>
 
@@ -522,7 +522,7 @@ export const Models = () => {
               id="admin-users-type"
               value={selectedUserType}
               onChange={(e) => setSelectedUserType(e.target.value)}
-              className="bg-[#1c1c1e] border border-[rgba(255,255,255,0.1)] rounded-lg px-4 py-4 text-white text-base focus:outline-none focus:border-[#ff0f5f] appearance-none cursor-pointer "
+              className="bg-[#1c1c1e] border border-[rgba(255,255,255,0.1)] rounded-lg px-4 py-4 text-white text-base focus:outline-none focus:border--tm-primary-color04 appearance-none cursor-pointer "
               style={{
                 backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239e9e9e' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
                 backgroundRepeat: "no-repeat",
@@ -753,7 +753,7 @@ export const Models = () => {
                   <div
                     className={`flex flex-col justify-center align-center gap-3  min-h-8 bg-tm-neutral-color08 px-3 py-4 lg:px-6 lg:py-8 rounded-b-xl overflow-clip  ${
                       isDropTarget
-                        ? "border-[#ff0f5f]"
+                        ? "border--tm-primary-color04"
                         : isNeeds
                           ? "border-[#b8860b]/40"
                           : "border-[rgba(255,255,255,0.05)]"
@@ -965,7 +965,7 @@ export const Models = () => {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
-          <h1 className="text-3xl leading-9 font-semibold text-white lg:w-full">
+          <h1 className="text-3xl leading-9 font-semibold text-white lg:w-auto">
             My Users
           </h1>
           <div className="flex items-center justify-between lg:justify-end lg:gap-4 w-full">
@@ -975,7 +975,7 @@ export const Models = () => {
             </p>
             <button
               onClick={() => setIsCreateUserModalOpen(true)}
-              className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-3 text-white text-sm font-bold leading-[1.4]  hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+              className="btn-primary-cta rounded-lg px-4 py-3 text-sm font-bold leading-[1.4]  active:scale-[0.98] transition-all"
             >
               + Create Chatter
             </button>
@@ -996,7 +996,7 @@ export const Models = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Name or email…"
-              className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.08)] rounded-lg px-3 py-3 text-sm text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
+              className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.08)] rounded-lg px-3 py-3 text-sm text-white focus:outline-none focus:border--tm-primary-color04 placeholder-[#555]"
             />
           </div>
 
@@ -1011,7 +1011,7 @@ export const Models = () => {
               id="am-users-type"
               value={selectedUserType}
               onChange={(e) => setSelectedUserType(e.target.value)}
-              className="bg-[#1c1c1e] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-3 text-white text-sm focus:outline-none focus:border-[#ff0f5f] appearance-none cursor-pointer pr-7"
+              className="bg-[#1c1c1e] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-3 text-white text-sm focus:outline-none focus:border--tm-primary-color04 appearance-none cursor-pointer pr-7"
               style={{
                 backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239e9e9e' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
                 backgroundRepeat: "no-repeat",
@@ -1148,12 +1148,12 @@ export const Models = () => {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
-          <h1 className="text-3xl leading-9 font-semibold text-white lg:w-full">
+          <h1 className="text-3xl leading-9 font-semibold text-white lg:w-auto">
             My Promoters
           </h1>
           <button
             onClick={() => handleOpenInviteModal("referral")}
-            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-2 text-white text-base font-bold leading-[1.4]  hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all 
+            className="btn-primary-cta rounded-lg px-4 py-2  text-base font-bold leading-[1.4]  active:scale-[0.98] transition-all 
 whitespace-nowrap"
           >
             + Create Referral Link
@@ -1189,12 +1189,12 @@ whitespace-nowrap"
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
-          <h1 className="text-3xl leading-9 font-semibold text-white lg:w-full">
+          <h1 className="text-3xl leading-9 font-semibold text-white lg:w-auto">
             My Team
           </h1>
           <button
             onClick={() => handleOpenInviteModal("referral")}
-            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-3 text-white text-sm font-bold leading-[1.4]  hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all"
+            className="btn-primary-cta rounded-lg px-4 py-3  text-sm font-bold leading-[1.4] active:scale-[0.98] transition-all"
           >
             + Create Referral Link
           </button>
@@ -1233,12 +1233,12 @@ whitespace-nowrap"
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
-          <h1 className="text-3xl leading-9 font-semibold text-white lg:w-full">
+          <h1 className="text-3xl leading-9 font-semibold text-white lg:w-auto">
             My Promoters
           </h1>
           <button
             onClick={() => handleOpenInviteModal("referral")}
-            className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-lg px-4 py-3 text-white text-base font-bold leading-[1.4]  hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all whitespace-nowrap"
+            className="btn-primary-cta rounded-lg px-4 py-3  text-base font-bold leading-[1.4] active:scale-[0.98] transition-all whitespace-nowrap"
           >
             + Create Referral Link
           </button>
@@ -1270,7 +1270,7 @@ whitespace-nowrap"
 
   return (
     <div className="flex flex-col items-start lg:flex-row lg:items-center justify-between gap-4">
-      <h1 className="text-3xl leading-9 font-semibold text-white lg:w-full">
+      <h1 className="text-3xl leading-9 font-semibold text-white lg:w-auto">
         Models
       </h1>
       <p className="text-[#9e9e9e] text-base">Access denied</p>
@@ -2447,7 +2447,7 @@ const PinkCta = ({
   <button
     onClick={onClick}
     disabled={disabled}
-    className="w-full bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-full px-8 py-3 text-white text-base font-bold hover:from-[#ff1f69] hover:to-[#d10050] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+    className="w-full btn-primary-cta rounded-full px-8 py-3  text-base font-bold  disabled:opacity-50 disabled:cursor-not-allowed transition-all"
   >
     {children}
   </button>
@@ -2753,7 +2753,7 @@ const ReassignModal = ({
           <select
             value={selectedId}
             onChange={(e) => setSelectedId(e.target.value)}
-            className="bg-[#0f0f0f] border border-[rgba(255,255,255,0.1)] rounded-md px-3 py-3 text-white text-sm focus:outline-none focus:border-[#ff0f5f]"
+            className="bg-[#0f0f0f] border border-[rgba(255,255,255,0.1)] rounded-md px-3 py-3 text-white text-sm focus:outline-none focus:border--tm-primary-color04"
           >
             <option value="" disabled>
               Select…
@@ -2777,7 +2777,7 @@ const ReassignModal = ({
         <button
           onClick={() => selectedId && onSubmit(selectedId)}
           disabled={busy || !selectedId}
-          className="px-4 py-2 rounded-md bg-linear-to-b from-[#ff0f5f] to-[#cc0047] text-white text-base font-bold hover:from-[#ff1f69] hover:to-[#d10050] disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 py-2 rounded-md btn-primary-cta  text-base font-bold  disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {busy ? "Reassigning…" : "Reassign"}
         </button>
@@ -2855,7 +2855,7 @@ const AssignChattersModal = ({
           <select
             value={selectedId}
             onChange={(e) => setSelectedId(e.target.value)}
-            className="bg-[#0f0f0f] border border-[rgba(255,255,255,0.1)] rounded-md px-3 py-3 text-white text-sm focus:outline-none focus:border-[#ff0f5f]"
+            className="bg-[#0f0f0f] border border-[rgba(255,255,255,0.1)] rounded-md px-3 py-3 text-white text-sm focus:outline-none focus:border--tm-primary-color04"
           >
             <option value="" disabled>
               Select…
@@ -2880,7 +2880,7 @@ const AssignChattersModal = ({
         <button
           onClick={() => selectedId && onSubmit(selectedId)}
           disabled={busy || !selectedId}
-          className="px-4 py-2 rounded-md bg-linear-to-b from-[#ff0f5f] to-[#cc0047] text-white text-base font-bold hover:from-[#ff1f69] hover:to-[#d10050] disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 py-2 rounded-md btn-primary-cta  text-base font-bold disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {busy ? "Assigning…" : "Assign"}
         </button>

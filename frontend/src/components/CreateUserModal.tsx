@@ -271,7 +271,7 @@ export const CreateUserModal = ({
                 </button>
                 <button
                   onClick={handleClose}
-                  className="flex-1 bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-sm px-[16px] py-[12px] text-white text-sm font-bold hover:from-[#ff1f69] hover:to-[#d10050] transition-all"
+                  className="flex-1 btn-primary-cta rounded-sm px-[16px] py-[12px]  text-sm font-bold transition-all"
                 >
                   Done
                 </button>
@@ -290,7 +290,7 @@ export const CreateUserModal = ({
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
                     autoComplete="off"
-                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[14px] py-[11px] text-base text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
+                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[14px] py-[11px] text-base text-white focus:outline-none focus:border--tm-primary-color04 placeholder-[#555]"
                   />
                 </div>
                 <div className="flex flex-col gap-[8px] flex-1">
@@ -302,7 +302,7 @@ export const CreateUserModal = ({
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
                     autoComplete="off"
-                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[14px] py-[11px] text-base text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
+                    className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[14px] py-[11px] text-base text-white focus:outline-none focus:border--tm-primary-color04 placeholder-[#555]"
                   />
                 </div>
               </div>
@@ -317,7 +317,7 @@ export const CreateUserModal = ({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   autoComplete="off"
-                  className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[14px] py-[11px] text-base text-white focus:outline-none focus:border-[#ff0f5f] placeholder-[#555]"
+                  className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[14px] py-[11px] text-base text-white focus:outline-none focus:border--tm-primary-color04 placeholder-[#555]"
                 />
                 <p className="text-[#9e9e9e] text-xs leading-[1.4]">
                   We'll send an invite email with a link for them to set their
@@ -340,7 +340,7 @@ export const CreateUserModal = ({
                         onClick={() => setUserType(value)}
                         className={`flex items-center justify-between rounded-sm px-[14px] py-[12px] border text-left transition-all ${
                           selected
-                            ? "bg-[#ff0f5f]/10 border-[#ff0f5f] "
+                            ? "bg--tm-primary-color04/10 border--tm-primary-color04 "
                             : "bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.2)]"
                         }`}
                       >
@@ -359,7 +359,7 @@ export const CreateUserModal = ({
                         <div
                           className={`w-[16px] h-[16px] rounded-full border-2 shrink-0 ${
                             selected
-                              ? "border-[#ff0f5f] bg-[#ff0f5f]"
+                              ? "border--tm-primary-color04 bg--tm-primary-color04"
                               : "border-[#555]"
                           }`}
                         />
@@ -396,7 +396,7 @@ export const CreateUserModal = ({
                       <select
                         value={campaignId}
                         onChange={(e) => setCampaignId(e.target.value)}
-                        className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[14px] py-[11px] text-base text-white focus:outline-none focus:border-[#ff0f5f]"
+                        className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[14px] py-[11px] text-base text-white focus:outline-none focus:border--tm-primary-color04"
                       >
                         <option value="">— Select a campaign —</option>
                         {amCampaigns.map((c) => (
@@ -449,7 +449,7 @@ export const CreateUserModal = ({
                   !email ||
                   (isAccountManager && !campaignId)
                 }
-                className="bg-linear-to-b from-[#ff0f5f] to-[#cc0047] rounded-sm px-[24px] py-[14px] text-white text-base font-bold leading-[1.4] hover:from-[#ff1f69] hover:to-[#d10050] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="btn-primary-cta rounded-sm px-[24px] py-[14px]  text-base font-bold leading-[1.4]  active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? "Creating..." : "Send Invite"}
               </button>

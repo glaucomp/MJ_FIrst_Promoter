@@ -74,7 +74,7 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
                     aria-current={isActive ? 'page' : undefined}
                     className={`flex items-center gap-[8px] h-[44px] rounded-sm p-[12px] transition-all ${
                       isActive
-                        ? 'bg-[#660022] border border-[#ff2a71]'
+                        ? 'bg-tm-primary-color12 border border-tm-primary-color06'
                         : 'hover:bg-[#292929]/50'
                     }`}
                   >
@@ -100,7 +100,7 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
                   title={item.label}
                   className={`flex items-center justify-center h-[40px] w-full px-[12px] py-[8px] rounded-sm transition-all ${
                     isActive
-                      ? 'bg-[#660022] border border-[#ff2a71]'
+                      ? 'bg-tm-primary-color12 border border-tm-primary-color06'
                       : 'hover:bg-[#292929]/50'
                   }`}
                 >
