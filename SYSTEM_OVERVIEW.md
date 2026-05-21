@@ -2,6 +2,11 @@
 
 This document explains the complete architecture and workflows based on your requirements.
 
+> **📚 Technical Documentation:** For detailed backend architecture, component integration, and data flow specifics, see:
+> - **[BACKEND_ARCHITECTURE.md](./BACKEND_ARCHITECTURE.md)** — System topology, controllers, middleware, services
+> - **[BACKEND_DATA_FLOW.md](./BACKEND_DATA_FLOW.md)** — Step-by-step workflows for registration, campaigns, commissions, payouts
+> - **[BACKEND_INTEGRATION_POINTS.md](./BACKEND_INTEGRATION_POINTS.md)** — Component dependencies, external integrations (TeaseMe, Wise, ElevenLabs), and known gaps
+
 ## 📐 System Architecture
 
 ### User Hierarchy

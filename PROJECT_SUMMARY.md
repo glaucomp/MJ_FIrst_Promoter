@@ -4,6 +4,11 @@
 
 I've created a **complete multi-level referral tracking and campaign management platform** based on your requirements and diagrams. This is a production-ready system similar to FirstPromoter.
 
+> **📚 Backend Architecture & Integration Documentation:**
+> - See **[BACKEND_ARCHITECTURE.md](./BACKEND_ARCHITECTURE.md)** for Express server topology, Prisma schema relationships, controller/service layer design, and middleware chain.
+> - See **[BACKEND_DATA_FLOW.md](./BACKEND_DATA_FLOW.md)** for detailed workflows: user registration → campaign creation → referral acceptance → commission calculation → payout via Wise.
+> - See **[BACKEND_INTEGRATION_POINTS.md](./BACKEND_INTEGRATION_POINTS.md)** for component dependencies, external integrations (TeaseMe pre-influencer onboarding, Wise payouts, ElevenLabs voice synthesis), and identified gaps/risks.
+
 ## ✨ Key Features Implemented
 
 ### 1. **User Role System**
@@ -25,41 +30,96 @@ I've created a **complete multi-level referral tracking and campaign management 
 - ✅ Original influencer earns on sub-referrals
 - ✅ Complete referral hierarchy tracking
 
-### 4. **URL Generation & Tracking**
+### 4. **Chatter (Voice/Content Creator) System**
+- ✅ Manage chatters — voice/content creators separate from promoters
+- ✅ ChatterGroups — assign chatters to custom groups with commission %
+- ✅ Multi-tier commissions — promoters + assigned chatters earn on sales
+- ✅ Per-group commission percentage configuration
+- ✅ Flexible chatter assignment to multiple groups
+
+### 5. **URL Generation & Tracking**
 - ✅ Personalized referral URLs with invite codes
 - ✅ Tracking links with click analytics
 - ✅ IP address and user agent tracking
 - ✅ Conversion tracking
+- ✅ Click source tracking (referrer, device info)
 
-### 5. **Commission System**
-- ✅ Automatic commission calculation
-- ✅ Multi-level commission distribution
-- ✅ Commission statuses (paid, unpaid, pending)
+### 6. **Advanced Commission System**
+- ✅ Automatic commission calculation on sales
+- ✅ Multi-level commission distribution (Level 1, 2, 3+)
+- ✅ Chatter group commissions (separate tier for voice/content creators)
+- ✅ Commission statuses (unpaid, pending, paid)
+- ✅ Commission types: 'promoter' vs 'chatter'
 - ✅ Earnings dashboard for influencers
+- ✅ Wise payout integration
 
-### 6. **Dashboards**
-- ✅ **Admin Dashboard**: Platform-wide analytics
-- ✅ **Account Manager Dashboard**: Campaign management & influencer invites
-- ✅ **Influencer Dashboard**: Referrals, earnings, tracking links
+### 7. **API Compatibility Modes**
+- ✅ v1 API — FirstPromoter-compatible legacy endpoints
+- ✅ v2 API — Extended FirstPromoter compatibility with Account-ID header
+- ✅ API Key authentication (distinct from JWT)
+- ✅ Multi-tenant support via Account-ID header
 
-### 7. **Security**
-- ✅ JWT authentication
-- ✅ Password hashing (bcrypt)
+### 8. **Role-Based Dashboards**
+- ✅ **Admin Dashboard**: Platform-wide analytics, user management
+- ✅ **Account Manager Dashboard**: Campaign management, influencer invites, chatter group management
+- ✅ **Influencer Dashboard**: Referrals, earnings, tracking links, commission history
+- ✅ **Chatter Dashboard**: Group assignments, earnings by group
+
+### 9. **Security & Authentication**
+- ✅ JWT authentication (7-day expiry)
+- ✅ Password hashing (bcrypt, 10 rounds)
 - ✅ Role-based access control
 - ✅ Protected API endpoints
+- ✅ API Key authentication for v1/v2 compatibility
+- ✅ HTTP-only secure cookies
+- ✅ Purpose-tagged JWT tokens (prevent cross-endpoint replay)
+
+## 🔗 External Integrations
+
+### FirstPromoter v1/v2 API Compatibility
+- **Purpose:** Provide API endpoints compatible with FirstPromoter for existing integrations
+- **Flow:** External system → API Key auth → v1/v2 routes → Business logic → Response in FirstPromoter format
+- **Details:** See [BACKEND_ARCHITECTURE.md § First Promoter v1 & v2 API Compatibility](./BACKEND_ARCHITECTURE.md#first-promoter-v1--v2-api-compatibility)
+
+### TeaseMe Integration (Pre-Influencer Onboarding)
+- **Purpose:** Onboard influencers from TeaseMe platform (Steps 1-3) into MJ First Promoter (Steps 4-5)
+- **Flow:** TeaseMe user invited → PreUser record tracks progress → Step 5 complete → Promotion webhook → User created with temp password
+- **Details:** See [BACKEND_DATA_FLOW.md § 6](./BACKEND_DATA_FLOW.md#6-teaseme-pre-influencer-onboarding-flow)
+
+### Wise Integration (Payout Management)
+- **Purpose:** Send commission payouts to promoters' Wise accounts
+- **Flow:** Promoter sets Wise recipient → Commission ready to pay → Create transfer via Wise API → Poll transfer status → Mark paid when complete
+- **Details:** See [BACKEND_DATA_FLOW.md § 5](./BACKEND_DATA_FLOW.md#5-payout-flow-wise-integration)
+
+### Conversion Webhook (Payment System)
+- **Purpose:** Track sales and calculate commissions (multi-level + chatter groups)
+- **Flow:** Customer purchases → Webhook received (eventId) → Transaction created → Commissions calculated (promoter + chatters) → Database updated
+- **Idempotency:** Protected via unique eventId
+- **Details:** See [BACKEND_DATA_FLOW.md § 4](./BACKEND_DATA_FLOW.md#4-conversion-sale--commission-calculation-flow) and [§ 8](./BACKEND_DATA_FLOW.md#8-chatter-commission-flow)
+
+### MJ Promoter Python Service (External Tracking)
+- **Purpose:** Sync signup events to external dashboard
+- **Flow:** User registers with refCode → Async call to /v2/track/signup → External system notified
+- **Note:** Fire-and-forget; failures logged but don't block registration
+
+### ElevenLabs Integration (Voice Synthesis)
+- **Status:** ⚠️ Incomplete — voiceId stored but not integrated. See [BACKEND_INTEGRATION_POINTS.md § ElevenLabs](./BACKEND_INTEGRATION_POINTS.md#elevenlabs-voice-synthesis)
 
 ## 📁 Project Structure
 
 ```
 MJ_FIrst_Promoter/
 ├── 📄 Documentation
-│   ├── README.md              # Complete project documentation
-│   ├── QUICKSTART.md          # 5-minute setup guide
-│   ├── SETUP.md               # Detailed setup instructions
-│   ├── API.md                 # API endpoint documentation
-│   ├── SYSTEM_OVERVIEW.md     # Architecture explanation
-│   ├── CHECKLIST.md           # Pre-launch checklist
-│   └── PROJECT_SUMMARY.md     # This file
+│   ├── README.md                          # Complete project documentation
+│   ├── QUICKSTART.md                      # 5-minute setup guide
+│   ├── SETUP.md                           # Detailed setup instructions
+│   ├── API.md                             # API endpoint documentation
+│   ├── SYSTEM_OVERVIEW.md                 # Architecture explanation
+│   ├── BACKEND_ARCHITECTURE.md            # [NEW] Server topology, controllers, middleware, services
+│   ├── BACKEND_DATA_FLOW.md               # [NEW] Step-by-step workflows for key operations
+│   ├── BACKEND_INTEGRATION_POINTS.md      # [NEW] Component dependencies & external integrations
+│   ├── CHECKLIST.md                       # Pre-launch checklist
+│   └── PROJECT_SUMMARY.md                 # This file
 │
 ├── 🗄️ Database
 │   └── prisma/

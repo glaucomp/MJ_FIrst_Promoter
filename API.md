@@ -2,11 +2,40 @@
 
 Complete API reference for the MJ First Promoter platform.
 
+> **📚 For Backend Implementation Details:** See [BACKEND_ARCHITECTURE.md](./BACKEND_ARCHITECTURE.md) for middleware stack, service layer, and controller responsibilities. See [BACKEND_DATA_FLOW.md](./BACKEND_DATA_FLOW.md) for step-by-step request/response flows. See [BACKEND_INTEGRATION_POINTS.md](./BACKEND_INTEGRATION_POINTS.md) for external integrations (TeaseMe, Wise, ElevenLabs) and known issues.
+
 ## Base URL
 
 ```
 http://localhost:5000/api
 ```
+
+## API Organization
+
+The API is organized into **two primary versions** plus domain-specific routes:
+
+### v1 API (FirstPromoter-compatible)
+- **Base:** `/api/v1`
+- **Purpose:** Backward-compatible FirstPromoter API for existing integrations
+- **Auth:** API Key validation via `X-Api-Key` header or Bearer token
+
+### v2 API (FirstPromoter-compatible)
+- **Base:** `/api/v2`
+- **Purpose:** Extended FirstPromoter API with additional features
+- **Auth:** API Key validation + Bearer token support
+- **Account ID:** Requires `Account-ID` header
+
+### Domain Routes (JWT-authenticated)
+- `/api/auth` — User authentication (register, login, password reset)
+- `/api/campaigns` — Campaign management
+- `/api/referrals` — Referral invites and tracking
+- `/api/commissions` — Commission tracking and payouts
+- `/api/users` — User management
+- `/api/wise` — Wise payout integration
+- `/api/webhooks` — Inbound webhook receivers
+
+### Public Routes (No auth)
+- `/api/public` — Public endpoints (e.g., campaign info without login)
 
 ## Authentication
 
@@ -735,13 +764,248 @@ Get top performing users (superuser and account managers).
 
 Currently no rate limiting is implemented. For production, consider adding rate limiting middleware.
 
+---
+
+## Chatter Endpoints
+
+### Create Chatter Group
+
+Create a group of chatters (voice/content creators).
+
+**Endpoint:** `POST /api/chatter-groups`
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Body:**
+```json
+{
+  "name": "Voice Talent Pool",
+  "commissionPercentage": 10.0
+}
+```
+
+**Response:**
+```json
+{
+  "group": {
+    "id": "clx...",
+    "name": "Voice Talent Pool",
+    "commissionPercentage": 10.0,
+    "createdAt": "2026-03-09T..."
+  }
+}
+```
+
+### Add Chatter to Group
+
+Assign a chatter to a group.
+
+**Endpoint:** `POST /api/chatter-groups/:groupId/members`
+
+**Body:**
+```json
+{
+  "chatterId": "clx..."
+}
+```
+
+### List Chatters
+
+Get all chatters (admin/AM only).
+
+**Endpoint:** `GET /api/chatters`
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Response:**
+```json
+{
+  "chatters": [
+    {
+      "id": "clx...",
+      "email": "chatter@example.com",
+      "firstName": "Voice",
+      "lastName": "Actor",
+      "userType": "CHATTER",
+      "groups": [
+        {
+          "id": "clx...",
+          "name": "Voice Talent Pool",
+          "commissionPercentage": 10.0
+        }
+      ]
+    }
+  ]
+}
+```
+
+---
+
+## Customer Endpoints
+
+### Get All Customers
+
+Get all end-customers who made purchases (admin only).
+
+**Endpoint:** `GET /api/customers`
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Response:**
+```json
+{
+  "customers": [
+    {
+      "id": "clx...",
+      "email": "customer@example.com",
+      "name": "John Doe",
+      "revenue": 250.00,
+      "status": "active",
+      "subscriptionType": "monthly",
+      "campaign": {
+        "id": "clx...",
+        "name": "Launch Campaign 2026"
+      },
+      "referral": {
+        "id": "clx...",
+        "level": 1,
+        "referrer": {
+          "firstName": "Sophie",
+          "lastName": "Manager"
+        }
+      },
+      "createdAt": "2026-03-09T..."
+    }
+  ]
+}
+```
+
+### Get Customer by ID
+
+Get details for a specific customer.
+
+**Endpoint:** `GET /api/customers/:id`
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Response:**
+```json
+{
+  "customer": {
+    "id": "clx...",
+    "email": "customer@example.com",
+    "name": "John Doe",
+    "revenue": 250.00,
+    "status": "active",
+    "transactions": [
+      {
+        "id": "clx...",
+        "type": "sale",
+        "saleAmount": 250.00,
+        "createdAt": "2026-03-09T..."
+      }
+    ]
+  }
+}
+```
+
+---
+
+## Transaction Endpoints
+
+### Get All Transactions
+
+Get all sales/refund events (admin only).
+
+**Endpoint:** `GET /api/transactions`
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Query Parameters:**
+- `campaignId` — Filter by campaign
+- `customerId` — Filter by customer
+- `type` — Filter by type (sale/refund)
+
+**Response:**
+```json
+{
+  "transactions": [
+    {
+      "id": "clx...",
+      "eventId": "evt_12345",
+      "type": "sale",
+      "saleAmount": 100.00,
+      "currency": "USD",
+      "customer": {
+        "id": "clx...",
+        "email": "customer@example.com"
+      },
+      "campaign": {
+        "name": "Launch Campaign 2026"
+      },
+      "commissionsCreated": 2,
+      "createdAt": "2026-03-09T..."
+    }
+  ]
+}
+```
+
+---
+
 ## Pagination
 
 Currently not implemented. All list endpoints return all results. For production with large datasets, implement pagination.
 
 ## Webhooks
 
-Not currently implemented. Future feature for notifying external systems of events (new referral, commission paid, etc.).
+### Conversion Webhook
+
+Receive sales/refund events from payment system and create commissions.
+
+**Endpoint:** `POST /api/webhooks/conversions`
+
+**Body:**
+```json
+{
+  "eventId": "evt_12345",
+  "type": "sale",
+  "customerId": "cust_jane",
+  "email": "jane@example.com",
+  "saleAmount": 100.00,
+  "currency": "USD",
+  "campaignId": "clx...",
+  "plan": "monthly"
+}
+```
+
+**Response:**
+```json
+{
+  "transaction": {
+    "id": "clx...",
+    "eventId": "evt_12345"
+  },
+  "commissionsCreated": 3
+}
+```
+
+### TeaseMe Webhook
+
+Receive pre-influencer lifecycle updates from TeaseMe.
+
+**Endpoint:** `POST /api/webhooks/teaseme`
+
+**Body:**
+```json
+{
+  "teasemeUserId": "tm_xyz",
+  "email": "influencer@example.com",
+  "currentStep": 2,
+  "status": "building",
+  "surveyLink": "https://teaseme.com/survey/...",
+  "assetLink": null
+}
+```
 
 ---
 
