@@ -105,7 +105,7 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
                   }`}
                 >
                   <div style={{ color: iconColor }} className="flex items-center justify-center">
-                      <item.Icon width={18} height={18} aria-hidden="true" focusable="false" />
+                      <item.Icon width={18} height={18} aria-hidden="true" focusable="false" className='icon-fade'/>
                   </div>
                 </button>
               );

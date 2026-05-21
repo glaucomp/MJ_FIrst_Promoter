@@ -1165,7 +1165,7 @@ export const Models = () => {
           </div>
         ) : null}
 
-        <p className="text-sm text-tm-text-color08">
+        <p className="text-base text-tm-text-color08">
           {myReferrals.length} total referrals
         </p>
 
@@ -1980,7 +1980,7 @@ const ReferralList = ({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 items-center gap-2 flex-wrap">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 items-center gap-2 flex-wrap border-t-1 border-b-1 border-tm-neutral-color01 py-4 mb-6">
         {filterOptions.map((opt) => {
           const isSelected = filter === opt.id;
           return (
@@ -2087,7 +2087,7 @@ const ReferralList = ({
           return (
             <div
               key={referral.id}
-              className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-lg p-4 shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-4"
+              className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-3xl lg:rounded-2xl p-5 shadow-[1px_-2px_0px_-1px_rgba(255,255,255,0.3),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-4"
             >
               {/* Header: chip on the left, LEVEL N on the right */}
               <div className="flex flex-row items-center justify-between">

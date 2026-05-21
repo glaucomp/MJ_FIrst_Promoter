@@ -312,7 +312,7 @@ const CreateChatterPanel = ({ onChatterCreated, onChatterUpdated, onChatterDelet
   };
 
   return (
-    <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-lg p-5 flex flex-col gap-3 mb-6">
+    <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-3xl lg:rounded-lg p-5 flex flex-col gap-3 mb-6">
       <p className="text-tm-text-color08 text-xs font-bold uppercase">Create New Chatter</p>
 
       {success && (
@@ -392,16 +392,16 @@ const CreateChatterPanel = ({ onChatterCreated, onChatterUpdated, onChatterDelet
                   </div>
                   <div className="flex flex-col min-w-0 w-full">
                     <span className="text-white text-sm font-medium leading-tight">{name}</span>
-                    <span className="text-[#666] text-xs truncate lg:max-w-[140px] w-full">{c.email}</span>
+                    <span className="text-tm-text-color08 text-xs truncate lg:max-w-[140px] w-full">{c.email}</span>
                   </div>
 
                   {/* Action buttons — always visible on mobile, fade in on hover for desktop */}
-                  <div className="flex items-center gap-1 ml-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity mt-3">
+                  <div className="flex items-center gap-1 ml-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity mt-3 border rounded-4xl lg:border-0 lg:rounded-none px-3 py-2 border-tm-neutral-color02">
                     {/* Edit */}
                     <button
                       onClick={() => setEditingChatter(c)}
                       title="Edit chatter"
-                      className="w-8 h-8 lg:w-6 lg:h-6 p-1 flex items-center justify-center rounded-md text-tm-text-color08 hover:text-white hover:bg-[#2a2a2e] transition-colors"
+                      className="w-7 h-7 lg:w-6 lg:h-6 p-1 flex items-center justify-center rounded-md text-tm-text-color10 hover:text-white hover:bg-[#2a2a2e] transition-colors"
                     >
                       <svg width="100%" height="100%" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M11.5 2.5a2.121 2.121 0 0 1 3 3L5 15H1v-4L11.5 2.5z"/>
@@ -412,7 +412,7 @@ const CreateChatterPanel = ({ onChatterCreated, onChatterUpdated, onChatterDelet
                       onClick={() => handleResendInvite(c)}
                       disabled={isResending}
                       title="Resend welcome email"
-                      className="w-8 h-8 lg:w-6 lg:h-6 p-1 flex items-center justify-center rounded-md text-tm-text-color08 hover:text-white hover:bg-[#2a2a2e] transition-colors disabled:opacity-40"
+                      className="w-7 h-7 lg:w-6 lg:h-6 p-1 flex items-center justify-center rounded-md text-tm-text-color10 hover:text-white hover:bg-[#2a2a2e] transition-colors disabled:opacity-40"
                     >
                       {isResending
                         ? <svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
@@ -443,7 +443,7 @@ const CreateChatterPanel = ({ onChatterCreated, onChatterUpdated, onChatterDelet
                       <button
                         onClick={() => setConfirmDeleteChatterId(c.id)}
                         title="Delete chatter"
-                        className="w-8 h-8 lg:w-6 lg:h-6 p-1 flex items-center justify-center rounded-md text-tm-text-color08 hover:text-red-400 hover:bg-[#2a2a2e] transition-colors"
+                        className="w-7 h-7 lg:w-6 lg:h-6 p-1 flex items-center justify-center rounded-md text-tm-text-color10 hover:text-red-400 hover:bg-[#2a2a2e] transition-colors"
                       >
                         <svg width="100%" height="100%" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M2 4h12M5 4V2h6v2M6 7v5M10 7v5M3 4l1 9a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-9"/>
@@ -640,7 +640,7 @@ const LinkPromoterModal = ({ isOpen, onClose, group, allPromoters, onGroupUpdate
           <button onClick={handleClose} className="text-tm-text-color08 hover:text-white text-xl leading-none">×</button>
         </div>
 
-        <p className="text-tm-text-color08 text-sm">
+        <p className="text-tm-text-color08 text-base">
           A promoter linked to this group will trigger chatter commissions on every sale they generate.
           One promoter can only be linked to one group at a time.
         </p>
@@ -959,7 +959,7 @@ export const ChatterGroups = () => {
           <p className="text-tm-text-color08 text-sm lg:text-base mt-1">
             {groups.length} group{groups.length !== 1 ? 's' : ''} — commissions split equally among group members
           </p>
-          <div className="grid grid-cols-2 items-center gap-3 w-full lg:col-start-2 lg:self-end lg:max-w-lg">
+          <div className="grid grid-cols-2 items-center gap-3 w-full lg:col-start-2 lg:self-end lg:max-w-lg lg:border-0 border-t-1 border-b-1 border-tm-neutral-color01 py-4 mb-6">
             {/* Sort dropdown */}
             <div className="flex items-start gap-2 flex-col w-full">
               <label htmlFor="chatter-groups-sort-by" className="text-tm-text-color08 text-sm">
@@ -999,7 +999,7 @@ export const ChatterGroups = () => {
                 else groupRefs.current.delete(group.id);
               }}
               className={[
-                "bg-[#1a1a1c] border rounded-2xl flex flex-col overflow-hidden transition-all duration-500",
+                "bg-[#1a1a1c] border rounded-3xl lg:rounded-2xl flex flex-col overflow-hidden transition-all duration-500",
                 group.id === focusGroupId
                   ? "border-[#ff0f5f] shadow-[0_0_0_2px_rgba(255,15,95,0.25)]"
                   : "border-[rgba(255,255,255,0.07)]",
@@ -1095,13 +1095,13 @@ export const ChatterGroups = () => {
                     {canManage && (
                       <button
                         onClick={() => setExpandedMembersId(prev => prev === group.id ? null : group.id)}
-                        className="bg-tm-neutral-color05 px-4 py-2 text-tm-text-color08 hover:text-tm-text-color10 text-base transition-colors rounded-lg mb-2"
+                        className="bg-tm-neutral-color05 px-4 py-2 text-tm-text-color03 hover:text-tm-text-color10 text-base transition-colors rounded-lg mb-2"
                       >
                         {expandedMembersId === group.id
-                          ? 'Done'
+                          ? 'Done ✔️'
                           : group.members.length === 0
                             ? '+ Add Chatters'
-                            : 'Manage Chatters'}
+                            : '◐ Manage Chatters +'}
                       </button>
                     )}
                   </div>

@@ -356,21 +356,7 @@ body {
   min-height: var(--button-xl);
 }
 
-
-/* .btn-primary-cta {    background: linear-gradient(18deg, var(--color-tm-primary-color02) 2%, var(--color-tm-primary-color06) 12%, var(--color-tm-primary-color11) 40%, var(--color-tm-primary-color11) 60%, var(--color-tm-primary-color07) 90%);
-    border: 1px solid var(--color-tm-primary-color04);
-    overflow: hidden;
-    background-clip: padding-box;
-    color: contrast-color(var(--color-tm-primary-color10));
-    box-shadow: inset -4px 6px 0px -5.4px var(--color-tm-primary-color01), inset -3px 7px 4px -3.5px var(--color-tm-primary-color03);
-  
-    &:hover {background: linear-gradient(18deg, var(--color-tm-primary-color02) 8%, var(--color-tm-primary-color06) 16%, var(--color-tm-primary-color11) 40%, var(--color-tm-primary-color11) 60%, var(--color-tm-primary-color07) 90%);
-    border: 1px solid var(--color-tm-primary-color04);}
-  
-  } */
-
-
-  /* Register custom properties for gradient stops */
+/* Register custom properties for gradient stops */
 @property --grad-stop-1 {
   syntax: '<percentage>';
   initial-value: 2%;
@@ -430,6 +416,9 @@ color: contrast-color(var(--color-tm-primary-color10));
   border-bottom: 2px solid var(--color-tm-primary-color10);
   box-shadow:0px 2px 4px 0 var(--color-tm-neutral-color10), 0px 6px 10px 0 var(--color-tm-neutral-color11), inset -4px 6px 0px -6px var(--color-tm-primary-color01), inset -3px 7px 4px -7px var(--color-tm-primary-color03);
 }
+
+/* navbar*/ 
+.icon-fade {mask-image: linear-gradient(180deg,black 30%, rgba(0,0,0,0.4) 80%);}
 
 /* inputs */
 .inputMJ {
