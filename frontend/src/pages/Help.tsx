@@ -290,6 +290,7 @@ const AdminPanel = () => {
 
   const load = useCallback(() => {
     setLoading(true);
+    setError('');
     helpApi
       .adminListVideos()
       .then(setRecords)
