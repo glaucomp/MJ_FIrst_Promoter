@@ -66,11 +66,6 @@ const dangerBtn: CSSProperties = {
   cursor: 'pointer',
 };
 
-const USER_TYPE_LABELS: Record<string, string> = {
-  ACCOUNT_MANAGER: 'Account Manager',
-  CHATTER: 'Chatter',
-};
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Video Card (viewer)
 // ─────────────────────────────────────────────────────────────────────────────
