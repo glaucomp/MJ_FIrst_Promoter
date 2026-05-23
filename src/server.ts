@@ -17,6 +17,7 @@ import publicRoutes from "./routes/public.routes";
 import referralRoutes from "./routes/referral.routes";
 import userRoutes from "./routes/user.routes";
 import elevenLabsRoutes from "./routes/elevenlabs.routes";
+import helpRoutes from "./routes/help.routes";
 import webhookRoutes from "./routes/webhook.routes";
 
 dotenv.config();
@@ -90,6 +91,7 @@ app.use("/api/customers", customerRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/wise", wiseRoutes);
 app.use("/api/elevenlabs", elevenLabsRoutes);
+app.use("/api/help-videos", helpRoutes);
 
 // FirstPromoter-compatible API routes
 app.use("/api/v1", apiV1Routes);

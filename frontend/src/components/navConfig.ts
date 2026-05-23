@@ -3,6 +3,7 @@ import type { UserRole } from "../types";
 import {
   IconCampaign,
   IconChatterGroups,
+  IconHelp,
   IconModels,
   IconNetwork,
   IconPayout,
@@ -91,6 +92,13 @@ export const navItems: NavItem[] = [
     allowedRoles: ["admin", "payer"],
   },
   {
+    id: "help",
+    Icon: IconHelp,
+    label: "Help",
+    path: "/help",
+    allowedRoles: ["admin", "account_manager", "chatter"],
+  },
+  {
     id: "settings",
     Icon: IconSettings,
     label: "Settings",
@@ -108,17 +116,18 @@ export const navItems: NavItem[] = [
 
 /** Ordered list of nav item IDs per role — determines display order in the menu. */
 export const navOrderByRole: Partial<Record<UserRole, string[]>> = {
-  admin: ["users", "campaigns", "reports", "payouts", "settings"],
+  admin: ["users", "campaigns", "reports", "payouts", "help", "settings"],
   account_manager: [
     "referrals",
     "chatter-groups",
     "reports",
     "network",
+    "help",
     "settings",
   ],
   team_manager: ["referrals", "reports", "settings"],
   promoter: ["reports", "referrals", "settings"],
-  chatter: ["chatter-portal", "settings"],
+  chatter: ["chatter-portal", "help", "settings"],
   payer: ["reports", "payouts", "settings"],
 };
 
