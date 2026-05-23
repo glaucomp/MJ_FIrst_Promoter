@@ -293,7 +293,10 @@ const AdminPanel = () => {
     setError('');
     helpApi
       .adminListVideos()
-      .then(setRecords)
+      .then((data) => {
+        setRecords(data);
+        setError('');
+      })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Failed to load'))
       .finally(() => setLoading(false));
   }, []);

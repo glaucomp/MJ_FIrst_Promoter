@@ -2,22 +2,32 @@ import { Response } from 'express';
 import { PrismaClient, UserType, UserRole } from '@prisma/client';
 import { AuthRequest } from '../middleware/auth.middleware';
 // Help videos live in the public S3 bucket.
-// TEASEME_S3_BUCKET_PUBLIC_URL accepts either a bare bucket name or full S3 URL.
-const rawHelpBucket =
-  process.env.TEASEME_S3_BUCKET_PUBLIC_URL?.trim() || 'bucket-image-tease-me';
-const helpBucketUrlMatch =
-  /^https?:\/\/([^.]+)\.s3\.[^.]+\.amazonaws\.com/i.exec(rawHelpBucket);
-const helpBucket = helpBucketUrlMatch?.[1] ?? rawHelpBucket;
-const HELP_VIDEO_BASE = helpBucketUrlMatch
-  ? rawHelpBucket.replace(/\/+$/, '')
-  : `https://${helpBucket}.s3.amazonaws.com`;
+// TEASEME_S3_BUCKET_PUBLIC_URL may be either a bucket name or a full public base URL.
+const helpBucketConfig = process.env.TEASEME_S3_BUCKET_PUBLIC_URL || 'bucket-image-tease-me';
+const HELP_VIDEO_BASE = /^https?:\/\//i.test(helpBucketConfig)
+  ? helpBucketConfig.replace(/\/+$/, '')
+  : `https://${helpBucketConfig}.s3.amazonaws.com`;
+const HELP_BUCKET_NAME = (() => {
+  if (!/^https?:\/\//i.test(helpBucketConfig)) {
+    return helpBucketConfig;
+  }
+  try {
+    const host = new URL(helpBucketConfig).hostname;
+    const firstLabel = host.split('.')[0];
+    return firstLabel || helpBucketConfig;
+  } catch {
+    return helpBucketConfig;
+  }
+})();
 
 // Strips any accidental leading "/" or "bucket-name/" prefix stored in the DB.
 const buildVideoUrl = (s3Key: string): string => {
   let clean = s3Key.replace(/^\/+/, '');
-  const bucketPrefix = `${helpBucket}/`;
-  if (clean.startsWith(bucketPrefix)) {
-    clean = clean.slice(bucketPrefix.length);
+  if (clean.startsWith(`${HELP_VIDEO_BASE}/`)) {
+    clean = clean.slice(HELP_VIDEO_BASE.length + 1);
+  }
+  if (clean.startsWith(`${HELP_BUCKET_NAME}/`)) {
+    clean = clean.slice(HELP_BUCKET_NAME.length + 1);
   }
   return `${HELP_VIDEO_BASE}/${clean}`;
 };
@@ -46,7 +56,7 @@ export const getHelpVideos = async (req: AuthRequest, res: Response) => {
     return res.status(403).json({ error: 'Access denied' });
   }
 
-  // Admins see active videos for all user types; AM and chatters see their own.
+  // Admins see active videos for both user types; AM and chatters see their own active videos
   const whereClause = isAdmin(req)
     ? { isActive: true }
     : { userType, isActive: true };
@@ -145,10 +155,10 @@ export const adminUpdateVideo = async (req: AuthRequest, res: Response) => {
     return res.status(400).json({ error: 'userType must be ACCOUNT_MANAGER or CHATTER' });
   }
   if (title !== undefined && !title.trim()) {
-    return res.status(400).json({ error: 'title is required' });
+    return res.status(400).json({ error: 'title cannot be empty' });
   }
   if (s3Key !== undefined && !s3Key.trim()) {
-    return res.status(400).json({ error: 's3Key is required' });
+    return res.status(400).json({ error: 's3Key cannot be empty' });
   }
 
   const existing = await prisma.helpVideo.findUnique({ where: { id } });
