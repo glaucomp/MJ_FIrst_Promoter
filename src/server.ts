@@ -2,6 +2,7 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
+import { getAppVersion } from "./lib/version";
 import apiV1Routes from "./routes/api.v1.routes";
 import apiV2Routes from "./routes/api.v2.routes";
 import authRoutes from "./routes/auth.routes";
@@ -69,7 +70,11 @@ app.use(express.urlencoded({ extended: true }));
 
 // Health check
 app.get("/health", (req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
+  res.json({
+    status: "ok",
+    version: getAppVersion(),
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // Public routes (no authentication)
@@ -117,6 +122,7 @@ app.use(
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
+  console.log(`📦 App version: ${getAppVersion()}`);
   console.log(`🔧 Environment: ${process.env.NODE_ENV || "development"}`);
   console.log(`🛍️ Customers API: http://localhost:${PORT}/api/customers`);
 });
