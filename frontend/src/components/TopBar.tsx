@@ -88,7 +88,7 @@ export const TopBar = () => {
             <button
               type="button"
               onClick={() => navigate('/settings')}
-              className="flex items-center gap-4 min-w-0 max-w-[240px] rounded-sm px-4 py-[6px] hover:bg-[#292929]/50 transition-all text-left"
+              className="flex items-center gap-4 min-w-0 rounded-sm px-4 py-[6px] hover:bg-[#292929]/50 transition-all text-left"
               aria-label="Open account settings"
             >
               <span
@@ -107,7 +107,9 @@ export const TopBar = () => {
                   {user.role === user.baseRole
                     ? roleLabel[user.baseRole]
                     : `${roleLabel[user.role]} · ${roleLabel[user.baseRole]}`}
-                  <span className="text-white/30 font-mono font-normal"> · v{APP_VERSION}</span>
+                </span>
+                <span className="hidden lg:block text-[10px] font-mono text-white/30 leading-tight whitespace-nowrap">
+                  v{APP_VERSION}
                 </span>
               </span>
             </button>
