@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { authenticate } from '../middleware/auth.middleware';
+import { authenticate, authorize } from '../middleware/auth.middleware';
+import { UserRole } from '@prisma/client';
 import {
   getHelpVideos,
   adminListVideos,
@@ -14,9 +15,9 @@ const router = Router();
 router.get('/', authenticate, getHelpVideos);
 
 // Admin management
-router.get('/admin', authenticate, adminListVideos);
-router.post('/admin', authenticate, adminCreateVideo);
-router.put('/admin/:id', authenticate, adminUpdateVideo);
-router.delete('/admin/:id', authenticate, adminDeleteVideo);
+router.get('/admin', authenticate, authorize(UserRole.ADMIN), adminListVideos);
+router.post('/admin', authenticate, authorize(UserRole.ADMIN), adminCreateVideo);
+router.put('/admin/:id', authenticate, authorize(UserRole.ADMIN), adminUpdateVideo);
+router.delete('/admin/:id', authenticate, authorize(UserRole.ADMIN), adminDeleteVideo);
 
 export default router;

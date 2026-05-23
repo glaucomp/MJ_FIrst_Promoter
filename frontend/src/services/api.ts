@@ -1300,10 +1300,7 @@ export interface HelpVideoRecord {
 export const helpApi = {
   async getHelpVideos(): Promise<HelpVideo[]> {
     const response = await apiFetch(`${API_URL}/help-videos`);
-    if (!response.ok) {
-      throw new Error('Failed to load help videos');
-    }
-    return response.json();
+    return handleResponse(response, 'Failed to load help videos');
   },
 
   async adminListVideos(): Promise<HelpVideoRecord[]> {
