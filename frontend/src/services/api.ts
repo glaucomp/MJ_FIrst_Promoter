@@ -1273,3 +1273,85 @@ export const mockApi = {
     },
   ],
 };
+
+export interface HelpVideo {
+  id: string;
+  title: string;
+  description: string;
+  url: string;
+  userType: 'ACCOUNT_MANAGER' | 'CHATTER';
+  sortOrder: number;
+  isActive: boolean;
+  s3Key: string;
+}
+
+export interface HelpVideoRecord {
+  id: string;
+  title: string;
+  description: string | null;
+  s3Key: string;
+  userType: 'ACCOUNT_MANAGER' | 'CHATTER';
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const helpApi = {
+  async getHelpVideos(): Promise<HelpVideo[]> {
+    const response = await apiFetch(`${API_URL}/help-videos`);
+    if (!response.ok) {
+      throw new Error('Failed to load help videos');
+    }
+    return response.json();
+  },
+
+  async adminListVideos(): Promise<HelpVideoRecord[]> {
+    const response = await apiFetch(`${API_URL}/help-videos/admin`, {
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response, 'Failed to list help videos');
+  },
+
+  async adminCreateVideo(data: {
+    title: string;
+    description?: string;
+    s3Key: string;
+    userType: 'ACCOUNT_MANAGER' | 'CHATTER';
+    sortOrder?: number;
+  }): Promise<HelpVideoRecord> {
+    const response = await apiFetch(`${API_URL}/help-videos/admin`, {
+      method: 'POST',
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    return handleResponse(response, 'Failed to create help video');
+  },
+
+  async adminUpdateVideo(
+    id: string,
+    data: Partial<{
+      title: string;
+      description: string;
+      s3Key: string;
+      userType: 'ACCOUNT_MANAGER' | 'CHATTER';
+      sortOrder: number;
+      isActive: boolean;
+    }>,
+  ): Promise<HelpVideoRecord> {
+    const response = await apiFetch(`${API_URL}/help-videos/admin/${id}`, {
+      method: 'PUT',
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    return handleResponse(response, 'Failed to update help video');
+  },
+
+  async adminDeleteVideo(id: string): Promise<{ message: string }> {
+    const response = await apiFetch(`${API_URL}/help-videos/admin/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response, 'Failed to delete help video');
+  },
+};

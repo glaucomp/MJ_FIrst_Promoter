@@ -441,6 +441,22 @@ model SocialLink {
   @@map("social_links")
 }
 
+// Help videos shown to specific user types (managed by admins)
+model HelpVideo {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  s3Key       String    // S3 object key in the TeaseMe bucket
+  userType    UserType  // ACCOUNT_MANAGER or CHATTER
+  sortOrder   Int       @default(0)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userType, isActive])
+  @@map("help_videos")
+}
+
 // Junction table: many-to-many between chatters and chatter groups
 model ChatterGroupMember {
   id         String       @id @default(cuid())

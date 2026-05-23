@@ -19,6 +19,7 @@ const ChatterDashboard = lazy(() =>
 const ChatterGroupToolsPage = lazy(() =>
   import('./pages/ChatterGroupToolsPage').then((m) => ({ default: m.ChatterGroupToolsPage })),
 );
+const Help = lazy(() => import('./pages/Help').then((m) => ({ default: m.Help })));
 const Login = lazy(() => import('./pages/Login').then((m) => ({ default: m.Login })));
 const SetPassword = lazy(() => import('./pages/SetPassword').then((m) => ({ default: m.SetPassword })));
 const FirstPasswordChange = lazy(() =>
@@ -188,6 +189,16 @@ function AppRoutes() {
           <ProtectedRoute>
             <DashboardLayout>
               <Reports />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/help"
+        element={
+          <ProtectedRoute allowedRoles={['admin', 'account_manager', 'chatter']}>
+            <DashboardLayout>
+              <Help />
             </DashboardLayout>
           </ProtectedRoute>
         }
