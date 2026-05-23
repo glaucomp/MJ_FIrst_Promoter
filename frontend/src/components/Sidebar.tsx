@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import mjLogo from '../assets/mjpromoFavicon.svg';
 import { IconLogout } from './NavIcons';
+import { APP_VERSION } from '../lib/appVersion';
 import { getNavForRole } from './navConfig';
 
 interface SidebarProps {
@@ -131,6 +132,14 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
               </span>
             )}
           </button>
+
+          <p
+            className={`font-mono text-white/30 leading-none ${
+              isOpen ? 'text-xs text-left px-[12px] pt-1' : 'text-[10px] text-center pt-2'
+            }`}
+          >
+            v{APP_VERSION}
+          </p>
         </div>
       </div>
 
