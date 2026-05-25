@@ -138,21 +138,18 @@ export const Models = () => {
   // Targeted background refresh for a single referral card.
   // Called by ReferralStepStream on every SSE step-change event.
   // Does NOT set isLoading so the page never flashes.
-  const silentRefreshReferral = useCallback(
-    async (referralId: string) => {
-      try {
-        const referrals = await modelsApi.getMyReferrals();
-        const updated = referrals.find((r) => r.id === referralId);
-        if (!updated) return;
-        setMyReferrals((prev) =>
-          prev.map((r) => (r.id === referralId ? updated : r)),
-        );
-      } catch {
-        // silent — don't surface errors for background refreshes
-      }
-    },
-    [],
-  );
+  const silentRefreshReferral = useCallback(async (referralId: string) => {
+    try {
+      const referrals = await modelsApi.getMyReferrals();
+      const updated = referrals.find((r) => r.id === referralId);
+      if (!updated) return;
+      setMyReferrals((prev) =>
+        prev.map((r) => (r.id === referralId ? updated : r)),
+      );
+    } catch {
+      // silent — don't surface errors for background refreshes
+    }
+  }, []);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -994,7 +991,7 @@ export const Models = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Name or email…"
-              className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.08)] rounded-lg px-3 py-3 text-base text-white focus:outline-none focus:border--tm-primary-color04 placeholder-[#555]"
+              className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.08)] rounded-lg px-3 py-3 text-base text-white focus:outline-none focus:border-tm-primary-color04 placeholder-[#555]"
             />
           </div>
 
@@ -1169,7 +1166,12 @@ export const Models = () => {
           {myReferrals.length} total referrals
         </p>
 
-        <ReferralList referrals={myReferrals} setReferrals={setMyReferrals} onRefetch={loadData} onSilentRefetch={silentRefreshReferral} />
+        <ReferralList
+          referrals={myReferrals}
+          setReferrals={setMyReferrals}
+          onRefetch={loadData}
+          onSilentRefetch={silentRefreshReferral}
+        />
 
         <InviteModal
           isOpen={isInviteModalOpen}
@@ -1209,7 +1211,12 @@ export const Models = () => {
           {myReferrals.length} total referrals
         </p>
 
-        <ReferralList referrals={myReferrals} setReferrals={setMyReferrals} onRefetch={loadData} onSilentRefetch={silentRefreshReferral} />
+        <ReferralList
+          referrals={myReferrals}
+          setReferrals={setMyReferrals}
+          onRefetch={loadData}
+          onSilentRefetch={silentRefreshReferral}
+        />
 
         <InviteModal
           isOpen={isInviteModalOpen}
@@ -1253,7 +1260,12 @@ export const Models = () => {
           {myReferrals.length} total referrals
         </p>
 
-        <ReferralList referrals={myReferrals} setReferrals={setMyReferrals} onRefetch={loadData} onSilentRefetch={silentRefreshReferral} />
+        <ReferralList
+          referrals={myReferrals}
+          setReferrals={setMyReferrals}
+          onRefetch={loadData}
+          onSilentRefetch={silentRefreshReferral}
+        />
 
         <InviteModal
           isOpen={isInviteModalOpen}
@@ -1914,7 +1926,6 @@ const ReferralList = ({
     }
   };
 
-
   // Manual welcome-email dispatch for LP Live cards. The button label is
   // derived from `preUser.welcomeEmailSentAt` (Send vs Resend), and after
   // a successful round-trip we splice the new timestamp into the local
@@ -1980,7 +1991,7 @@ const ReferralList = ({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 items-center gap-2 flex-wrap border-t-1 border-b-1 border-tm-neutral-color01 py-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 items-center gap-2 flex-wrap border-t border-b border-tm-neutral-color01 py-4 mb-6">
         {filterOptions.map((opt) => {
           const isSelected = filter === opt.id;
           return (
@@ -2604,7 +2615,10 @@ const CardActions = ({
       )}
       {canAssignChatters ? (
         referral.referredUser?.chatterGroupId ? (
-          <SecondaryButton onClick={() => onAssignChatters(referral)} disabled={busy}>
+          <SecondaryButton
+            onClick={() => onAssignChatters(referral)}
+            disabled={busy}
+          >
             {busy ? "Loading…" : "Manage Chatters"}
           </SecondaryButton>
         ) : (
@@ -2647,7 +2661,9 @@ const ModalShell = ({
         <div className="flex flex-col gap-1 min-w-0">
           <h3 className="text-white text-base font-bold">{title}</h3>
           {subtitle ? (
-            <p className="text-tm-text-color08 text-base truncate">{subtitle}</p>
+            <p className="text-tm-text-color08 text-base truncate">
+              {subtitle}
+            </p>
           ) : null}
         </div>
         <button
@@ -2717,7 +2733,9 @@ const ReassignModal = ({
       onClose={onClose}
     >
       {loading ? (
-        <p className="text-tm-text-color08 text-sm">Loading account managers…</p>
+        <p className="text-tm-text-color08 text-sm">
+          Loading account managers…
+        </p>
       ) : error ? (
         <p className="text-tm-danger-color05 text-sm">{error}</p>
       ) : managers.length === 0 ? (

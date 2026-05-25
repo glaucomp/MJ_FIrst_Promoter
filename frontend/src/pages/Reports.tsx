@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import calenderIcon from "../assets/calender.svg";
 import ledgerIcon from "../assets/ledger.svg";
 import networkIcon from "../assets/network.svg";
-import usersIcon from "../assets/users.svg";
 import topUsersIcon from "../assets/top_users.svg";
+import usersIcon from "../assets/users.svg";
 import { Chart } from "../components/Chart";
 import { useAuth } from "../contexts/AuthContext";
 import {
@@ -40,7 +40,20 @@ const ITEMS_PER_PAGE = 8;
 const CHART_PAGE_SIZE = 12;
 
 const DAY_INITIALS = ["M", "T", "W", "T", "F", "S", "S"]; // Mon=0 … Sun=6
-const MONTH_3 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTH_3 = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
 const MONTH_1 = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
 
 const isoWeekNumber = (d: Date): number => {
@@ -251,9 +264,7 @@ const Card = ({
     className={`overflow-hidden  w-full bg-linear-to-l from-tm-neutral-color06 to-tm-neutral-color05 rounded-lg shadow-[0px_8px_8px_-2px_rgba(0,0,0,0.05),0px_2px_2px_0px_rgba(0,0,0,0.10),0px_-1px_0px_0px_rgba(255,255,255,0.10)] ${className}`}
     style={{
       borderRadius: radius,
-      background: noBorder
-        ? "transparent"
-        : undefined,
+      background: noBorder ? "transparent" : undefined,
       border: noBorder ? "none" : undefined,
     }}
   >
@@ -262,16 +273,16 @@ const Card = ({
 );
 
 const HDivider = () => (
-  <div style={{ height: "1px", background: "var(--border-faint)", margin: "0 16px" }} />
+  <div
+    style={{
+      height: "1px",
+      background: "var(--border-faint)",
+      margin: "0 16px",
+    }}
+  />
 );
 
-const SectionTitle = ({
-  icon,
-  label,
-}: {
-  icon: ReactNode;
-  label: string;
-}) => (
+const SectionTitle = ({ icon, label }: { icon: ReactNode; label: string }) => (
   <div className="flex items-center gap-[6px] py-[6px]">
     <span
       className="flex items-center leading-none"
@@ -393,7 +404,11 @@ const TxRow = ({
               </span>
               <span
                 className="text-sm font-bold px-[6px] py-px rounded-sm"
-                style={{ background: tierBg, color: tierText, border: `1px solid ${tierText}44` }}
+                style={{
+                  background: tierBg,
+                  color: tierText,
+                  border: `1px solid ${tierText}44`,
+                }}
               >
                 {tierLabel}
               </span>
@@ -401,7 +416,9 @@ const TxRow = ({
             <span
               className="text-sm font-bold"
               style={{
-                color: positive ? "var(--color-positive)" : "var(--color-danger)",
+                color: positive
+                  ? "var(--color-positive)"
+                  : "var(--color-danger)",
                 textDecoration: isRefund ? "line-through" : "none",
               }}
             >
@@ -411,17 +428,32 @@ const TxRow = ({
 
           {/* Row 2: description | status */}
           <div className="flex items-center justify-between mb-[4px]">
-            <span className="text-sm truncate max-w-[60%]" style={{ color: "var(--color-text-dim)" }}>
+            <span
+              className="text-sm truncate max-w-[60%]"
+              style={{ color: "var(--color-text-dim)" }}
+            >
               {(() => {
-                const desc = tx.description || `${tx.user.firstName} ${tx.user.lastName}`;
+                const desc =
+                  tx.description || `${tx.user.firstName} ${tx.user.lastName}`;
                 const match = /^(.*?from\s+)(\S+)([\s\S]*)$/.exec(desc);
-                if (match) return (<>{match[1]}<strong className="text-white">{match[2]}</strong>{match[3]}</>);
+                if (match)
+                  return (
+                    <>
+                      {match[1]}
+                      <strong className="text-white">{match[2]}</strong>
+                      {match[3]}
+                    </>
+                  );
                 return desc;
               })()}
             </span>
             <span
               className="text-xs font-semibold px-[9px] py-[2px] rounded-full capitalize"
-              style={{ background: statusStyle.bg, color: statusStyle.text, border: `1px solid ${statusStyle.text}33` }}
+              style={{
+                background: statusStyle.bg,
+                color: statusStyle.text,
+                border: `1px solid ${statusStyle.text}33`,
+              }}
             >
               {tx.status}
             </span>
@@ -429,15 +461,28 @@ const TxRow = ({
 
           {/* Row 3: date | chevron */}
           <div className="flex items-center justify-between">
-            <span className="text-xs" style={{ color: "var(--color-text-subtle)" }}>
-              {d}/{m}/{y} {hh}:{mn}:{sc}{ap}
+            <span
+              className="text-xs"
+              style={{ color: "var(--color-text-subtle)" }}
+            >
+              {d}/{m}/{y} {hh}:{mn}:{sc}
+              {ap}
             </span>
             <svg
-              width="14" height="14" viewBox="0 0 14 14" fill="none"
+              width="14"
+              height="14"
+              viewBox="0 0 14 14"
+              fill="none"
               className={`transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
               style={{ color: "var(--color-text-subtle)" }}
             >
-              <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              <path
+                d="M3 5l4 4 4-4"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
           </div>
         </div>
@@ -446,40 +491,79 @@ const TxRow = ({
       {/* ── Expanded detail ── */}
       {expanded && (
         <div className="tx-detail-enter px-[16px] pb-[20px] text-sm">
-          <div className="rounded-[10px] overflow-hidden" style={{ background: "var(--color-surface-inset)" }}>
+          <div
+            className="rounded-[10px] overflow-hidden"
+            style={{ background: "var(--color-surface-inset)" }}
+          >
             {saleAmt > 0 && (
-              <div className="flex justify-between px-[14px] py-4" style={{ borderBottom: "1px solid var(--border-elevated)" }}>
-                <span style={{ color: "var(--color-text-faded)" }}>Sale Amount</span>
-                <span className="font-semibold text-white">${money(saleAmt)}</span>
+              <div
+                className="flex justify-between px-[14px] py-4"
+                style={{ borderBottom: "1px solid var(--border-elevated)" }}
+              >
+                <span style={{ color: "var(--color-text-faded)" }}>
+                  Sale Amount
+                </span>
+                <span className="font-semibold text-white">
+                  ${money(saleAmt)}
+                </span>
               </div>
             )}
             <div
               className="flex justify-between px-[14px] py-4"
-              style={{ borderBottom: tx.customer || tx.campaign ? "1px solid var(--border-elevated)" : "none" }}
+              style={{
+                borderBottom:
+                  tx.customer || tx.campaign
+                    ? "1px solid var(--border-elevated)"
+                    : "none",
+              }}
             >
-              <span style={{ color: "var(--color-text-faded)" }}>Commission</span>
+              <span style={{ color: "var(--color-text-faded)" }}>
+                Commission
+              </span>
               <div className="flex items-center gap-[6px]">
-                <span className="font-bold" style={{ color: positive ? "var(--color-positive)" : "var(--color-danger)" }}>
+                <span
+                  className="font-bold"
+                  style={{
+                    color: positive
+                      ? "var(--color-positive)"
+                      : "var(--color-danger)",
+                  }}
+                >
                   {positive ? "+" : "−"}${money(Math.abs(tx.amount))}
                 </span>
-                <span style={{ color: "var(--color-text-subtle)" }}>{tx.percentage}%</span>
+                <span style={{ color: "var(--color-text-subtle)" }}>
+                  {tx.percentage}%
+                </span>
               </div>
             </div>
             {tx.customer && (
               <div
                 className="flex justify-between px-[14px] py-4"
-                style={{ borderBottom: tx.campaign ? "1px solid var(--border-elevated)" : "none" }}
+                style={{
+                  borderBottom: tx.campaign
+                    ? "1px solid var(--border-elevated)"
+                    : "none",
+                }}
               >
-                <span style={{ color: "var(--color-text-faded)" }}>Customer</span>
-                <span style={{ color: "var(--color-text-dim)" }}>{tx.customer.email || tx.customer.name}</span>
+                <span style={{ color: "var(--color-text-faded)" }}>
+                  Customer
+                </span>
+                <span style={{ color: "var(--color-text-dim)" }}>
+                  {tx.customer.email || tx.customer.name}
+                </span>
               </div>
             )}
             {tx.campaign && (
               <div className="flex justify-between items-center px-[14px] py-4">
-                <span style={{ color: "var(--color-text-faded)" }}>Campaign</span>
+                <span style={{ color: "var(--color-text-faded)" }}>
+                  Campaign
+                </span>
                 <span
                   className="text-sm font-semibold px-[8px] py-[2px] rounded-full text-white"
-                  style={{ background: "var(--color-accent-bg)", border: "1px solid rgba(255,15,95,0.3)" }}
+                  style={{
+                    background: "var(--color-accent-bg)",
+                    border: "1px solid rgba(255,15,95,0.3)",
+                  }}
                 >
                   {tx.campaign.name}
                 </span>
@@ -531,41 +615,43 @@ const AdminTxRow = ({
         className="w-full flex flex-col lg:flex-row lg:items-center lg:justify-between gap-[12px] px-[16px] py-[16px] text-left bg-transparent border-none hover:bg-[rgba(255,255,255,0.02)] transition-colors"
         onClick={() => setExpanded((p) => !p)}
       >
-      <div className="flex flex-row gap-3">  {/* Type badge */}
-        <div
-          className="w-[28px] h-[28px] rounded-full flex items-center justify-center text-sm font-bold shrink-0"
-          style={{
-            background: isDeposit
-              ? "#006622"
-              : "var(--color-tm-danger-color12)",
+        <div className="flex flex-row gap-3">
+          {" "}
+          {/* Type badge */}
+          <div
+            className="w-[28px] h-[28px] rounded-full flex items-center justify-center text-sm font-bold shrink-0"
+            style={{
+              background: isDeposit
+                ? "#006622"
+                : "var(--color-tm-danger-color12)",
               color: isDeposit ? "#28ff70" : "#ff2a2a",
               border: isDeposit ? "1px solid #28ff70" : "1px solid #ff2a2a",
-          }}
-        >
-          {isDeposit ? "↑" : "↩"}
-        </div>
-
-        {/* Label + customer + date */}
-        <div className="flex-1 min-w-0 text-left">
-          <div className="flex items-center gap-[6px] flex-wrap">
-            <span className="text-sm font-semibold text-white">
-              {isDeposit ? "Deposit" : "Refund"}
-            </span>
-            <span
-              className="text-sm truncate"
-              style={{ color: "var(--color-text-muted)" }}
-            >
-              {customerLabel}
-            </span>
-          </div>
-          <div
-            className="text-xs mt-px"
-            style={{ color: "var(--color-text-subtle)" }}
+            }}
           >
-            {d}/{m}/{y} {hh}:{min}:{sec}
-            {ampm}
+            {isDeposit ? "↑" : "↩"}
           </div>
-        </div></div>
+          {/* Label + customer + date */}
+          <div className="flex-1 min-w-0 text-left">
+            <div className="flex items-center gap-[6px] flex-wrap">
+              <span className="text-sm font-semibold text-white">
+                {isDeposit ? "Deposit" : "Refund"}
+              </span>
+              <span
+                className="text-sm truncate"
+                style={{ color: "var(--color-text-muted)" }}
+              >
+                {customerLabel}
+              </span>
+            </div>
+            <div
+              className="text-xs mt-px"
+              style={{ color: "var(--color-text-subtle)" }}
+            >
+              {d}/{m}/{y} {hh}:{min}:{sec}
+              {ampm}
+            </div>
+          </div>
+        </div>
 
         {/* Amount + chevron */}
         <div className="flex items-center gap-[8px] shrink-0 justify-between">
@@ -601,191 +687,195 @@ const AdminTxRow = ({
       {/* ── Expanded detail ── */}
       {expanded && (
         <div className="tx-detail-enter px-[16px] pb-[28px]">
-          <div className="rounded-[10px] overflow-hidden" style={{ background: "var( --color-tm-neutral-color06)" }}>
-          
-          
-          {/* Customer */}
-          {tx.customer && (
-            <div
-              className="flex flex-col lg:flex-row lg:items-center justify-between px-[14px] py-4"
-              style={{ borderBottom: "1px solid var(--border-elevated)" }}
-            >
-              <span
-                className="text-xs uppercase tracking-widest"
-                style={{ color: "var(--color-text-faded)" }}
-              >
-                Customer
-              </span>
-              <div className="lg:text-right">
-                <div className="text-sm font-medium text-white">
-                  {tx.customer.name || tx.customer.email}
-                </div>
-                {tx.customer.name && tx.customer.email && (
-                  <div
-                    className="text-sm"
-                    style={{ color: "var(--color-text-faded)" }}
-                  >
-                    {tx.customer.email}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Campaign */}
-          {tx.campaign && (
-            <div
-              className="flex flex-col lg:flex-row lg:items-center justify-between px-[14px] py-4"
-              style={{ borderBottom: "1px solid var(--border-elevated)" }}
-            >
-              <span
-                className="text-xs uppercase tracking-widest"
-                style={{ color: "var(--color-text-faded)" }}
-              >
-                Campaign
-              </span>
-              <span
-                className="text-xs px-3 py-1 rounded-full text-center"
-                style={{
-                  color: "var(--color-tm-primary-color02)",
-                  background: "var(--color-tm-primary-color12)",
-                  border: "1px solid rgba(255,15,95,0.5)",
-                }}
-              >
-                {tx.campaign.name}
-              </span>
-            </div>
-          )}
-
-          {/* Sale amount */}
           <div
-            className="flex flex-col lg:flex-row lg:items-center justify-between px-[14px] py-4"
-            style={{
-              borderBottom:
-                tx.commissions.length > 0
-                  ? "1px solid var(--border-elevated)"
-                  : "none",
-            }}
+            className="rounded-[10px] overflow-hidden"
+            style={{ background: "var( --color-tm-neutral-color06)" }}
           >
-            <span
-              className="text-xs uppercase tracking-widest"
-              style={{ color: "var(--color-text-faded)" }}
-            >
-              {isDeposit ? "Sale Amount" : "Refund Amount"}
-            </span>
-            <span
-              className="text-sm font-bold"
+            {/* Customer */}
+            {tx.customer && (
+              <div
+                className="flex flex-col lg:flex-row lg:items-center justify-between px-[14px] py-4"
+                style={{ borderBottom: "1px solid var(--border-elevated)" }}
+              >
+                <span
+                  className="text-xs uppercase tracking-widest"
+                  style={{ color: "var(--color-text-faded)" }}
+                >
+                  Customer
+                </span>
+                <div className="lg:text-right">
+                  <div className="text-sm font-medium text-white">
+                    {tx.customer.name || tx.customer.email}
+                  </div>
+                  {tx.customer.name && tx.customer.email && (
+                    <div
+                      className="text-sm"
+                      style={{ color: "var(--color-text-faded)" }}
+                    >
+                      {tx.customer.email}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Campaign */}
+            {tx.campaign && (
+              <div
+                className="flex flex-col lg:flex-row lg:items-center justify-between px-[14px] py-4"
+                style={{ borderBottom: "1px solid var(--border-elevated)" }}
+              >
+                <span
+                  className="text-xs uppercase tracking-widest"
+                  style={{ color: "var(--color-text-faded)" }}
+                >
+                  Campaign
+                </span>
+                <span
+                  className="text-xs px-3 py-1 rounded-full text-center"
+                  style={{
+                    color: "var(--color-tm-primary-color02)",
+                    background: "var(--color-tm-primary-color12)",
+                    border: "1px solid rgba(255,15,95,0.5)",
+                  }}
+                >
+                  {tx.campaign.name}
+                </span>
+              </div>
+            )}
+
+            {/* Sale amount */}
+            <div
+              className="flex flex-col lg:flex-row lg:items-center justify-between px-[14px] py-4"
               style={{
-                color: isDeposit
-                  ? "var(--color-positive)"
-                  : "var(--color-danger)",
+                borderBottom:
+                  tx.commissions.length > 0
+                    ? "1px solid var(--border-elevated)"
+                    : "none",
               }}
             >
-              {isDeposit ? "+ " : "− "}${money(tx.saleAmount)}
-            </span>
-          </div>
-
-          {/* Commissions breakdown */}
-          {tx.commissions.length > 0 && (
-            <div className="px-[14px] py-4 flex flex-col gap-[8px]">
               <span
                 className="text-xs uppercase tracking-widest"
                 style={{ color: "var(--color-text-faded)" }}
               >
-                Commissions
+                {isDeposit ? "Sale Amount" : "Refund Amount"}
               </span>
-              {tx.commissions.map((c) => {
-                const desc = (c.description ?? "").toLowerCase();
-                const isT3 = desc.includes("t3");
-                const isT1 =
-                  !isT3 &&
-                  (desc.includes("direct") ||
-                    c.percentage === tx.campaign?.commissionRate);
-                const tierAvatar = isT1
-                  ? "var(--color-t1-avatar)"
-                  : isT3
-                    ? "var(--color-t3-avatar)"
-                    : "var(--color-t2-avatar)";
-                const commPositive = c.amount >= 0;
-                const cStatus = statusColors[c.status] ?? statusColors.unpaid;
-                return (
-                  <div
-                    key={c.id}
-                    className="flex flex-col lg:flex-row lg:items-center gap-4 py-[8px] px-4 rounded-sm"
-                    style={{
-                      background: "var(--color-surface-inset)",
-                      border: "1px solid var(--border-elevated)",
-                    }}
-                  >
-                    {/* Avatar */}
-                    <div
-                      className="w-[26px] h-[26px] rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
-                      style={{ background: tierAvatar }}
-                    >
-                      {c.user.firstName?.[0] ?? "?"}
-                      {c.user.lastName?.[0] ?? ""}
-                    </div>
-                    {/* Name */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-col lg:flex-row lg:items-center gap-[5px] justify-between">
-                   <div className="flex flex-col">
+              <span
+                className="text-sm font-bold"
+                style={{
+                  color: isDeposit
+                    ? "var(--color-positive)"
+                    : "var(--color-danger)",
+                }}
+              >
+                {isDeposit ? "+ " : "− "}${money(tx.saleAmount)}
+              </span>
+            </div>
 
-                         <div className="text-sm font-medium text-white truncate min-w-0 flex-1">
-                          {c.user.firstName} {c.user.lastName}
-                        </div>
-                          <div
-                        className="text-sm truncate"
-                        style={{ color: "var(--color-text-faded)" }}
+            {/* Commissions breakdown */}
+            {tx.commissions.length > 0 && (
+              <div className="px-[14px] py-4 flex flex-col gap-[8px]">
+                <span
+                  className="text-xs uppercase tracking-widest"
+                  style={{ color: "var(--color-text-faded)" }}
+                >
+                  Commissions
+                </span>
+                {tx.commissions.map((c) => {
+                  const desc = (c.description ?? "").toLowerCase();
+                  const isT3 = desc.includes("t3");
+                  const isT1 =
+                    !isT3 &&
+                    (desc.includes("direct") ||
+                      c.percentage === tx.campaign?.commissionRate);
+                  const tierAvatar = isT1
+                    ? "var(--color-t1-avatar)"
+                    : isT3
+                      ? "var(--color-t3-avatar)"
+                      : "var(--color-t2-avatar)";
+                  const commPositive = c.amount >= 0;
+                  const cStatus = statusColors[c.status] ?? statusColors.unpaid;
+                  return (
+                    <div
+                      key={c.id}
+                      className="flex flex-col lg:flex-row lg:items-center gap-4 py-[8px] px-4 rounded-sm"
+                      style={{
+                        background: "var(--color-surface-inset)",
+                        border: "1px solid var(--border-elevated)",
+                      }}
+                    >
+                      {/* Avatar */}
+                      <div
+                        className="w-[26px] h-[26px] rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
+                        style={{ background: tierAvatar }}
                       >
-                        {c.user.email}
+                        {c.user.firstName?.[0] ?? "?"}
+                        {c.user.lastName?.[0] ?? ""}
                       </div>
-                   </div>
-                        <div
-                          className="text-xs text-center font-semibold px-[5px] py-px rounded-full shrink-0 capitalize"
+                      {/* Name */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-col lg:flex-row lg:items-center gap-[5px] justify-between">
+                          <div className="flex flex-col">
+                            <div className="text-sm font-medium text-white truncate min-w-0 flex-1">
+                              {c.user.firstName} {c.user.lastName}
+                            </div>
+                            <div
+                              className="text-sm truncate"
+                              style={{ color: "var(--color-text-faded)" }}
+                            >
+                              {c.user.email}
+                            </div>
+                          </div>
+                          <div
+                            className="text-xs text-center font-semibold px-[5px] py-px rounded-full shrink-0 capitalize"
+                            style={{
+                              background: "var(--border-elevated)",
+                              color: "var(--color-tm-text-color08)",
+                            }}
+                          >
+                            {c.user.userType
+                              ?.replaceAll("_", " ")
+                              .toLowerCase() ?? "promoter"}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex flex-row justify-between gap-3 items-center">
+                        {" "}
+                        {/* Rate */}
+                        <span
+                          className="text-xs shrink-0"
+                          style={{ color: "var(--color-text-subtle)" }}
+                        >
+                          {c.percentage}%
+                        </span>
+                        {/* Amount */}
+                        <span
+                          className="text-sm font-bold shrink-0"
                           style={{
-                            background: "var(--border-elevated)",
-                            color: "var(--color-tm-text-color08)",
+                            color: commPositive
+                              ? "var(--color-positive)"
+                              : "var(--color-danger)",
                           }}
                         >
-                          {c.user.userType?.replaceAll("_", " ").toLowerCase() ?? "promoter"}
-                        </div>
+                          {commPositive ? "+" : "−"}${money(Math.abs(c.amount))}
+                        </span>
                       </div>
-                    
+                      {/* Status badge */}
+                      <span
+                        className="text-sm font-semibold px-[7px] py-[2px] rounded-full capitalize shrink-0 text-center"
+                        style={{
+                          background: cStatus.bg,
+                          color: cStatus.text,
+                          border: `1px solid ${cStatus.text}33`,
+                        }}
+                      >
+                        {c.status}
+                      </span>
                     </div>
-                   <div className="flex flex-row justify-between gap-3 items-center"> {/* Rate */}
-                    <span
-                      className="text-xs shrink-0"
-                      style={{ color: "var(--color-text-subtle)" }}
-                    >
-                      {c.percentage}%
-                    </span>
-                    {/* Amount */}
-                    <span
-                      className="text-sm font-bold shrink-0"
-                      style={{
-                        color: commPositive
-                          ? "var(--color-positive)"
-                          : "var(--color-danger)",
-                      }}
-                    >
-                      {commPositive ? "+" : "−"}${money(Math.abs(c.amount))}
-                    </span></div>
-                    {/* Status badge */}
-                    <span
-                      className="text-sm font-semibold px-[7px] py-[2px] rounded-full capitalize shrink-0 text-center"
-                      style={{
-                        background: cStatus.bg,
-                        color: cStatus.text,
-                        border: `1px solid ${cStatus.text}33`,
-                      }}
-                    >
-                      {c.status}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -855,10 +945,29 @@ const AdminTxListCard = ({
         onClick={onToggle}
         className="w-full flex items-center justify-between px-[16px] py-[14px] hover:bg-[rgba(255,255,255,0.02)] transition-colors text-left bg-transparent border-none"
       >
-        <span style={{ fontSize: 'var(--font-size-body-m)', fontWeight: 'var(--font-weight-medium)', lineHeight: '140%', letterSpacing: '0.2px', color: 'var(--color-text-muted)' }}>
+        <span
+          style={{
+            fontSize: "var(--font-size-body-m)",
+            fontWeight: "var(--font-weight-medium)",
+            lineHeight: "140%",
+            letterSpacing: "0.2px",
+            color: "var(--color-text-muted)",
+          }}
+        >
           Transactions List
         </span>
-        <div style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid var(--border-faint)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <div
+          style={{
+            width: "32px",
+            height: "32px",
+            borderRadius: "8px",
+            border: "1px solid var(--border-faint)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+          }}
+        >
           <svg
             width="14"
             height="14"
@@ -880,90 +989,89 @@ const AdminTxListCard = ({
 
       {isOpen && (
         <>
-
           <div className="flex flex-col-reverse lg:grid lg:grid-cols-[1fr_3fr]">
             {/* Active period label */}
-          <div className="flex items-center gap-[6px] px-[16px] py-4">
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 12 12"
-              fill="none"
-              style={{ color: "var(--color-text-faded)" }}
-            >
-              <rect
-                x="1"
-                y="1.5"
-                width="10"
-                height="9"
-                rx="1.5"
-                stroke="currentColor"
-                strokeWidth="1.2"
-              />
-              <path d="M1 4.5h10" stroke="currentColor" strokeWidth="1.2" />
-              <path
-                d="M4 0.5v2M8 0.5v2"
-                stroke="currentColor"
-                strokeWidth="1.2"
-                strokeLinecap="round"
-              />
-            </svg>
-            <span
-              className="text-sm"
-              style={{ color: "var(--color-text-muted)" }}
-            >
-              {calRangeStart && calRangeEnd
-                ? `${calRangeStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${calRangeEnd.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
-                : calRangeStart
-                  ? `${calRangeStart.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} →`
-                  : PERIOD_LABELS[period]}
-            </span>
-          </div>
-
-          {/* Search */}
-          <div className="p-1 w-full">
-            <div className="relative">
+            <div className="flex items-center gap-[6px] px-[16px] py-4">
               <svg
-                width="14"
-                height="14"
-                viewBox="0 0 14 14"
+                width="12"
+                height="12"
+                viewBox="0 0 12 12"
                 fill="none"
-                className="absolute left-4 top-1/2 -translate-y-1/2"
                 style={{ color: "var(--color-text-faded)" }}
               >
-                <circle
-                  cx="6"
-                  cy="6"
-                  r="4"
+                <rect
+                  x="1"
+                  y="1.5"
+                  width="10"
+                  height="9"
+                  rx="1.5"
                   stroke="currentColor"
-                  strokeWidth="1.3"
+                  strokeWidth="1.2"
                 />
+                <path d="M1 4.5h10" stroke="currentColor" strokeWidth="1.2" />
                 <path
-                  d="M9.5 9.5l2.5 2.5"
+                  d="M4 0.5v2M8 0.5v2"
                   stroke="currentColor"
-                  strokeWidth="1.3"
+                  strokeWidth="1.2"
                   strokeLinecap="round"
                 />
               </svg>
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => onSearch(e.target.value)}
-                placeholder="Name, Email, Campaign, Customer"
-                className="w-full text-white focus:outline-none"
-                style={{
-                  paddingLeft: '30px',
-                  paddingRight: '12px',
-                  height: 'var(--button-m)',
-                  borderRadius: 'var(--radius-round)',
-                  background: 'var(--color-surface-raised)',
-                  border: '1px solid var(--border-faint)',
-                  fontSize: 'var(--font-size-body-m)',
-                }}
-              />
+              <span
+                className="text-sm"
+                style={{ color: "var(--color-text-muted)" }}
+              >
+                {calRangeStart && calRangeEnd
+                  ? `${calRangeStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${calRangeEnd.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
+                  : calRangeStart
+                    ? `${calRangeStart.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} →`
+                    : PERIOD_LABELS[period]}
+              </span>
+            </div>
+
+            {/* Search */}
+            <div className="p-1 w-full">
+              <div className="relative">
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 14 14"
+                  fill="none"
+                  className="absolute left-4 top-1/2 -translate-y-1/2"
+                  style={{ color: "var(--color-text-faded)" }}
+                >
+                  <circle
+                    cx="6"
+                    cy="6"
+                    r="4"
+                    stroke="currentColor"
+                    strokeWidth="1.3"
+                  />
+                  <path
+                    d="M9.5 9.5l2.5 2.5"
+                    stroke="currentColor"
+                    strokeWidth="1.3"
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => onSearch(e.target.value)}
+                  placeholder="Name, Email, Campaign, Customer"
+                  className="w-full text-white focus:outline-none"
+                  style={{
+                    paddingLeft: "30px",
+                    paddingRight: "12px",
+                    height: "var(--button-m)",
+                    borderRadius: "var(--radius-round)",
+                    background: "var(--color-surface-raised)",
+                    border: "1px solid var(--border-faint)",
+                    fontSize: "var(--font-size-body-m)",
+                  }}
+                />
+              </div>
             </div>
           </div>
-</div>
           {/* Rows */}
           {loading && (
             <div className="flex items-center justify-center py-[40px]">
@@ -1171,10 +1279,29 @@ const TxListCard = ({
         onClick={onToggle}
         className="w-full flex items-center justify-between px-[16px] py-[14px] hover:bg-[rgba(255,255,255,0.02)] transition-colors text-left bg-transparent border-none"
       >
-        <span style={{ fontSize: 'var(--font-size-body-m)', fontWeight: 'var(--font-weight-medium)', lineHeight: '140%', letterSpacing: '0.2px', color: 'var(--color-text-muted)' }}>
+        <span
+          style={{
+            fontSize: "var(--font-size-body-m)",
+            fontWeight: "var(--font-weight-medium)",
+            lineHeight: "140%",
+            letterSpacing: "0.2px",
+            color: "var(--color-text-muted)",
+          }}
+        >
           Transactions List
         </span>
-        <div style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid var(--border-faint)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <div
+          style={{
+            width: "32px",
+            height: "32px",
+            borderRadius: "8px",
+            border: "1px solid var(--border-faint)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+          }}
+        >
           <svg
             width="14"
             height="14"
@@ -1196,7 +1323,6 @@ const TxListCard = ({
 
       {isOpen && (
         <>
-
           {/* Active period label */}
           <div className="flex items-center gap-[6px] px-[16px] py-4">
             <svg
@@ -1236,7 +1362,17 @@ const TxListCard = ({
           </div>
 
           {/* Status tabs */}
-          <div style={{ display: 'flex', height: '52px', borderRadius: 'var(--radius-m)', background: '#292929', border: '1px solid #333333', overflow: 'hidden', marginTop: 'var(--space-8)' }}>
+          <div
+            style={{
+              display: "flex",
+              height: "52px",
+              borderRadius: "var(--radius-m)",
+              background: "#292929",
+              border: "1px solid #333333",
+              overflow: "hidden",
+              marginTop: "var(--space-8)",
+            }}
+          >
             {tabDefs.map(({ key, label }, idx) => {
               const active = statusTab === key;
               const count = counts[key];
@@ -1247,21 +1383,39 @@ const TxListCard = ({
                   onClick={() => setStatusTab(key)}
                   style={{
                     flex: 1,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '3px',
-                    background: 'transparent',
-                    border: 'none',
-                    borderLeft: idx > 0 ? '1px solid #333333' : 'none',
-                    cursor: 'pointer',
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "3px",
+                    background: "transparent",
+                    border: "none",
+                    borderLeft: idx > 0 ? "1px solid #333333" : "none",
+                    cursor: "pointer",
                   }}
                 >
-                  <span style={{ fontSize: 'var(--font-size-body-m)', fontWeight: 'var(--font-weight-medium)', lineHeight: 1, color: active ? 'var(--color-accent-bright)' : 'var(--color-text-primary)' }}>
+                  <span
+                    style={{
+                      fontSize: "var(--font-size-body-m)",
+                      fontWeight: "var(--font-weight-medium)",
+                      lineHeight: 1,
+                      color: active
+                        ? "var(--color-accent-bright)"
+                        : "var(--color-text-primary)",
+                    }}
+                  >
                     {count}
                   </span>
-                  <span style={{ fontSize: '11px', fontWeight: 'var(--font-weight-medium)', lineHeight: 1, color: active ? 'var(--color-accent-bright)' : 'var(--color-text-muted)' }}>
+                  <span
+                    style={{
+                      fontSize: "11px",
+                      fontWeight: "var(--font-weight-medium)",
+                      lineHeight: 1,
+                      color: active
+                        ? "var(--color-accent-bright)"
+                        : "var(--color-text-muted)",
+                    }}
+                  >
                     {label}
                   </span>
                 </button>
@@ -1270,7 +1424,7 @@ const TxListCard = ({
           </div>
 
           {/* Search */}
-          <div style={{ padding: 'var(--space-12) 0' }}>
+          <div style={{ padding: "var(--space-12) 0" }}>
             <div className="relative">
               <svg
                 width="14"
@@ -1301,13 +1455,13 @@ const TxListCard = ({
                 placeholder="Name, Email, Campaign"
                 className="w-full text-white focus:outline-none"
                 style={{
-                  paddingLeft: '30px',
-                  paddingRight: '12px',
-                  height: 'var(--button-m)',
-                  borderRadius: 'var(--radius-round)',
-                  background: 'var(--color-surface-raised)',
-                  border: '1px solid var(--border-faint)',
-                  fontSize: 'var(--font-size-body-m)',
+                  paddingLeft: "30px",
+                  paddingRight: "12px",
+                  height: "var(--button-m)",
+                  borderRadius: "var(--radius-round)",
+                  background: "var(--color-surface-raised)",
+                  border: "1px solid var(--border-faint)",
+                  fontSize: "var(--font-size-body-m)",
                 }}
               />
             </div>
@@ -1405,8 +1559,7 @@ export const Reports = () => {
   // Payers see the same aggregate Reports view as admins.
   const isAdmin = user?.baseRole === "admin" || user?.baseRole === "payer";
   const isManager =
-    user?.baseRole === "account_manager" ||
-    user?.baseRole === "team_manager";
+    user?.baseRole === "account_manager" || user?.baseRole === "team_manager";
   const isPromoter = user?.baseRole === "promoter";
 
   const [commissions, setCommissions] = useState<Commission[]>([]);
@@ -1651,7 +1804,10 @@ export const Reports = () => {
 
     // Build a map: userId → { name, totalRevenue, photoUrl }
     // covering both direct referrals and their children (full network)
-    const earningsMap = new Map<string, { name: string; revenue: number; photoUrl: string | null }>();
+    const earningsMap = new Map<
+      string,
+      { name: string; revenue: number; photoUrl: string | null }
+    >();
 
     // Track commission IDs already counted to prevent double-counting.
     // For Account Managers, a referral can appear both as a top-level entry in
@@ -1661,8 +1817,18 @@ export const Reports = () => {
     const countedCommissionIds = new Set<string>();
 
     const accumulateCommissions = (
-      person: { id: string; firstName: string; lastName: string; photoUrl?: string | null },
-      commissions: Array<{ id: string; amount: number; userId: string; createdAt: string }>,
+      person: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        photoUrl?: string | null;
+      },
+      commissions: Array<{
+        id: string;
+        amount: number;
+        userId: string;
+        createdAt: string;
+      }>,
     ) => {
       const entry = earningsMap.get(person.id) ?? {
         name: `${person.firstName} ${person.lastName}`,
@@ -1886,7 +2052,7 @@ export const Reports = () => {
         <h1 className="text-3xl font-bold text-white font-['DM_Sans',sans-serif]">
           Reports
         </h1>
-        <div className="relative flex items-center gap-[8px] border-t-1 border-b-1 border-tm-neutral-color01 py-4 mb-2 lg:border-0 ">
+        <div className="relative flex items-center gap-[8px] border-t border-b border-tm-neutral-color01 py-4 mb-2 lg:border-0 ">
           <div className="relative flex-1">
             <button
               onClick={() => setPeriodOpen((o) => !o)}
@@ -1963,7 +2129,7 @@ export const Reports = () => {
             style={{
               width: "var(--button-m)",
               height: "var(--button-m)",
-             
+
               borderRadius: "var(--radius-s)",
               border: "1px solid var(--border-subtle)",
             }}
@@ -2177,8 +2343,7 @@ export const Reports = () => {
                         else if (isToday) btnBg = "rgba(255,15,95,0.12)";
                         let btnColor = "rgba(255,255,255,0.8)";
                         if (isEndpoint) btnColor = "var(--color-text-primary)";
-                        else if (isToday)
-                          btnColor = "white";
+                        else if (isToday) btnColor = "white";
                         return (
                           <div
                             key={`cell-${calViewYear}-${calViewMonth}-${i}`}
@@ -2258,7 +2423,7 @@ export const Reports = () => {
                           color: calRangeStart
                             ? "var(--color-text-primary)"
                             : "rgba(255,255,255,0.3)",
-                        cursor: calRangeStart ? "pointer" : "default",
+                          cursor: calRangeStart ? "pointer" : "default",
                         }}
                       >
                         Apply
@@ -2296,8 +2461,7 @@ export const Reports = () => {
               }
               onNext={
                 showPagination
-                  ? () =>
-                      setChartPage((p) => Math.min(totalPages - 1, p + 1))
+                  ? () => setChartPage((p) => Math.min(totalPages - 1, p + 1))
                   : undefined
               }
               canPrev={showPagination && chartPage > 0}
@@ -2309,17 +2473,23 @@ export const Reports = () => {
         {/* Transactions total — admin only */}
         {isAdmin && (
           <Card radius="var(--radius-m)">
-            <div className="flex flex-col gap-0" style={{ padding: 'var(--space-20)' }}>
+            <div
+              className="flex flex-col gap-0"
+              style={{ padding: "var(--space-20)" }}
+            >
               <span className="stat-label">Transactions</span>
-           <div className="grid grid-cols-2 items-center justify-items-end">   <div className="stat-value">${money(currTotal)}</div>    {totalChange !== null && (
-                <div className="">
-                  <ChangeBadge
-                    value={totalChange}
-                    positive={totalChange >= 0}
-                  />
-                </div>
-              )}</div>
-          
+              <div className="grid grid-cols-2 items-center justify-items-end">
+                {" "}
+                <div className="stat-value">${money(currTotal)}</div>{" "}
+                {totalChange !== null && (
+                  <div className="">
+                    <ChangeBadge
+                      value={totalChange}
+                      positive={totalChange >= 0}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
           </Card>
         )}
@@ -2327,13 +2497,19 @@ export const Reports = () => {
         {/* Paid / Pending */}
         <div className="grid grid-cols-2 gap-4">
           <Card radius="var(--radius-m)">
-            <div className="flex flex-col gap-0" style={{ padding: 'var(--space-20)' }}>
+            <div
+              className="flex flex-col gap-0"
+              style={{ padding: "var(--space-20)" }}
+            >
               <span className="stat-label">Paid</span>
               <span className="stat-value text-base">${money(currPaid)}</span>
             </div>
           </Card>
           <Card radius="var(--radius-m)">
-            <div className="flex flex-col gap-0" style={{ padding: 'var(--space-20)' }}>
+            <div
+              className="flex flex-col gap-0"
+              style={{ padding: "var(--space-20)" }}
+            >
               <span className="stat-label">Pending</span>
               <span className="stat-value">${money(currPending)}</span>
             </div>
@@ -2343,18 +2519,27 @@ export const Reports = () => {
         {/* Refunded / Total Sales */}
         <div className="grid lg:grid-cols-2 gap-4">
           <Card radius="var(--radius-m)">
-            <div className="flex flex-col gap-0" style={{ padding: 'var(--space-20)' }}>
+            <div
+              className="flex flex-col gap-0"
+              style={{ padding: "var(--space-20)" }}
+            >
               <span className="stat-label">Refunded</span>
               <div className="flex items-center justify-between">
                 <span className="stat-value">${money(currRefunded)}</span>
                 {refundChange !== null && refundChange !== 0 && (
-                  <ChangeBadge value={refundChange} positive={refundChange < 0} />
+                  <ChangeBadge
+                    value={refundChange}
+                    positive={refundChange < 0}
+                  />
                 )}
               </div>
             </div>
           </Card>
           <Card radius="var(--radius-m)">
-            <div className="flex flex-col gap-0" style={{ padding: 'var(--space-20)' }}>
+            <div
+              className="flex flex-col gap-0"
+              style={{ padding: "var(--space-20)" }}
+            >
               <span className="stat-label">Total Sales</span>
               <span className="stat-value">${money(currTotalSales)}</span>
             </div>
@@ -2365,13 +2550,19 @@ export const Reports = () => {
         {isManager && (
           <div className="grid grid-cols-2 gap-4">
             <Card radius="var(--radius-m)">
-              <div className="flex flex-col gap-4" style={{ padding: 'var(--space-20)' }}>
+              <div
+                className="flex flex-col gap-4"
+                style={{ padding: "var(--space-20)" }}
+              >
                 <span className="stat-label">Promoters</span>
                 <span className="stat-value">{promoterCount}</span>
               </div>
             </Card>
             <Card radius="var(--radius-m)">
-              <div className="flex flex-col gap-4" style={{ padding: 'var(--space-20)' }}>
+              <div
+                className="flex flex-col gap-4"
+                style={{ padding: "var(--space-20)" }}
+              >
                 <span className="stat-label">Users</span>
                 <span className="stat-value">{managedCustomerCount}</span>
               </div>
@@ -2413,12 +2604,20 @@ export const Reports = () => {
       {isPromoter && (
         <>
           <div className="flex flex-col gap-2">
-            <SectionTitle icon={<img src={topUsersIcon} width="12" height="12" alt="" />} label="Top Users" />
+            <SectionTitle
+              icon={<img src={topUsersIcon} width="12" height="12" alt="" />}
+              label="Top Users"
+            />
 
             {topCustomers.length === 0 ? (
               <div className="flex flex-col items-center py-[32px] gap-[8px]">
                 <span className="text-3xl">👤</span>
-                <span style={{ fontSize: 'var(--font-size-body-m)', color: 'var(--color-text-muted)' }}>
+                <span
+                  style={{
+                    fontSize: "var(--font-size-body-m)",
+                    color: "var(--color-text-muted)",
+                  }}
+                >
                   No customer data for this period
                 </span>
               </div>
@@ -2449,23 +2648,46 @@ export const Reports = () => {
                     key={`${name}-${idx}`}
                     className="flex items-center gap-[12px]"
                     style={{
-                      padding: '0 var(--space-16)',
-                      height: 'var(--button-m)',
-                      borderRadius: 'var(--radius-round)',
-                      background: 'var(--color-surface-end)',
-                      boxShadow: '0 -1px 0 0 rgba(255,255,255,0.10)',
+                      padding: "0 var(--space-16)",
+                      height: "var(--button-m)",
+                      borderRadius: "var(--radius-round)",
+                      background: "var(--color-surface-end)",
+                      boxShadow: "0 -1px 0 0 rgba(255,255,255,0.10)",
                     }}
                   >
                     <div
                       className="rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
-                      style={{ width: '16px', height: '16px', background: avatarBg, fontSize: '7px' }}
+                      style={{
+                        width: "16px",
+                        height: "16px",
+                        background: avatarBg,
+                        fontSize: "7px",
+                      }}
                     >
                       {initials}
                     </div>
-                    <span className="flex-1 truncate" style={{ fontSize: 'var(--font-size-body-m)', fontWeight: 'var(--font-weight-medium)', lineHeight: '140%', letterSpacing: '0.2px', color: '#7A7A7A' }}>
+                    <span
+                      className="flex-1 truncate"
+                      style={{
+                        fontSize: "var(--font-size-body-m)",
+                        fontWeight: "var(--font-weight-medium)",
+                        lineHeight: "140%",
+                        letterSpacing: "0.2px",
+                        color: "#7A7A7A",
+                      }}
+                    >
                       {name}
                     </span>
-                    <span className="shrink-0" style={{ fontSize: 'var(--font-size-body-m)', fontWeight: 'var(--font-weight-medium)', lineHeight: '140%', letterSpacing: '0.2px', color: 'var(--color-text-primary)' }}>
+                    <span
+                      className="shrink-0"
+                      style={{
+                        fontSize: "var(--font-size-body-m)",
+                        fontWeight: "var(--font-weight-medium)",
+                        lineHeight: "140%",
+                        letterSpacing: "0.2px",
+                        color: "var(--color-text-primary)",
+                      }}
+                    >
                       ${money(revenue)}
                     </span>
                   </div>
@@ -2477,13 +2699,20 @@ export const Reports = () => {
           {/* USERS stat card */}
           <Card radius="var(--radius-m)">
             {/* Total */}
-            <div style={{ padding: 'var(--space-20) var(--space-20) var(--space-16)' }}>
+            <div
+              style={{
+                padding: "var(--space-20) var(--space-20) var(--space-16)",
+              }}
+            >
               <div className="flex items-center justify-between">
                 <span className="stat-label">Users</span>
                 {newCustomerCount > 0 && (
                   <span
                     className="inline-flex items-center gap-2 px-2 py-1 rounded-xl border text-sm leading-[1.4] font-bold"
-                    style={{ background: "var(--color-success)", color:"#28ff70" }}
+                    style={{
+                      background: "var(--color-success)",
+                      color: "#28ff70",
+                    }}
                   >
                     ↑ {newCustomerCount}
                   </span>
@@ -2493,32 +2722,97 @@ export const Reports = () => {
                 {allCustomers.length.toLocaleString()}
               </div>
             </div>
-<div className="grid grid-cols-2 gap-12 ">
-            <div className="flex items-center justify-between" style={{ padding: 'var(--space-8) var(--space-20)' }}>
-              <span style={{ fontSize: 'var(--font-size-body-m)', color: 'var(--color-text-muted)' }}>Idle</span>
-              <span style={{ fontSize: 'var(--font-size-body-m)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--color-text-primary)' }}>
-                {idleCustomerCount.toLocaleString()}
-              </span>
-            </div>
+            <div className="grid grid-cols-2 gap-12 ">
+              <div
+                className="flex items-center justify-between"
+                style={{ padding: "var(--space-8) var(--space-20)" }}
+              >
+                <span
+                  style={{
+                    fontSize: "var(--font-size-body-m)",
+                    color: "var(--color-text-muted)",
+                  }}
+                >
+                  Idle
+                </span>
+                <span
+                  style={{
+                    fontSize: "var(--font-size-body-m)",
+                    fontWeight: "var(--font-weight-semibold)",
+                    color: "var(--color-text-primary)",
+                  }}
+                >
+                  {idleCustomerCount.toLocaleString()}
+                </span>
+              </div>
 
-            <div className="flex items-center justify-between" style={{ padding: 'var(--space-8) var(--space-20)' }}>
-              <span style={{ fontSize: 'var(--font-size-body-m)', color: 'var(--color-text-muted)' }}>Unpaid</span>
-              <span style={{ fontSize: 'var(--font-size-body-m)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--color-text-primary)' }}>
-                {unpaidCustomerCount.toLocaleString()}
-              </span>
-            </div></div>
+              <div
+                className="flex items-center justify-between"
+                style={{ padding: "var(--space-8) var(--space-20)" }}
+              >
+                <span
+                  style={{
+                    fontSize: "var(--font-size-body-m)",
+                    color: "var(--color-text-muted)",
+                  }}
+                >
+                  Unpaid
+                </span>
+                <span
+                  style={{
+                    fontSize: "var(--font-size-body-m)",
+                    fontWeight: "var(--font-weight-semibold)",
+                    color: "var(--color-text-primary)",
+                  }}
+                >
+                  {unpaidCustomerCount.toLocaleString()}
+                </span>
+              </div>
+            </div>
 
             <button
               onClick={() => navigate("/models")}
               className="w-full flex items-center justify-between hover:bg-[rgba(255,255,255,0.03)] transition-colors"
-              style={{ padding: 'var(--space-12) var(--space-20)' }}
+              style={{ padding: "var(--space-12) var(--space-20)" }}
             >
-              <span style={{ fontSize: 'var(--font-size-body-m)', fontWeight: 'var(--font-weight-medium)', color: 'var(--color-text-primary)' }}>
+              <span
+                style={{
+                  fontSize: "var(--font-size-body-m)",
+                  fontWeight: "var(--font-weight-medium)",
+                  color: "var(--color-text-primary)",
+                }}
+              >
                 View Details
               </span>
-              <div style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid var(--border-faint)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ color: 'var(--color-text-muted)', transform: 'rotate(-90deg)' }}>
-                  <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <div
+                style={{
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "8px",
+                  border: "1px solid var(--border-faint)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 14 14"
+                  fill="none"
+                  style={{
+                    color: "var(--color-text-muted)",
+                    transform: "rotate(-90deg)",
+                  }}
+                >
+                  <path
+                    d="M3 5l4 4 4-4"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
               </div>
             </button>
@@ -2529,12 +2823,20 @@ export const Reports = () => {
       {/* ── Top Performers ── (manager only) */}
       {isManager && (
         <div className="flex flex-col gap-2">
-          <SectionTitle icon={<img src={topUsersIcon} width="12" height="12" alt="" />} label="Top Performers" />
+          <SectionTitle
+            icon={<img src={topUsersIcon} width="12" height="12" alt="" />}
+            label="Top Performers"
+          />
 
           {topPerformers.length === 0 ? (
             <div className="flex flex-col items-center py-[32px] gap-[8px]">
               <span className="text-3xl">📈</span>
-              <span style={{ fontSize: 'var(--font-size-body-m)', color: 'var(--color-text-muted)' }}>
+              <span
+                style={{
+                  fontSize: "var(--font-size-body-m)",
+                  color: "var(--color-text-muted)",
+                }}
+              >
                 No performance data for this period
               </span>
             </div>
@@ -2564,11 +2866,11 @@ export const Reports = () => {
                   key={`${name}-${idx}`}
                   className="flex items-center gap-[12px]"
                   style={{
-                    padding: '0 var(--space-16)',
-                    height: 'var(--button-m)',
-                    borderRadius: 'var(--radius-round)',
-                    background: 'var(--color-surface-end)',
-                    boxShadow: '0 -1px 0 0 rgba(255,255,255,0.10)',
+                    padding: "0 var(--space-16)",
+                    height: "var(--button-m)",
+                    borderRadius: "var(--radius-round)",
+                    background: "var(--color-surface-end)",
+                    boxShadow: "0 -1px 0 0 rgba(255,255,255,0.10)",
                   }}
                 >
                   {photoUrl ? (
@@ -2576,20 +2878,43 @@ export const Reports = () => {
                       src={photoUrl}
                       alt={name}
                       className="rounded-full shrink-0 object-cover"
-                      style={{ width: '16px', height: '16px' }}
+                      style={{ width: "16px", height: "16px" }}
                     />
                   ) : (
                     <div
                       className="rounded-full flex items-center justify-center font-bold text-white shrink-0"
-                      style={{ width: '16px', height: '16px', background: avatarBg, fontSize: '7px' }}
+                      style={{
+                        width: "16px",
+                        height: "16px",
+                        background: avatarBg,
+                        fontSize: "7px",
+                      }}
                     >
                       {initials}
                     </div>
                   )}
-                  <span className="flex-1 truncate" style={{ fontSize: 'var(--font-size-body-m)', fontWeight: 'var(--font-weight-medium)', lineHeight: '140%', letterSpacing: '0.2px', color: '#7A7A7A' }}>
+                  <span
+                    className="flex-1 truncate"
+                    style={{
+                      fontSize: "var(--font-size-body-m)",
+                      fontWeight: "var(--font-weight-medium)",
+                      lineHeight: "140%",
+                      letterSpacing: "0.2px",
+                      color: "#7A7A7A",
+                    }}
+                  >
                     {name}
                   </span>
-                  <span className="shrink-0" style={{ fontSize: 'var(--font-size-body-m)', fontWeight: 'var(--font-weight-medium)', lineHeight: '140%', letterSpacing: '0.2px', color: 'var(--color-text-primary)' }}>
+                  <span
+                    className="shrink-0"
+                    style={{
+                      fontSize: "var(--font-size-body-m)",
+                      fontWeight: "var(--font-weight-medium)",
+                      lineHeight: "140%",
+                      letterSpacing: "0.2px",
+                      color: "var(--color-text-primary)",
+                    }}
+                  >
                     ${money(revenue)}
                   </span>
                 </div>
@@ -2601,12 +2926,22 @@ export const Reports = () => {
           <button
             onClick={() => navigate("/models")}
             className="w-full flex items-center justify-between hover:opacity-70 transition-opacity"
-            style={{ padding: 'var(--space-8) 0' }}
+            style={{ padding: "var(--space-8) 0" }}
           >
-            <span style={{ fontSize: 'var(--font-size-body-m)', fontWeight: 'var(--font-weight-medium)', color: 'var(--color-accent-bright)' }}>
+            <span
+              style={{
+                fontSize: "var(--font-size-body-m)",
+                fontWeight: "var(--font-weight-medium)",
+                color: "var(--color-accent-bright)",
+              }}
+            >
               Manage Influencers
             </span>
-            <span style={{ color: 'var(--color-accent-bright)', fontSize: '18px' }}>›</span>
+            <span
+              style={{ color: "var(--color-accent-bright)", fontSize: "18px" }}
+            >
+              ›
+            </span>
           </button>
         </div>
       )}
@@ -2614,87 +2949,215 @@ export const Reports = () => {
       {/* ── Network ── (admin only) */}
       {isAdmin && (
         <div className="flex flex-col gap-[6px]">
-          <SectionTitle icon={<img src={networkIcon} width="16" height="16" alt="" />} label="Network" />
-   <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">       {[
-            { label: "Account Managers", count: wf.accountManagers },
-            { label: "Promoters", count: wf.promoters },
-            { label: "Referral Managers", count: wf.referralManagers },
-          ].map(({ label, count }) => (
-            <Card key={label} radius="var(--radius-m)">
-              <button
-                onClick={() => navigate("/models")}
-                className="w-full flex items-center justify-between hover:bg-[rgba(255,255,255,0.03)] transition-colors"
-                style={{ padding: 'var(--space-20)' }}
-              >
-                <div className="text-left flex flex-col gap-3">
-                  <div style={{ fontSize: 'var(--font-size-body-m)', fontWeight: 'var(--font-weight-medium)', lineHeight: '140%', letterSpacing: '0.2px', color: 'var(--color-text-muted)' }}>
-                    {label}
+          <SectionTitle
+            icon={<img src={networkIcon} width="16" height="16" alt="" />}
+            label="Network"
+          />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
+            {" "}
+            {[
+              { label: "Account Managers", count: wf.accountManagers },
+              { label: "Promoters", count: wf.promoters },
+              { label: "Referral Managers", count: wf.referralManagers },
+            ].map(({ label, count }) => (
+              <Card key={label} radius="var(--radius-m)">
+                <button
+                  onClick={() => navigate("/models")}
+                  className="w-full flex items-center justify-between hover:bg-[rgba(255,255,255,0.03)] transition-colors"
+                  style={{ padding: "var(--space-20)" }}
+                >
+                  <div className="text-left flex flex-col gap-3">
+                    <div
+                      style={{
+                        fontSize: "var(--font-size-body-m)",
+                        fontWeight: "var(--font-weight-medium)",
+                        lineHeight: "140%",
+                        letterSpacing: "0.2px",
+                        color: "var(--color-text-muted)",
+                      }}
+                    >
+                      {label}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "var(--font-size-body-m)",
+                        fontWeight: "var(--font-weight-medium)",
+                        lineHeight: "140%",
+                        letterSpacing: "0.2px",
+                        color: "var(--color-text-primary)",
+                      }}
+                    >
+                      {count.toLocaleString()}
+                    </div>
                   </div>
-                  <div style={{ fontSize: 'var(--font-size-body-m)', fontWeight: 'var(--font-weight-medium)', lineHeight: '140%', letterSpacing: '0.2px', color: 'var(--color-text-primary)' }}>
-                    {count.toLocaleString()}
+                  <div
+                    style={{
+                      width: "32px",
+                      height: "32px",
+                      borderRadius: "8px",
+                      border: "1px solid var(--border-faint)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 14 14"
+                      fill="none"
+                      style={{
+                        color: "var(--color-text-muted)",
+                        transform: "rotate(-90deg)",
+                      }}
+                    >
+                      <path
+                        d="M3 5l4 4 4-4"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
                   </div>
-                </div>
-                <div style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid var(--border-faint)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ color: 'var(--color-text-muted)', transform: 'rotate(-90deg)' }}>
-                    <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </div>
-              </button>
-            </Card>
-          ))}</div>
+                </button>
+              </Card>
+            ))}
+          </div>
         </div>
       )}
 
       {/* ── Users ── (admin only) */}
       {isAdmin && (
         <div className="flex flex-col gap-[6px]">
-          <SectionTitle icon={<img src={usersIcon} width="16" height="16" alt="" />} label="Users" />
+          <SectionTitle
+            icon={<img src={usersIcon} width="16" height="16" alt="" />}
+            label="Users"
+          />
           <Card radius="var(--radius-m)">
             {/* USERS total */}
-            <div style={{ padding: 'var(--space-20) var(--space-20) var(--space-16)' }}>
+            <div
+              style={{
+                padding: "var(--space-20) var(--space-20) var(--space-16)",
+              }}
+            >
               <div className="flex items-center justify-between">
                 <span className="stat-label">Users</span>
-               
               </div>
               <div className="grid grid-cols-2 gap-4 justify-items-end items-center text-xl font-bold mt-[4px] leading-none">
-               <div className="w-full"> {nonAdmin.length.toLocaleString()}</div>
-               <div className=""> {newUsersCount > 0 && (
-                  <span
-                    className="inline-flex items-center gap-[3px] text-sm font-bold px-4 py-[4px] rounded-full"
-                     style={{ background: "#006622", color:"#28ff70", border:"1px solid #28ff70" }}
-                  >
-                    ↑ {newUsersCount}
-                  </span>
-                )}</div>
-               
+                <div className="w-full">
+                  {" "}
+                  {nonAdmin.length.toLocaleString()}
+                </div>
+                <div className="">
+                  {" "}
+                  {newUsersCount > 0 && (
+                    <span
+                      className="inline-flex items-center gap-[3px] text-sm font-bold px-4 py-[4px] rounded-full"
+                      style={{
+                        background: "#006622",
+                        color: "#28ff70",
+                        border: "1px solid #28ff70",
+                      }}
+                    >
+                      ↑ {newUsersCount}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
-<div className="grid grid-cols-2 gap-12 ">
-            <div className="flex items-center justify-between" style={{ padding: 'var(--space-8) var(--space-20)' }}>
-              <span style={{ fontSize: 'var(--font-size-body-m)', color: 'var(--color-text-muted)' }}>Idle</span>
-              <span style={{ fontSize: 'var(--font-size-body-m)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--color-text-primary)' }}>
-                {idleCount.toLocaleString()}
-              </span>
-            </div>
+            <div className="grid grid-cols-2 gap-12 ">
+              <div
+                className="flex items-center justify-between"
+                style={{ padding: "var(--space-8) var(--space-20)" }}
+              >
+                <span
+                  style={{
+                    fontSize: "var(--font-size-body-m)",
+                    color: "var(--color-text-muted)",
+                  }}
+                >
+                  Idle
+                </span>
+                <span
+                  style={{
+                    fontSize: "var(--font-size-body-m)",
+                    fontWeight: "var(--font-weight-semibold)",
+                    color: "var(--color-text-primary)",
+                  }}
+                >
+                  {idleCount.toLocaleString()}
+                </span>
+              </div>
 
-            <div className="flex items-center justify-between" style={{ padding: 'var(--space-8) var(--space-20)' }}>
-              <span style={{ fontSize: 'var(--font-size-body-m)', color: 'var(--color-text-muted)' }}>Unpaid</span>
-              <span style={{ fontSize: 'var(--font-size-body-m)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--color-text-primary)' }}>
-                {unpaidCount.toLocaleString()}
-              </span>
-            </div></div>
+              <div
+                className="flex items-center justify-between"
+                style={{ padding: "var(--space-8) var(--space-20)" }}
+              >
+                <span
+                  style={{
+                    fontSize: "var(--font-size-body-m)",
+                    color: "var(--color-text-muted)",
+                  }}
+                >
+                  Unpaid
+                </span>
+                <span
+                  style={{
+                    fontSize: "var(--font-size-body-m)",
+                    fontWeight: "var(--font-weight-semibold)",
+                    color: "var(--color-text-primary)",
+                  }}
+                >
+                  {unpaidCount.toLocaleString()}
+                </span>
+              </div>
+            </div>
 
             <button
               onClick={() => navigate("/models")}
               className="w-full flex items-center justify-between hover:bg-[rgba(255,255,255,0.03)] transition-colors"
-              style={{ padding: 'var(--space-12) var(--space-20)' }}
+              style={{ padding: "var(--space-12) var(--space-20)" }}
             >
-              <span style={{ fontSize: 'var(--font-size-body-m)', fontWeight: 'var(--font-weight-medium)', color: 'var(--color-text-primary)' }}>
+              <span
+                style={{
+                  fontSize: "var(--font-size-body-m)",
+                  fontWeight: "var(--font-weight-medium)",
+                  color: "var(--color-text-primary)",
+                }}
+              >
                 View Details
               </span>
-              <div style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid var(--border-faint)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ color: 'var(--color-text-muted)', transform: 'rotate(-90deg)' }}>
-                  <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <div
+                style={{
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "8px",
+                  border: "1px solid var(--border-faint)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 14 14"
+                  fill="none"
+                  style={{
+                    color: "var(--color-text-muted)",
+                    transform: "rotate(-90deg)",
+                  }}
+                >
+                  <path
+                    d="M3 5l4 4 4-4"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
               </div>
             </button>
