@@ -180,8 +180,7 @@ export const Settings = () => {
       <h1 className="text-3xl leading-[36px] font-semibold text-white lg:w-full">Settings</h1>
       <div className="grid grid-cols-2 gap-4 w-full">
               {/* Profile Information */}
-      <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-3xl lg:rounded-sm lg:p-4 p-6 shadow-[1px_-2px_0px_-1px_rgba(255,255,255,0.3),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)]
- flex flex-col gap-5 w-full col-span-full lg:col-span-1">
+      <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-3xl lg:rounded-sm lg:p-4 p-6 shadow-[1px_-2px_0px_-1px_rgba(255,255,255,0.3),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-5 w-full col-span-full lg:col-span-1">
         <h2 className="text-lg leading-[1.4] font-bold text-white">
           Profile Information
         </h2>
