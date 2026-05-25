@@ -352,9 +352,9 @@ const CreateChatterPanel = ({ onChatterCreated, onChatterUpdated, onChatterDelet
         <button
           onClick={handleCreate}
           disabled={isCreating || !email.trim()}
-          className="shrink-0 btn-primary-cta rounded-lg px-4 py-3  text-base font-bold active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          className="shrink-0 btn-primary-cta rounded-lg px-4 py-3  text-base font-bold active:scale-[0.98] transition-all disabled:opacity-20 disabled:cursor-not-allowed"
         >
-          {isCreating ? 'Creating…' : '+ Create Chatter'}
+          {isCreating ? 'Creating…' : ' Create Chatter'}
         </button>
       </div>
 
@@ -667,9 +667,9 @@ const LinkPromoterModal = ({ isOpen, onClose, group, allPromoters, onGroupUpdate
               <button
                 onClick={handleUnlink}
                 disabled={isUnlinking}
-                className="text-tm-danger-color05 text-sm font-bold hover:text-tm-danger-color03 disabled:opacity-50"
+                className="text-tm-danger-color05 text-sm font-bold hover:text-tm-danger-color03 disabled:opacity-50 border px-2 py-1 rounded-full"
               >
-                {isUnlinking ? 'Unlinking...' : 'Unlink'}
+                {isUnlinking ? 'Unlinking...' : '🚫 Unlink'}
               </button>
             </div>
           ) : (
@@ -700,12 +700,12 @@ const LinkPromoterModal = ({ isOpen, onClose, group, allPromoters, onGroupUpdate
                     <p className="text-tm-text-color08 text-sm">{p.email}</p>
                   </div>
                   {group.promoter?.id === p.id ? (
-                    <span className="text-tm-success-color05 text-sm font-bold">Linked</span>
+                    <span className="text-tm-success-color05 text-sm font-bold bg-tm-success-color12/40 px-3 py-2 rounded-md">✅ Linked</span>
                   ) : (
                     <button
                       onClick={() => handleLink(p.id)}
                       disabled={isLinking === p.id}
-                      className="text-tm-primary-color04 text-sm font-bold hover:text-tm-primary-color02 disabled:opacity-50"
+                      className="text-tm-primary-color04 text-sm font-bold hover:text-tm-primary-color02 disabled:opacity-50 border px-2 py-1 rounded-full"
                     >
                       {isLinking === p.id ? 'Linking...' : 'Link'}
                     </button>
@@ -959,9 +959,9 @@ export const ChatterGroups = () => {
           <p className="text-tm-text-color08 text-base lg:text-base mt-1">
             {groups.length} group{groups.length !== 1 ? 's' : ''} — commissions split equally among group members
           </p>
-          <div className="grid grid-cols-2 items-center gap-3 w-full lg:col-start-2 lg:self-end lg:max-w-lg lg:border-0 border-t-1 border-b-1 border-tm-neutral-color01 py-4 mb-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2  gap-3  w-full lg:border-0 border-t-1 border-b-1 border-tm-neutral-color01 py-4 mb-6">
             {/* Sort dropdown */}
-            <div className="flex items-start gap-2 flex-col w-full">
+            <div className="flex items-start gap-2 flex-col w-full lg:max-w-xs">
               <label htmlFor="chatter-groups-sort-by" className="text-tm-text-color08 text-base">
                 Sort By
               </label>
@@ -983,12 +983,12 @@ export const ChatterGroups = () => {
               </select>
             </div>
             {canManage && (
-              <button
+              <div className="flex justify-end"><button
                 onClick={() => { setEditingGroup(null); setIsGroupFormOpen(true); }}
-                className="w-full self-end btn-primary-cta rounded-lg px-4 py-3  text-base font-bold active:scale-[0.98] transition-all"
+                className="w-full lg:w-auto lg:self-end btn-primary-cta rounded-lg px-4 py-3  text-base font-bold active:scale-[0.98] transition-all order-first lg:order-last lg:max-w-xs"
               >
-                + New Group
-              </button>
+                + Create New Group
+              </button></div>
             )}
           </div>
           {sortedGroups.map(group => (
@@ -1001,7 +1001,7 @@ export const ChatterGroups = () => {
               className={[
                 "bg-[#1a1a1c] border rounded-3xl lg:rounded-2xl flex flex-col overflow-hidden transition-all duration-500 shadow-[1px_-2px_0px_-1px_rgba(255,255,255,0.3),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)]",
                 group.id === focusGroupId
-                  ? "border-[#ff0f5f] shadow-[0_0_0_2px_rgba(255,15,95,0.25)]"
+                  ? "border-tm-text-color01/40 border-dashed border-3"
                   : "border-[rgba(255,255,255,0.07)]",
               ].join(' ')}
             >
