@@ -138,21 +138,18 @@ export const Models = () => {
   // Targeted background refresh for a single referral card.
   // Called by ReferralStepStream on every SSE step-change event.
   // Does NOT set isLoading so the page never flashes.
-  const silentRefreshReferral = useCallback(
-    async (referralId: string) => {
-      try {
-        const referrals = await modelsApi.getMyReferrals();
-        const updated = referrals.find((r) => r.id === referralId);
-        if (!updated) return;
-        setMyReferrals((prev) =>
-          prev.map((r) => (r.id === referralId ? updated : r)),
-        );
-      } catch {
-        // silent — don't surface errors for background refreshes
-      }
-    },
-    [],
-  );
+  const silentRefreshReferral = useCallback(async (referralId: string) => {
+    try {
+      const referrals = await modelsApi.getMyReferrals();
+      const updated = referrals.find((r) => r.id === referralId);
+      if (!updated) return;
+      setMyReferrals((prev) =>
+        prev.map((r) => (r.id === referralId ? updated : r)),
+      );
+    } catch {
+      // silent — don't surface errors for background refreshes
+    }
+  }, []);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -495,7 +492,7 @@ export const Models = () => {
           <div className="flex flex-col gap-2 flex-1 min-w-50">
             <label
               htmlFor="admin-users-search"
-              className="text-tm-text-color08 text-xs font-bold uppercase "
+              className="text-tm-text-color08 text-sm font-bold uppercase "
             >
               Search
             </label>
@@ -512,7 +509,7 @@ export const Models = () => {
           <div className="flex flex-col gap-2 min-w-40">
             <label
               htmlFor="admin-users-type"
-              className="text-tm-text-color08 text-xs font-bold uppercase "
+              className="text-tm-text-color08 text-sm font-bold uppercase "
             >
               User Type
             </label>
@@ -542,7 +539,7 @@ export const Models = () => {
                 setSelectedUserType("");
                 setSearch("");
               }}
-              className="text-tm-text-color08 hover:text-white text-xs underline self-start lg:self-center "
+              className="text-tm-text-color08 hover:text-white text-sm underline self-start lg:self-center "
             >
               Clear filters
             </button>
@@ -690,7 +687,7 @@ export const Models = () => {
                       <div className="flex items-center gap-2 pl-2 ml-1 border-l border-[rgba(255,255,255,0.08)]">
                         {confirmDeleteManagerId === section.manager.id ? (
                           <>
-                            <span className="text-tm-text-color08 text-xs hidden lg:inline">
+                            <span className="text-tm-text-color08 text-sm hidden lg:inline">
                               Delete?
                             </span>
                             <button
@@ -702,7 +699,7 @@ export const Models = () => {
                               disabled={
                                 deletingManagerId === section.manager.id
                               }
-                              className="px-3 py-1 rounded-md text-xs font-bold bg-tm-danger-color12 border border-tm-danger-color09 text-tm-danger-color05 hover:bg-[#880000] disabled:opacity-50 transition-colors"
+                              className="px-3 py-1 rounded-md text-sm font-bold bg-tm-danger-color12 border border-tm-danger-color09 text-tm-danger-color05 hover:bg-[#880000] disabled:opacity-50 transition-colors"
                             >
                               {deletingManagerId === section.manager.id
                                 ? "..."
@@ -711,7 +708,7 @@ export const Models = () => {
                             <button
                               type="button"
                               onClick={() => setConfirmDeleteManagerId(null)}
-                              className="px-3 py-1 rounded-md text-xs font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-tm-text-color08 hover:text-white transition-colors"
+                              className="px-3 py-1 rounded-md text-sm font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-tm-text-color08 hover:text-white transition-colors"
                             >
                               No
                             </button>
@@ -724,7 +721,7 @@ export const Models = () => {
                                 if (section.manager)
                                   setEditingManager(section.manager);
                               }}
-                              className="px-3 py-1 rounded-md text-xs font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-tm-text-color08 hover:text-white hover:border-[rgba(255,255,255,0.2)] transition-colors"
+                              className="px-3 py-1 rounded-md text-sm font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-tm-text-color08 hover:text-white hover:border-[rgba(255,255,255,0.2)] transition-colors"
                               title="Edit account manager"
                             >
                               Edit
@@ -735,7 +732,7 @@ export const Models = () => {
                                 if (section.manager)
                                   setConfirmDeleteManagerId(section.manager.id);
                               }}
-                              className="px-3 py-1 rounded-md text-xs font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-tm-danger-color04 hover:text-tm-danger-color05 hover:border-tm-danger-color09/50 transition-colors"
+                              className="px-3 py-1 rounded-md text-sm font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-tm-danger-color04 hover:text-tm-danger-color05 hover:border-tm-danger-color09/50 transition-colors"
                               title="Delete account manager"
                             >
                               Delete
@@ -845,7 +842,7 @@ export const Models = () => {
                                 </p>
                                 <div className="flex items-center gap-2 w-full">
                                   <span
-                                    className={`px-3 py-1 rounded-full text-xs font-bold border ${
+                                    className={`px-3 py-1 rounded-full text-sm font-bold border ${
                                       apiUser.isActive
                                         ? "bg-tm-success-color12 border-tm-success-color09 text-tm-success-color05"
                                         : "bg-tm-danger-color12 border-tm-danger-color09 text-tm-danger-color05"
@@ -853,7 +850,7 @@ export const Models = () => {
                                   >
                                     {apiUser.isActive ? "Active" : "Inactive"}
                                   </span>
-                                  <span className="px-3 py-2 rounded-full text-xs font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-tm-text-color08">
+                                  <span className="px-3 py-2 rounded-full text-sm font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-tm-text-color08">
                                     {apiUser.userType?.toUpperCase() ===
                                     "TEAM_MANAGER"
                                       ? "PROMOTER +"
@@ -867,7 +864,7 @@ export const Models = () => {
                               <div className="flex flex-col items-start lg:items-end gap-2 w-full">
                                 {apiUser.stats && !isPayers && (
                                   <div className="text-left flex flex-col gap-1 w-full lg:text-right">
-                                    <p className="text-tm-text-color08 text-xs uppercase">
+                                    <p className="text-tm-text-color08 text-sm uppercase">
                                       Earnings
                                     </p>
                                     <p className="text-white text-xl lg:text-2xl font-bold">
@@ -882,7 +879,7 @@ export const Models = () => {
 
                                 {confirmDeleteId === apiUser.id ? (
                                   <div className="flex items-center gap-2 mt-1">
-                                    <span className="text-tm-text-color08 text-xs">
+                                    <span className="text-tm-text-color08 text-sm">
                                       Delete?
                                     </span>
                                     <button
@@ -890,7 +887,7 @@ export const Models = () => {
                                         handleDeleteUser(apiUser.id)
                                       }
                                       disabled={deletingUserId === apiUser.id}
-                                      className="px-3 py-1 rounded-md text-xs font-bold bg-tm-danger-color12 border border-tm-danger-color09 text-tm-danger-color05 hover:bg-[#880000] disabled:opacity-50 transition-colors"
+                                      className="px-3 py-1 rounded-md text-sm font-bold bg-tm-danger-color12 border border-tm-danger-color09 text-tm-danger-color05 hover:bg-[#880000] disabled:opacity-50 transition-colors"
                                     >
                                       {deletingUserId === apiUser.id
                                         ? "..."
@@ -898,7 +895,7 @@ export const Models = () => {
                                     </button>
                                     <button
                                       onClick={() => setConfirmDeleteId(null)}
-                                      className="px-3 py-1 rounded-md text-xs font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-tm-text-color08 hover:text-white transition-colors"
+                                      className="px-3 py-1 rounded-md text-sm font-bold bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] text-tm-text-color08 hover:text-white transition-colors"
                                     >
                                       No
                                     </button>
@@ -984,7 +981,7 @@ export const Models = () => {
           <div className="flex flex-col gap-1.5 flex-1 min-w-50">
             <label
               htmlFor="am-users-search"
-              className="text-tm-text-color08 text-xs font-bold uppercase "
+              className="text-tm-text-color08 text-sm font-bold uppercase "
             >
               Search
             </label>
@@ -994,14 +991,14 @@ export const Models = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Name or email…"
-              className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.08)] rounded-lg px-3 py-3 text-sm text-white focus:outline-none focus:border--tm-primary-color04 placeholder-[#555]"
+              className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.08)] rounded-lg px-3 py-3 text-base text-white focus:outline-none focus:border-tm-primary-color04 placeholder-[#555]"
             />
           </div>
 
           <div className="flex flex-col gap-2 min-w-40">
             <label
               htmlFor="am-users-type"
-              className="text-tm-text-color08 text-xs font-bold uppercase "
+              className="text-tm-text-color08 text-sm font-bold uppercase "
             >
               User Type
             </label>
@@ -1033,7 +1030,7 @@ export const Models = () => {
                 setSelectedUserType("");
                 setSearch("");
               }}
-              className="text-tm-text-color08 hover:text-white text-xs underline self-start lg:self-end lg:mb-3"
+              className="text-tm-text-color08 hover:text-white text-sm underline self-start lg:self-end lg:mb-3"
             >
               Clear filters
             </button>
@@ -1084,7 +1081,7 @@ export const Models = () => {
                           </p>
                           <div className="flex items-center gap-2 w-full">
                             <span
-                              className={`px-3 py-1 rounded-full text-xs font-bold border ${
+                              className={`px-3 py-1 rounded-full text-sm font-bold border ${
                                 apiUser.isActive
                                   ? "bg-tm-success-color12 border-tm-success-color09 text-tm-success-color05"
                                   : "bg-tm-danger-color12 border-tm-danger-color09 text-tm-danger-color05"
@@ -1092,7 +1089,7 @@ export const Models = () => {
                             >
                               {apiUser.isActive ? "Active" : "Inactive"}
                             </span>
-                            <span className="px-3 py-1 rounded-full text-xs font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-tm-text-color09">
+                            <span className="px-3 py-1 rounded-full text-sm font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-tm-text-color09">
                               {apiUser.userType?.toUpperCase() ===
                               "TEAM_MANAGER"
                                 ? "PROMOTER +"
@@ -1106,13 +1103,13 @@ export const Models = () => {
                         {apiUser.stats && (
                           <div className="flex flex-col items-start lg:items-end gap-2 w-full">
                             <div className="text-left flex flex-col gap-1 w-full lg:text-right">
-                              <p className="text-tm-text-color08 text-xs uppercase">
+                              <p className="text-tm-text-color08 text-sm uppercase">
                                 Earnings
                               </p>
                               <p className="text-white text-lg font-bold">
                                 ${apiUser.stats.totalEarnings.toFixed(2)}
                               </p>
-                              <p className="text-tm-text-color08 text-xs">
+                              <p className="text-tm-text-color08 text-sm">
                                 {apiUser.stats.activeReferrals} active referrals
                               </p>
                             </div>
@@ -1165,11 +1162,16 @@ export const Models = () => {
           </div>
         ) : null}
 
-        <p className="text-sm text-tm-text-color08">
+        <p className="text-base text-tm-text-color08">
           {myReferrals.length} total referrals
         </p>
 
-        <ReferralList referrals={myReferrals} setReferrals={setMyReferrals} onRefetch={loadData} onSilentRefetch={silentRefreshReferral} />
+        <ReferralList
+          referrals={myReferrals}
+          setReferrals={setMyReferrals}
+          onRefetch={loadData}
+          onSilentRefetch={silentRefreshReferral}
+        />
 
         <InviteModal
           isOpen={isInviteModalOpen}
@@ -1209,7 +1211,12 @@ export const Models = () => {
           {myReferrals.length} total referrals
         </p>
 
-        <ReferralList referrals={myReferrals} setReferrals={setMyReferrals} onRefetch={loadData} onSilentRefetch={silentRefreshReferral} />
+        <ReferralList
+          referrals={myReferrals}
+          setReferrals={setMyReferrals}
+          onRefetch={loadData}
+          onSilentRefetch={silentRefreshReferral}
+        />
 
         <InviteModal
           isOpen={isInviteModalOpen}
@@ -1253,7 +1260,12 @@ export const Models = () => {
           {myReferrals.length} total referrals
         </p>
 
-        <ReferralList referrals={myReferrals} setReferrals={setMyReferrals} onRefetch={loadData} onSilentRefetch={silentRefreshReferral} />
+        <ReferralList
+          referrals={myReferrals}
+          setReferrals={setMyReferrals}
+          onRefetch={loadData}
+          onSilentRefetch={silentRefreshReferral}
+        />
 
         <InviteModal
           isOpen={isInviteModalOpen}
@@ -1914,7 +1926,6 @@ const ReferralList = ({
     }
   };
 
-
   // Manual welcome-email dispatch for LP Live cards. The button label is
   // derived from `preUser.welcomeEmailSentAt` (Send vs Resend), and after
   // a successful round-trip we splice the new timestamp into the local
@@ -1980,7 +1991,7 @@ const ReferralList = ({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 items-center gap-2 flex-wrap">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 items-center gap-2 flex-wrap border-t border-b border-tm-neutral-color01 py-4 mb-6">
         {filterOptions.map((opt) => {
           const isSelected = filter === opt.id;
           return (
@@ -2087,7 +2098,7 @@ const ReferralList = ({
           return (
             <div
               key={referral.id}
-              className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-lg p-4 shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-4"
+              className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-3xl lg:rounded-2xl p-5 shadow-[1px_-2px_0px_-1px_rgba(255,255,255,0.3),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-4"
             >
               {/* Header: chip on the left, LEVEL N on the right */}
               <div className="flex flex-row items-center justify-between">
@@ -2110,7 +2121,7 @@ const ReferralList = ({
                       Referred by {referrerLabel}
                     </p>
                     {isAccountManagerViewer && (
-                      <p className="text-tm-text-color08 text-xs font-medium leading-snug">
+                      <p className="text-tm-text-color08 text-sm font-medium leading-snug">
                         They were invited through this promoter&apos;s link, not
                         through your account manager invite.
                       </p>
@@ -2128,7 +2139,7 @@ const ReferralList = ({
                             showToast("error", "Could not copy link");
                           }
                         }}
-                        className="self-start text-left text-xs font-semibold text-tm-text-color10 hover:text-white underline underline-offset-2"
+                        className="self-start text-left text-sm font-semibold text-tm-text-color10 hover:text-white underline underline-offset-2"
                       >
                         Copy their invite link
                       </button>
@@ -2351,7 +2362,7 @@ const AdminOverrideRow = ({
 }) => (
   <div className="flex items-center justify-between gap-2 pt-2 mt-1 border-t border-[rgba(255,255,255,0.06)]">
     <span
-      className="text-tm-text-color08 text-xs uppercase"
+      className="text-tm-text-color08 text-sm uppercase"
       title="Admin-only overrides"
     >
       Admin
@@ -2361,7 +2372,7 @@ const AdminOverrideRow = ({
         <button
           onClick={() => onReassign(referral)}
           disabled={busy}
-          className="bg-transparent border border-[rgba(255,255,255,0.14)] rounded-md px-3 py-2 text-[#d0d0d0] text-xs font-bold hover:text-white hover:border-[rgba(255,255,255,0.3)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="bg-transparent border border-[rgba(255,255,255,0.14)] rounded-md px-3 py-2 text-[#d0d0d0] text-sm font-bold hover:text-white hover:border-[rgba(255,255,255,0.3)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           Reassign
         </button>
@@ -2369,7 +2380,7 @@ const AdminOverrideRow = ({
       <button
         onClick={() => onDelete(referral)}
         disabled={busy}
-        className="bg-transparent border border-[rgba(255,255,255,0.14)] rounded-md px-3 py-2 text-[#d0d0d0] text-xs font-bold hover:text-tm-danger-color05 hover:border-tm-danger-color09 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        className="bg-transparent border border-[rgba(255,255,255,0.14)] rounded-md px-3 py-2 text-[#d0d0d0] text-sm font-bold hover:text-tm-danger-color05 hover:border-tm-danger-color09 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
       >
         Delete
       </button>
@@ -2604,7 +2615,10 @@ const CardActions = ({
       )}
       {canAssignChatters ? (
         referral.referredUser?.chatterGroupId ? (
-          <SecondaryButton onClick={() => onAssignChatters(referral)} disabled={busy}>
+          <SecondaryButton
+            onClick={() => onAssignChatters(referral)}
+            disabled={busy}
+          >
             {busy ? "Loading…" : "Manage Chatters"}
           </SecondaryButton>
         ) : (
@@ -2647,7 +2661,9 @@ const ModalShell = ({
         <div className="flex flex-col gap-1 min-w-0">
           <h3 className="text-white text-base font-bold">{title}</h3>
           {subtitle ? (
-            <p className="text-tm-text-color08 text-base truncate">{subtitle}</p>
+            <p className="text-tm-text-color08 text-base truncate">
+              {subtitle}
+            </p>
           ) : null}
         </div>
         <button
@@ -2717,7 +2733,9 @@ const ReassignModal = ({
       onClose={onClose}
     >
       {loading ? (
-        <p className="text-tm-text-color08 text-sm">Loading account managers…</p>
+        <p className="text-tm-text-color08 text-sm">
+          Loading account managers…
+        </p>
       ) : error ? (
         <p className="text-tm-danger-color05 text-sm">{error}</p>
       ) : managers.length === 0 ? (
@@ -2726,7 +2744,7 @@ const ReassignModal = ({
         </p>
       ) : (
         <label className="flex flex-col gap-2">
-          <span className="text-xs uppercase tracking-widest text-tm-text-color08 font-bold">
+          <span className="text-sm uppercase tracking-widest text-tm-text-color08 font-bold">
             New account manager
           </span>
           <select

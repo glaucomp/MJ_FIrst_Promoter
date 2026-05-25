@@ -231,7 +231,7 @@ export const Commissions = () => {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search by name, email, campaign…"
-              className="w-full bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-[34px] pl-9 pr-3 py-[8px] text-sm text-white placeholder-tm-text-color08 focus:outline-none focus:border-[rgba(255,15,95,0.4)]"
+              className="w-full bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.07)] rounded-[34px] pl-9 pr-3 py-[8px] text-base text-white placeholder-tm-text-color08 focus:outline-none focus:border-[rgba(255,15,95,0.4)]"
             />
           </div>
         </div>
