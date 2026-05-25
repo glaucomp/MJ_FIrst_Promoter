@@ -312,7 +312,7 @@ const CreateChatterPanel = ({ onChatterCreated, onChatterUpdated, onChatterDelet
   };
 
   return (
-    <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-3xl lg:rounded-lg p-5 flex flex-col gap-3 mb-6">
+    <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-3xl lg:rounded-lg p-5 flex flex-col gap-3 mb-6 shadow-[1px_-2px_0px_-1px_rgba(255,255,255,0.3),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)]">
       <p className="text-tm-text-color08 text-xs font-bold uppercase">Create New Chatter</p>
 
       {success && (
@@ -523,7 +523,7 @@ const InlineMemberManager = ({ group, allChatters, onGroupUpdated }: InlineMembe
       />
 
       {filteredNonMembers.length === 0 ? (
-        <p className="text-[#555] text-base">
+        <p className="text-tm-text-color08 text-base">
           {search
             ? 'No chatters match search.'
             : nonMembers.length === 0
@@ -556,7 +556,7 @@ const InlineMemberManager = ({ group, allChatters, onGroupUpdated }: InlineMembe
                   {name}
                 </span>
                 {isAdding !== c.id && (
-                  <span className="text-[#555] text-2xl group-hover:text-tm-success-color05 transition-colors">+</span>
+                  <span className="text-tm-text-color08 text-2xl group-hover:text-tm-success-color05 transition-colors">+</span>
                 )}
               </button>
             );
@@ -753,7 +753,7 @@ const ChatterAvatarCard = ({ member, onRemove, isRemoving }: ChatterAvatarCardPr
           disabled={isRemoving}
           title={`Remove ${displayName}`}
           aria-label={`Remove ${displayName} from group`}
-          className="absolute top-1 right-2 w-6 h-6 flex items-center justify-center text-tm-danger-color05 lg:text-[#555] hover:text-tm-danger-color05 disabled:opacity-40 transition-colors text-3xl leading-none"
+          className="absolute top-1 right-2 w-6 h-6 flex items-center justify-center text-tm-danger-color05 lg:text-tm-text-color08 hover:text-tm-danger-color05 disabled:opacity-40 transition-colors text-3xl leading-none"
         >
           ×
         </button>
@@ -999,7 +999,7 @@ export const ChatterGroups = () => {
                 else groupRefs.current.delete(group.id);
               }}
               className={[
-                "bg-[#1a1a1c] border rounded-3xl lg:rounded-2xl flex flex-col overflow-hidden transition-all duration-500",
+                "bg-[#1a1a1c] border rounded-3xl lg:rounded-2xl flex flex-col overflow-hidden transition-all duration-500 shadow-[1px_-2px_0px_-1px_rgba(255,255,255,0.3),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)]",
                 group.id === focusGroupId
                   ? "border-[#ff0f5f] shadow-[0_0_0_2px_rgba(255,15,95,0.25)]"
                   : "border-[rgba(255,255,255,0.07)]",
@@ -1043,13 +1043,13 @@ export const ChatterGroups = () => {
                 </div>
 
                 {/* Right: referral bonus + admin actions */}
-                <div className="flex flex-row justify-between gap-4">
-                  <div className="flex items-baseline gap-1 self-end">
+                <div className="flex flex-col-reverse lg:flex-row justify-between gap-4">
+                  <div className="flex items-baseline gap-1 lg:self-end">
                     <span className="text-tm-text-color08 text-base">Referral Bonus</span>
                     <span className="text-white text-base font-bold">{group.commissionPercentage}%</span>
                   </div>
                   {canManage && (
-                    <div className="flex items-center gap-3">
+                    <div className="flex lg:items-center gap-3 justify-end">
                       <button
                         onClick={() => { setEditingGroup(group); setIsGroupFormOpen(true); }}
                         className="text-tm-text-color08 text-base lg:text-base hover:text-white hover:-translate-y-0.5 transition-all"
@@ -1058,7 +1058,7 @@ export const ChatterGroups = () => {
                       </button>
                       {confirmDeleteId === group.id ? (
                         <div className="flex items-center gap-2">
-                          <span className="text-[#555] text-base lg:text-base">Delete?</span>
+                          <span className="text-tm-text-color08 text-base lg:text-base">Delete?</span>
                           <button
                             onClick={() => void handleDelete(group.id)}
                             disabled={deletingId === group.id}
@@ -1068,7 +1068,7 @@ export const ChatterGroups = () => {
                           </button>
                           <button
                             onClick={() => setConfirmDeleteId(null)}
-                            className="text-[#555] text-base lg:text-base font-bold hover:text-tm-text-color08"
+                            className="text-tm-text-color08 text-base lg:text-base font-bold hover:text-tm-text-color08"
                           >
                             No
                           </button>
@@ -1087,7 +1087,7 @@ export const ChatterGroups = () => {
               </div>
 
               {/* Card body */}
-              <div className="px-7 pb-6 flex flex-col gap-4">
+              <div className="px-7 pb-6 flex flex-col-reverse  gap-4">
                 {/* Team Members section */}
                 <div className="flex flex-col gap-2">
                   <div className="flex flex-col items-start lg:items-center justify-start gap-2 lg:gap-6 lg:flex-row">
@@ -1098,15 +1098,15 @@ export const ChatterGroups = () => {
                         className="bg-tm-neutral-color05 px-4 py-2 text-tm-text-color03 hover:text-tm-text-color10 text-base transition-colors rounded-lg mb-2"
                       >
                         {expandedMembersId === group.id
-                          ? 'Done ✔️'
+                          ? ' ✅ Done Editing'
                           : group.members.length === 0
                             ? '+ Add Chatters'
-                            : '◐ Manage Chatters +'}
+                            : '◐ Manage Chatters '}
                       </button>
                     )}
                   </div>
                   {group.members.length === 0 ? (
-                    <p className="text-[#555] text-base">No chatters assigned yet.</p>
+                    <p className="text-tm-text-color08 text-base">No chatters assigned yet.</p>
                   ) : (
                     <div className="grid lg:grid-cols-3 gap-3">
                       {group.members.map(m => (

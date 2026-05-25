@@ -282,7 +282,7 @@ const SectionTitle = ({
     <span
       style={{
         color: "var(--color-text-label)",
-        fontSize: "var(--font-size-body-s)",
+        fontSize: "var(--font-size-body-m)",
         fontWeight: "var(--font-weight-medium)",
         lineHeight: "140%",
         letterSpacing: "0.2px",
@@ -958,7 +958,7 @@ const AdminTxListCard = ({
                   borderRadius: 'var(--radius-round)',
                   background: 'var(--color-surface-raised)',
                   border: '1px solid var(--border-faint)',
-                  fontSize: 'var(--font-size-body-s)',
+                  fontSize: 'var(--font-size-body-m)',
                 }}
               />
             </div>
@@ -1258,7 +1258,7 @@ const TxListCard = ({
                     cursor: 'pointer',
                   }}
                 >
-                  <span style={{ fontSize: 'var(--font-size-body-s)', fontWeight: 'var(--font-weight-medium)', lineHeight: 1, color: active ? 'var(--color-accent-bright)' : 'var(--color-text-primary)' }}>
+                  <span style={{ fontSize: 'var(--font-size-body-m)', fontWeight: 'var(--font-weight-medium)', lineHeight: 1, color: active ? 'var(--color-accent-bright)' : 'var(--color-text-primary)' }}>
                     {count}
                   </span>
                   <span style={{ fontSize: '11px', fontWeight: 'var(--font-weight-medium)', lineHeight: 1, color: active ? 'var(--color-accent-bright)' : 'var(--color-text-muted)' }}>
@@ -1307,7 +1307,7 @@ const TxListCard = ({
                   borderRadius: 'var(--radius-round)',
                   background: 'var(--color-surface-raised)',
                   border: '1px solid var(--border-faint)',
-                  fontSize: 'var(--font-size-body-s)',
+                  fontSize: 'var(--font-size-body-m)',
                 }}
               />
             </div>
@@ -1886,7 +1886,7 @@ export const Reports = () => {
         <h1 className="text-3xl font-bold text-white font-['DM_Sans',sans-serif]">
           Reports
         </h1>
-        <div className="relative flex items-center gap-[8px]">
+        <div className="relative flex items-center gap-[8px] border-t-1 border-b-1 border-tm-neutral-color01 py-4 mb-2 lg:border-0 ">
           <div className="relative flex-1">
             <button
               onClick={() => setPeriodOpen((o) => !o)}
@@ -2418,7 +2418,7 @@ export const Reports = () => {
             {topCustomers.length === 0 ? (
               <div className="flex flex-col items-center py-[32px] gap-[8px]">
                 <span className="text-3xl">👤</span>
-                <span style={{ fontSize: 'var(--font-size-body-s)', color: 'var(--color-text-muted)' }}>
+                <span style={{ fontSize: 'var(--font-size-body-m)', color: 'var(--color-text-muted)' }}>
                   No customer data for this period
                 </span>
               </div>
@@ -2462,10 +2462,10 @@ export const Reports = () => {
                     >
                       {initials}
                     </div>
-                    <span className="flex-1 truncate" style={{ fontSize: 'var(--font-size-body-s)', fontWeight: 'var(--font-weight-medium)', lineHeight: '140%', letterSpacing: '0.2px', color: '#7A7A7A' }}>
+                    <span className="flex-1 truncate" style={{ fontSize: 'var(--font-size-body-m)', fontWeight: 'var(--font-weight-medium)', lineHeight: '140%', letterSpacing: '0.2px', color: '#7A7A7A' }}>
                       {name}
                     </span>
-                    <span className="shrink-0" style={{ fontSize: 'var(--font-size-body-s)', fontWeight: 'var(--font-weight-medium)', lineHeight: '140%', letterSpacing: '0.2px', color: 'var(--color-text-primary)' }}>
+                    <span className="shrink-0" style={{ fontSize: 'var(--font-size-body-m)', fontWeight: 'var(--font-weight-medium)', lineHeight: '140%', letterSpacing: '0.2px', color: 'var(--color-text-primary)' }}>
                       ${money(revenue)}
                     </span>
                   </div>
@@ -2495,15 +2495,15 @@ export const Reports = () => {
             </div>
 <div className="grid grid-cols-2 gap-12 ">
             <div className="flex items-center justify-between" style={{ padding: 'var(--space-8) var(--space-20)' }}>
-              <span style={{ fontSize: 'var(--font-size-body-s)', color: 'var(--color-text-muted)' }}>Idle</span>
-              <span style={{ fontSize: 'var(--font-size-body-s)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--color-text-primary)' }}>
+              <span style={{ fontSize: 'var(--font-size-body-m)', color: 'var(--color-text-muted)' }}>Idle</span>
+              <span style={{ fontSize: 'var(--font-size-body-m)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--color-text-primary)' }}>
                 {idleCustomerCount.toLocaleString()}
               </span>
             </div>
 
             <div className="flex items-center justify-between" style={{ padding: 'var(--space-8) var(--space-20)' }}>
-              <span style={{ fontSize: 'var(--font-size-body-s)', color: 'var(--color-text-muted)' }}>Unpaid</span>
-              <span style={{ fontSize: 'var(--font-size-body-s)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--color-text-primary)' }}>
+              <span style={{ fontSize: 'var(--font-size-body-m)', color: 'var(--color-text-muted)' }}>Unpaid</span>
+              <span style={{ fontSize: 'var(--font-size-body-m)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--color-text-primary)' }}>
                 {unpaidCustomerCount.toLocaleString()}
               </span>
             </div></div>
@@ -2513,7 +2513,7 @@ export const Reports = () => {
               className="w-full flex items-center justify-between hover:bg-[rgba(255,255,255,0.03)] transition-colors"
               style={{ padding: 'var(--space-12) var(--space-20)' }}
             >
-              <span style={{ fontSize: 'var(--font-size-body-s)', fontWeight: 'var(--font-weight-medium)', color: 'var(--color-text-primary)' }}>
+              <span style={{ fontSize: 'var(--font-size-body-m)', fontWeight: 'var(--font-weight-medium)', color: 'var(--color-text-primary)' }}>
                 View Details
               </span>
               <div style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid var(--border-faint)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -2534,7 +2534,7 @@ export const Reports = () => {
           {topPerformers.length === 0 ? (
             <div className="flex flex-col items-center py-[32px] gap-[8px]">
               <span className="text-3xl">📈</span>
-              <span style={{ fontSize: 'var(--font-size-body-s)', color: 'var(--color-text-muted)' }}>
+              <span style={{ fontSize: 'var(--font-size-body-m)', color: 'var(--color-text-muted)' }}>
                 No performance data for this period
               </span>
             </div>
@@ -2586,10 +2586,10 @@ export const Reports = () => {
                       {initials}
                     </div>
                   )}
-                  <span className="flex-1 truncate" style={{ fontSize: 'var(--font-size-body-s)', fontWeight: 'var(--font-weight-medium)', lineHeight: '140%', letterSpacing: '0.2px', color: '#7A7A7A' }}>
+                  <span className="flex-1 truncate" style={{ fontSize: 'var(--font-size-body-m)', fontWeight: 'var(--font-weight-medium)', lineHeight: '140%', letterSpacing: '0.2px', color: '#7A7A7A' }}>
                     {name}
                   </span>
-                  <span className="shrink-0" style={{ fontSize: 'var(--font-size-body-s)', fontWeight: 'var(--font-weight-medium)', lineHeight: '140%', letterSpacing: '0.2px', color: 'var(--color-text-primary)' }}>
+                  <span className="shrink-0" style={{ fontSize: 'var(--font-size-body-m)', fontWeight: 'var(--font-weight-medium)', lineHeight: '140%', letterSpacing: '0.2px', color: 'var(--color-text-primary)' }}>
                     ${money(revenue)}
                   </span>
                 </div>
@@ -2603,7 +2603,7 @@ export const Reports = () => {
             className="w-full flex items-center justify-between hover:opacity-70 transition-opacity"
             style={{ padding: 'var(--space-8) 0' }}
           >
-            <span style={{ fontSize: 'var(--font-size-body-s)', fontWeight: 'var(--font-weight-medium)', color: 'var(--color-accent-bright)' }}>
+            <span style={{ fontSize: 'var(--font-size-body-m)', fontWeight: 'var(--font-weight-medium)', color: 'var(--color-accent-bright)' }}>
               Manage Influencers
             </span>
             <span style={{ color: 'var(--color-accent-bright)', fontSize: '18px' }}>›</span>
@@ -2627,10 +2627,10 @@ export const Reports = () => {
                 style={{ padding: 'var(--space-20)' }}
               >
                 <div className="text-left flex flex-col gap-3">
-                  <div style={{ fontSize: 'var(--font-size-body-s)', fontWeight: 'var(--font-weight-medium)', lineHeight: '140%', letterSpacing: '0.2px', color: 'var(--color-text-muted)' }}>
+                  <div style={{ fontSize: 'var(--font-size-body-m)', fontWeight: 'var(--font-weight-medium)', lineHeight: '140%', letterSpacing: '0.2px', color: 'var(--color-text-muted)' }}>
                     {label}
                   </div>
-                  <div style={{ fontSize: 'var(--font-size-body-s)', fontWeight: 'var(--font-weight-medium)', lineHeight: '140%', letterSpacing: '0.2px', color: 'var(--color-text-primary)' }}>
+                  <div style={{ fontSize: 'var(--font-size-body-m)', fontWeight: 'var(--font-weight-medium)', lineHeight: '140%', letterSpacing: '0.2px', color: 'var(--color-text-primary)' }}>
                     {count.toLocaleString()}
                   </div>
                 </div>
@@ -2671,15 +2671,15 @@ export const Reports = () => {
             </div>
 <div className="grid grid-cols-2 gap-12 ">
             <div className="flex items-center justify-between" style={{ padding: 'var(--space-8) var(--space-20)' }}>
-              <span style={{ fontSize: 'var(--font-size-body-s)', color: 'var(--color-text-muted)' }}>Idle</span>
-              <span style={{ fontSize: 'var(--font-size-body-s)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--color-text-primary)' }}>
+              <span style={{ fontSize: 'var(--font-size-body-m)', color: 'var(--color-text-muted)' }}>Idle</span>
+              <span style={{ fontSize: 'var(--font-size-body-m)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--color-text-primary)' }}>
                 {idleCount.toLocaleString()}
               </span>
             </div>
 
             <div className="flex items-center justify-between" style={{ padding: 'var(--space-8) var(--space-20)' }}>
-              <span style={{ fontSize: 'var(--font-size-body-s)', color: 'var(--color-text-muted)' }}>Unpaid</span>
-              <span style={{ fontSize: 'var(--font-size-body-s)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--color-text-primary)' }}>
+              <span style={{ fontSize: 'var(--font-size-body-m)', color: 'var(--color-text-muted)' }}>Unpaid</span>
+              <span style={{ fontSize: 'var(--font-size-body-m)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--color-text-primary)' }}>
                 {unpaidCount.toLocaleString()}
               </span>
             </div></div>
@@ -2689,7 +2689,7 @@ export const Reports = () => {
               className="w-full flex items-center justify-between hover:bg-[rgba(255,255,255,0.03)] transition-colors"
               style={{ padding: 'var(--space-12) var(--space-20)' }}
             >
-              <span style={{ fontSize: 'var(--font-size-body-s)', fontWeight: 'var(--font-weight-medium)', color: 'var(--color-text-primary)' }}>
+              <span style={{ fontSize: 'var(--font-size-body-m)', fontWeight: 'var(--font-weight-medium)', color: 'var(--color-text-primary)' }}>
                 View Details
               </span>
               <div style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid var(--border-faint)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>

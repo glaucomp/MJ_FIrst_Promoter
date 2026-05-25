@@ -994,7 +994,7 @@ export const Models = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Name or email…"
-              className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.08)] rounded-lg px-3 py-3 text-sm text-white focus:outline-none focus:border--tm-primary-color04 placeholder-[#555]"
+              className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.08)] rounded-lg px-3 py-3 text-base text-white focus:outline-none focus:border--tm-primary-color04 placeholder-[#555]"
             />
           </div>
 
