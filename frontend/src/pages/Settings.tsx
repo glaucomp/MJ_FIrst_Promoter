@@ -28,7 +28,7 @@ const Field = ({
   placeholder?: string; type?: string; hint?: string; required?: boolean;
 }) => (
   <div className="flex flex-col gap-[6px]">
-    <label className="text-tm-text-color08 text-xs font-bold uppercase">
+    <label className="text-tm-text-color08 text-sm font-bold uppercase">
       {label}{required && <span className="text-[#9fe870] ml-[2px]">*</span>}
     </label>
     <input
@@ -36,9 +36,9 @@ const Field = ({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[14px] py-4 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#9fe870] transition-colors"
+      className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[14px] py-4 text-base text-white placeholder-[#444] focus:outline-none focus:border-[#9fe870] transition-colors"
     />
-    {hint && <p className="text-xs text-[#555] leading-[1.4]">{hint}</p>}
+    {hint && <p className="text-sm text-[#555] leading-[1.4]">{hint}</p>}
   </div>
 );
 
@@ -180,7 +180,7 @@ export const Settings = () => {
       <h1 className="text-3xl leading-[36px] font-semibold text-white lg:w-full">Settings</h1>
       <div className="grid grid-cols-2 gap-4 w-full">
               {/* Profile Information */}
-      <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-sm p-4 shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-5 w-full col-span-full lg:col-span-1">
+      <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-3xl lg:rounded-sm lg:p-4 p-6 shadow-[1px_-2px_0px_-1px_rgba(255,255,255,0.3),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-5 w-full col-span-full lg:col-span-1">
         <h2 className="text-lg leading-[1.4] font-bold text-white">
           Profile Information
         </h2>
@@ -243,7 +243,7 @@ export const Settings = () => {
               <span className="text-base text-white font-medium">
                 {user?.role ? (ROLE_DISPLAY[user.role] ?? user.role.replace('_', ' ').toUpperCase()) : ''}
               </span>
-              <span className="px-[12px] py-[4px] rounded-full text-xs font-bold border bg-tm-success-color12 border-tm-success-color09 text-tm-success-color05">
+              <span className="px-[12px] py-[4px] rounded-full text-sm font-bold border bg-tm-success-color12 border-tm-success-color09 text-tm-success-color05">
                 Active
               </span>
             </div>
@@ -252,7 +252,7 @@ export const Settings = () => {
       </div>
 
       {/* Preferences */}
-      <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-sm p-4 shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-5 w-full col-span-full lg:col-span-1">
+      <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-3xl lg:rounded-sm lg:p-4 p-6 shadow-[1px_-2px_0px_-1px_rgba(255,255,255,0.3),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-5 w-full col-span-full lg:col-span-1">
         <h2 className="text-lg leading-[1.4] font-bold text-white">
           Preferences
         </h2>
@@ -277,7 +277,7 @@ export const Settings = () => {
       </div>
 
       {/* Payout Settings — Wise */}
-      <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-sm p-4 shadow-[0px_-1px_0px_0px_rgba(255,255,255,0.1),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-5 w-full col-span-full">
+      <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-3xl lg:rounded-sm lg:p-4 p-6 shadow-[1px_-2px_0px_-1px_rgba(255,255,255,0.3),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-5 w-full col-span-full">
 
         {/* Header */}
         <div className="flex items-start gap-[12px] flex-col lg:flex-row">
@@ -305,7 +305,7 @@ export const Settings = () => {
           >
             <span className="text-lg">✓</span>
             <div className="flex flex-col gap-[2px]">
-              <span className="text-xs font-semibold" style={{ color: '#00d948' }}>Wise account linked</span>
+              <span className="text-sm font-semibold" style={{ color: '#00d948' }}>Wise account linked</span>
               <span className="text-sm text-white font-mono">
                 ID: {(user as any).wiseRecipientId}
                 {user?.wiseEmail && <span className="text-[#555] font-sans font-normal ml-[8px]">{user.wiseEmail}</span>}
@@ -313,7 +313,7 @@ export const Settings = () => {
             </div>
             <button
               onClick={() => setWiseMessage(null)}
-              className="ml-auto text-xs font-semibold px-4 py-[5px] rounded-sm"
+              className="ml-auto text-sm font-semibold px-4 py-[5px] rounded-sm"
               style={{ background: 'rgba(0,185,255,0.1)', color: '#00b9ff', border: '1px solid rgba(0,185,255,0.2)' }}
             >
               Update
@@ -323,7 +323,7 @@ export const Settings = () => {
 
         {/* Bank type selector */}
         <div className="flex flex-col gap-[8px]">
-          <span className="text-tm-text-color08 text-xs font-bold uppercase">
+          <span className="text-tm-text-color08 text-sm font-bold uppercase">
             Bank Account Type
           </span>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-[8px]">
@@ -344,10 +344,10 @@ export const Settings = () => {
                   boxShadow: bankType === t.id ? '0 0 0 1px rgba(0,185,255,0.2)' : 'none',
                 }}
               >
-                <span className="text-xs font-bold" style={{ color: bankType === t.id ? 'rgb(159, 232, 112)' : 'white' }}>
+                <span className="text-sm font-bold" style={{ color: bankType === t.id ? 'rgb(159, 232, 112)' : 'white' }}>
                   {t.label}
                 </span>
-                <span className="text-xs" style={{ color: bankType === t.id ? 'rgb(159, 232, 112)' : 'rgba(255, 255, 255, 0.3)' }}>{t.sub}</span>
+                <span className="text-sm" style={{ color: bankType === t.id ? 'rgb(159, 232, 112)' : 'rgba(255, 255, 255, 0.3)' }}>{t.sub}</span>
               </button>
             ))}
           </div>
@@ -385,7 +385,7 @@ export const Settings = () => {
               <Field label="Account Number" value={accountNumber} onChange={setAccountNumber} placeholder="12345678" />
             </div>
             <div className="flex flex-col gap-[6px]">
-              <span className="text-tm-text-color08 text-xs font-bold uppercase">
+              <span className="text-tm-text-color08 text-sm font-bold uppercase">
                 Account Type<span className="text-[#9fe870] ml-[2px]">*</span>
               </span>
               <div className="flex gap-[8px]">
@@ -412,7 +412,7 @@ export const Settings = () => {
               <div className="flex flex-col gap-[6px]">
                 <label
                   htmlFor="stateSelect"
-                  className="text-tm-text-color08 text-xs font-bold uppercase"
+                  className="text-tm-text-color08 text-sm font-bold uppercase"
                 >
                   State<span className="text-[#9fe870] ml-[2px]">*</span>
                 </label>

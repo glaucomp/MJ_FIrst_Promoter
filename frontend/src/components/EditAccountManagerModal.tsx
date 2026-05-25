@@ -149,7 +149,7 @@ export const EditAccountManagerModal = ({
             <div className="flex flex-col gap-[8px] flex-1">
               <label
                 htmlFor="edit-am-first-name"
-                className="text-tm-text-color08 text-xs font-bold uppercase "
+                className="text-tm-text-color08 text-sm font-bold uppercase "
               >
                 First Name
               </label>
@@ -165,7 +165,7 @@ export const EditAccountManagerModal = ({
             <div className="flex flex-col gap-[8px] flex-1">
               <label
                 htmlFor="edit-am-last-name"
-                className="text-tm-text-color08 text-xs font-bold uppercase "
+                className="text-tm-text-color08 text-sm font-bold uppercase "
               >
                 Last Name
               </label>
@@ -183,7 +183,7 @@ export const EditAccountManagerModal = ({
           <div className="flex flex-col gap-[8px]">
             <label
               htmlFor="edit-am-email"
-              className="text-tm-text-color08 text-xs font-bold uppercase "
+              className="text-tm-text-color08 text-sm font-bold uppercase "
             >
               Email
             </label>
@@ -207,7 +207,7 @@ export const EditAccountManagerModal = ({
           <div className="flex flex-col gap-[8px]">
             <label
               htmlFor="edit-am-campaign"
-              className="text-tm-text-color08 text-xs font-bold uppercase "
+              className="text-tm-text-color08 text-sm font-bold uppercase "
             >
               Campaign
             </label>

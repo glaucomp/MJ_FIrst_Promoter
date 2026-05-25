@@ -646,7 +646,7 @@ const Field = ({
   className?: string;
 }) => (
   <div className={`flex flex-col gap-1.5 ${className}`}>
-    <label className="text-tm-text-color08 text-xs font-bold uppercase" >
+    <label className="text-tm-text-color08 text-sm font-bold uppercase" >
       {label}
     </label>
     {children}

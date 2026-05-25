@@ -25,17 +25,31 @@
   --color-tm-primary-color12: oklch(0.325 0.13 var(--color-tm-primary-hue));
 
   /* Secondary */
-  --color-tm-secondary-color01: oklch(0.802 0.132 var(--color-tm-secondary-hue));
-  --color-tm-secondary-color02: oklch(0.714 0.195 var(--color-tm-secondary-hue));
-  --color-tm-secondary-color03: oklch(0.659 0.236 var(--color-tm-secondary-hue));
+  --color-tm-secondary-color01: oklch(
+    0.802 0.132 var(--color-tm-secondary-hue)
+  );
+  --color-tm-secondary-color02: oklch(
+    0.714 0.195 var(--color-tm-secondary-hue)
+  );
+  --color-tm-secondary-color03: oklch(
+    0.659 0.236 var(--color-tm-secondary-hue)
+  );
   --color-tm-secondary-color04: oklch(0.6 0.258 var(--color-tm-secondary-hue));
   --color-tm-secondary-color05: oklch(0.576 0.28 var(--color-tm-secondary-hue));
-  --color-tm-secondary-color06: oklch(0.529 0.262 var(--color-tm-secondary-hue));
-  --color-tm-secondary-color07: oklch(0.482 0.242 var(--color-tm-secondary-hue));
-  --color-tm-secondary-color08: oklch(0.426 0.213 var(--color-tm-secondary-hue));
+  --color-tm-secondary-color06: oklch(
+    0.529 0.262 var(--color-tm-secondary-hue)
+  );
+  --color-tm-secondary-color07: oklch(
+    0.482 0.242 var(--color-tm-secondary-hue)
+  );
+  --color-tm-secondary-color08: oklch(
+    0.426 0.213 var(--color-tm-secondary-hue)
+  );
   --color-tm-secondary-color09: oklch(0.37 0.183 var(--color-tm-secondary-hue));
   --color-tm-secondary-color10: oklch(0.31 0.15 var(--color-tm-secondary-hue));
-  --color-tm-secondary-color11: oklch(0.247 0.115 var(--color-tm-secondary-hue));
+  --color-tm-secondary-color11: oklch(
+    0.247 0.115 var(--color-tm-secondary-hue)
+  );
   --color-tm-secondary-color12: oklch(0.18 0.08 var(--color-tm-secondary-hue));
 
   /* Neutral */
@@ -255,14 +269,12 @@
   --shadow-120: 120px;
   --shadow-180: 180px;
 
-
   /* - Button Height - */
 
   --button-sm: 24px;
   --button-md: 44px;
   --button-lg: 52px;
   --button-xl: 56px;
-
 }
 
 body {
@@ -305,8 +317,6 @@ body {
   width: 100%;
 }
 
-
-
 @keyframes tx-slide-down {
   from {
     opacity: 0;
@@ -322,7 +332,6 @@ body {
 }
 
 @keyframes scaleBounce {
-
   0%,
   100% {
     transform: scale(1);
@@ -337,7 +346,8 @@ body {
 
 .buttonSubtle {
   border-radius: var(--radius-round, 6.25rem);
-  box-shadow: var(--shadow-none, 0) var(--rim-light-y, -1px) var(--shadow-none, 0) var(--shadow-none, 0) rgba(255, 255, 255, 0.1);
+  box-shadow: var(--shadow-none, 0) var(--rim-light-y, -1px)
+    var(--shadow-none, 0) var(--shadow-none, 0) rgba(255, 255, 255, 0.1);
 }
 
 .buttonSm {
@@ -356,48 +366,34 @@ body {
   min-height: var(--button-xl);
 }
 
-
-/* .btn-primary-cta {    background: linear-gradient(18deg, var(--color-tm-primary-color02) 2%, var(--color-tm-primary-color06) 12%, var(--color-tm-primary-color11) 40%, var(--color-tm-primary-color11) 60%, var(--color-tm-primary-color07) 90%);
-    border: 1px solid var(--color-tm-primary-color04);
-    overflow: hidden;
-    background-clip: padding-box;
-    color: contrast-color(var(--color-tm-primary-color10));
-    box-shadow: inset -4px 6px 0px -5.4px var(--color-tm-primary-color01), inset -3px 7px 4px -3.5px var(--color-tm-primary-color03);
-  
-    &:hover {background: linear-gradient(18deg, var(--color-tm-primary-color02) 8%, var(--color-tm-primary-color06) 16%, var(--color-tm-primary-color11) 40%, var(--color-tm-primary-color11) 60%, var(--color-tm-primary-color07) 90%);
-    border: 1px solid var(--color-tm-primary-color04);}
-  
-  } */
-
-
-  /* Register custom properties for gradient stops */
+/* Register custom properties for gradient stops */
 @property --grad-stop-1 {
-  syntax: '<percentage>';
+  syntax: "<percentage>";
   initial-value: 2%;
   inherits: false;
 }
 @property --grad-stop-2 {
-  syntax: '<percentage>';
+  syntax: "<percentage>";
   initial-value: 12%;
   inherits: false;
 }
 @property --grad-stop-3 {
-  syntax: '<percentage>';
+  syntax: "<percentage>";
   initial-value: 40%;
   inherits: false;
 }
 @property --grad-stop-4 {
-  syntax: '<percentage>';
+  syntax: "<percentage>";
   initial-value: 60%;
   inherits: false;
 }
 @property --grad-stop-5 {
-  syntax: '<percentage>';
+  syntax: "<percentage>";
   initial-value: 90%;
   inherits: false;
 }
 
-  .btn-primary-cta {
+.btn-primary-cta {
   background: linear-gradient(
     18deg,
     var(--color-tm-primary-color02) var(--grad-stop-1),
@@ -409,16 +405,18 @@ body {
   border: 1px solid var(--color-tm-primary-color04);
   overflow: hidden;
   background-clip: padding-box;
-color: contrast-color(var(--color-tm-primary-color10));
-  box-shadow: 0px 0px 0px 0 var(--color-tm-neutral-color10), 0px 0px 0px 0 var(--color-tm-neutral-color11),
-  
-  inset -4px 6px 0px -5.4px var(--color-tm-primary-color01),
-              inset -3px 7px 4px -3.5px var(--color-tm-primary-color03);
-  transition: --grad-stop-1 0.3s ease-in-out,
-              --grad-stop-2 0.3s ease-in-out,
-              --grad-stop-3 0.3s ease-in-out,
-              --grad-stop-4 0.3s ease-in-out,
-              --grad-stop-5 0.3s ease-in-out;
+  color: contrast-color(var(--color-tm-primary-color10));
+  box-shadow:
+    0px 0px 0px 0 var(--color-tm-neutral-color10),
+    0px 0px 0px 0 var(--color-tm-neutral-color11),
+    inset -4px 6px 0px -5.4px var(--color-tm-primary-color01),
+    inset -3px 7px 4px -3.5px var(--color-tm-primary-color03);
+  transition:
+    --grad-stop-1 0.3s ease-in-out,
+    --grad-stop-2 0.3s ease-in-out,
+    --grad-stop-3 0.3s ease-in-out,
+    --grad-stop-4 0.3s ease-in-out,
+    --grad-stop-5 0.3s ease-in-out;
 }
 
 .btn-primary-cta:hover {
@@ -428,7 +426,21 @@ color: contrast-color(var(--color-tm-primary-color10));
   --grad-stop-4: 75%;
   --grad-stop-5: 95%;
   border-bottom: 2px solid var(--color-tm-primary-color10);
-  box-shadow:0px 2px 4px 0 var(--color-tm-neutral-color10), 0px 6px 10px 0 var(--color-tm-neutral-color11), inset -4px 6px 0px -6px var(--color-tm-primary-color01), inset -3px 7px 4px -7px var(--color-tm-primary-color03);
+  box-shadow:
+    0px 2px 4px 0 var(--color-tm-neutral-color10),
+    0px 6px 10px 0 var(--color-tm-neutral-color11),
+    inset -4px 6px 0px -6px var(--color-tm-primary-color01),
+    inset -3px 7px 4px -7px var(--color-tm-primary-color03);
+}
+
+/* navbar*/
+.icon-fade {
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    black 30%,
+    rgba(0, 0, 0, 0.4) 80%
+  );
+  mask-image: linear-gradient(180deg, black 30%, rgba(0, 0, 0, 0.4) 80%);
 }
 
 /* inputs */
@@ -455,10 +467,55 @@ color: contrast-color(var(--color-tm-primary-color10));
 }
 
 /*** custom button **/
-.glass-button-outer {background: linear-gradient(82deg, #2E2E2E 11.75%, #3D3D3D 25.54%, #6E6E6E 46.73%, #666 65.34%, #7A7A7A 82.28%, #333 90.95%); display: flex; flex-direction: row; }
-.glass-button-inner {background: linear-gradient(250deg, #212121 8.83%, #383838 13.08%, #333 23.52%, #2E2E2E 35.88%, #141414 61.39%, #292929 89.22%); box-shadow: -4px -4px 1px -4px rgba(255, 255, 255, 0.10) inset, 5px 3px 3px -4px #000 inset, -14px -7px 1px -15px rgba(255, 255, 255, 0.40) inset, -12px -9px 2px -10px rgba(115, 115, 115, 0.30) inset, 13px 9px 1px -11px rgba(255, 255, 255, 0.05) inset, 9px 10px 1px -11px #3F3F3F inset;}
-.glass-button-inner:hover {background: linear-gradient(10deg, #212121 8.83%, #383838 13.08%, #333 23.52%, #2E2E2E 35.88%, #141414 61.39%, #292929 89.22%); box-shadow: -4px -4px 1px -4px rgba(255, 255, 255, 0.10) inset, 5px 3px 3px -4px #000 inset, -14px -7px 1px -15px rgba(255, 255, 255, 0.40) inset, -12px -9px 2px -10px rgba(115, 115, 115, 0.30) inset, 13px 9px 1px -11px rgba(255, 255, 255, 0.05) inset, 9px 10px 1px -11px #3F3F3F inset;}
-
+.glass-button-outer {
+  background: linear-gradient(
+    82deg,
+    #2e2e2e 11.75%,
+    #3d3d3d 25.54%,
+    #6e6e6e 46.73%,
+    #666 65.34%,
+    #7a7a7a 82.28%,
+    #333 90.95%
+  );
+  display: flex;
+  flex-direction: row;
+}
+.glass-button-inner {
+  background: linear-gradient(
+    250deg,
+    #212121 8.83%,
+    #383838 13.08%,
+    #333 23.52%,
+    #2e2e2e 35.88%,
+    #141414 61.39%,
+    #292929 89.22%
+  );
+  box-shadow:
+    -4px -4px 1px -4px rgba(255, 255, 255, 0.1) inset,
+    5px 3px 3px -4px #000 inset,
+    -14px -7px 1px -15px rgba(255, 255, 255, 0.4) inset,
+    -12px -9px 2px -10px rgba(115, 115, 115, 0.3) inset,
+    13px 9px 1px -11px rgba(255, 255, 255, 0.05) inset,
+    9px 10px 1px -11px #3f3f3f inset;
+}
+.glass-button-inner:hover {
+  background: linear-gradient(
+    10deg,
+    #212121 8.83%,
+    #383838 13.08%,
+    #333 23.52%,
+    #2e2e2e 35.88%,
+    #141414 61.39%,
+    #292929 89.22%
+  );
+  box-shadow:
+    -4px -4px 1px -4px rgba(255, 255, 255, 0.1) inset,
+    5px 3px 3px -4px #000 inset,
+    -14px -7px 1px -15px rgba(255, 255, 255, 0.4) inset,
+    -12px -9px 2px -10px rgba(115, 115, 115, 0.3) inset,
+    13px 9px 1px -11px rgba(255, 255, 255, 0.05) inset,
+    9px 10px 1px -11px #3f3f3f inset;
+}
 
 /***** desktop large */
 
