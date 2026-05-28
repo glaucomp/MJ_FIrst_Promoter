@@ -303,10 +303,6 @@ export interface Referral {
     assetLink: string | null;
     // Mirrored survey_step: completed milestone count 0–3 when upstream uses
     // the TeaseMe 3-step funnel (register → photo/voice → assets/terms).
-    // Optional sub-checklist flags when TeaseMe sends them (UI-only).
-    photoComplete?: boolean | null;
-    voiceComplete?: boolean | null;
-    socialComplete?: boolean | null;
     // ISO timestamp the welcome email was last delivered to the invitee
     // (after the AM clicked "Send Welcome Email" on the LP Live card).
     // Drives the Send/Resend button label. Null = never sent.
