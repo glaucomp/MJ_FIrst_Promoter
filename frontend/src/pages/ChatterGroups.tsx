@@ -1346,7 +1346,7 @@ export const ChatterGroups = () => {
               <div className="px-7 pb-6 flex flex-col-reverse  gap-4">
                 {/* Team Members section */}
                 <div className="flex flex-col gap-2">
-                  <div className="flex flex-col items-start lg:items-center justify-start gap-2 lg:gap-6 lg:flex-row">
+                  <div className="flex flex-col items-start lg:items-center justify-start lg:justify-between gap-2 lg:gap-6 lg:flex-row">
                     <p className="text-tm-text-color08 text-base font-semibold">
                       Team Members
                     </p>

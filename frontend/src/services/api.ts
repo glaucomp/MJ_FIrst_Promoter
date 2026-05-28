@@ -298,9 +298,15 @@ export interface Referral {
     // populates.
     surveyLink: string | null;
     // Live landing-page URL, mirrored from TeaseMe's /step-progress
-    // response. Used by the top "Open" pill once chip = lp_live. Null
-    // until upstream populates (i.e. until the LP build finishes).
+    // response. Used for copy/open once the LP is built — not required for
+    // 3/3 milestone completion (see docs/TEASEME_STEP_PROGRESS.md).
     assetLink: string | null;
+    // Mirrored survey_step: completed milestone count 0–3 when upstream uses
+    // the TeaseMe 3-step funnel (register → photo/voice → assets/terms).
+    // Optional sub-checklist flags when TeaseMe sends them (UI-only).
+    photoComplete?: boolean | null;
+    voiceComplete?: boolean | null;
+    socialComplete?: boolean | null;
     // ISO timestamp the welcome email was last delivered to the invitee
     // (after the AM clicked "Send Welcome Email" on the LP Live card).
     // Drives the Send/Resend button label. Null = never sent.

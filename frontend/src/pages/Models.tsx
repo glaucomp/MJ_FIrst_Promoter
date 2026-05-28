@@ -1334,7 +1334,20 @@ const deriveChipState = (r: Referral): ChipState => {
     return "denied";
   }
   if (r.isExpired) return "expired";
-  if (r.status === "ACTIVE" || r.status === "COMPLETED") return "lp_live";
+  const preLifecycle = normalizePreUserLifecycleStatus(r.preUser?.status);
+  // Referral can be ACTIVE from a premature webhook before the LP is live.
+  // Keep following TeaseMe preUser.status until building/live.
+  const referralAcceptedButLpNotLive =
+    (r.status === "ACTIVE" || r.status === "COMPLETED") &&
+    r.preUser != null &&
+    preLifecycle !== "live" &&
+    preLifecycle !== "building";
+  if (
+    (r.status === "ACTIVE" || r.status === "COMPLETED") &&
+    !referralAcceptedButLpNotLive
+  ) {
+    return "lp_live";
+  }
   // Prefer the normalized lifecycle status mirrored by the backend. The
   // upstream onboarding section count can change as questions are merged or
   // removed, so exact survey_step thresholds are now only a fallback.
@@ -1343,14 +1356,15 @@ const deriveChipState = (r: Referral): ChipState => {
   if (lifecycle === "building") return "building";
   if (lifecycle === "order_lp") return "order_lp";
   const step = r.preUser?.currentStep ?? 0;
-  const assetLink = normalizeLandingPageAssetLink(r.preUser?.assetLink ?? null);
-  if (step >= ONBOARDING_STEPS.length && assetLink) return "order_lp";
-  // Fallback only: TeaseMe reports the active section index, so step 2 means
-  // "currently on Photo & Voice" and only step 1 is complete. We only treat
-  // onboarding as fully done once an assetLink appears or upstream advances
-  // past the last visible checklist item.
-  if (step > ONBOARDING_STEPS.length + 1) return "building";
-  if (step >= ONBOARDING_STEPS.length + 1) return "order_lp";
+  // Onboarding 3/3 → Order LP chip (separate from published step 5 / live).
+  if (step >= ONBOARDING_STEPS.length) return "order_lp";
+  // Legacy section-index upstream (step = active section, not completions).
+  if (SURVEY_STEP_MODE === "section-index") {
+    const assetLink = normalizeLandingPageAssetLink(r.preUser?.assetLink ?? null);
+    if (step >= ONBOARDING_STEPS.length && assetLink) return "order_lp";
+    if (step > ONBOARDING_STEPS.length + 1) return "building";
+    if (step >= ONBOARDING_STEPS.length + 1) return "order_lp";
+  }
   return "waiting";
 };
 
@@ -1509,15 +1523,20 @@ const OnboardingIconPill = ({
   );
 };
 
-// The TeaseMe survey is 3 visible steps. Upstream reports the current active
-// section, so a payload of step 2 means the invitee has finished Email & Name
-// and is currently on Photo & Voice. Assets completion is inferred when TeaseMe
-// returns an assetLink.
-const ONBOARDING_STEPS: { idx: number; label: string }[] = [
-  { idx: 1, label: "Email & Name" },
+// Three TeaseMe onboarding milestones (see docs/TEASEME_STEP_PROGRESS.md).
+// Social handles live on step 01 (register), not a fourth MJ Promoter step.
+const ONBOARDING_STEPS: { idx: number; label: string; hint?: string }[] = [
+  { idx: 1, label: "Email & Name", hint: "Includes social links" },
   { idx: 2, label: "Photo & Voice" },
   { idx: 3, label: "Assets" },
 ];
+
+// `completion` (default): survey_step = count of finished milestones (0–3).
+// `section-index` (legacy): survey_step = active section (completions = step − 1).
+const SURVEY_STEP_MODE =
+  import.meta.env.VITE_MJ_PROMOTER_SURVEY_STEP_MODE === "section-index"
+    ? "section-index"
+    : "completion";
 
 const normalizeLandingPageAssetLink = (assetLink?: string | null) => {
   const normalized = assetLink?.replace(/^"|"$/g, "").trim() || null;
@@ -1548,10 +1567,15 @@ const getCompletedOnboardingSteps = (
   if (
     lifecycle === "building" ||
     lifecycle === "live" ||
+    lifecycle === "order_lp" ||
     currentStep > ONBOARDING_STEPS.length
   ) {
     return ONBOARDING_STEPS.length;
   }
+  if (SURVEY_STEP_MODE === "completion") {
+    return Math.max(0, Math.min(currentStep, ONBOARDING_STEPS.length));
+  }
+  // Legacy: active-section index; asset_link was wrongly used as 3/3 proxy.
   const normalizedAssetLink = normalizeLandingPageAssetLink(assetLink);
   if (currentStep >= ONBOARDING_STEPS.length && normalizedAssetLink) {
     return ONBOARDING_STEPS.length;
@@ -1571,7 +1595,7 @@ const OnboardingChecklist = ({
   dimmed?: boolean;
 }) => (
   <ul className={`flex flex-col gap-2 text-base ${dimmed ? "opacity-60" : ""}`}>
-    {ONBOARDING_STEPS.map(({ idx, label }) => {
+    {ONBOARDING_STEPS.map(({ idx, label, hint }) => {
       const done =
         getCompletedOnboardingSteps(step, assetLink, lifecycleStatus) >= idx;
       return (
@@ -1586,7 +1610,14 @@ const OnboardingChecklist = ({
           <span className="text-tm-text-color08 text-sm w-4">
             {String(idx).padStart(2, "0")}
           </span>
-          <span className="font-medium text-sm">{label}</span>
+          <span className="font-medium text-sm">
+            {label}
+            {hint && !done ? (
+              <span className="block text-xs font-normal text-tm-text-color08">
+                {hint}
+              </span>
+            ) : null}
+          </span>
         </li>
       );
     })}

@@ -15,15 +15,20 @@ const TEASEME_API_URL = (
 // on inside TeaseMe so the My Promoters list can render a "Step N" chip while
 // the user hasn't yet registered on our side.
 //
-// Upstream contract (POST JSON):
+// Upstream contract (POST JSON) — see docs/TEASEME_STEP_PROGRESS.md.
 //   POST {TEASEME_STATUS_URL}
 //   Headers: { "Content-Type": "application/json", "X-Internal-Token": <MJFP_TOKEN> }
 //   Body:    { "invite_code": "...", "invitee_email": "..." }
 //   200:     { ok, exists, pre_influencer_id, username, survey_step, status,
-//              survey_link, asset_link }
-//   `survey_link` is the in-flight onboarding session URL (populated while the
-//   invitee is mid-survey). `asset_link` is the live landing-page URL
-//   (populated once TeaseMe finishes building the LP). Either may be null.
+//              survey_link, asset_link,
+//              photo_complete?, voice_complete?, social_complete? }
+//
+//   `survey_step` = completed milestone count 0–3 (not active-section index):
+//     1 → register done (country, languages, ≥1 social_* in survey_answers)
+//     2 → + profile photo and ≥1 audio
+//     3 → + terms_agreement and assets_complete (asset_link NOT required)
+//   `survey_link` → resume onboarding at photo step (start_step=picture); no quiz.
+//   `asset_link` → published LP URL when ready; separate from survey_step 3.
 // Read lazily so dotenv.config() in server.ts has already run by the time
 // the first request fires (module-level constants are evaluated before
 // dotenv runs because imports are hoisted ahead of dotenv.config()).
@@ -50,6 +55,10 @@ export interface TeasemePreUserStatus {
   surveyLink: string | null;
   // Live landing-page URL (null until TeaseMe finishes building it).
   assetLink: string | null;
+  // Optional sub-checklist flags (UI-only when upstream sends them).
+  photoComplete: boolean | null;
+  voiceComplete: boolean | null;
+  socialComplete: boolean | null;
 }
 
 /**
@@ -136,6 +145,11 @@ export const fetchTeasemePreUserStatus = async (params: {
         ? String(preInfluencerId)
         : null;
 
+  const readOptionalBool = (key: string): boolean | null => {
+    const v = raw[key];
+    return typeof v === "boolean" ? v : null;
+  };
+
   return {
     step: Math.max(0, Math.trunc(surveyStep)),
     // Upstream uses `status: "pending" | "active" | ...`. Anything that is
@@ -147,6 +161,9 @@ export const fetchTeasemePreUserStatus = async (params: {
     status: statusStr,
     surveyLink,
     assetLink,
+    photoComplete: readOptionalBool("photo_complete"),
+    voiceComplete: readOptionalBool("voice_complete"),
+    socialComplete: readOptionalBool("social_complete"),
   };
 };
 
