@@ -55,9 +55,10 @@ const STATUS_RANK: Record<string, number> = {
   live: 3,
 };
 
-// Published/live used to line up with hardcoded survey_step 5. Keep that as
-// the default fallback, but allow an override so this app can stay aligned if
-// the upstream onboarding section count changes again.
+// Terminal survey_step when the LP is fully published upstream (stop polling,
+// auto-accept referral, welcome-email eligibility). This is NOT the same as
+// onboarding 3/3 — that milestone is ~3 and should surface "Order Landing
+// Page", not skip straight to LP Live. Legacy flows used step 5.
 const PUBLISHED_SURVEY_STEP = (() => {
   const raw = Number(
     process.env.TEASEME_PUBLISHED_SURVEY_STEP ??
@@ -1404,10 +1405,9 @@ export const orderReferralLandingPage = async (
     //      there is no local fallback because the chip is now driven
     //      entirely by upstream's `survey_step`.
     //   2. POST /step-progress — re-poll right after to learn the new
-    //      step (typically advances to 4 once approved). Persist whatever
-    //      upstream tells us; the chip on the card derives state from
-    //      `currentStep` alone, so any monotonic forward movement here
-    //      is enough to flip the badge to Building.
+    //      status (typically `building` / `approved`). Persist whatever
+    //      upstream tells us; the chip prefers mirrored `status`, with
+    //      `currentStep` as a fallback only.
     //   3. If the post-approve poll lags (still returns null), we just
     //      bump lastCheckedAt and let the periodic poller catch up. We
     //      still return success because /approve itself succeeded.
@@ -2783,7 +2783,8 @@ export const receiveTeasemeStepWebhook = async (
               },
             });
             if (accepted.count > 0) {
-              console.info("[teaseme-webhook] referral accepted on step 5", {
+              console.info("[teaseme-webhook] referral accepted on published step", {
+                currentStep,
                 preUserId: preUser.id,
                 referralId: resolvedReferralId,
                 userId: promotedUser.id,
@@ -2911,7 +2912,7 @@ export const receiveTeasemeStepWebhook = async (
     // Background: poll /step-progress right away to capture surveyLink /
     // assetLink while TeaseMe still has fresh step data (closes the race
     // window where the lifecycle advances before the next getMyReferrals).
-    if (currentStep < 5) {
+    if (currentStep < PUBLISHED_SURVEY_STEP) {
       void fetchTeasemePreUserStatus({
         email: preUser.email,
         inviteCode: preUser.inviteCode ?? undefined,
