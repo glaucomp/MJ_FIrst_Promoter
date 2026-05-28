@@ -1351,10 +1351,9 @@ const deriveChipState = (r: Referral): ChipState => {
   // Prefer the normalized lifecycle status mirrored by the backend. The
   // upstream onboarding section count can change as questions are merged or
   // removed, so exact survey_step thresholds are now only a fallback.
-  const lifecycle = normalizePreUserLifecycleStatus(r.preUser?.status);
-  if (lifecycle === "live") return "lp_live";
-  if (lifecycle === "building") return "building";
-  if (lifecycle === "order_lp") return "order_lp";
+  if (preLifecycle === "live") return "lp_live";
+  if (preLifecycle === "building") return "building";
+  if (preLifecycle === "order_lp") return "order_lp";
   const step = r.preUser?.currentStep ?? 0;
   // Onboarding 3/3 → Order LP chip (separate from published step 5 / live).
   if (step >= ONBOARDING_STEPS.length) return "order_lp";
