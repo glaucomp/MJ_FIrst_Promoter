@@ -48,9 +48,24 @@ const TEASEME_POLL_CONCURRENCY = 5;
 const STATUS_RANK: Record<string, number> = {
   pending: 0,
   order_lp: 1,
+  // TeaseMe returns `approved` immediately after /approve — same lifecycle
+  // position as our mirrored `building` state.
+  approved: 2,
   building: 2,
   live: 3,
 };
+
+// Terminal survey_step when the LP is fully published upstream (stop polling,
+// auto-accept referral, welcome-email eligibility). This is NOT the same as
+// onboarding 3/3 — that milestone is ~3 and should surface "Order Landing
+// Page", not skip straight to LP Live. Legacy flows used step 5.
+const PUBLISHED_SURVEY_STEP = (() => {
+  const raw = Number(
+    process.env.TEASEME_PUBLISHED_SURVEY_STEP ??
+      process.env.MJ_PROMOTER_PUBLISHED_SURVEY_STEP,
+  );
+  return Number.isFinite(raw) && raw >= 0 ? Math.trunc(raw) : 5;
+})();
 
 /**
  * Resolve the next persisted status given (a) what we already have on disk
@@ -78,6 +93,11 @@ const chooseForwardStatus = (
   const ups = STATUS_RANK[upstream] ?? Number.POSITIVE_INFINITY;
   return ups >= cur ? upstream : current;
 };
+
+const isPreUserPublished = (
+  currentStep: number,
+  status: string | null | undefined,
+): boolean => status === "live" || currentStep >= PUBLISHED_SURVEY_STEP;
 
 // Keep the audit trail from unbounded growth — a single invite should never
 // accumulate more than this many step transitions in the stepHistory column.
@@ -122,7 +142,7 @@ type PreUserRow = {
 
 type ReferralRowWithPreUser = { preUser: PreUserRow | null };
 
-type PendingStep5ReferralBackfillRow = {
+type PendingPublishedReferralBackfillRow = {
   id: string;
   status: string;
   referredUser: { id: string } | null;
@@ -148,12 +168,13 @@ const refreshPreUserSteps = async (
   const staleRows = rows.filter((row) => {
     const pre = row.preUser;
     if (!pre) return false;
-    // Step 5 (matching influencer published) is the terminal upstream
-    // state — once we've recorded it locally there is nothing left to
-    // learn from /step-progress. Welcome-email delivery is an operator
-    // action driven by the "Send Welcome Email" button on the card, not
-    // a polling side-effect, so we don't keep polling step-5 rows.
-    if (pre.currentStep >= 5) return false;
+    // Published/live is the terminal upstream state — once we've recorded it
+    // locally there is nothing left to learn from /step-progress.
+    // Welcome-email delivery is an operator action driven by the "Send Welcome
+    // Email" button on the card, not a polling side-effect, so we stop polling
+    // as soon as the invite is published even if the upstream step numbering
+    // changes later.
+    if (isPreUserPublished(pre.currentStep, pre.status)) return false;
     if (!pre.lastCheckedAt) return true;
     return now - pre.lastCheckedAt.getTime() > TEASEME_POLL_TTL_MS;
   });
@@ -269,7 +290,7 @@ const refreshPreUserSteps = async (
             stepEmitter.emit(`step:${updated.referralId}`, {
               currentStep: updated.currentStep,
               status: updated.status,
-              done: updated.currentStep >= 5,
+              done: isPreUserPublished(updated.currentStep, updated.status),
             });
           }
 
@@ -291,33 +312,33 @@ const refreshPreUserSteps = async (
   await Promise.allSettled(workers);
 };
 
-const backfillPendingStep5Referrals = (
+const backfillPendingPublishedReferrals = (
   userId: string,
-  rows: PendingStep5ReferralBackfillRow[],
+  rows: PendingPublishedReferralBackfillRow[],
 ): void => {
   if (pendingReferralBackfillByUser.has(userId)) return;
 
-  const pendingAtStep5 = rows.filter(
-    (ref): ref is PendingStep5ReferralBackfillRow & { preUser: PreUserRow } =>
+  const pendingPublished = rows.filter(
+    (ref): ref is PendingPublishedReferralBackfillRow & { preUser: PreUserRow } =>
       ref.status === "PENDING" &&
       ref.referredUser === null &&
       ref.preUser !== null &&
-      ref.preUser.currentStep >= 5,
+      isPreUserPublished(ref.preUser.currentStep, ref.preUser.status),
   );
 
-  if (pendingAtStep5.length === 0) return;
+  if (pendingPublished.length === 0) return;
 
   pendingReferralBackfillByUser.add(userId);
 
   void (async () => {
     try {
       const existingUsers = await prisma.user.findMany({
-        where: { email: { in: pendingAtStep5.map((ref) => ref.preUser.email) } },
+        where: { email: { in: pendingPublished.map((ref) => ref.preUser.email) } },
         select: { id: true, email: true },
       });
       const userIdByEmail = new Map(existingUsers.map((row) => [row.email, row.id]));
 
-      for (const ref of pendingAtStep5) {
+      for (const ref of pendingPublished) {
         const existingUserId = userIdByEmail.get(ref.preUser.email);
         if (!existingUserId) continue;
 
@@ -331,12 +352,12 @@ const backfillPendingStep5Referrals = (
             },
           });
           if (accepted.count > 0) {
-            console.info("[getMyReferrals] backfill: referral accepted on step 5", {
+            console.info("[getMyReferrals] backfill: referral accepted on published state", {
               referralId: ref.id, userId: existingUserId,
             });
           }
         } catch (err) {
-          console.error("[getMyReferrals] backfill (PENDING step-5) failed", {
+          console.error("[getMyReferrals] backfill (pending published invite) failed", {
             referralId: ref.id, err: err instanceof Error ? err.message : String(err),
           });
         }
@@ -1384,10 +1405,9 @@ export const orderReferralLandingPage = async (
     //      there is no local fallback because the chip is now driven
     //      entirely by upstream's `survey_step`.
     //   2. POST /step-progress — re-poll right after to learn the new
-    //      step (typically advances to 4 once approved). Persist whatever
-    //      upstream tells us; the chip on the card derives state from
-    //      `currentStep` alone, so any monotonic forward movement here
-    //      is enough to flip the badge to Building.
+    //      status (typically `building` / `approved`). Persist whatever
+    //      upstream tells us; the chip prefers mirrored `status`, with
+    //      `currentStep` as a fallback only.
     //   3. If the post-approve poll lags (still returns null), we just
     //      bump lastCheckedAt and let the periodic poller catch up. We
     //      still return success because /approve itself succeeded.
@@ -1803,11 +1823,13 @@ export const sendReferralWelcomeEmail = async (
       });
     }
 
-    // Welcome email is only meaningful once the influencer is published
-    // (LP Live, currentStep === 5). Earlier steps would create a User
+    // Welcome email is only meaningful once the influencer is published /
+    // LP Live. Earlier steps would create a User
     // before the upstream lifecycle has caught up, which is what we
     // explicitly moved away from when removing the auto-promote hook.
-    if (referral.preUser.currentStep < 5) {
+    if (
+      !isPreUserPublished(referral.preUser.currentStep, referral.preUser.status)
+    ) {
       return res.status(400).json({
         error:
           "The landing page must be live before the welcome email can be sent.",
@@ -2069,15 +2091,15 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
     // TTL or for rows already registered (no PreUser attached).
     await refreshPreUserSteps(allReferrals);
 
-    // Backfill: for any PENDING referral at step >= 5 whose promoter User
-    // already exists in the DB, accept the referral (PENDING → ACTIVE) so
-    // the card flips to LP Live via referral.status. Group creation is NOT
-    // done here; this backfill only updates referral state. Default chatter
-    // groups may be created via the explicit AM button
+    // Backfill: for any PENDING referral already in the published/live state
+    // whose promoter User already exists in the DB, accept the referral
+    // (PENDING → ACTIVE) so the card flips to LP Live via referral.status.
+    // Group creation is NOT done here; this backfill only updates referral
+    // state. Default chatter groups may be created via the explicit AM button
     // (POST /referrals/:id/ensure-group) or other lifecycle flows elsewhere,
     // and avoiding creation here helps prevent race-condition duplicates when
     // this endpoint is called multiple times in quick succession.
-    backfillPendingStep5Referrals(user.id, allReferrals);
+    backfillPendingPublishedReferrals(user.id, allReferrals);
 
     // Filter out:
     // 1. Self-referrals (referredUserId === own id, e.g. username-based tracking records)
@@ -2660,11 +2682,22 @@ export const receiveTeasemeStepWebhook = async (
   }
 
   try {
-    // Find the PreUser by email (or inviteCode as fallback)
-    const preUser = await prisma.preUser.findFirst({
-      where: inviteCode ? { OR: [{ email }, { inviteCode }] } : { email },
-      include: { referral: { select: { id: true } } },
-    });
+    // Prefer the canonical inviteCode for correlation so an upstream email
+    // edit mid-flow doesn't attach the step update to the wrong invite. Fall
+    // back to the stored invitee email only for legacy rows missing inviteCode.
+    const preUser =
+      (inviteCode
+        ? await prisma.preUser.findUnique({
+            where: { inviteCode },
+            include: { referral: { select: { id: true } } },
+          })
+        : null) ??
+      (email
+        ? await prisma.preUser.findFirst({
+            where: { email },
+            include: { referral: { select: { id: true } } },
+          })
+        : null);
 
     if (!preUser) {
       // No matching PreUser — log and return 200 so TeaseMe doesn't retry
@@ -2711,18 +2744,19 @@ export const receiveTeasemeStepWebhook = async (
       stepEmitter.emit(`step:${resolvedReferralId}`, {
         currentStep,
         status: status ?? preUser.status,
-        done: currentStep >= 5,
+        done: isPreUserPublished(currentStep, status ?? preUser.status),
       });
     }
 
     // Respond immediately — don't block TeaseMe on our upstream poll.
     res.status(200).json({ ok: true, matched: true });
 
-    // Background: when LP goes live (step >= 5), if a User already exists for
-    // this email (e.g. created via the FirstPromoter API before the welcome
-    // email was sent), accept the parent referral and auto-create the default
-    // ChatterGroup without waiting for the AM to click "Send Welcome Email".
-    if (currentStep >= 5) {
+    // Background: when the invite reaches the published/live state, if a User
+    // already exists for this email (e.g. created via the FirstPromoter API
+    // before the welcome email was sent), accept the parent referral and
+    // auto-create the default ChatterGroup without waiting for the AM to click
+    // "Send Welcome Email".
+    if (isPreUserPublished(currentStep, status ?? preUser.status)) {
       void (async () => {
         try {
           const promotedUser = await prisma.user.findUnique({
@@ -2749,7 +2783,8 @@ export const receiveTeasemeStepWebhook = async (
               },
             });
             if (accepted.count > 0) {
-              console.info("[teaseme-webhook] referral accepted on step 5", {
+              console.info("[teaseme-webhook] referral accepted on published step", {
+                currentStep,
                 preUserId: preUser.id,
                 referralId: resolvedReferralId,
                 userId: promotedUser.id,
@@ -2794,7 +2829,7 @@ export const receiveTeasemeStepWebhook = async (
 
           if (!amId) {
             console.warn(
-              "[teaseme-webhook] step-5: no AM resolved; skipping default chatter group",
+              "[teaseme-webhook] published invite: no AM resolved; skipping default chatter group",
               { preUserId: preUser.id, userId: promotedUser.id },
             );
             return;
@@ -2824,7 +2859,7 @@ export const receiveTeasemeStepWebhook = async (
                 where: { id: promotedUser.id },
                 data: { chatterGroupId: group.id },
               });
-              console.info("[teaseme-webhook] default chatter group created on step 5", {
+              console.info("[teaseme-webhook] default chatter group created on published invite", {
                 preUserId: preUser.id,
                 userId: promotedUser.id,
                 groupId: group.id,
@@ -2867,7 +2902,7 @@ export const receiveTeasemeStepWebhook = async (
           });
         } catch (err) {
           console.error(
-            "[teaseme-webhook] step-5 chatter group / referral acceptance failed",
+            "[teaseme-webhook] published invite chatter group / referral acceptance failed",
             { preUserId: preUser.id, err: err instanceof Error ? err.message : String(err) },
           );
         }
@@ -2877,7 +2912,7 @@ export const receiveTeasemeStepWebhook = async (
     // Background: poll /step-progress right away to capture surveyLink /
     // assetLink while TeaseMe still has fresh step data (closes the race
     // window where the lifecycle advances before the next getMyReferrals).
-    if (currentStep < 5) {
+    if (currentStep < PUBLISHED_SURVEY_STEP) {
       void fetchTeasemePreUserStatus({
         email: preUser.email,
         inviteCode: preUser.inviteCode ?? undefined,
@@ -2910,7 +2945,10 @@ export const receiveTeasemeStepWebhook = async (
               status: freshStatus.status ?? status ?? preUser.status,
               surveyLink: freshSurveyLink,
               assetLink: freshAssetLink,
-              done: freshStatus.step >= 5,
+              done: isPreUserPublished(
+                freshStatus.step,
+                freshStatus.status ?? status ?? preUser.status,
+              ),
             });
           }
         })
@@ -2984,13 +3022,14 @@ export const streamReferralStatus = async (req: AuthRequest, res: Response) => {
 
     const currentStep = referral.preUser?.currentStep ?? 0;
     const currentStatus = referral.preUser?.status ?? "pending";
+    const done = isPreUserPublished(currentStep, currentStatus);
 
     // Send the current step immediately so the browser has a starting value
     res.write(
-      `data: ${JSON.stringify({ connected: true, currentStep, status: currentStatus, done: currentStep >= 5 })}\n\n`,
+      `data: ${JSON.stringify({ connected: true, currentStep, status: currentStatus, done })}\n\n`,
     );
 
-    if (currentStep >= 5) {
+    if (done) {
       return res.end();
     }
 

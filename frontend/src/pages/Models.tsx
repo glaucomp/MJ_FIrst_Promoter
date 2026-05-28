@@ -1314,6 +1314,16 @@ type ChipState =
   | "building"
   | "lp_live";
 
+// TeaseMe mirrors several lifecycle strings into preUser.status. Map anything
+// we don't render literally so chip + CTA logic stay aligned with upstream.
+const normalizePreUserLifecycleStatus = (
+  status: string | null | undefined,
+): string | null => {
+  if (!status) return null;
+  if (status === "approved") return "building";
+  return status;
+};
+
 const deriveChipState = (r: Referral): ChipState => {
   // Explicit deny beats everything else — once an AM has said no, we don't
   // want the UI to keep nagging them with "Order LP" etc even if the
@@ -1324,22 +1334,36 @@ const deriveChipState = (r: Referral): ChipState => {
     return "denied";
   }
   if (r.isExpired) return "expired";
-  if (r.status === "ACTIVE" || r.status === "COMPLETED") return "lp_live";
-  // Lifecycle is driven entirely by upstream's `survey_step` (0..5):
-  //   0  no progress signal yet                              -> Waiting
-  //   1  survey link issued (onboarding can be started)      -> Waiting
-  //   2  survey completed                                    -> Waiting
-  //   3  asset link submitted (3/3 done, AM may approve)     -> Order LP
-  //   4  pre-influencer approved, no published influencer    -> Building
-  //   5  matching influencer exists and is published         -> LP Live
-  // PreUser.status is intentionally ignored here: upstream emits a mix of
-  // values ("pending", "approved", "live", ...) that don't map cleanly to
-  // our chip states. The step number is the only monotonic signal we get
-  // and is the single source of truth for the badge.
+  const preLifecycle = normalizePreUserLifecycleStatus(r.preUser?.status);
+  // Referral can be ACTIVE from a premature webhook before the LP is live.
+  // Keep following TeaseMe preUser.status until building/live.
+  const referralAcceptedButLpNotLive =
+    (r.status === "ACTIVE" || r.status === "COMPLETED") &&
+    r.preUser != null &&
+    preLifecycle !== "live" &&
+    preLifecycle !== "building";
+  if (
+    (r.status === "ACTIVE" || r.status === "COMPLETED") &&
+    !referralAcceptedButLpNotLive
+  ) {
+    return "lp_live";
+  }
+  // Prefer the normalized lifecycle status mirrored by the backend. The
+  // upstream onboarding section count can change as questions are merged or
+  // removed, so exact survey_step thresholds are now only a fallback.
+  if (preLifecycle === "live") return "lp_live";
+  if (preLifecycle === "building") return "building";
+  if (preLifecycle === "order_lp") return "order_lp";
   const step = r.preUser?.currentStep ?? 0;
-  if (step >= 5) return "lp_live";
-  if (step >= 4) return "building";
-  if (step >= 3) return "order_lp";
+  // Onboarding 3/3 → Order LP chip (separate from published step 5 / live).
+  if (step >= ONBOARDING_STEPS.length) return "order_lp";
+  // Legacy section-index upstream (step = active section, not completions).
+  if (SURVEY_STEP_MODE === "section-index") {
+    const assetLink = normalizeLandingPageAssetLink(r.preUser?.assetLink ?? null);
+    if (step >= ONBOARDING_STEPS.length && assetLink) return "order_lp";
+    if (step > ONBOARDING_STEPS.length + 1) return "building";
+    if (step >= ONBOARDING_STEPS.length + 1) return "order_lp";
+  }
   return "waiting";
 };
 
@@ -1498,25 +1522,81 @@ const OnboardingIconPill = ({
   );
 };
 
-// The TeaseMe survey is 3 steps. `currentStep` advances monotonically as the
-// invitee finishes each one. Completed steps render struck-through to match
-// the Figma "done" state.
-const ONBOARDING_STEPS: { idx: number; label: string }[] = [
-  { idx: 1, label: "Email & Name" },
+// Three TeaseMe onboarding milestones (see docs/TEASEME_STEP_PROGRESS.md).
+// Social handles live on step 01 (register), not a fourth MJ Promoter step.
+const ONBOARDING_STEPS: { idx: number; label: string; hint?: string }[] = [
+  { idx: 1, label: "Email & Name", hint: "Includes social links" },
   { idx: 2, label: "Photo & Voice" },
   { idx: 3, label: "Assets" },
 ];
 
+// `completion` (default): survey_step = count of finished milestones (0–3).
+// `section-index` (legacy): survey_step = active section (completions = step − 1).
+const SURVEY_STEP_MODE =
+  import.meta.env.VITE_MJ_PROMOTER_SURVEY_STEP_MODE === "section-index"
+    ? "section-index"
+    : "completion";
+
+const normalizeLandingPageAssetLink = (assetLink?: string | null) => {
+  const normalized = assetLink?.replace(/^"|"$/g, "").trim() || null;
+  if (!normalized) return null;
+  try {
+    const parsed = new URL(normalized);
+    const pathname = parsed.pathname.toLowerCase();
+    // TeaseMe sometimes returns a raw uploaded asset (e.g. profile.png) in the
+    // asset_link field before the real landing page is ready. Those file URLs
+    // must not flip the UI into "Order LP" / 3-of-3 complete.
+    if (
+      /\.(png|jpe?g|gif|webp|svg|mp4|mov|webm|avi|m4v|pdf)$/i.test(pathname)
+    ) {
+      return null;
+    }
+    return normalized;
+  } catch {
+    return normalized;
+  }
+};
+
+const getCompletedOnboardingSteps = (
+  currentStep: number,
+  assetLink?: string | null,
+  lifecycleStatus?: string | null,
+) => {
+  const lifecycle = normalizePreUserLifecycleStatus(lifecycleStatus);
+  if (
+    lifecycle === "building" ||
+    lifecycle === "live" ||
+    lifecycle === "order_lp" ||
+    currentStep > ONBOARDING_STEPS.length
+  ) {
+    return ONBOARDING_STEPS.length;
+  }
+  if (SURVEY_STEP_MODE === "completion") {
+    return Math.max(0, Math.min(currentStep, ONBOARDING_STEPS.length));
+  }
+  // Legacy: active-section index; asset_link was wrongly used as 3/3 proxy.
+  const normalizedAssetLink = normalizeLandingPageAssetLink(assetLink);
+  if (currentStep >= ONBOARDING_STEPS.length && normalizedAssetLink) {
+    return ONBOARDING_STEPS.length;
+  }
+  return Math.max(0, Math.min(currentStep - 1, ONBOARDING_STEPS.length));
+};
+
 const OnboardingChecklist = ({
   step,
+  assetLink,
+  lifecycleStatus,
   dimmed,
 }: {
   step: number;
+  assetLink?: string | null;
+  lifecycleStatus?: string | null;
   dimmed?: boolean;
 }) => (
   <ul className={`flex flex-col gap-2 text-base ${dimmed ? "opacity-60" : ""}`}>
-    {ONBOARDING_STEPS.map(({ idx, label }) => {
-      const done = step >= idx;
+    {ONBOARDING_STEPS.map(({ idx, label, hint }) => {
+      const done =
+        getCompletedOnboardingSteps(step, assetLink, lifecycleStatus) >= idx;
       return (
         <li
           key={idx}
@@ -1529,7 +1609,14 @@ const OnboardingChecklist = ({
           <span className="text-tm-text-color08 text-sm w-4">
             {String(idx).padStart(2, "0")}
           </span>
-          <span className="font-medium text-sm">{label}</span>
+          <span className="font-medium text-sm">
+            {label}
+            {hint && !done ? (
+              <span className="block text-xs font-normal text-tm-text-color08">
+                {hint}
+              </span>
+            ) : null}
+          </span>
         </li>
       );
     })}
@@ -1602,6 +1689,7 @@ const ReferralStepStream = ({
               preUser: {
                 ...r.preUser,
                 currentStep: data.currentStep,
+                status: data.status ?? r.preUser.status,
                 ...(data.assetLink ? { assetLink: data.assetLink } : {}),
                 ...(data.surveyLink ? { surveyLink: data.surveyLink } : {}),
               },
@@ -1854,9 +1942,9 @@ const ReferralList = ({
     try {
       const result = await modelsApi.orderReferralLandingPage(referral.id);
       // Server returns a freshly re-polled PreUser snapshot
-      // (currentStep, status, links). Spread it directly — chip state is
-      // derived solely from `currentStep`, so an authoritative server-side
-      // step is all the UI needs. No optimistic forcing of "building".
+      // (currentStep, status, links). Spread it directly — chip state now
+      // prefers the mirrored lifecycle status and uses currentStep only as a
+      // fallback, so no optimistic forcing of "building" is needed here.
       setReferrals?.((prev) =>
         prev.map((r) =>
           r.id === referral.id
@@ -2084,8 +2172,13 @@ const ReferralList = ({
           const isBusy = busyId === referral.id;
           const step = referral.preUser?.currentStep ?? 0;
           const assetLink = referral.preUser?.assetLink ?? null;
-          const normalizedAssetLink =
-            assetLink?.replace(/^"|"$/g, "").trim() || null;
+          const lifecycleStatus = referral.preUser?.status ?? null;
+          const completedOnboardingSteps = getCompletedOnboardingSteps(
+            step,
+            assetLink,
+            lifecycleStatus,
+          );
+          const normalizedAssetLink = normalizeLandingPageAssetLink(assetLink);
           const canCopyAssetLink = !!normalizedAssetLink;
           const assetLinkTooltip = canCopyAssetLink
             ? "Copy landing page link"
@@ -2178,7 +2271,7 @@ const ReferralList = ({
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm  text-tm-text-color09">
-                      {Math.min(step, ONBOARDING_STEPS.length)}/
+                      {completedOnboardingSteps}/
                       {ONBOARDING_STEPS.length}
                     </span>
                     {/* Opens the in-flight onboarding session
@@ -2216,6 +2309,8 @@ const ReferralList = ({
                 <div className={isLive ? "opacity-20" : ""}>
                   <OnboardingChecklist
                     step={step}
+                    assetLink={assetLink}
+                    lifecycleStatus={lifecycleStatus}
                     dimmed={chipState === "expired"}
                   />
                 </div>
@@ -2581,7 +2676,8 @@ const CardActions = ({
   // sent it at least once (Resend).
   //
   // The Send/Resend button is only shown when `referral.preUser` exists AND
-  // step >= 5. Referrals accepted via /register have no preUser row (the
+  // the invite is already in the LP Live / published state. Referrals
+  // accepted via /register have no preUser row (the
   // backend deletes it on registration), and the API requires preUser to be
   // present — so we omit the button entirely for those cases.
   //
@@ -2597,7 +2693,7 @@ const CardActions = ({
     referral.referredUser?.mustChangePassword === false;
   const canSendWelcomeEmail =
     referral.preUser != null &&
-    referral.preUser.currentStep >= 5 &&
+    deriveChipState(referral) === "lp_live" &&
     !completedFirstLogin;
   return (
     <div className="flex flex-col gap-2">

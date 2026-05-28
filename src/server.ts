@@ -58,9 +58,15 @@ app.use(cors({
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
-    } else {
-      callback(new Error(`CORS: origin ${origin} not allowed`));
+      return;
     }
+    // Vite may use 5174+ when 5173 is busy; allow any localhost port in dev.
+    const isDev = process.env.NODE_ENV !== 'production';
+    if (isDev && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+      callback(null, true);
+      return;
+    }
+    callback(new Error(`CORS: origin ${origin} not allowed`));
   },
   credentials: true,
 }));
