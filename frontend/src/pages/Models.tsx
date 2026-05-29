@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type DragEventHandler,
 } from "react";
@@ -17,6 +18,11 @@ import {
   type ApiUser,
   type Referral,
 } from "../services/api";
+import {
+  consumeReferralsStale,
+  isReferralsStale,
+  trackPath,
+} from "../lib/referralsRefresh";
 
 const formatManagerName = (m: {
   firstName: string | null;
@@ -150,6 +156,48 @@ export const Models = () => {
       // silent — don't surface errors for background refreshes
     }
   }, []);
+
+  const silentRefreshReferrals = useCallback(async () => {
+    try {
+      const referrals = await modelsApi.getMyReferrals();
+      setMyReferrals(referrals);
+    } catch {
+      // silent — don't surface errors for background refreshes
+    }
+  }, []);
+
+  const isReferralsView =
+    location.pathname === "/referrals" &&
+    (user?.baseRole === "account_manager" ||
+      user?.baseRole === "team_manager" ||
+      user?.baseRole === "promoter");
+
+  const pendingReferralsRefreshRef = useRef(false);
+
+  // Note when we should re-fetch member counts after Chatter Groups edits.
+  useEffect(() => {
+    if (location.pathname !== "/models" && location.pathname !== "/referrals") {
+      return;
+    }
+
+    const previous = trackPath(location.pathname);
+    if (
+      isReferralsView &&
+      (previous === "/chatter-groups" || isReferralsStale())
+    ) {
+      pendingReferralsRefreshRef.current = true;
+    }
+  }, [isReferralsView, location.pathname]);
+
+  // Run the silent refresh after the initial load finishes so it wins any race.
+  useEffect(() => {
+    if (!isReferralsView || isLoading || !pendingReferralsRefreshRef.current) {
+      return;
+    }
+    pendingReferralsRefreshRef.current = false;
+    consumeReferralsStale();
+    void silentRefreshReferrals();
+  }, [isReferralsView, isLoading, silentRefreshReferrals]);
 
   useEffect(() => {
     if (!isAdmin) return;
