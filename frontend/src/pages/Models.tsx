@@ -1771,8 +1771,38 @@ const ReferralList = ({
   const isAmMigration = (r: Referral) =>
     r.status === "CANCELLED" && r.metadata?.source === "am-migration";
 
+  // A single promoter can legitimately own multiple referral rows (e.g. a
+  // level-1 "AM membership" row created when they're attached to an account
+  // manager AND a level-2 influencer-chain row from their onboarding invite).
+  // Both carry the same `referredUserId`, so without collapsing them the same
+  // promoter renders as two identical cards (each with its own "Manage
+  // Chatters" button). We keep one card per promoter, preferring the row that
+  // best represents their state: real onboarding record (`preUser`) first,
+  // then furthest onboarding step, then highest level, then most recent.
+  const dedupeByPromoter = (rows: Referral[]): Referral[] => {
+    const score = (r: Referral) =>
+      (r.preUser ? 1_000_000 : 0) +
+      (r.preUser?.currentStep ?? 0) * 1000 +
+      (r.level ?? 0);
+    const best = new Map<string, Referral>();
+    const passthrough: Referral[] = [];
+    for (const r of rows) {
+      // Pending/unaccepted invites have no promoter yet — never collapse them.
+      const promoterId = r.referredUser?.id;
+      if (!promoterId) {
+        passthrough.push(r);
+        continue;
+      }
+      const existing = best.get(promoterId);
+      if (!existing || score(r) > score(existing)) {
+        best.set(promoterId, r);
+      }
+    }
+    return [...passthrough, ...best.values()];
+  };
+
   const counts = useMemo(() => {
-    const visible = referrals.filter((r) => !isAmMigration(r));
+    const visible = dedupeByPromoter(referrals.filter((r) => !isAmMigration(r)));
     const expired = visible.filter(isExpiredOnly).length;
     const denied = visible.filter(isDenied).length;
     const pending = visible.filter(
@@ -1789,7 +1819,7 @@ const ReferralList = ({
   }, [referrals]);
 
   const visibleReferrals = useMemo(() => {
-    const base = referrals.filter((r) => !isAmMigration(r));
+    const base = dedupeByPromoter(referrals.filter((r) => !isAmMigration(r)));
     switch (filter) {
       case "pending":
         return base.filter((r) => r.status === "PENDING" && !r.isExpired);
@@ -2381,7 +2411,7 @@ const ReferralList = ({
                 referral={referral}
                 busy={isBusy}
                 canOrderLandingPage={canOrderLandingPage}
-                canAssignChatters={isAccountManagerViewer}
+                canAssignChatters={isAccountManagerViewer || isAdmin}
                 isAdmin={isAdmin}
                 onDelete={handleDelete}
                 onDeny={handleDeny}
