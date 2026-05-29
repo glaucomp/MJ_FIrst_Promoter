@@ -23,6 +23,7 @@ import {
   isReferralsStale,
   trackPath,
 } from "../lib/referralsRefresh";
+import { enrichReferralsWithMemberCounts } from "../lib/referralMemberCounts";
 
 const formatManagerName = (m: {
   firstName: string | null;
@@ -125,7 +126,11 @@ export const Models = () => {
         // Promoters see the same My Promoters list as account managers —
         // the invite creation flow (email + Step N chip) is shared, just
         // subject to `campaign.maxInvitesPerMonth` on the backend.
-        const referrals = await modelsApi.getMyReferrals();
+        const baseReferrals = await modelsApi.getMyReferrals();
+        const referrals =
+          user?.baseRole === "account_manager"
+            ? await enrichReferralsWithMemberCounts(baseReferrals)
+            : baseReferrals;
         setMyReferrals(referrals);
       }
     } catch (err) {
@@ -159,12 +164,16 @@ export const Models = () => {
 
   const silentRefreshReferrals = useCallback(async () => {
     try {
-      const referrals = await modelsApi.getMyReferrals();
+      const baseReferrals = await modelsApi.getMyReferrals();
+      const referrals =
+        user?.baseRole === "account_manager"
+          ? await enrichReferralsWithMemberCounts(baseReferrals)
+          : baseReferrals;
       setMyReferrals(referrals);
     } catch {
       // silent — don't surface errors for background refreshes
     }
-  }, []);
+  }, [user?.baseRole]);
 
   const isReferralsView =
     location.pathname === "/referrals" &&
