@@ -646,6 +646,7 @@ const InlineMemberManager = ({
     try {
       await chatterGroupsApi.addMember(group.id, chatterId);
       const res = await chatterGroupsApi.get(group.id);
+      markReferralsStale();
       onGroupUpdated(res.group);
     } catch (err) {
       setAddError(err instanceof Error ? err.message : "Failed to add member");
@@ -978,6 +979,7 @@ const isGroupSortBy = (value: string): value is GroupSortBy =>
 
 export const ChatterGroups = () => {
   const { user } = useAuth();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   // ?group=<id> — when navigated here from "Assign Chatters", scroll to and
   // highlight this group so the AM can immediately add chatters.
@@ -1005,6 +1007,10 @@ export const ChatterGroups = () => {
 
   const canManage =
     user?.baseRole === "admin" || user?.baseRole === "account_manager";
+
+  useEffect(() => {
+    trackPath(location.pathname);
+  }, [location.pathname]);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -1109,6 +1115,7 @@ export const ChatterGroups = () => {
     try {
       await chatterGroupsApi.removeMember(groupId, chatterId);
       const res = await chatterGroupsApi.get(groupId);
+      markReferralsStale();
       handleGroupUpdated(res.group);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to remove member");
