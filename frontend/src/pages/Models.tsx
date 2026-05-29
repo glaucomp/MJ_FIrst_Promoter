@@ -2018,8 +2018,8 @@ const ReferralList = ({
     setBusyId(referral.id);
     try {
       const result = await modelsApi.ensureInfluencerGroup(referral.id);
-      // Splice the groupId into local state so the button reflects the
-      // assignment on the next render without requiring a full page reload.
+      // Keep local state in sync without flipping the CTA to "Manage" — the
+      // button stays red until at least one chatter is in the group.
       setReferrals?.((prev) =>
         prev.map((r) =>
           r.id === referral.id && r.referredUser
@@ -2028,6 +2028,7 @@ const ReferralList = ({
                 referredUser: {
                   ...r.referredUser,
                   chatterGroupId: result.group.id,
+                  chatterGroupMemberCount: 0,
                 },
               }
             : r,
