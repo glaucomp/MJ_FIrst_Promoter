@@ -105,19 +105,24 @@ export const dedupeReferralsByPromoter = <
   rows: T[],
 ): T[] => {
   const best = new Map<string, T>();
-  const passthrough: T[] = [];
   for (const row of rows) {
     const promoterId = row.referredUser?.id ?? row.referredUserId ?? null;
-    if (!promoterId) {
-      passthrough.push(row);
-      continue;
-    }
+    if (!promoterId) continue;
     const existing = best.get(promoterId);
     if (!existing || referralDisplayScore(row) > referralDisplayScore(existing)) {
       best.set(promoterId, row);
     }
   }
-  return [...passthrough, ...best.values()];
+
+  const emitted = new Set<string>();
+  return rows.filter((row) => {
+    const promoterId = row.referredUser?.id ?? row.referredUserId ?? null;
+    if (!promoterId) return true;
+    if (emitted.has(promoterId)) return false;
+    if (best.get(promoterId) !== row) return false;
+    emitted.add(promoterId);
+    return true;
+  });
 };
 
 /**
