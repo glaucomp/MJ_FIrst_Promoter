@@ -2700,7 +2700,9 @@ const CardActions = ({
   }
 
   // lp_live — two-action stack: a secondary "Send/Resend Welcome Email"
-  // button on top, the existing pink "Assign Chatters" CTA below. The
+  // button on top, the pink "Assign Chatters" CTA below (stays pink until
+  // at least one chatter is in the promoter's group). Once members exist,
+  // the lower button becomes the black "Manage Chatters" secondary CTA.
   // top button's label is driven by `preUser.welcomeEmailSentAt`: null
   // means it has never been delivered (Send), any timestamp means we've
   // sent it at least once (Resend).
@@ -2740,7 +2742,7 @@ const CardActions = ({
         </SecondaryButton>
       )}
       {canAssignChatters ? (
-        referral.referredUser?.chatterGroupId ? (
+        (referral.referredUser?.chatterGroupMemberCount ?? 0) > 0 ? (
           <SecondaryButton
             onClick={() => onAssignChatters(referral)}
             disabled={busy}
