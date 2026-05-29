@@ -1779,27 +1779,45 @@ const ReferralList = ({
   // Chatters" button). We keep one card per promoter, preferring the row that
   // best represents their state: real onboarding record (`preUser`) first,
   // then furthest onboarding step, then highest level, then most recent.
-  const dedupeByPromoter = (rows: Referral[]): Referral[] => {
-    const score = (r: Referral) =>
-      (r.preUser ? 1_000_000 : 0) +
-      (r.preUser?.currentStep ?? 0) * 1000 +
-      (r.level ?? 0);
-    const best = new Map<string, Referral>();
-    const passthrough: Referral[] = [];
-    for (const r of rows) {
-      // Pending/unaccepted invites have no promoter yet — never collapse them.
-      const promoterId = r.referredUser?.id;
-      if (!promoterId) {
-        passthrough.push(r);
-        continue;
-      }
-      const existing = best.get(promoterId);
-      if (!existing || score(r) > score(existing)) {
-        best.set(promoterId, r);
-      }
-    }
-    return [...passthrough, ...best.values()];
+const dedupeByPromoter = (rows: Referral[]): Referral[] => {
+  const compare = (a: Referral, b: Referral) => {
+    const aHasPreUser = a.preUser ? 1 : 0;
+    const bHasPreUser = b.preUser ? 1 : 0;
+    if (aHasPreUser !== bHasPreUser) return aHasPreUser - bHasPreUser;
+
+    const aStep = a.preUser?.currentStep ?? 0;
+    const bStep = b.preUser?.currentStep ?? 0;
+    if (aStep !== bStep) return aStep - bStep;
+
+    const aLevel = a.level ?? 0;
+    const bLevel = b.level ?? 0;
+    if (aLevel !== bLevel) return aLevel - bLevel;
+
+    const aCreatedAt = Date.parse(a.createdAt);
+    const bCreatedAt = Date.parse(b.createdAt);
+    return (Number.isNaN(aCreatedAt) ? 0 : aCreatedAt) -
+      (Number.isNaN(bCreatedAt) ? 0 : bCreatedAt);
   };
+
+  const best = new Map<string, Referral>();
+  for (const r of rows) {
+    // Pending/unaccepted invites have no promoter yet — never collapse them.
+    const promoterId = r.referredUser?.id;
+    if (!promoterId) continue;
+
+    const existing = best.get(promoterId);
+    if (!existing || compare(r, existing) > 0) {
+      best.set(promoterId, r);
+    }
+  }
+
+  // Preserve the original ordering from `rows` (currently createdAt desc).
+  return rows.filter((r) => {
+    const promoterId = r.referredUser?.id;
+    if (!promoterId) return true;
+    return best.get(promoterId)?.id === r.id;
+  });
+};
 
   const counts = useMemo(() => {
     const visible = dedupeByPromoter(referrals.filter((r) => !isAmMigration(r)));
