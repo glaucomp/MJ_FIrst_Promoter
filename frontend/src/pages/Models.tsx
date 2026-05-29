@@ -149,9 +149,7 @@ export const Models = () => {
   // Does NOT set isLoading so the page never flashes.
   const silentRefreshReferral = useCallback(async (referralId: string) => {
     try {
-      const referrals = await enrichReferralsWithMemberCounts(
-        await modelsApi.getMyReferrals(),
-      );
+      const referrals = await modelsApi.getMyReferrals();
       const updated = referrals.find((r) => r.id === referralId);
       if (!updated) return;
       setMyReferrals((prev) =>
