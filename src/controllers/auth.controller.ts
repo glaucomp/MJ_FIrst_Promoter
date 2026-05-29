@@ -158,10 +158,14 @@ export const register = async (req: AuthRequest, res: Response) => {
         },
       });
 
-      await supersedeDuplicateInviteeReferrals(prisma, {
-        keepReferralId: referral.id,
-        promotedUserId: user.id,
-      });
+      try {
+        await supersedeDuplicateInviteeReferrals(prisma, {
+          keepReferralId: referral.id,
+          promotedUserId: user.id,
+        });
+      } catch (error) {
+        console.error("Failed to supersede duplicate referrals after join:", error);
+      }
 
       void syncUserType(referral.referrerId).catch((e) =>
         console.error("Failed to sync referrer type after join:", e),
