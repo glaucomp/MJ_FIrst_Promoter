@@ -1771,8 +1771,56 @@ const ReferralList = ({
   const isAmMigration = (r: Referral) =>
     r.status === "CANCELLED" && r.metadata?.source === "am-migration";
 
+  // A single promoter can legitimately own multiple referral rows (e.g. a
+  // level-1 "AM membership" row created when they're attached to an account
+  // manager AND a level-2 influencer-chain row from their onboarding invite).
+  // Both carry the same `referredUserId`, so without collapsing them the same
+  // promoter renders as two identical cards (each with its own "Manage
+  // Chatters" button). We keep one card per promoter, preferring the row that
+  // best represents their state: real onboarding record (`preUser`) first,
+  // then furthest onboarding step, then highest level, then most recent.
+const dedupeByPromoter = (rows: Referral[]): Referral[] => {
+  const compare = (a: Referral, b: Referral) => {
+    const aHasPreUser = a.preUser ? 1 : 0;
+    const bHasPreUser = b.preUser ? 1 : 0;
+    if (aHasPreUser !== bHasPreUser) return aHasPreUser - bHasPreUser;
+
+    const aStep = a.preUser?.currentStep ?? 0;
+    const bStep = b.preUser?.currentStep ?? 0;
+    if (aStep !== bStep) return aStep - bStep;
+
+    const aLevel = a.level ?? 0;
+    const bLevel = b.level ?? 0;
+    if (aLevel !== bLevel) return aLevel - bLevel;
+
+    const aCreatedAt = Date.parse(a.createdAt);
+    const bCreatedAt = Date.parse(b.createdAt);
+    return (Number.isNaN(aCreatedAt) ? 0 : aCreatedAt) -
+      (Number.isNaN(bCreatedAt) ? 0 : bCreatedAt);
+  };
+
+  const best = new Map<string, Referral>();
+  for (const r of rows) {
+    // Pending/unaccepted invites have no promoter yet — never collapse them.
+    const promoterId = r.referredUser?.id;
+    if (!promoterId) continue;
+
+    const existing = best.get(promoterId);
+    if (!existing || compare(r, existing) > 0) {
+      best.set(promoterId, r);
+    }
+  }
+
+  // Preserve the original ordering from `rows` (currently createdAt desc).
+  return rows.filter((r) => {
+    const promoterId = r.referredUser?.id;
+    if (!promoterId) return true;
+    return best.get(promoterId)?.id === r.id;
+  });
+};
+
   const counts = useMemo(() => {
-    const visible = referrals.filter((r) => !isAmMigration(r));
+    const visible = dedupeByPromoter(referrals.filter((r) => !isAmMigration(r)));
     const expired = visible.filter(isExpiredOnly).length;
     const denied = visible.filter(isDenied).length;
     const pending = visible.filter(
@@ -1789,7 +1837,7 @@ const ReferralList = ({
   }, [referrals]);
 
   const visibleReferrals = useMemo(() => {
-    const base = referrals.filter((r) => !isAmMigration(r));
+    const base = dedupeByPromoter(referrals.filter((r) => !isAmMigration(r)));
     switch (filter) {
       case "pending":
         return base.filter((r) => r.status === "PENDING" && !r.isExpired);
@@ -2381,7 +2429,7 @@ const ReferralList = ({
                 referral={referral}
                 busy={isBusy}
                 canOrderLandingPage={canOrderLandingPage}
-                canAssignChatters={isAccountManagerViewer}
+                canAssignChatters={isAccountManagerViewer || isAdmin}
                 isAdmin={isAdmin}
                 onDelete={handleDelete}
                 onDeny={handleDeny}
