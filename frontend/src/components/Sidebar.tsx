@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import mjLogo from '../assets/mjpromoFavicon.svg';
 import { IconLogout } from './NavIcons';
 import { APP_VERSION } from '../lib/appVersion';
+import { markReferralsStale } from '../lib/referralsRefresh';
 import { getNavForRole } from './navConfig';
 
 interface SidebarProps {
@@ -23,6 +24,9 @@ export const Sidebar = ({ onToggle }: SidebarProps = {}) => {
   };
 
   const handleNavigation = (path: string) => {
+    if (location.pathname === '/chatter-groups' && path === '/referrals') {
+      markReferralsStale();
+    }
     navigate(path);
     if (isOpen) {
       setIsOpen(false);

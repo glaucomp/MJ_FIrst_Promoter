@@ -23,6 +23,7 @@ import {
   isReferralsStale,
   trackPath,
 } from "../lib/referralsRefresh";
+import { enrichReferralsWithMemberCounts } from "../lib/referralMemberCounts";
 
 const formatManagerName = (m: {
   firstName: string | null;
@@ -125,7 +126,9 @@ export const Models = () => {
         // Promoters see the same My Promoters list as account managers —
         // the invite creation flow (email + Step N chip) is shared, just
         // subject to `campaign.maxInvitesPerMonth` on the backend.
-        const referrals = await modelsApi.getMyReferrals();
+        const referrals = await enrichReferralsWithMemberCounts(
+          await modelsApi.getMyReferrals(),
+        );
         setMyReferrals(referrals);
       }
     } catch (err) {
@@ -146,7 +149,9 @@ export const Models = () => {
   // Does NOT set isLoading so the page never flashes.
   const silentRefreshReferral = useCallback(async (referralId: string) => {
     try {
-      const referrals = await modelsApi.getMyReferrals();
+      const referrals = await enrichReferralsWithMemberCounts(
+        await modelsApi.getMyReferrals(),
+      );
       const updated = referrals.find((r) => r.id === referralId);
       if (!updated) return;
       setMyReferrals((prev) =>
@@ -159,7 +164,9 @@ export const Models = () => {
 
   const silentRefreshReferrals = useCallback(async () => {
     try {
-      const referrals = await modelsApi.getMyReferrals();
+      const referrals = await enrichReferralsWithMemberCounts(
+        await modelsApi.getMyReferrals(),
+      );
       setMyReferrals(referrals);
     } catch {
       // silent — don't surface errors for background refreshes
