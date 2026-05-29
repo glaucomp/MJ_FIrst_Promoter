@@ -2853,10 +2853,18 @@ export const receiveTeasemeStepWebhook = async (
                 referralId: resolvedReferralId,
                 userId: promotedUser.id,
               });
-              await supersedeDuplicateInviteeReferrals(prisma, {
-                keepReferralId: resolvedReferralId,
-                promotedUserId: promotedUser.id,
-              });
+              try {
+                await supersedeDuplicateInviteeReferrals(prisma, {
+                  keepReferralId: resolvedReferralId,
+                  promotedUserId: promotedUser.id,
+                });
+              } catch (err) {
+                console.error("[teaseme-webhook] duplicate referral cleanup failed", {
+                  referralId: resolvedReferralId,
+                  userId: promotedUser.id,
+                  err: err instanceof Error ? err.message : String(err),
+                });
+              }
             }
           }
 
