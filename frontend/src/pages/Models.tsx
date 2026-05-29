@@ -126,9 +126,11 @@ export const Models = () => {
         // Promoters see the same My Promoters list as account managers —
         // the invite creation flow (email + Step N chip) is shared, just
         // subject to `campaign.maxInvitesPerMonth` on the backend.
-        const referrals = await enrichReferralsWithMemberCounts(
-          await modelsApi.getMyReferrals(),
-        );
+        const baseReferrals = await modelsApi.getMyReferrals();
+        const referrals =
+          user?.baseRole === "account_manager"
+            ? await enrichReferralsWithMemberCounts(baseReferrals)
+            : baseReferrals;
         setMyReferrals(referrals);
       }
     } catch (err) {
