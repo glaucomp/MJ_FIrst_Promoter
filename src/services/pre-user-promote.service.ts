@@ -506,10 +506,19 @@ export const promotePreUserToUser = async (
           userId: user.id,
         });
 
-        await supersedeDuplicateInviteeReferrals(prisma, {
-          keepReferralId: preUser.referralId,
-          promotedUserId: user.id,
-        });
+        try {
+          await supersedeDuplicateInviteeReferrals(prisma, {
+            keepReferralId: preUser.referralId,
+            promotedUserId: user.id,
+          });
+        } catch (err) {
+          console.error("[promote-pre-user] duplicate referral cleanup failed", {
+            preUserId: preUser.id,
+            referralId: preUser.referralId,
+            userId: user.id,
+            err: err instanceof Error ? err.message : String(err),
+          });
+        }
 
         // Recompute the referrer's userType now that they have an ACTIVE
         // downline referral. This mirrors the syncUserType call in
