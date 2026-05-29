@@ -2108,6 +2108,11 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
             // /first-password-change (mustChangePassword flips to false).
             mustChangePassword: true,
             chatterGroupId: true,
+            chatterGroup: {
+              select: {
+                _count: { select: { members: true } },
+              },
+            },
           },
         },
         childReferrals: {
@@ -2213,21 +2218,26 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
       }),
     );
     const hydrateReferredUser = <
-      T extends { profilePhotoKey?: string | null } | null | undefined,
+      T extends {
+        profilePhotoKey?: string | null;
+        chatterGroup?: { _count: { members: number } } | null;
+      } | null | undefined,
     >(
       ru: T,
     ):
-      | (Omit<NonNullable<T>, "profilePhotoKey"> & { photoUrl: string | null })
+      | (Omit<NonNullable<T>, "profilePhotoKey" | "chatterGroup"> & {
+          photoUrl: string | null;
+          chatterGroupMemberCount: number;
+        })
       | null => {
       if (!ru) return null;
-      const { profilePhotoKey, ...rest } = ru;
+      const { profilePhotoKey, chatterGroup, ...rest } = ru;
       return {
         ...rest,
         photoUrl: profilePhotoKey
           ? (photoUrlByKey.get(profilePhotoKey) ?? null)
           : null,
-      } as Omit<NonNullable<T>, "profilePhotoKey"> & {
-        photoUrl: string | null;
+        chatterGroupMemberCount: chatterGroup?._count.members ?? 0,
       };
     };
     // Same ref-code derivation used in `createReferralInvite`. Used below to
