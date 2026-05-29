@@ -2028,8 +2028,10 @@ const ReferralList = ({
                 referredUser: {
                   ...r.referredUser,
                   chatterGroupId: result.group.id,
-                  chatterGroupMemberCount: 0,
-                },
+                  chatterGroupMemberCount: result.created
+                    ? 0
+                    : r.referredUser.chatterGroupMemberCount,
+                }
               }
             : r,
         ),
