@@ -130,19 +130,45 @@ export const dedupeReferralsByPromoter = <
  * keeping the canonical row (typically the TeaseMe email-invite that owns the
  * PreUser). Marks superseded rows with `source: am-migration` so they stay
  * out of the Models grid filters.
+ *
+ * The keeper is chosen deterministically from all ACTIVE rows (highest score
+ * per `referralDisplayScore`; lowest `id` breaks ties). This prevents a race
+ * where two concurrent calls each cancel the other's referral and leave no
+ * ACTIVE row — both callers converge on the same winner regardless of which
+ * `keepReferralId` they originally supplied.
  */
 export async function supersedeDuplicateInviteeReferrals(
   client: Prisma.TransactionClient | PrismaClient,
   args: { keepReferralId: string; promotedUserId: string },
 ): Promise<number> {
-  const duplicates = await client.referral.findMany({
+  // Fetch ALL active rows for this promoter, including the proposed keeper, so
+  // the winner is chosen here rather than trusted from the caller.
+  const allActive = await client.referral.findMany({
     where: {
       referredUserId: args.promotedUserId,
       status: "ACTIVE",
-      id: { not: args.keepReferralId },
     },
-    select: { id: true, metadata: true },
+    select: {
+      id: true,
+      metadata: true,
+      level: true,
+      preUser: { select: { currentStep: true } },
+    },
+    orderBy: { id: "asc" },
   });
+
+  if (allActive.length <= 1) return 0;
+
+  // Pick the highest-scored row; the id (asc) ordering means the first element
+  // wins any score tie, giving a stable result across concurrent callers.
+  let winner = allActive[0]!;
+  for (const row of allActive) {
+    if (referralDisplayScore(row) > referralDisplayScore(winner)) {
+      winner = row;
+    }
+  }
+
+  const duplicates = allActive.filter((r: typeof winner) => r.id !== winner.id);
 
   let superseded = 0;
   for (const ref of duplicates) {
@@ -154,7 +180,7 @@ export async function supersedeDuplicateInviteeReferrals(
         metadata: {
           ...existing,
           source: "am-migration",
-          supersededByReferralId: args.keepReferralId,
+          supersededByReferralId: winner.id,
           migratedAt: new Date().toISOString(),
         } as Prisma.InputJsonValue,
       },
@@ -164,7 +190,7 @@ export async function supersedeDuplicateInviteeReferrals(
 
   if (superseded > 0) {
     console.info("[supersedeDuplicateInviteeReferrals] cancelled duplicates", {
-      keepReferralId: args.keepReferralId,
+      keepReferralId: winner.id,
       promotedUserId: args.promotedUserId,
       superseded,
     });
