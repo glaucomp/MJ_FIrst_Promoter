@@ -74,6 +74,131 @@ const defaultSanitizeLocalPart = (raw: string): string => {
   return cleaned || "user";
 };
 
+const readReferralMetadataRecord = (
+  raw: Prisma.JsonValue | null | undefined,
+): Record<string, unknown> => {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  return raw as Record<string, unknown>;
+};
+
+/** Prefer the TeaseMe onboarding row over ad-hoc membership duplicates. */
+export const referralDisplayScore = (row: {
+  preUser?: { currentStep: number } | null;
+  level: number;
+}): number =>
+  (row.preUser ? 1_000_000 : 0) +
+  (row.preUser?.currentStep ?? 0) * 1000 +
+  (row.level ?? 0);
+
+/**
+ * Collapse multiple list rows that share the same promoted user (`referredUserId`)
+ * into one card. Pending invites (no invitee user yet) are never merged.
+ */
+export const dedupeReferralsByPromoter = <
+  T extends {
+    referredUserId?: string | null;
+    referredUser?: { id: string } | null;
+    preUser?: { currentStep: number } | null;
+    level: number;
+  },
+>(
+  rows: T[],
+): T[] => {
+  const best = new Map<string, T>();
+  for (const row of rows) {
+    const promoterId = row.referredUser?.id ?? row.referredUserId ?? null;
+    if (!promoterId) continue;
+    const existing = best.get(promoterId);
+    if (!existing || referralDisplayScore(row) > referralDisplayScore(existing)) {
+      best.set(promoterId, row);
+    }
+  }
+
+  const emitted = new Set<string>();
+  return rows.filter((row) => {
+    const promoterId = row.referredUser?.id ?? row.referredUserId ?? null;
+    if (!promoterId) return true;
+    if (emitted.has(promoterId)) return false;
+    if (best.get(promoterId) !== row) return false;
+    emitted.add(promoterId);
+    return true;
+  });
+};
+
+/**
+ * Cancel every other ACTIVE "I am the invitee" referral for this promoter,
+ * keeping the canonical row (typically the TeaseMe email-invite that owns the
+ * PreUser). Marks superseded rows with `source: am-migration` so they stay
+ * out of the Models grid filters.
+ *
+ * The keeper is chosen deterministically from all ACTIVE rows (highest score
+ * per `referralDisplayScore`; lowest `id` breaks ties). This prevents a race
+ * where two concurrent calls each cancel the other's referral and leave no
+ * ACTIVE row — both callers converge on the same winner regardless of which
+ * `keepReferralId` they originally supplied.
+ */
+export async function supersedeDuplicateInviteeReferrals(
+  client: Prisma.TransactionClient | PrismaClient,
+  args: { keepReferralId: string; promotedUserId: string },
+): Promise<number> {
+  // Fetch ALL active rows for this promoter, including the proposed keeper, so
+  // the winner is chosen here rather than trusted from the caller.
+  const allActive = await client.referral.findMany({
+    where: {
+      referredUserId: args.promotedUserId,
+      status: "ACTIVE",
+    },
+    select: {
+      id: true,
+      metadata: true,
+      level: true,
+      preUser: { select: { currentStep: true } },
+    },
+    orderBy: { id: "asc" },
+  });
+
+  if (allActive.length <= 1) return 0;
+
+  // Pick the highest-scored row; the id (asc) ordering means the first element
+  // wins any score tie, giving a stable result across concurrent callers.
+  let winner = allActive[0]!;
+  for (const row of allActive) {
+    if (referralDisplayScore(row) > referralDisplayScore(winner)) {
+      winner = row;
+    }
+  }
+
+  const duplicates = allActive.filter((r: typeof winner) => r.id !== winner.id);
+
+  let superseded = 0;
+  for (const ref of duplicates) {
+    const existing = readReferralMetadataRecord(ref.metadata);
+    await client.referral.update({
+      where: { id: ref.id },
+      data: {
+        status: "CANCELLED",
+        metadata: {
+          ...existing,
+          source: "am-migration",
+          supersededByReferralId: winner.id,
+          migratedAt: new Date().toISOString(),
+        } as Prisma.InputJsonValue,
+      },
+    });
+    superseded += 1;
+  }
+
+  if (superseded > 0) {
+    console.info("[supersedeDuplicateInviteeReferrals] cancelled duplicates", {
+      keepReferralId: winner.id,
+      promotedUserId: args.promotedUserId,
+      superseded,
+    });
+  }
+
+  return superseded;
+}
+
 /**
  * Ensures a second ACTIVE referral on the *public* program (`referredUserId`
  * null) so sales/attribution and `isParticipant` on the linked public campaign
