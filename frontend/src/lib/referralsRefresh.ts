@@ -1,7 +1,7 @@
 const STALE_KEY = 'mj:referralsStale';
 const PATH_KEY = 'mj:lastPath';
 
-/** Call when chatter group membership changes (add/remove member). */
+/** Call when chatter-group state may have changed so the referrals view should refetch. */
 export function markReferralsStale() {
   try {
     sessionStorage.setItem(STALE_KEY, '1');
