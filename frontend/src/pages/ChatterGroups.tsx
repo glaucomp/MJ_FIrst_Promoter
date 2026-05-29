@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import {
+  markReferralsStale,
+  trackPath,
+} from "../lib/referralsRefresh";
 import {
   chatterGroupsApi,
   chattersApi,
