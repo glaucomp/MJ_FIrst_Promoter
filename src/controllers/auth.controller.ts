@@ -17,7 +17,7 @@ import {
   validatePasswordResetToken,
 } from "../services/password-reset.service";
 import { resolveOwnership } from "../services/pre-user-promote.service";
-import { ensureCustomerTrackingReferralForPromotedUser } from "../services/referral-membership.service";
+import { ensureCustomerTrackingReferralForPromotedUser, supersedeDuplicateInviteeReferrals } from "../services/referral-membership.service";
 import { getUserTypeInfo, syncUserType } from "../services/user.service";
 import { buildSetPasswordUrl } from "../utils/frontend-url";
 import { clearMjfpCredentialsCache, getMjfpCredentials, MJFP_API_URL } from "../lib/mjfp-credentials";
@@ -157,6 +157,15 @@ export const register = async (req: AuthRequest, res: Response) => {
           acceptedAt: new Date(),
         },
       });
+
+      try {
+        await supersedeDuplicateInviteeReferrals(prisma, {
+          keepReferralId: referral.id,
+          promotedUserId: user.id,
+        });
+      } catch (error) {
+        console.error("Failed to supersede duplicate referrals after join:", error);
+      }
 
       void syncUserType(referral.referrerId).catch((e) =>
         console.error("Failed to sync referrer type after join:", e),
