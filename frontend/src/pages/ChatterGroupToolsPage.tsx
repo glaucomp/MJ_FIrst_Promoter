@@ -277,6 +277,11 @@ export const ChatterGroupToolsPage = () => {
 
       {/* Tools */}
       <div className="flex flex-col gap-5">
+        {/* Talk Like [Influencer] */}
+        <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-2xl p-4 lg:p-8">
+          <VoiceMessage modelName={promoterName} voiceId={voiceId} />
+        </div>
+
         {/* Invite Link */}
         <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-2xl p-4 lg:p-8">
           {group.promoter?.username ? (
@@ -307,11 +312,6 @@ export const ChatterGroupToolsPage = () => {
               </p>
             </div>
           )}
-        </div>
-
-        {/* Talk Like [Influencer] */}
-        <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-2xl p-4 lg:p-8">
-          <VoiceMessage modelName={promoterName} voiceId={voiceId} />
         </div>
 
         {/* Model Info */}

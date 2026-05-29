@@ -2,6 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { elevenLabsApi } from "../services/api";
 import PhoneTip from '../assets/imagePhoneTip.svg';
 import DesktopTip from '../assets/imageDesktopTip.svg';
+import {
+  applyName,
+  DEFAULT_USER_NAME,
+  MOOD_CATEGORIES,
+} from "../data/moodPhrases";
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5555/api';
 
@@ -372,101 +377,70 @@ const LANGUAGES: { code: string; flag: string; label: string }[] = [
   { code: "nl", flag: "🇳🇱", label: "Dutch" },
 ];
 
-// ── Mood options ───────────────────────────────────────────────────────────────
+// ── Phrase preview ─────────────────────────────────────────────────────────────
 
-const MOODS: {
-  value: string;
-  emoji: string;
-  label: string;
-  description: string;
-}[] = [
-    {
-      value: "seductive",
-      emoji: "💋",
-      label: "Seductive",
-      description:
-        "Slow, breathy, and intensely intimate. Long pauses between phrases. Every word feels deliberate and loaded with desire.",
-    },
-    {
-      value: "teasing",
-      emoji: "😜",
-      label: "Teasing",
-      description:
-        "Light and mischievous, with playful giggles and sudden pauses. The tone dances between sweet and provocative.",
-    },
-    {
-      value: "needy",
-      emoji: "🥺",
-      label: "Needy",
-      description:
-        "Longing and slightly desperate. Voice trembles at the edges, emotionally raw, as if the speaker really needs attention right now.",
-    },
-    {
-      value: "dominant",
-      emoji: "👑",
-      label: "Dominant",
-      description:
-        "Commanding and self-assured. Short, direct sentences. A tone that expects to be obeyed without needing to raise its voice.",
-    },
-    {
-      value: "innocent",
-      emoji: "🌸",
-      label: "Innocent",
-      description:
-        "Soft, wide-eyed, and sweetly naive. The speaker seems unaware of any double meaning, which makes every line more charming.",
-    },
-    {
-      value: "flirting",
-      emoji: "😏",
-      label: "Flirting",
-      description:
-        "Suggestive and knowing, with smirks you can hear. Sentences trail off invitingly. The listener feels personally chosen.",
-    },
-    {
-      value: "horny",
-      emoji: "🔥",
-      label: "Horny",
-      description:
-        "Explicit heat and urgency. Breathless pacing, direct language. The speaker is barely holding back.",
-    },
-    {
-      value: "heartbroken",
-      emoji: "💔",
-      label: "Heartbroken",
-      description:
-        "Trembling and tearful. Sentences crack mid-way. There is a vulnerability that makes every word feel fragile.",
-    },
-    {
-      value: "mysterious",
-      emoji: "🌙",
-      label: "Mysterious",
-      description:
-        "Hushed and slow, with dramatic pauses. The speaker seems to know something the listener does not. Each sentence is a half-revealed secret.",
-    },
-    {
-      value: "naughty",
-      emoji: "😈",
-      label: "Naughty",
-      description:
-        "Wickedly playful with a dark edge. Mischievous laughs. The speaker is clearly up to something and loving every second of it.",
-    },
-    {
-      value: "excited",
-      emoji: "🤩",
-      label: "Excited",
-      description:
-        "High-energy and fast, with bursts of enthusiasm. The speaker can barely contain themselves, words tumbling out.",
-    },
-    {
-      value: "desperate",
-      emoji: "😰",
-      label: "Desperate",
-      description:
-        "Urgent and breathless, as if running out of time. Short sentences, gasps between thoughts, an almost pleading quality.",
-    },
-  ];
+const NAME_PLACEHOLDER = "{user name}";
+
+const PhrasePreview = ({
+  phrase,
+  userName,
+}: {
+  phrase: string;
+  userName: string;
+}) => {
+  const displayName = userName.trim() || DEFAULT_USER_NAME;
+  const parts = phrase.split(NAME_PLACEHOLDER);
+
+  if (parts.length === 1) {
+    return (
+      <span className="text-tm-text-color08 text-sm leading-relaxed">
+        {phrase}
+      </span>
+    );
+  }
+
+  return (
+    <span className="text-tm-text-color08 text-sm leading-relaxed">
+      {parts.map((part, i) => (
+        <span key={`${i}-${part.slice(0, 12)}`}>
+          {part}
+          {i < parts.length - 1 && (
+            <span className="inline-flex mx-0.5 px-1.5 py-0.5 rounded bg-tm-primary-color11 border border-tm-primary-color09 text-tm-primary-color04 text-xs font-semibold">
+              {displayName}
+            </span>
+          )}
+        </span>
+      ))}
+    </span>
+  );
+};
+
+const ConnectorArrow = () => (
+  <div className="relative flex items-center justify-center py-1 lg:py-0 lg:self-center">
+    <div
+      className="absolute inset-x-0 top-1/2 h-px bg-[rgba(255,255,255,0.07)] lg:hidden"
+      aria-hidden
+    />
+    <div
+      className="relative z-10 w-10 h-10 rounded-full border border-[rgba(255,255,255,0.12)] bg-[#1a1a1c] flex items-center justify-center shrink-0"
+      aria-hidden
+    >
+      <svg
+        className="w-4 h-4 text-[#888] rotate-90 lg:rotate-0"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={2}
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+      </svg>
+    </div>
+  </div>
+);
 
 // ── Voice Message ──────────────────────────────────────────────────────────────
+
+const PANEL_ANIM_MS = 320;
 
 interface VoiceMessageProps {
   modelName?: string;
@@ -475,11 +449,18 @@ interface VoiceMessageProps {
 
 export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
   const [text, setText] = useState("");
-  const [selectedMood, setSelectedMood] = useState("seductive");
+  const [selectedPhrase, setSelectedPhrase] = useState("");
+  const [userName, setUserName] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [displayedCategoryKey, setDisplayedCategoryKey] = useState("");
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [contentVisible, setContentVisible] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState("en");
   const [showLanguagePanel, setShowLanguagePanel] = useState(false);
   const labelClickCountRef = useRef(0);
   const labelClickResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const panelCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const categoryButtonRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const handleLabelClick = () => {
     if (labelClickResetRef.current) clearTimeout(labelClickResetRef.current);
@@ -509,9 +490,80 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+
+  const displayedCategory = MOOD_CATEGORIES.find(
+    (c) => c.key === displayedCategoryKey,
+  );
+
+  const handleCategorySelect = (key: string, index: number) => {
+    if (panelCloseTimerRef.current) {
+      clearTimeout(panelCloseTimerRef.current);
+      panelCloseTimerRef.current = null;
+    }
+
+    if (selectedCategory === key) {
+      setContentVisible(false);
+      setSelectedCategory("");
+      setIsPanelOpen(false);
+      panelCloseTimerRef.current = window.setTimeout(() => {
+        setDisplayedCategoryKey("");
+        panelCloseTimerRef.current = null;
+      }, PANEL_ANIM_MS);
+    } else {
+      setSelectedCategory(key);
+      setDisplayedCategoryKey(key);
+      setContentVisible(false);
+      setIsPanelOpen(true);
+    }
+
+    categoryButtonRefs.current[index]?.scrollIntoView({
+      behavior: "smooth",
+      inline: "center",
+      block: "nearest",
+    });
+  };
+
+  useEffect(() => {
+    if (!displayedCategoryKey || !isPanelOpen) {
+      setContentVisible(false);
+      return;
+    }
+
+    setContentVisible(false);
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        setContentVisible(true);
+      });
+    });
+
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    };
+  }, [displayedCategoryKey, isPanelOpen]);
+
+  const handlePhraseSelect = (phrase: string) => {
+    setSelectedPhrase(phrase);
+    setError("");
+  };
+
+  const clearSelectedPhrase = () => {
+    setSelectedPhrase("");
+  };
+
+  const getComposeText = () => {
+    const parts = [
+      selectedPhrase ? applyName(selectedPhrase, userName) : "",
+      text.trim(),
+    ].filter(Boolean);
+    return parts.join(" ");
+  };
+
   useEffect(() => {
     return () => {
       if (labelClickResetRef.current) clearTimeout(labelClickResetRef.current);
+      if (panelCloseTimerRef.current) clearTimeout(panelCloseTimerRef.current);
       if (prevAudioUrlRef.current) URL.revokeObjectURL(prevAudioUrlRef.current);
       const recorder = mediaRecorderRef.current;
       if (recorder) {
@@ -592,7 +644,8 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
   };
 
   const handleGenerate = async () => {
-    if (!text.trim()) return;
+    const composeText = getComposeText();
+    if (!composeText.trim()) return;
     if (!voiceId?.trim()) {
       setError(
         "No voice is configured for this model yet. Please ask an admin to sync the model from TeaseMe.",
@@ -608,12 +661,11 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
       prevAudioUrlRef.current = "";
     }
     try {
-      const moodObj = MOODS.find((m) => m.value === selectedMood);
       const blob = await elevenLabsApi.textToSpeech(
-        text,
+        composeText,
         voiceId,
-        moodObj?.value,
-        moodObj?.description,
+        selectedCategory || undefined,
+        undefined,
         selectedLanguage,
       );
       const url = URL.createObjectURL(blob);
@@ -652,27 +704,32 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
   const busy = isGenerating || isRecording || isTranscribing;
   const displayName = modelName ?? "The Model";
   const hasVoice = !!voiceId && voiceId.trim().length > 0;
+  const composeText = getComposeText();
 
   return (
-    <div className="flex flex-col gap-[20px]">
+    <div className="flex flex-col gap-5">
       {/* Section header */}
-      <div className="flex items-center gap-[8px]">
+      <div className="flex items-center gap-2">
         <svg
-          className="w-[14px] h-[14px] text-tm-primary-color04 "
+          className="w-3.5 h-3.5 text-tm-text-color08"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
-          strokeWidth={2.5}
+          strokeWidth={2}
         >
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
-            d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
+            d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
           />
         </svg>
-        <p className="text-xs font-bold uppercase text-tm-text-color08">
+        <button
+          type="button"
+          className="text-sm font-semibold text-white select-none cursor-pointer bg-transparent border-0 p-0 text-left"
+          onClick={handleLabelClick}
+        >
           Talk Like {displayName}
-        </p>
+        </button>
       </div>
 
       {/* Missing voice warning */}
@@ -696,63 +753,193 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
               No voice configured for {displayName}.
             </span>{" "}
             Ask an admin to sync this model from TeaseMe — until then, Generate
-            Voice is disabled.
+            is disabled.
           </p>
         </div>
       )}
 
-      {/* Text to Speech label */}
-      <div className="flex flex-col gap-4">
-        <button
-          type="button"
-          className="text-xs text-[#555] font-medium select-none cursor-pointer bg-transparent border-0 p-0 text-left"
-          onClick={handleLabelClick}
-        >
-          Text to Speech
-        </button>
+      {/* Main layout: selection -> arrow -> compose */}
+      <div className="flex flex-col lg:grid lg:grid-cols-[1fr_56px_1fr] lg:items-start gap-4">
+        {/* Selection column */}
+        <div className="flex flex-col gap-4 min-w-0">
+          {/* User's Name */}
+          <div className="flex flex-col gap-2">
+            <label
+              htmlFor="user-name"
+              className="text-xs text-[#555] font-medium"
+            >
+              User&apos;s Name
+            </label>
+            <input
+              id="user-name"
+              type="text"
+              value={userName}
+              onChange={(e) => setUserName(e.target.value)}
+              placeholder={DEFAULT_USER_NAME}
+              className="buttonXl inputMJ text-white focus:outline-none focus:border-tm-primary-color04 placeholder-tm-text-color08"
+            />
+          </div>
 
-        <div className="w-full grid lg:grid-cols-[2fr_56px_1fr]  gap-2 items-center">
-          {/* === ROW 1: Input with Mic inside === */}
-          <div className="relative flex flex-row items-center w-full bg-[#141414] rounded-sm p-[14px] border border-[rgba(255,255,255,0.1)] shadow-sm h-full">
-            {/* The Input Field (flex-1 ensures it takes remaining space) */}
+          {/* Purpose selector */}
+          <div className="flex flex-col gap-2">
+            <p className="text-xs text-[#555] font-medium">Purpose</p>
+            <div
+              className="flex lg:grid lg:grid-cols-3 xl:grid-cols-6 gap-2 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-1"
+            >
+              {MOOD_CATEGORIES.map((cat, index) => (
+                <button
+                  key={cat.key}
+                  ref={(el) => {
+                    categoryButtonRefs.current[index] = el;
+                  }}
+                  type="button"
+                  onClick={() => handleCategorySelect(cat.key, index)}
+                  className={`buttonSubtle buttonMd flex items-center justify-center gap-2 rounded-full text-sm snap-start shrink-0 min-w-30 lg:min-w-0 transition-[background-color,border-color,color,transform,box-shadow] duration-300 ease-out active:scale-95 ${
+                    selectedCategory === cat.key
+                      ? "bg-tm-primary-color11 border border-tm-primary-color09 text-white scale-[1.02] shadow-[0_0_14px_rgba(255,15,95,0.18)]"
+                      : "bg-tm-neutral-color05 hover:bg-tm-neutral-color03 border border-[rgba(255,255,255,0.1)] text-tm-text-color08 hover:border-tm-primary-color06 scale-100"
+                  }`}
+                >
+                  <span>{cat.emoji}</span>
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center justify-center gap-1.5 lg:hidden">
+              {MOOD_CATEGORIES.map((cat) => (
+                <button
+                  key={cat.key}
+                  type="button"
+                  aria-label={`Go to ${cat.label}`}
+                  onClick={() => {
+                    const index = MOOD_CATEGORIES.findIndex(
+                      (c) => c.key === cat.key,
+                    );
+                    handleCategorySelect(cat.key, index);
+                  }}
+                  className={`h-1.5 rounded-full transition-all duration-300 ease-out ${
+                    selectedCategory === cat.key
+                      ? "w-4 bg-tm-primary-color04"
+                      : "w-1.5 bg-[rgba(255,255,255,0.2)]"
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Phrase list — fade + height animation */}
+          {(displayedCategoryKey || isPanelOpen) && (
+            <div
+              className={`mood-phrases-panel ${isPanelOpen ? "is-open" : ""}`}
+            >
+              {displayedCategory && (
+                <div
+                  key={displayedCategory.key}
+                  className={`mood-phrases-content flex flex-col gap-2 max-h-48 overflow-y-auto no-scrollbar rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#141414] p-3 ${
+                    contentVisible ? "is-visible" : ""
+                  }`}
+                >
+                  {displayedCategory.phrases.map((phrase, index) => {
+                    const isSelected = selectedPhrase === phrase;
+                    return (
+                      <button
+                        key={phrase}
+                        type="button"
+                        onClick={() => handlePhraseSelect(phrase)}
+                        style={
+                          contentVisible
+                            ? { animationDelay: `${index * 35}ms` }
+                            : undefined
+                        }
+                        className={`text-left rounded-lg border border-[rgba(255,255,255,0.08)] bg-[#292929] px-3 py-2.5 transition-opacity duration-200 outline-none focus:outline-none ${
+                          contentVisible ? "phrase-item-enter" : ""
+                        } ${
+                          isSelected
+                            ? "opacity-30"
+                            : "opacity-100 hover:opacity-80"
+                        }`}
+                      >
+                        <PhrasePreview phrase={phrase} userName={userName} />
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <ConnectorArrow />
+
+        {/* Compose + actions column */}
+        <div className="flex flex-col gap-4 min-w-0">
+          <div className="relative flex flex-col w-full bg-[#141414] rounded-xl p-3.5 border border-[rgba(255,255,255,0.1)] min-h-[140px] max-h-52 overflow-y-auto no-scrollbar compose-scroll-fade">
+            {selectedPhrase && (
+              <div className="relative mb-3 rounded-lg border border-[rgba(255,255,255,0.12)] bg-[#353535] p-3 pr-9">
+                <button
+                  type="button"
+                  onClick={clearSelectedPhrase}
+                  disabled={busy}
+                  title="Remove phrase"
+                  aria-label="Remove phrase"
+                  className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center text-[#888] hover:text-white hover:bg-[#252528] transition-colors disabled:opacity-40"
+                >
+                  <svg
+                    className="w-3.5 h-3.5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2.5}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+                <PhrasePreview phrase={selectedPhrase} userName={userName} />
+              </div>
+            )}
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && !busy && handleGenerate()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey && !busy) {
+                  e.preventDefault();
+                  void handleGenerate();
+                }
+              }}
               placeholder={
-                isTranscribing
-                  ? "Transcribing…"
-                  : "Type text here (shorter is better)"
+                isTranscribing ? "Transcribing…" : "Tap to add text"
               }
               disabled={isTranscribing}
-              className="flex-1 bg-transparent outline-none text-sm text-white focus:placeholder-[#555] placeholder:text-[rgba(255,255,255,0.1)] mr-4 lg:mr-19"
+              className={`flex-1 min-h-[72px] bg-transparent outline-none text-sm text-white resize-none transition-opacity duration-200 ${
+                selectedPhrase && !text.trim()
+                  ? "placeholder:text-[rgba(255,255,255,0.15)]"
+                  : "placeholder:text-[rgba(255,255,255,0.25)]"
+              } focus:placeholder:text-[rgba(255,255,255,0.35)]`}
             />
-
-            {/* Mic Button (Absolute Positioned) */}
-            <div className="relative shrink-0">
+            <div className="flex justify-end pt-2">
               {isRecording ? (
                 <button
                   onClick={stopRecording}
                   title="Stop recording"
                   aria-label="Stop recording"
-                  className="lg:absolute right-2 w-14 h-14  lg:-top-7  buttonSubtle buttonXl rounded-full flex items-center justify-center  bg-tm-primary-color12 border border-tm-primary-color06  text-white shrink-0 hover:bg-[#7a0029] transition-all"
+                  className="w-12 h-12 buttonSubtle rounded-full flex items-center justify-center bg-tm-primary-color12 border border-tm-primary-color06 text-white shrink-0 hover:bg-[#7a0029] transition-all"
                 >
-                  <span className="w-4 h-4 rounded-full bg-tm-primary-color01 animate-pulse" />
+                  <span className="w-3.5 h-3.5 rounded-full bg-tm-primary-color01 animate-pulse" />
                 </button>
               ) : (
                 <button
                   onClick={startRecording}
                   disabled={isTranscribing || isGenerating}
-                  title={
-                    isRecording
-                      ? `Stop — ${fmtTime(recordingSeconds)}`
-                      : "Record voice"
-                  }
+                  title="Record voice"
                   aria-label="Record voice"
-                  className="lg:absolute right-2 lg:-top-7 w-14 h-14 buttonSubtle buttonXl rounded-full flex items-center justify-center bg-[#141414] border border-[rgba(255,255,255,0.1)]  text-[#555] hover:text-tm-text-color08 hover:border-[rgba(255,255,255,0.2)] transition-all shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="w-12 h-12 buttonSubtle rounded-full flex items-center justify-center bg-[#1e1e20] border border-[rgba(255,255,255,0.1)] text-[#555] hover:text-tm-text-color08 hover:border-[rgba(255,255,255,0.2)] transition-all shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <svg
-                    className="w-[16px] h-[16px]"
+                    className="w-4 h-4"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -769,22 +956,42 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
             </div>
           </div>
 
-          {/* === ROW 2: Reset Text Button (Own Div) === */}
-          <div className="flex flex-col shrink-0">
+          {isRecording && (
+            <p className="text-tm-primary-color04 text-sm font-medium animate-pulse">
+              ● Recording — {fmtTime(recordingSeconds)} — tap mic to stop
+            </p>
+          )}
+
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => {
-                setText("");
-                setAudioUrl("");
-                setIsPlaying(false);
-                setError("");
-              }}
-              disabled={busy}
-              title="Clear text"
-              aria-label="Clear text"
-              className="w-full buttonSubtle buttonXl rounded-sm flex items-center justify-center bg-[#141414] border border-[rgba(255,255,255,0.1)]  text-[#555] hover:text-tm-text-color08 hover:border-[rgba(255,255,255,0.2)] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              onClick={handleGenerate}
+              disabled={busy || !composeText.trim() || !hasVoice}
+              title={
+                hasVoice
+                  ? undefined
+                  : "No voice configured for this model — ask an admin to sync from TeaseMe"
+              }
+              className="flex-1 flex items-center justify-center gap-2 rounded-full btn-primary-cta px-5 py-3 text-sm font-bold active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {isGenerating ? (
+                <span className="w-[13px] h-[13px] border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : null}
+              {isGenerating ? "Generating…" : "Generate"}
+            </button>
+
+            <button
+              onClick={handlePlaySound}
+              disabled={!audioUrl || countdown !== null}
+              title="Play Sound"
+              aria-label="Play Sound"
+              className={`w-12 h-12 shrink-0 buttonSubtle rounded-full flex items-center justify-center transition-all ${
+                audioUrl
+                  ? "bg-[#1e1e20] border border-[rgba(255,255,255,0.12)] text-white hover:bg-[#252528]"
+                  : "bg-[#141414] border border-[rgba(255,255,255,0.06)] text-[#444] cursor-not-allowed"
+              }`}
             >
               <svg
-                className="w-[15px] h-[15px]"
+                className={`w-4 h-4 ${audioUrl ? "text-tm-primary-color04" : "text-[#444]"}`}
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -793,96 +1000,61 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M12 18.75v-13.5"
                 />
               </svg>
             </button>
 
-          </div>
-
-          {/* === ROW 3: Generate Voice & Play Sound (Stacked Div) === */}
-          <div className="flex flex-col gap-4 shrink-0">
-            <div className="flex"> {isRecording && (
-              <p className="text-tm-primary-color04  text-sm font-medium animate-pulse">
-                ● Recording — {fmtTime(recordingSeconds)} — tap mic to stop
-              </p>
-            )}</div>
-            {/* Generate Button */}
-            <button
-              onClick={handleGenerate}
-              disabled={busy || !text.trim() || !hasVoice}
-              title={
-                hasVoice
-                  ? undefined
-                  : "No voice configured for this model — ask an admin to sync from TeaseMe"
-              }
-              className="flex items-center justify-center gap-[7px] rounded-lg btn-primary-cta  px-[18px] py-[11px]  text-sm font-bold  active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {isGenerating ? (
-                <span className="w-[13px] h-[13px] border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <svg
-                  className="w-[14px] h-[14px]"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2.5}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M15.536 8.464a5 5 0 010 7.072M12 6v12m0 0l-3-3m3 3l3-3"
-                  />
-                </svg>
-              )}
-              {isGenerating
-                ? selectedMood
-                  ? "Applying mood…"
-                  : "Generating…"
-                : "Generate Voice"}
-            </button>
-
-            {/* Play Sound Button */}
-            <div className="flex items-center gap-[8px]">
-              <button
-                onClick={handlePlaySound}
-                disabled={!audioUrl || countdown !== null}
-                className={`flex items-center justify-center gap-[8px] rounded-lg px-[18px] py-4 text-sm font-bold active:scale-[0.98] w-full transition-all ${audioUrl
-                  ? "bg-[#1e1e20] border border-[rgba(255,255,255,0.12)] text-white hover:bg-[#252528]"
-                  : "bg-[#141414] border border-[rgba(255,255,255,0.06)] text-[#444] cursor-not-allowed"
-                  }`}
+            {audioUrl ? (
+              <a
+                href={audioUrl}
+                download="voice-message.mp3"
+                title="Download"
+                aria-label="Download audio"
+                className="w-12 h-12 shrink-0 buttonSubtle rounded-full flex items-center justify-center bg-[#1e1e20] border border-[rgba(255,255,255,0.12)] text-white hover:bg-[#252528] transition-all"
               >
                 <svg
-                  className={`w-[14px] h-[14px] ${audioUrl ? "text-tm-primary-color04 " : "text-[#444]"}`}
+                  className="w-4 h-4"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
-                  strokeWidth={2.5}
+                  strokeWidth={2}
                 >
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M12 18.75v-13.5"
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
                   />
                 </svg>
-                Play Sound
-              </button>
-
-
-              {audioUrl && countdown === null && !isPlaying && (
-                <a
-                  href={audioUrl}
-                  download="voice-message.mp3"
-                  className="inline-flex flex-1 text-center items-center gap-[8px] rounded-sm px-[18px] py-4 text-sm font-bold active:scale-[0.98] transition-all bg-[#1e1e20] border border-[rgba(255,255,255,0.12)] text-white hover:bg-[#252528]"
+              </a>
+            ) : (
+              <button
+                type="button"
+                disabled
+                aria-label="Download audio"
+                className="w-12 h-12 shrink-0 buttonSubtle rounded-full flex items-center justify-center bg-[#141414] border border-[rgba(255,255,255,0.06)] text-[#444] cursor-not-allowed"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
                 >
-                  Download
-                </a>
-              )}
-            </div>
-            {/* Countdown & Playing Status Text (Same row as button) */}
-            <div className="flex flex-col gap-[4px] min-w-[60px]">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                  />
+                </svg>
+              </button>
+            )}
+          </div>
+
+          {(countdown !== null || isPlaying) && (
+            <div className="flex items-center gap-2">
               {countdown !== null && (
-                <p className="text-tm-primary-color04  text-lg font-bold animate-pulse w-[32px] text-center">
+                <p className="text-tm-primary-color04 text-lg font-bold animate-pulse">
                   {countdown}
                 </p>
               )}
@@ -891,11 +1063,9 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
                   ♪ Playing…
                 </p>
               )}
-              {/* Move Download Link to separate row for clarity if needed, or keep inline */}
             </div>
-          </div>
+          )}
 
-          {/* Hidden Audio Element */}
           <audio
             ref={audioRef}
             src={audioUrl || undefined}
@@ -905,29 +1075,7 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
         </div>
       </div>
 
-      {/* Mood selector */}
-      <div className="flex flex-col gap-4">
-        <p className="text-xs text-[#555] font-medium">Select Mood</p>
-        <div className="grid grid-cols-2 lg:grid-cols-6 gap-2">
-          {MOODS.map((m) => (
-            <button
-              key={m.value}
-              onClick={() =>
-                setSelectedMood((prev) => (prev === m.value ? "" : m.value))
-              }
-              className={`buttonSubtle buttonMd flex items-center justify-center gap-2  rounded-full text-sm transition-all active:scale-95  ${selectedMood === m.value
-                ? "bg-tm-primary-color11 border border-tm-primary-color09 text-white"
-                : "bg-tm-neutral-color05 hover:bg-tm-neutral-color03 border-[rgba(255,255,255,0.1)] text-tm-text-color08 hover:border-tm-primary-color06"
-                }`}
-            >
-              <span>{m.emoji}</span>
-              {m.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Language selector — hidden until "Text to Speech" label is clicked 10 times */}
+      {/* Language selector — hidden until header is clicked 10 times */}
       {showLanguagePanel && (
         <div className="flex flex-col gap-4">
           <p className="text-xs text-[#555] font-medium">Select Language</p>
@@ -953,26 +1101,26 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
       {error && <p className="text-tm-danger-color05 text-sm">{error}</p>}
 
       {/* Tip cards */}
-      <div className="grid lg:grid-cols-2 gap-[12px] mt-[4px]">
-        <div className="bg-[#141416] border border-[rgba(255,255,255,0.06)] rounded-md p-[16px] flex flex-col gap-4">
-          <div className="flex items-center  justify-center">
+      <div className="grid lg:grid-cols-2 gap-3 mt-1">
+        <div className="bg-[#141416] border border-[rgba(255,255,255,0.06)] rounded-md p-4 flex flex-col gap-4">
+          <div className="flex items-center justify-center">
             <img src={PhoneTip} alt="" />
-
           </div>
           <p className="text-[#555] text-sm leading-[1.6]">
-            <span className="text-white">Phone Tip: </span>Align the bottom edges of both phones while recording. Tap Play on
-            the tool phone, then wait for the countdown before tapping Record on
-            the messaging phone.
+            <span className="text-white">Phone Tip: </span>Align the bottom
+            edges of both phones while recording. Tap Play on the tool phone,
+            then wait for the countdown before tapping Record on the messaging
+            phone.
           </p>
         </div>
-        <div className="bg-[#141416] border border-[rgba(255,255,255,0.06)] rounded-md p-[16px] hidden lg:flex flex-col gap-4">
+        <div className="bg-[#141416] border border-[rgba(255,255,255,0.06)] rounded-md p-4 hidden lg:flex flex-col gap-4">
           <div className="flex items-center gap-4 justify-center">
             <img src={DesktopTip} alt="" />
           </div>
           <p className="text-[#555] text-sm leading-[1.6]">
-            <span className="text-white">Desktop Tip: </span>Place phone in front of the desktop speaker while recording. Tap
-            Play on the desktop, wait for the countdown before tapping Record on
-            the phone.
+            <span className="text-white">Desktop Tip: </span>Place phone in
+            front of the desktop speaker while recording. Tap Play on the
+            desktop, wait for the countdown before tapping Record on the phone.
           </p>
         </div>
       </div>

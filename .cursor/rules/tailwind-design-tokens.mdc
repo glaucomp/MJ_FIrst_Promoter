@@ -1,0 +1,44 @@
+---
+description: Enforce MJ design-system color tokens in Tailwind v4 (no hardcoded hex / arbitrary colors)
+globs: frontend/src/**/*.{ts,tsx,js,jsx,css}
+alwaysApply: false
+---
+
+# Tailwind v4: Use Design Tokens, Avoid Magic Values
+
+This frontend is **Tailwind v4**. The live design tokens are the COLORS defined in the
+`@theme` block of `frontend/src/index.css` (e.g. `--color-tm-primary-color06`,
+`--color-border-subtle`) plus the CSS vars under `:root`.
+NOTE: `tailwind.config.js` is NOT loaded (no `@config`), so its spacing/radius/font tokens
+do NOT exist as classes. Do not use `p-16`, `rounded-m`, `text-body-m`, `shadow-low-elevation`.
+
+## Colors — ALWAYS use the `tm-*` tokens, never raw hex
+
+```tsx
+// ❌ BAD
+<div className="bg-[#292929] text-[#fff] border-[rgba(255,255,255,0.03)] from-[#212121]" />
+// ✅ GOOD
+<div className="bg-tm-neutral-color04 text-tm-text-color01 border-border-subtle from-tm-neutral-color06" />
+```
+
+Scales available as classes: `tm-primary-color01..12`, `tm-secondary-*`, `tm-neutral-*`,
+`tm-danger-*`, `tm-success-*`, `tm-warning-*`, `tm-text-*`, plus `border-subtle` / `border-elevated`.
+
+For semantic status/surfaces use the `:root` CSS vars via arbitrary props only when no class exists,
+e.g. `bg-[var(--color-surface)]`, `text-[var(--color-text-muted)]`, `bg-[var(--color-success-bg)]`.
+
+## Spacing / radius / size — use the standard Tailwind scale, not arbitrary px
+
+```tsx
+// ❌ BAD: p-[16px] gap-[8px] text-[15px] rounded-[10px]
+// ✅ GOOD: p-4 gap-2 text-base rounded-xl
+```
+
+Only use `[...]` arbitrary values for genuinely one-off values that have no scale equivalent
+(e.g. precise positioning). Never use `[...]` for a color that has a `tm-*` token.
+
+## Rule of thumb
+
+Reaching for a raw `#hex` or `rgba(...)` in a class? STOP — use the matching `tm-*` token
+or `var(--color-*)`. If a brand color is genuinely missing, add it to the `@theme` block in
+`index.css`, don't inline it.
