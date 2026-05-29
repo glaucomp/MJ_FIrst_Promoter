@@ -1,25 +1,40 @@
 const STALE_KEY = 'mj:referralsStale';
+const PATH_KEY = 'mj:lastPath';
 
-/** Call when chatter group membership changes (add/remove member). */
+/** Call when chatter-group state may have changed so the referrals view should refetch. */
 export function markReferralsStale() {
-  sessionStorage.setItem(STALE_KEY, '1');
+  try {
+    sessionStorage.setItem(STALE_KEY, '1');
+  } catch {
+    // private browsing / blocked storage — ignore
+  }
 }
 
 export function isReferralsStale(): boolean {
-  return sessionStorage.getItem(STALE_KEY) === '1';
+  try {
+    return sessionStorage.getItem(STALE_KEY) === '1';
+  } catch {
+    return false;
+  }
 }
 
 export function consumeReferralsStale(): boolean {
-  if (sessionStorage.getItem(STALE_KEY) !== '1') return false;
-  sessionStorage.removeItem(STALE_KEY);
-  return true;
+  try {
+    if (sessionStorage.getItem(STALE_KEY) !== '1') return false;
+    sessionStorage.removeItem(STALE_KEY);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
-let trackedPath = '';
-
-/** Track route changes across unmount/remount so we can detect return trips. */
+/** Track route changes (sessionStorage so lazy-loaded chunks share state). */
 export function trackPath(pathname: string): string {
-  const previous = trackedPath;
-  trackedPath = pathname;
-  return previous;
+  try {
+    const previous = sessionStorage.getItem(PATH_KEY) ?? '';
+    sessionStorage.setItem(PATH_KEY, pathname);
+    return previous;
+  } catch {
+    return '';
+  }
 }

@@ -4,6 +4,7 @@ import type { UserRole } from '../types';
 import { IconLogout } from './NavIcons';
 import { LogoLottie } from './LogoLottie';
 import { APP_VERSION } from '../lib/appVersion';
+import { markReferralsStale } from '../lib/referralsRefresh';
 import { defaultLandingPath, getNavForRole } from './navConfig';
 
 function initialsForUser(name: string, email: string): string {
@@ -61,7 +62,15 @@ export const TopBar = () => {
             return (
               <button
                 key={item.id}
-                onClick={() => navigate(item.path)}
+                onClick={() => {
+                  if (
+                    location.pathname === '/chatter-groups' &&
+                    item.path === '/referrals'
+                  ) {
+                    markReferralsStale();
+                  }
+                  navigate(item.path);
+                }}
                 className={`flex items-center gap-[6px] px-[16px] py-[8px] rounded-sm hover:-translate-y-0.5 transition-all select-none whitespace-nowrap ${
                   isActive
                     ? 'bg-tm-primary-color12 border border-tm-primary-color06'
