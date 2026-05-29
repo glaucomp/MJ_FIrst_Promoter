@@ -17,7 +17,7 @@ import {
   validatePasswordResetToken,
 } from "../services/password-reset.service";
 import { resolveOwnership } from "../services/pre-user-promote.service";
-import { ensureCustomerTrackingReferralForPromotedUser } from "../services/referral-membership.service";
+import { ensureCustomerTrackingReferralForPromotedUser, supersedeDuplicateInviteeReferrals } from "../services/referral-membership.service";
 import { getUserTypeInfo, syncUserType } from "../services/user.service";
 import { buildSetPasswordUrl } from "../utils/frontend-url";
 import { clearMjfpCredentialsCache, getMjfpCredentials, MJFP_API_URL } from "../lib/mjfp-credentials";
@@ -156,6 +156,11 @@ export const register = async (req: AuthRequest, res: Response) => {
           status: "ACTIVE",
           acceptedAt: new Date(),
         },
+      });
+
+      await supersedeDuplicateInviteeReferrals(prisma, {
+        keepReferralId: referral.id,
+        promotedUserId: user.id,
       });
 
       void syncUserType(referral.referrerId).catch((e) =>

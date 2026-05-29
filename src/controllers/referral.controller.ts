@@ -8,8 +8,11 @@ import { AuthRequest } from "../middleware/auth.middleware";
 import { emailService } from "../services/email.service";
 import { promotePreUserToUser, resolveOwnership } from "../services/pre-user-promote.service";
 import {
+  dedupeReferralsByPromoter,
   findMembershipReferralForPublicCampaign,
   isUserParticipantOnCampaign,
+  referralDisplayScore,
+  supersedeDuplicateInviteeReferrals,
 } from "../services/referral-membership.service";
 import { getPresignedUrl } from "../services/s3.service";
 import {
@@ -150,6 +153,7 @@ type PendingPublishedReferralBackfillRow = {
 };
 
 const pendingReferralBackfillByUser = new Set<string>();
+const duplicateInviteeRepairByUser = new Set<string>();
 
 /**
  * For each referral in `rows`, check whether the attached PreUser's
@@ -355,6 +359,10 @@ const backfillPendingPublishedReferrals = (
             console.info("[getMyReferrals] backfill: referral accepted on published state", {
               referralId: ref.id, userId: existingUserId,
             });
+            await supersedeDuplicateInviteeReferrals(prisma, {
+              keepReferralId: ref.id,
+              promotedUserId: existingUserId,
+            });
           }
         } catch (err) {
           console.error("[getMyReferrals] backfill (pending published invite) failed", {
@@ -366,6 +374,59 @@ const backfillPendingPublishedReferrals = (
       console.error("[getMyReferrals] backfill outer error", err);
     } finally {
       pendingReferralBackfillByUser.delete(userId);
+    }
+  })();
+};
+
+type DuplicateInviteeRepairRow = {
+  id: string;
+  referredUserId: string | null;
+  status: string;
+  level: number;
+  preUser: { currentStep: number } | null;
+};
+
+/** Repair existing production duplicates (same promoter, two ACTIVE rows). */
+const repairDuplicateInviteeReferrals = (
+  userId: string,
+  rows: DuplicateInviteeRepairRow[],
+): void => {
+  if (duplicateInviteeRepairByUser.has(userId)) return;
+
+  const byInvitee = new Map<string, DuplicateInviteeRepairRow[]>();
+  for (const row of rows) {
+    if (row.status !== "ACTIVE" || !row.referredUserId) continue;
+    const group = byInvitee.get(row.referredUserId) ?? [];
+    group.push(row);
+    byInvitee.set(row.referredUserId, group);
+  }
+
+  const repairs: Array<{ keepReferralId: string; promotedUserId: string }> = [];
+  for (const [promotedUserId, group] of byInvitee) {
+    if (group.length <= 1) continue;
+    const winner = group.reduce((best, row) =>
+      referralDisplayScore(row) > referralDisplayScore(best) ? row : best,
+    );
+    repairs.push({ keepReferralId: winner.id, promotedUserId });
+  }
+
+  if (repairs.length === 0) return;
+
+  duplicateInviteeRepairByUser.add(userId);
+  void (async () => {
+    try {
+      for (const repair of repairs) {
+        try {
+          await supersedeDuplicateInviteeReferrals(prisma, repair);
+        } catch (err) {
+          console.error("[getMyReferrals] duplicate invitee repair failed", {
+            ...repair,
+            err: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+    } finally {
+      duplicateInviteeRepairByUser.delete(userId);
     }
   })();
 };
@@ -2100,11 +2161,12 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
     // and avoiding creation here helps prevent race-condition duplicates when
     // this endpoint is called multiple times in quick succession.
     backfillPendingPublishedReferrals(user.id, allReferrals);
+    repairDuplicateInviteeReferrals(user.id, allReferrals);
 
     // Filter out:
     // 1. Self-referrals (referredUserId === own id, e.g. username-based tracking records)
     // 2. Customer tracking referrals (inviteCode === username or starts with username_)
-    const referrals = allReferrals.filter((ref) => {
+    const filteredReferrals = allReferrals.filter((ref) => {
       // Remove self-referrals entirely
       if (ref.referredUserId === user.id) return false;
 
@@ -2129,6 +2191,8 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
       }
       return true;
     });
+
+    const referrals = dedupeReferralsByPromoter(filteredReferrals);
 
     // Presign every unique profile photo key once, then swap the stable S3 key
     // for a short-lived URL (1h) on each referredUser before responding.
@@ -2788,6 +2852,10 @@ export const receiveTeasemeStepWebhook = async (
                 preUserId: preUser.id,
                 referralId: resolvedReferralId,
                 userId: promotedUser.id,
+              });
+              await supersedeDuplicateInviteeReferrals(prisma, {
+                keepReferralId: resolvedReferralId,
+                promotedUserId: promotedUser.id,
               });
             }
           }

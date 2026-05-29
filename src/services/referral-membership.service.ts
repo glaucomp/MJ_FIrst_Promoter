@@ -74,6 +74,100 @@ const defaultSanitizeLocalPart = (raw: string): string => {
   return cleaned || "user";
 };
 
+const readReferralMetadataRecord = (
+  raw: Prisma.JsonValue | null | undefined,
+): Record<string, unknown> => {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  return raw as Record<string, unknown>;
+};
+
+/** Prefer the TeaseMe onboarding row over ad-hoc membership duplicates. */
+export const referralDisplayScore = (row: {
+  preUser?: { currentStep: number } | null;
+  level: number;
+}): number =>
+  (row.preUser ? 1_000_000 : 0) +
+  (row.preUser?.currentStep ?? 0) * 1000 +
+  (row.level ?? 0);
+
+/**
+ * Collapse multiple list rows that share the same promoted user (`referredUserId`)
+ * into one card. Pending invites (no invitee user yet) are never merged.
+ */
+export const dedupeReferralsByPromoter = <
+  T extends {
+    referredUserId?: string | null;
+    referredUser?: { id: string } | null;
+    preUser?: { currentStep: number } | null;
+    level: number;
+  },
+>(
+  rows: T[],
+): T[] => {
+  const best = new Map<string, T>();
+  const passthrough: T[] = [];
+  for (const row of rows) {
+    const promoterId = row.referredUser?.id ?? row.referredUserId ?? null;
+    if (!promoterId) {
+      passthrough.push(row);
+      continue;
+    }
+    const existing = best.get(promoterId);
+    if (!existing || referralDisplayScore(row) > referralDisplayScore(existing)) {
+      best.set(promoterId, row);
+    }
+  }
+  return [...passthrough, ...best.values()];
+};
+
+/**
+ * Cancel every other ACTIVE "I am the invitee" referral for this promoter,
+ * keeping the canonical row (typically the TeaseMe email-invite that owns the
+ * PreUser). Marks superseded rows with `source: am-migration` so they stay
+ * out of the Models grid filters.
+ */
+export async function supersedeDuplicateInviteeReferrals(
+  client: Prisma.TransactionClient | PrismaClient,
+  args: { keepReferralId: string; promotedUserId: string },
+): Promise<number> {
+  const duplicates = await client.referral.findMany({
+    where: {
+      referredUserId: args.promotedUserId,
+      status: "ACTIVE",
+      id: { not: args.keepReferralId },
+    },
+    select: { id: true, metadata: true },
+  });
+
+  let superseded = 0;
+  for (const ref of duplicates) {
+    const existing = readReferralMetadataRecord(ref.metadata);
+    await client.referral.update({
+      where: { id: ref.id },
+      data: {
+        status: "CANCELLED",
+        metadata: {
+          ...existing,
+          source: "am-migration",
+          supersededByReferralId: args.keepReferralId,
+          migratedAt: new Date().toISOString(),
+        } as Prisma.InputJsonValue,
+      },
+    });
+    superseded += 1;
+  }
+
+  if (superseded > 0) {
+    console.info("[supersedeDuplicateInviteeReferrals] cancelled duplicates", {
+      keepReferralId: args.keepReferralId,
+      promotedUserId: args.promotedUserId,
+      superseded,
+    });
+  }
+
+  return superseded;
+}
+
 /**
  * Ensures a second ACTIVE referral on the *public* program (`referredUserId`
  * null) so sales/attribution and `isParticipant` on the linked public campaign

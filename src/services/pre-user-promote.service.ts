@@ -10,7 +10,7 @@ import {
   fetchTeasemePreUserStatus,
   syncUserFromTeaseMe,
 } from "./teaseme.service";
-import { ensureCustomerTrackingReferralForPromotedUser } from "./referral-membership.service";
+import { ensureCustomerTrackingReferralForPromotedUser, supersedeDuplicateInviteeReferrals } from "./referral-membership.service";
 import { syncUserType } from "./user.service";
 
 // ─── Temporary password generation ───────────────────────────────────────────
@@ -504,6 +504,11 @@ export const promotePreUserToUser = async (
           preUserId: preUser.id,
           referralId: preUser.referralId,
           userId: user.id,
+        });
+
+        await supersedeDuplicateInviteeReferrals(prisma, {
+          keepReferralId: preUser.referralId,
+          promotedUserId: user.id,
         });
 
         // Recompute the referrer's userType now that they have an ACTIVE
