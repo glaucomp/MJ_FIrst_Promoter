@@ -456,6 +456,81 @@ body {
   padding-left: 2rem;
 }
 
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.tools-panel {
+  transition:
+    min-height 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+    max-height 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (min-width: 1024px) {
+  .tools-panel-left,
+  .tools-panel-right {
+    min-height: 320px;
+  }
+}
+
+.tools-desktop-layout {
+  transition: gap 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mood-phrases-panel {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mood-phrases-panel.is-open {
+  max-height: 180px;
+}
+
+@media (min-width: 1024px) {
+  .mood-phrases-panel.is-open {
+    max-height: 200px;
+  }
+}
+
+.mood-phrases-content {
+  opacity: 0;
+  transform: translateY(-10px);
+  transition:
+    opacity 0.32s ease-out,
+    transform 0.32s ease-out;
+  will-change: opacity, transform;
+}
+
+.mood-phrases-content.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@keyframes phrase-item-enter {
+  from {
+    transform: translateY(6px);
+  }
+
+  to {
+    transform: translateY(0);
+  }
+}
+
+.phrase-item-enter {
+  animation: phrase-item-enter 0.3s ease-out both;
+}
+
+.compose-scroll-fade {
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 75%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 0%, black 75%, transparent 100%);
+}
+
 /* Define a class that uses the animation */
 .animate-bounce-custom {
   animation: scaleBounce 1s ease-in-out infinite;
