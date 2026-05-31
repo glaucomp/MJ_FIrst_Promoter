@@ -36,7 +36,7 @@ export const MOOD_CATEGORIES: MoodCategory[] = [
   },
   {
     key: "playful",
-    label: "playful",
+    label: "Playful",
     emoji: "😄",
     phrases: [
       "[playful] hahaha~ you~ are really a fun guy miamor~!",
