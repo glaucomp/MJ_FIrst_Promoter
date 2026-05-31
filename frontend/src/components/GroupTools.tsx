@@ -867,7 +867,7 @@ export const VoiceMessage = ({
                             ? { animationDelay: `${index * 35}ms` }
                             : undefined
                         }
-                        className={`text-left rounded-lg border border-[rgba(255,255,255,0.08)] bg-[#292929] px-3 py-2 transition-opacity duration-200 outline-none focus:outline-none ${
+                        className={`text-left rounded-lg border border-[var(--color-border-elevated)] bg-tm-neutral-color04 px-3 py-2 transition-opacity duration-200 outline-none focus:outline-none ${
                           contentVisible ? "phrase-item-enter" : ""
                         } ${
                           isSelected
@@ -888,17 +888,17 @@ export const VoiceMessage = ({
         <ConnectorArrow />
 
         {/* Right panel: compose + actions */}
-        <div className="tools-panel tools-panel-right flex flex-col gap-4 min-w-0 lg:rounded-2xl lg:border lg:border-[rgba(255,255,255,0.08)] lg:bg-[#141414] lg:p-5">
-          <div className="relative flex flex-col flex-1 w-full rounded-xl border border-[rgba(255,255,255,0.1)] bg-[#141414] p-3.5 min-h-[140px] max-h-52 lg:max-h-none lg:min-h-[220px] lg:border-0 lg:bg-transparent lg:p-0 overflow-y-auto no-scrollbar compose-scroll-fade">
+        <div className="tools-panel tools-panel-right flex flex-col gap-4 min-w-0 lg:rounded-2xl lg:border lg:border-[var(--color-border-elevated)] lg:bg-tm-neutral-color11 lg:p-5">
+          <div className="relative flex flex-col flex-1 w-full rounded-xl border border-[var(--color-border-elevated)] bg-tm-neutral-color11 p-3.5 min-h-[140px] max-h-52 lg:max-h-none lg:min-h-[220px] lg:border-0 lg:bg-transparent lg:p-0 overflow-y-auto no-scrollbar compose-scroll-fade">
             {selectedPhrase && (
-              <div className="relative mb-3 rounded-lg border border-[rgba(255,255,255,0.12)] bg-[#353535] p-3 pr-9">
+              <div className="relative mb-3 rounded-lg border border-[var(--color-border-elevated)] bg-tm-neutral-color02 p-3 pr-9">
                 <button
                   type="button"
                   onClick={clearSelectedPhrase}
                   disabled={busy}
                   title="Remove phrase"
                   aria-label="Remove phrase"
-                  className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center text-[#888] hover:text-white hover:bg-[#252528] transition-colors disabled:opacity-40"
+                  className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center text-tm-text-color10 hover:text-white hover:bg-tm-neutral-color06 transition-colors disabled:opacity-40"
                 >
                   <svg
                     className="w-3.5 h-3.5"
@@ -932,9 +932,9 @@ export const VoiceMessage = ({
               disabled={isTranscribing}
               className={`flex-1 min-h-[72px] bg-transparent outline-none text-sm text-white resize-none transition-opacity duration-200 ${
                 selectedPhrase && !text.trim()
-                  ? "placeholder:text-[rgba(255,255,255,0.15)]"
-                  : "placeholder:text-[rgba(255,255,255,0.25)]"
-              } focus:placeholder:text-[rgba(255,255,255,0.35)]`}
+                 ? "placeholder:text-tm-text-color11"
+                 : "placeholder:text-tm-text-color10"
+              } focus:placeholder:text-tm-text-color09`}
             />
             {SHOW_RECORD_VOICE && (
               <div className="flex justify-end pt-2">
@@ -943,7 +943,7 @@ export const VoiceMessage = ({
                     onClick={stopRecording}
                     title="Stop recording"
                     aria-label="Stop recording"
-                    className="w-12 h-12 buttonSubtle rounded-full flex items-center justify-center bg-tm-primary-color12 border border-tm-primary-color06 text-white shrink-0 hover:bg-[#7a0029] transition-all"
+                    className="w-12 h-12 buttonSubtle rounded-full flex items-center justify-center bg-tm-primary-color12 border border-tm-primary-color06 text-white shrink-0 hover:bg-tm-primary-color11 transition-all"
                   >
                     <span className="w-3.5 h-3.5 rounded-full bg-tm-primary-color01 animate-pulse" />
                   </button>
@@ -953,7 +953,7 @@ export const VoiceMessage = ({
                     disabled={isTranscribing || isGenerating}
                     title="Record voice"
                     aria-label="Record voice"
-                    className="w-12 h-12 buttonSubtle rounded-full flex items-center justify-center bg-[#1e1e20] border border-[rgba(255,255,255,0.1)] text-[#555] hover:text-tm-text-color08 hover:border-[rgba(255,255,255,0.2)] transition-all shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="w-12 h-12 buttonSubtle rounded-full flex items-center justify-center bg-tm-neutral-color08 border border-[var(--color-border-elevated)] text-tm-text-color11 hover:text-tm-text-color08 hover:border-tm-text-color09 transition-all shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <svg
                       className="w-4 h-4"
