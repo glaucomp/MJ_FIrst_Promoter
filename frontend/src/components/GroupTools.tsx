@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { elevenLabsApi } from "../services/api";
 import PhoneTip from '../assets/imagePhoneTip.svg';
 import DesktopTip from '../assets/imageDesktopTip.svg';
@@ -698,7 +698,7 @@ export const VoiceMessage = ({
     }
   };
 
-  const handlePlaySound = () => {
+  const handlePlaySound = useCallback(() => {
     if (countdown !== null) return;
     setCountdown(3);
     let count = 3;
@@ -716,13 +716,13 @@ export const VoiceMessage = ({
         setCountdown(count);
       }
     }, 500);
-  };
+  }, [countdown]);
 
   useEffect(() => {
     if (!audioUrl || !autoPlayAfterGenerateRef.current) return;
     autoPlayAfterGenerateRef.current = false;
     handlePlaySound();
-  }, [audioUrl]);
+  }, [audioUrl, handlePlaySound]);
 
   const fmtTime = (s: number) =>
     `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
