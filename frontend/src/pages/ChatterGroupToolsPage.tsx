@@ -215,6 +215,7 @@ export const ChatterGroupToolsPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const group = location.state?.group as ChatterMyGroup | undefined;
+  const [fanName, setFanName] = useState("");
 
   if (!group) {
     return (
@@ -279,13 +280,22 @@ export const ChatterGroupToolsPage = () => {
       <div className="flex flex-col gap-5">
         {/* Talk Like [Influencer] */}
         <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-2xl p-4 lg:p-8">
-          <VoiceMessage modelName={promoterName} voiceId={voiceId} />
+          <VoiceMessage
+            modelName={promoterName}
+            voiceId={voiceId}
+            userName={fanName}
+            onUserNameChange={setFanName}
+          />
         </div>
 
         {/* Invite Link */}
         <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-2xl p-4 lg:p-8">
           {group.promoter?.username ? (
-            <LinkGenerator username={group.promoter.username} />
+            <LinkGenerator
+              username={group.promoter.username}
+              name={fanName}
+              onNameChange={setFanName}
+            />
           ) : (
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2">

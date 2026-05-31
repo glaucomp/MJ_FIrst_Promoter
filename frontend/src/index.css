@@ -465,6 +465,23 @@ body {
   display: none;
 }
 
+.tools-panel {
+  transition:
+    min-height 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+    max-height 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (min-width: 1024px) {
+  .tools-panel-left,
+  .tools-panel-right {
+    min-height: 320px;
+  }
+}
+
+.tools-desktop-layout {
+  transition: gap 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 .mood-phrases-panel {
   max-height: 0;
   overflow: hidden;
@@ -472,7 +489,13 @@ body {
 }
 
 .mood-phrases-panel.is-open {
-  max-height: 320px;
+  max-height: 180px;
+}
+
+@media (min-width: 1024px) {
+  .mood-phrases-panel.is-open {
+    max-height: 200px;
+  }
 }
 
 .mood-phrases-content {

@@ -87,10 +87,18 @@ const callPreregister = async (payload: {
 
 interface LinkGeneratorProps {
   username: string;
+  name?: string;
+  onNameChange?: (name: string) => void;
 }
 
-export const LinkGenerator = ({ username }: LinkGeneratorProps) => {
-  const [name, setName] = useState("");
+export const LinkGenerator = ({
+  username,
+  name: controlledName,
+  onNameChange,
+}: LinkGeneratorProps) => {
+  const [internalName, setInternalName] = useState("");
+  const name = controlledName ?? internalName;
+  const setName = onNameChange ?? setInternalName;
   const [telegramId, setTelegramId] = useState("");
   const [email, setEmail] = useState("");
   const [generatedLink, setGeneratedLink] = useState("");
@@ -441,16 +449,26 @@ const ConnectorArrow = () => (
 // ── Voice Message ──────────────────────────────────────────────────────────────
 
 const PANEL_ANIM_MS = 320;
+const SHOW_RECORD_VOICE = false;
 
 interface VoiceMessageProps {
   modelName?: string;
   voiceId?: string;
+  userName?: string;
+  onUserNameChange?: (name: string) => void;
 }
 
-export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
+export const VoiceMessage = ({
+  modelName,
+  voiceId,
+  userName: controlledUserName,
+  onUserNameChange,
+}: VoiceMessageProps) => {
   const [text, setText] = useState("");
   const [selectedPhrase, setSelectedPhrase] = useState("");
-  const [userName, setUserName] = useState("");
+  const [internalUserName, setInternalUserName] = useState("");
+  const userName = controlledUserName ?? internalUserName;
+  const setUserName = onUserNameChange ?? setInternalUserName;
   const [selectedCategory, setSelectedCategory] = useState("");
   const [displayedCategoryKey, setDisplayedCategoryKey] = useState("");
   const [isPanelOpen, setIsPanelOpen] = useState(false);
@@ -484,6 +502,7 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
 
   const prevAudioUrlRef = useRef("");
+  const autoPlayAfterGenerateRef = useRef(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -670,6 +689,7 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
       );
       const url = URL.createObjectURL(blob);
       prevAudioUrlRef.current = url;
+      autoPlayAfterGenerateRef.current = true;
       setAudioUrl(url);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to generate audio");
@@ -697,6 +717,12 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
       }
     }, 500);
   };
+
+  useEffect(() => {
+    if (!audioUrl || !autoPlayAfterGenerateRef.current) return;
+    autoPlayAfterGenerateRef.current = false;
+    handlePlaySound();
+  }, [audioUrl]);
 
   const fmtTime = (s: number) =>
     `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
@@ -758,11 +784,10 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
         </div>
       )}
 
-      {/* Main layout: selection -> arrow -> compose */}
-      <div className="flex flex-col lg:grid lg:grid-cols-[1fr_56px_1fr] lg:items-start gap-4">
-        {/* Selection column */}
-        <div className="flex flex-col gap-4 min-w-0">
-          {/* User's Name */}
+      {/* Mobile: stacked | Desktop: left panel — arrow — right panel */}
+      <div className="flex flex-col lg:grid lg:grid-cols-[1fr_56px_1fr] lg:items-stretch gap-4 tools-desktop-layout">
+        {/* Left panel: name, purpose, phrases */}
+        <div className="tools-panel tools-panel-left flex flex-col gap-4 min-w-0 lg:rounded-2xl lg:border lg:border-[rgba(255,255,255,0.08)] lg:bg-[#141414] lg:p-5">
           <div className="flex flex-col gap-2">
             <label
               htmlFor="user-name"
@@ -780,12 +805,9 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
             />
           </div>
 
-          {/* Purpose selector */}
           <div className="flex flex-col gap-2">
             <p className="text-xs text-[#555] font-medium">Purpose</p>
-            <div
-              className="flex lg:grid lg:grid-cols-3 xl:grid-cols-6 gap-2 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-1"
-            >
+            <div className="flex flex-nowrap gap-2 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-1">
               {MOOD_CATEGORIES.map((cat, index) => (
                 <button
                   key={cat.key}
@@ -794,7 +816,7 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
                   }}
                   type="button"
                   onClick={() => handleCategorySelect(cat.key, index)}
-                  className={`buttonSubtle buttonMd flex items-center justify-center gap-2 rounded-full text-sm snap-start shrink-0 min-w-30 lg:min-w-0 transition-[background-color,border-color,color,transform,box-shadow] duration-300 ease-out active:scale-95 ${
+                  className={`buttonSubtle buttonMd flex items-center justify-center gap-2 rounded-full text-sm snap-start shrink-0 min-w-30 transition-[background-color,border-color,color,transform,box-shadow] duration-300 ease-out active:scale-95 ${
                     selectedCategory === cat.key
                       ? "bg-tm-primary-color11 border border-tm-primary-color09 text-white scale-[1.02] shadow-[0_0_14px_rgba(255,15,95,0.18)]"
                       : "bg-tm-neutral-color05 hover:bg-tm-neutral-color03 border border-[rgba(255,255,255,0.1)] text-tm-text-color08 hover:border-tm-primary-color06 scale-100"
@@ -805,7 +827,7 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
                 </button>
               ))}
             </div>
-            <div className="flex items-center justify-center gap-1.5 lg:hidden">
+            <div className="flex items-center justify-center gap-1.5">
               {MOOD_CATEGORIES.map((cat) => (
                 <button
                   key={cat.key}
@@ -827,7 +849,6 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
             </div>
           </div>
 
-          {/* Phrase list — fade + height animation */}
           {(displayedCategoryKey || isPanelOpen) && (
             <div
               className={`mood-phrases-panel ${isPanelOpen ? "is-open" : ""}`}
@@ -835,7 +856,7 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
               {displayedCategory && (
                 <div
                   key={displayedCategory.key}
-                  className={`mood-phrases-content flex flex-col gap-2 max-h-48 overflow-y-auto no-scrollbar rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#141414] p-3 ${
+                  className={`mood-phrases-content flex flex-col gap-1.5 max-h-[180px] lg:max-h-[200px] overflow-y-auto no-scrollbar compose-scroll-fade ${
                     contentVisible ? "is-visible" : ""
                   }`}
                 >
@@ -851,7 +872,7 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
                             ? { animationDelay: `${index * 35}ms` }
                             : undefined
                         }
-                        className={`text-left rounded-lg border border-[rgba(255,255,255,0.08)] bg-[#292929] px-3 py-2.5 transition-opacity duration-200 outline-none focus:outline-none ${
+                        className={`text-left rounded-lg border border-[rgba(255,255,255,0.08)] bg-[#292929] px-3 py-2 transition-opacity duration-200 outline-none focus:outline-none ${
                           contentVisible ? "phrase-item-enter" : ""
                         } ${
                           isSelected
@@ -871,9 +892,9 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
 
         <ConnectorArrow />
 
-        {/* Compose + actions column */}
-        <div className="flex flex-col gap-4 min-w-0">
-          <div className="relative flex flex-col w-full bg-[#141414] rounded-xl p-3.5 border border-[rgba(255,255,255,0.1)] min-h-[140px] max-h-52 overflow-y-auto no-scrollbar compose-scroll-fade">
+        {/* Right panel: compose + actions */}
+        <div className="tools-panel tools-panel-right flex flex-col gap-4 min-w-0 lg:rounded-2xl lg:border lg:border-[rgba(255,255,255,0.08)] lg:bg-[#141414] lg:p-5">
+          <div className="relative flex flex-col flex-1 w-full rounded-xl border border-[rgba(255,255,255,0.1)] bg-[#141414] p-3.5 min-h-[140px] max-h-52 lg:max-h-none lg:min-h-[220px] lg:border-0 lg:bg-transparent lg:p-0 overflow-y-auto no-scrollbar compose-scroll-fade">
             {selectedPhrase && (
               <div className="relative mb-3 rounded-lg border border-[rgba(255,255,255,0.12)] bg-[#353535] p-3 pr-9">
                 <button
@@ -920,43 +941,45 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
                   : "placeholder:text-[rgba(255,255,255,0.25)]"
               } focus:placeholder:text-[rgba(255,255,255,0.35)]`}
             />
-            <div className="flex justify-end pt-2">
-              {isRecording ? (
-                <button
-                  onClick={stopRecording}
-                  title="Stop recording"
-                  aria-label="Stop recording"
-                  className="w-12 h-12 buttonSubtle rounded-full flex items-center justify-center bg-tm-primary-color12 border border-tm-primary-color06 text-white shrink-0 hover:bg-[#7a0029] transition-all"
-                >
-                  <span className="w-3.5 h-3.5 rounded-full bg-tm-primary-color01 animate-pulse" />
-                </button>
-              ) : (
-                <button
-                  onClick={startRecording}
-                  disabled={isTranscribing || isGenerating}
-                  title="Record voice"
-                  aria-label="Record voice"
-                  className="w-12 h-12 buttonSubtle rounded-full flex items-center justify-center bg-[#1e1e20] border border-[rgba(255,255,255,0.1)] text-[#555] hover:text-tm-text-color08 hover:border-[rgba(255,255,255,0.2)] transition-all shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
+            {SHOW_RECORD_VOICE && (
+              <div className="flex justify-end pt-2">
+                {isRecording ? (
+                  <button
+                    onClick={stopRecording}
+                    title="Stop recording"
+                    aria-label="Stop recording"
+                    className="w-12 h-12 buttonSubtle rounded-full flex items-center justify-center bg-tm-primary-color12 border border-tm-primary-color06 text-white shrink-0 hover:bg-[#7a0029] transition-all"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-                    />
-                  </svg>
-                </button>
-              )}
-            </div>
+                    <span className="w-3.5 h-3.5 rounded-full bg-tm-primary-color01 animate-pulse" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={startRecording}
+                    disabled={isTranscribing || isGenerating}
+                    title="Record voice"
+                    aria-label="Record voice"
+                    className="w-12 h-12 buttonSubtle rounded-full flex items-center justify-center bg-[#1e1e20] border border-[rgba(255,255,255,0.1)] text-[#555] hover:text-tm-text-color08 hover:border-[rgba(255,255,255,0.2)] transition-all shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+                      />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
-          {isRecording && (
+          {SHOW_RECORD_VOICE && isRecording && (
             <p className="text-tm-primary-color04 text-sm font-medium animate-pulse">
               ● Recording — {fmtTime(recordingSeconds)} — tap mic to stop
             </p>
@@ -1100,8 +1123,8 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
 
       {error && <p className="text-tm-danger-color05 text-sm">{error}</p>}
 
-      {/* Tip cards */}
-      <div className="grid lg:grid-cols-2 gap-3 mt-1">
+      {SHOW_RECORD_VOICE && (
+        <div className="grid lg:grid-cols-2 gap-3 mt-1">
         <div className="bg-[#141416] border border-[rgba(255,255,255,0.06)] rounded-md p-4 flex flex-col gap-4">
           <div className="flex items-center justify-center">
             <img src={PhoneTip} alt="" />
@@ -1123,7 +1146,8 @@ export const VoiceMessage = ({ modelName, voiceId }: VoiceMessageProps) => {
             desktop, wait for the countdown before tapping Record on the phone.
           </p>
         </div>
-      </div>
+        </div>
+      )}
     </div>
   );
 };
