@@ -828,17 +828,12 @@ export const VoiceMessage = ({
               ))}
             </div>
             <div className="flex items-center justify-center gap-1.5">
-              {MOOD_CATEGORIES.map((cat) => (
+              {MOOD_CATEGORIES.map((cat, index) => (
                 <button
                   key={cat.key}
                   type="button"
                   aria-label={`Go to ${cat.label}`}
-                  onClick={() => {
-                    const index = MOOD_CATEGORIES.findIndex(
-                      (c) => c.key === cat.key,
-                    );
-                    handleCategorySelect(cat.key, index);
-                  }}
+                  onClick={() => handleCategorySelect(cat.key, index)}
                   className={`h-1.5 rounded-full transition-all duration-300 ease-out ${
                     selectedCategory === cat.key
                       ? "w-4 bg-tm-primary-color04"
