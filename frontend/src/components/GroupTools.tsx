@@ -414,7 +414,7 @@ const PhrasePreview = ({
         <span key={`${i}-${part.slice(0, 12)}`}>
           {part}
           {i < parts.length - 1 && (
-            <span className="inline-flex mx-0.5 px-1.5 py-0.5 rounded bg-tm-primary-color11 border border-tm-primary-color09 text-tm-primary-color04 text-xs font-semibold">
+            <span className="inline-flex mx-1 px-1.5 py-0.5 rounded bg-tm-primary-color12 border border-tm-primary-color10/75 text-tm-primary-color05 text-sm ">
               {displayName}
             </span>
           )}
@@ -887,7 +887,7 @@ export const VoiceMessage = ({
               {displayedCategory && (
                 <div
                   key={displayedCategory.key}
-                  className={`mood-phrases-content bg-neutral-900 px-3 pb-12 pt-4 rounded-2xl border border-neutral-700 flex flex-col gap-1.5 max-h-[180px] lg:max-h-[200px] overflow-y-auto no-scrollbar compose-scroll-fade ${
+                  className={`mood-phrases-content bg-neutral-900 px-3 pb-12 pt-4 rounded-2xl border border-neutral-700 flex flex-col gap-4 max-h-[180px] lg:max-h-[200px] overflow-y-auto no-scrollbar compose-scroll-fade ${
                     contentVisible ? "is-visible" : ""
                   }`}
                 >
