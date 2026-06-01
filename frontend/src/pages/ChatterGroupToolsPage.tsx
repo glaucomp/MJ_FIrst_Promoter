@@ -188,7 +188,7 @@ const SocialCopyButton = ({
       onClick={handleCopy}
       title={copied ? `Copied ${label} link` : `Copy ${label} link`}
       aria-label={copied ? `Copied ${label} link` : `Copy ${label} link`}
-      className="relative w-13 h-13 flex items-center justify-center bg-[#141416] border border-[rgba(255,255,255,0.06)] rounded-xl hover:border-[rgba(255,255,255,0.2)] transition-colors cursor-pointer"
+      className="relative w-full h-13 flex items-center justify-center bg-[#141416] border border-[rgba(255,255,255,0.06)] rounded-xl hover:border-[rgba(255,255,255,0.2)] transition-colors cursor-pointer"
     >
       {copied ? (
         <svg
@@ -279,7 +279,7 @@ export const ChatterGroupToolsPage = () => {
       {/* Tools */}
       <div className="flex flex-col gap-5">
         {/* Talk Like [Influencer] */}
-        <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-2xl p-4 lg:p-8">
+        <div className="bg-linear-to-t from-[#212121] to-[#23252a] rounded-2xl p-5 py-8 border border-neutral-600/50 lg:p-8">
           <VoiceMessage
             modelName={promoterName}
             voiceId={voiceId}
@@ -289,7 +289,7 @@ export const ChatterGroupToolsPage = () => {
         </div>
 
         {/* Invite Link */}
-        <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-2xl p-4 lg:p-8">
+        <div className="bg-[#1a1a1c] border border-neutral-600/50 rounded-2xl p-4 lg:p-8">
           {group.promoter?.username ? (
             <LinkGenerator
               username={group.promoter.username}
@@ -347,7 +347,7 @@ export const ChatterGroupToolsPage = () => {
           </div>
 
           {/* Profile picture + socials */}
-          <div className="flex gap-4 ">
+          <div className="lg:flex gap-4 ">
             {/* Profile picture card */}
             <div className="flex-1 bg-[#141416] border border-[rgba(255,255,255,0.06)] rounded-2xl p-5 flex items-center gap-4.5">
               <div className="w-14 lg:w-15 h-14 lg:h-15 rounded-full bg-linear-to-br from-tm-primary-color04 to-tm-primary-color02 flex items-center justify-center shrink-0 overflow-hidden">
