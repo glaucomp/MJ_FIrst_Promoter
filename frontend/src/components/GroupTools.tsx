@@ -928,8 +928,10 @@ export const VoiceMessage = ({
           <div ref={composeScrollRef} className="relative flex flex-col flex-1 w-full bg-neutral-900 px-3 pb-12 pt-4 rounded-2xl border border-neutral-700 p-3.5 min-h-[140px] max-h-52 lg:max-h-none lg:min-h-[220px] lg:border-0 lg:bg-transparent lg:p-0 overflow-y-auto no-scrollbar">
             {selectedPhrase && (
               <div
-                onClick={clearSelectedPhrase}
-                className="relative mb-3 rounded-lg border border-neutral-600/60 bg-tm-neutral-color05 p-3 pr-9 cursor-pointer active:opacity-70 transition-opacity">
+                onClick={busy ? undefined : clearSelectedPhrase}
+                className={`relative mb-3 rounded-lg border border-neutral-600/60 bg-tm-neutral-color05 p-3 pr-9 transition-opacity ${
+                  busy ? "cursor-not-allowed" : "cursor-pointer active:opacity-70"
+                }`}
                 <button
                   type="button"
                   onClick={(e) => {
