@@ -175,7 +175,7 @@ export const LinkGenerator = ({
   const canGenerate = !!(name.trim() && telegramId.trim()) && !loading;
 
   return (
-    <div className="flex flex-col gap-[16px]">
+    <div className="flex flex-col gap-[16px] ">
       {/* Section header */}
       <div className="flex items-center gap-[8px]">
         <svg
@@ -401,14 +401,14 @@ const PhrasePreview = ({
 
   if (parts.length === 1) {
     return (
-      <span className="text-tm-text-color08 text-sm leading-relaxed">
+      <span className="text-tm-text-color09 text-base leading-relaxed">
         {phrase}
       </span>
     );
   }
 
   return (
-    <span className="text-tm-text-color08 text-sm leading-relaxed">
+    <span className="text-tm-text-color09 text-base leading-relaxed ">
       {parts.map((part, i) => (
         <span key={`${i}-${part.slice(0, 12)}`}>
           {part}
@@ -733,9 +733,9 @@ export const VoiceMessage = ({
   const composeText = getComposeText();
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-5  ">
       {/* Section header */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 ">
         <svg
           className="w-3.5 h-3.5 text-tm-text-color08"
           fill="none"
@@ -751,7 +751,7 @@ export const VoiceMessage = ({
         </svg>
         <button
           type="button"
-          className="text-sm font-semibold text-white select-none cursor-pointer bg-transparent border-0 p-0 text-left"
+          className="text-base font-semibold text-white select-none cursor-pointer bg-transparent border-0 p-0 text-left"
           onClick={handleLabelClick}
         >
           Talk Like {displayName}
@@ -785,13 +785,13 @@ export const VoiceMessage = ({
       )}
 
       {/* Mobile: stacked | Desktop: left panel — arrow — right panel */}
-      <div className="flex flex-col lg:grid lg:grid-cols-[1fr_56px_1fr] lg:items-stretch gap-4 tools-desktop-layout">
+      <div className="flex flex-col lg:grid lg:grid-cols-[1fr_56px_1fr] lg:items-stretch gap-4 tools-desktop-layout ">
         {/* Left panel: name, purpose, phrases */}
         <div className="tools-panel tools-panel-left flex flex-col gap-4 min-w-0 lg:rounded-2xl lg:border lg:border-[rgba(255,255,255,0.08)] lg:bg-[#141414] lg:p-5">
           <div className="flex flex-col gap-2">
             <label
               htmlFor="user-name"
-              className="text-xs text-[#555] font-medium"
+              className="text-base text-tm-text-color08 font-medium"
             >
               User&apos;s Name
             </label>
@@ -806,8 +806,8 @@ export const VoiceMessage = ({
           </div>
 
           <div className="flex flex-col gap-2">
-            <p className="text-xs text-[#555] font-medium">Purpose</p>
-            <div className="flex flex-nowrap gap-2 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-1">
+            <p className="text-base text-tm-text-color08 font-medium">Purpose</p>
+            <div className="flex flex-nowrap gap-2 overflow-x-auto snap-x snap-mandatory no-scrollbar px-4 py-2 bg-neutral-900 rounded-2xl">
               {MOOD_CATEGORIES.map((cat, index) => (
                 <button
                   key={cat.key}
@@ -816,10 +816,10 @@ export const VoiceMessage = ({
                   }}
                   type="button"
                   onClick={() => handleCategorySelect(cat.key, index)}
-                  className={`buttonSubtle buttonMd flex items-center justify-center gap-2 rounded-full text-sm snap-start shrink-0 min-w-30 transition-[background-color,border-color,color,transform,box-shadow] duration-300 ease-out active:scale-95 ${
+                  className={`buttonSubtle buttonLg flex items-center justify-center gap-2 rounded-full text-sm snap-start shrink-0 min-w-30 transition-[background-color,border-color,color,transform,box-shadow] duration-300 ease-out active:scale-95 ${
                     selectedCategory === cat.key
                       ? "bg-tm-primary-color11 border border-tm-primary-color09 text-white scale-[1.02] shadow-[0_0_14px_rgba(255,15,95,0.18)]"
-                      : "bg-tm-neutral-color05 hover:bg-tm-neutral-color03 border border-[rgba(255,255,255,0.1)] text-tm-text-color08 hover:border-tm-primary-color06 scale-100"
+                      : "bg-tm-neutral-color05 hover:bg-tm-neutral-color03  border-t-2 border-neutral-600/75 text-tm-text-color08 hover:border-neutral-500 scale-100 "
                   }`}
                 >
                   <span>{cat.emoji}</span>
@@ -834,7 +834,7 @@ export const VoiceMessage = ({
                   type="button"
                   aria-label={`Go to ${cat.label}`}
                   onClick={() => handleCategorySelect(cat.key, index)}
-                  className={`h-1.5 rounded-full transition-all duration-300 ease-out ${
+                  className={`h-1.5 rounded-full transition-all duration-300 ease-out  ${
                     selectedCategory === cat.key
                       ? "w-4 bg-tm-primary-color04"
                       : "w-1.5 bg-[rgba(255,255,255,0.2)]"
@@ -851,7 +851,7 @@ export const VoiceMessage = ({
               {displayedCategory && (
                 <div
                   key={displayedCategory.key}
-                  className={`mood-phrases-content flex flex-col gap-1.5 max-h-[180px] lg:max-h-[200px] overflow-y-auto no-scrollbar compose-scroll-fade ${
+                  className={`mood-phrases-content bg-neutral-900 px-3 pb-12 pt-4 rounded-2xl border border-neutral-700 flex flex-col gap-1.5 max-h-[180px] lg:max-h-[200px] overflow-y-auto no-scrollbar compose-scroll-fade ${
                     contentVisible ? "is-visible" : ""
                   }`}
                 >
@@ -867,7 +867,7 @@ export const VoiceMessage = ({
                             ? { animationDelay: `${index * 35}ms` }
                             : undefined
                         }
-                        className={`text-left rounded-lg border border-[var(--color-border-elevated)] bg-tm-neutral-color04 px-3 py-2 transition-opacity duration-200 outline-none focus:outline-none ${
+                        className={`text-left rounded-lg border border-neutral-600/60 bg-tm-neutral-color05 px-3 py-2 transition-opacity duration-200 outline-none focus:outline-none ${
                           contentVisible ? "phrase-item-enter" : ""
                         } ${
                           isSelected
@@ -888,10 +888,10 @@ export const VoiceMessage = ({
         <ConnectorArrow />
 
         {/* Right panel: compose + actions */}
-        <div className="tools-panel tools-panel-right flex flex-col gap-4 min-w-0 lg:rounded-2xl lg:border lg:border-[var(--color-border-elevated)] lg:bg-tm-neutral-color11 lg:p-5">
-          <div className="relative flex flex-col flex-1 w-full rounded-xl border border-[var(--color-border-elevated)] bg-tm-neutral-color11 p-3.5 min-h-[140px] max-h-52 lg:max-h-none lg:min-h-[220px] lg:border-0 lg:bg-transparent lg:p-0 overflow-y-auto no-scrollbar compose-scroll-fade">
+        <div className="tools-panel tools-panel-right flex flex-col gap-4 min-w-0 lg:rounded-2xl lg:border lg:border-neutral-600/60 lg:bg-tm-neutral-color11 lg:p-5">
+          <div className="relative flex flex-col flex-1 w-full bg-neutral-900 px-3 pb-12 pt-4 rounded-2xl border border-neutral-700 p-3.5 min-h-[140px] max-h-52 lg:max-h-none lg:min-h-[220px] lg:border-0 lg:bg-transparent lg:p-0 overflow-y-auto no-scrollbar">
             {selectedPhrase && (
-              <div className="relative mb-3 rounded-lg border border-[var(--color-border-elevated)] bg-tm-neutral-color02 p-3 pr-9">
+              <div className="relative mb-3 rounded-lg border border-neutral-600/60  bg-tm-neutral-color05 p-3 pr-9">
                 <button
                   type="button"
                   onClick={clearSelectedPhrase}
@@ -901,11 +901,11 @@ export const VoiceMessage = ({
                   className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center text-tm-text-color10 hover:text-white hover:bg-tm-neutral-color06 transition-colors disabled:opacity-40"
                 >
                   <svg
-                    className="w-3.5 h-3.5"
+                    className="w-6 h-6"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
-                    strokeWidth={2.5}
+                    strokeWidth={2}
                   >
                     <path
                       strokeLinecap="round"
@@ -927,13 +927,13 @@ export const VoiceMessage = ({
                 }
               }}
               placeholder={
-                isTranscribing ? "Transcribing…" : "Tap to add text"
+                isTranscribing ? "Transcribing…" : "Tap to add text…"
               }
               disabled={isTranscribing}
-              className={`flex-1 min-h-[72px] bg-transparent outline-none text-sm text-white resize-none transition-opacity duration-200 ${
+              className={`flex-1 min-h-[72px] px-3 bg-transparent outline-none text-base text-white resize-none transition-opacity duration-200 ${
                 selectedPhrase && !text.trim()
-                 ? "placeholder:text-tm-text-color11"
-                 : "placeholder:text-tm-text-color10"
+                 ? "placeholder:text-tm-text-color03"
+                 : "placeholder:text-tm-text-color09"
               } focus:placeholder:text-tm-text-color09`}
             />
             {SHOW_RECORD_VOICE && (
@@ -953,7 +953,7 @@ export const VoiceMessage = ({
                     disabled={isTranscribing || isGenerating}
                     title="Record voice"
                     aria-label="Record voice"
-                    className="w-12 h-12 buttonSubtle rounded-full flex items-center justify-center bg-tm-neutral-color08 border border-[var(--color-border-elevated)] text-tm-text-color11 hover:text-tm-text-color08 hover:border-tm-text-color09 transition-all shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="w-12 h-12 buttonSubtle rounded-full flex items-center justify-center bg-tm-neutral-color08 border border-neutral-600/60 text-tm-text-color11 hover:text-tm-text-color08 hover:border-tm-text-color09 transition-all shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <svg
                       className="w-4 h-4"
@@ -980,7 +980,7 @@ export const VoiceMessage = ({
             </p>
           )}
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 px-4 py-3 bg-neutral-900 rounded-4xl border-t-2 border-neutral-600/75">
             <button
               onClick={handleGenerate}
               disabled={busy || !composeText.trim() || !hasVoice}
@@ -1070,7 +1070,7 @@ export const VoiceMessage = ({
           </div>
 
           {(countdown !== null || isPlaying) && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 ">
               {countdown !== null && (
                 <p className="text-tm-primary-color04 text-lg font-bold animate-pulse">
                   {countdown}
