@@ -61,23 +61,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const isMockMode = import.meta.env.VITE_MOCK_MODE === 'true';
-
   useEffect(() => {
     const init = async () => {
-      if (isMockMode) {
-        setUser({
-          id: 'mock-chatter-1',
-          name: 'Demo Chatter',
-          email: 'chatter@demo.local',
-          username: null,
-          role: 'chatter',
-          baseRole: 'chatter',
-        });
-        setIsLoading(false);
-        return;
-      }
-
       // If the user explicitly logged out in this browser, skip the /me call
       // so a still-valid cookie doesn't silently re-authenticate them.
       if (sessionStorage.getItem('logged_out') === '1') {
