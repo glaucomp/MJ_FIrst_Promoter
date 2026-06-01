@@ -932,6 +932,7 @@ export const VoiceMessage = ({
                 className={`relative mb-3 rounded-lg border border-neutral-600/60 bg-tm-neutral-color05 p-3 pr-9 transition-opacity ${
                   busy ? "cursor-not-allowed" : "cursor-pointer active:opacity-70"
                 }`}
+              >
                 <button
                   type="button"
                   onClick={(e) => {
