@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { elevenLabsApi } from "../services/api";
+import { useMediaQuery } from "../hooks/useMediaQuery";
 import PhoneTip from '../assets/imagePhoneTip.svg';
 import DesktopTip from '../assets/imageDesktopTip.svg';
 import {
@@ -423,28 +424,40 @@ const PhrasePreview = ({
   );
 };
 
-const ConnectorArrow = () => (
-  <div className="relative flex items-center justify-center py-1 lg:py-0 lg:self-center">
-    <div
-      className="absolute inset-x-0 top-1/2 h-px bg-[rgba(255,255,255,0.07)] lg:hidden"
-      aria-hidden
-    />
-    <div
-      className="relative z-10 w-10 h-10 rounded-full border border-[rgba(255,255,255,0.12)] bg-[#1a1a1c] flex items-center justify-center shrink-0"
-      aria-hidden
-    >
-      <svg
-        className="w-4 h-4 text-[#888] rotate-90 lg:rotate-0"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        strokeWidth={2}
+const ConnectorArrow = ({
+  panelRef,
+}: {
+  panelRef: React.RefObject<HTMLDivElement | null>;
+}) => {
+  const handleClick = () => {
+    panelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  return (
+    <div className="relative flex items-center justify-center py-1 lg:py-0 lg:self-center">
+      <div
+        className="absolute inset-x-0 top-1/2 h-px bg-[rgba(255,255,255,0.07)] lg:hidden"
+        aria-hidden
+      />
+      <button
+        type="button"
+        onClick={handleClick}
+        className="relative z-10 w-10 h-10 rounded-full border border-[rgba(255,255,255,0.12)] bg-[#1a1a1c] flex items-center justify-center shrink-0 cursor-pointer lg:cursor-default lg:pointer-events-none transition-colors hover:border-[rgba(255,255,255,0.25)] active:scale-95 lg:active:scale-100"
+        aria-label="Scroll to compose panel"
       >
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-      </svg>
+        <svg
+          className="w-4 h-4 text-[#888] rotate-90 lg:rotate-0"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+      </button>
     </div>
-  </div>
-);
+  );
+};
 
 // ── Voice Message ──────────────────────────────────────────────────────────────
 
@@ -508,7 +521,12 @@ export const VoiceMessage = ({
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const rightPanelRef = useRef<HTMLDivElement | null>(null);
+  const leftPanelRef = useRef<HTMLDivElement | null>(null);
+  const composeScrollRef = useRef<HTMLDivElement | null>(null);
+  const composeTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
+  const isMobile = !useMediaQuery('(min-width: 1024px)');
 
   const displayedCategory = MOOD_CATEGORIES.find(
     (c) => c.key === displayedCategoryKey,
@@ -565,10 +583,28 @@ export const VoiceMessage = ({
   const handlePhraseSelect = (phrase: string) => {
     setSelectedPhrase(phrase);
     setError("");
+    if (isMobile) {
+      composeTextareaRef.current?.focus({ preventScroll: true });
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          rightPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+          if (composeScrollRef.current) {
+            composeScrollRef.current.scrollTop = composeScrollRef.current.scrollHeight;
+          }
+        });
+      });
+    }
   };
 
   const clearSelectedPhrase = () => {
     setSelectedPhrase("");
+    if (isMobile) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          leftPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      });
+    }
   };
 
   const getComposeText = () => {
@@ -787,7 +823,7 @@ export const VoiceMessage = ({
       {/* Mobile: stacked | Desktop: left panel — arrow — right panel */}
       <div className="flex flex-col lg:grid lg:grid-cols-[1fr_56px_1fr] lg:items-stretch gap-4 tools-desktop-layout ">
         {/* Left panel: name, purpose, phrases */}
-        <div className="tools-panel tools-panel-left flex flex-col gap-4 min-w-0 lg:rounded-2xl lg:border lg:border-[rgba(255,255,255,0.08)] lg:bg-[#141414] lg:p-5">
+        <div ref={leftPanelRef} className="tools-panel tools-panel-left flex flex-col gap-4 min-w-0 lg:rounded-2xl lg:border lg:border-[rgba(255,255,255,0.08)] lg:bg-[#141414] lg:p-5">
           <div className="flex flex-col gap-2">
             <label
               htmlFor="user-name"
@@ -885,16 +921,21 @@ export const VoiceMessage = ({
           )}
         </div>
 
-        <ConnectorArrow />
+        <ConnectorArrow panelRef={rightPanelRef} />
 
         {/* Right panel: compose + actions */}
-        <div className="tools-panel tools-panel-right flex flex-col gap-4 min-w-0 lg:rounded-2xl lg:border lg:border-neutral-600/60 lg:bg-tm-neutral-color11 lg:p-5">
-          <div className="relative flex flex-col flex-1 w-full bg-neutral-900 px-3 pb-12 pt-4 rounded-2xl border border-neutral-700 p-3.5 min-h-[140px] max-h-52 lg:max-h-none lg:min-h-[220px] lg:border-0 lg:bg-transparent lg:p-0 overflow-y-auto no-scrollbar">
+        <div ref={rightPanelRef} className="tools-panel tools-panel-right scroll-mt-50 flex flex-col gap-4 min-w-0 lg:rounded-2xl lg:border lg:border-neutral-600/60 lg:bg-tm-neutral-color11 lg:p-5">
+          <div ref={composeScrollRef} className="relative flex flex-col flex-1 w-full bg-neutral-900 px-3 pb-12 pt-4 rounded-2xl border border-neutral-700 p-3.5 min-h-[140px] max-h-52 lg:max-h-none lg:min-h-[220px] lg:border-0 lg:bg-transparent lg:p-0 overflow-y-auto no-scrollbar">
             {selectedPhrase && (
-              <div className="relative mb-3 rounded-lg border border-neutral-600/60  bg-tm-neutral-color05 p-3 pr-9">
+              <div
+                onClick={clearSelectedPhrase}
+                className="relative mb-3 rounded-lg border border-neutral-600/60 bg-tm-neutral-color05 p-3 pr-9 cursor-pointer active:opacity-70 transition-opacity">
                 <button
                   type="button"
-                  onClick={clearSelectedPhrase}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    clearSelectedPhrase();
+                  }}
                   disabled={busy}
                   title="Remove phrase"
                   aria-label="Remove phrase"
@@ -918,6 +959,7 @@ export const VoiceMessage = ({
               </div>
             )}
             <textarea
+              ref={composeTextareaRef}
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => {
