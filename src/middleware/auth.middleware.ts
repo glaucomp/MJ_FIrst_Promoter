@@ -10,6 +10,7 @@ export interface AuthRequest extends Request {
     email: string;
     role: UserRole;
     userType: UserType;
+    tokenVersion: number;
   };
 }
 
@@ -33,16 +34,22 @@ export const authenticate = async (
       id: string;
       email: string;
       role: UserRole;
+      tokenVersion?: number;
     };
 
     // Verify user still exists and is active
     const user = await prisma.user.findUnique({
       where: { id: decoded.id },
-      select: { id: true, email: true, role: true, userType: true, isActive: true }
+      select: { id: true, email: true, role: true, userType: true, isActive: true, tokenVersion: true }
     });
 
     if (!user || !user.isActive) {
       return res.status(401).json({ error: 'Invalid or inactive user' });
+    }
+
+    // Reject tokens issued before the latest password change
+    if ((decoded.tokenVersion ?? 0) !== user.tokenVersion) {
+      return res.status(401).json({ error: 'Session invalidated. Please log in again.' });
     }
 
     req.user = {
@@ -50,6 +57,7 @@ export const authenticate = async (
       email: user.email,
       role: user.role,
       userType: user.userType,
+      tokenVersion: user.tokenVersion,
     };
 
     next();

@@ -24,8 +24,8 @@ import { clearMjfpCredentialsCache, getMjfpCredentials, MJFP_API_URL } from "../
 
 const prisma = new PrismaClient();
 
-const generateToken = (userId: string, email: string, role: UserRole) =>
-  jwt.sign({ id: userId, email, role }, process.env.JWT_SECRET!, {
+const generateToken = (userId: string, email: string, role: UserRole, tokenVersion: number) =>
+  jwt.sign({ id: userId, email, role, tokenVersion }, process.env.JWT_SECRET!, {
     expiresIn: "7d",
   });
 
@@ -143,6 +143,7 @@ export const register = async (req: AuthRequest, res: Response) => {
         lastName: true,
         role: true,
         userType: true,
+        tokenVersion: true,
         createdAt: true,
       },
     });
@@ -288,7 +289,7 @@ export const register = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    const token = generateToken(user.id, user.email, user.role);
+    const token = generateToken(user.id, user.email, user.role, user.tokenVersion);
     res.cookie("auth_token", token, TOKEN_COOKIE_OPTIONS);
 
     res.status(201).json({
@@ -324,6 +325,7 @@ export const login = async (req: AuthRequest, res: Response) => {
         userType: true,
         isActive: true,
         mustChangePassword: true,
+        tokenVersion: true,
       },
     });
 
@@ -356,7 +358,7 @@ export const login = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const token = generateToken(user.id, user.email, user.role);
+    const token = generateToken(user.id, user.email, user.role, user.tokenVersion);
     res.cookie("auth_token", token, TOKEN_COOKIE_OPTIONS);
 
     const {
@@ -452,11 +454,12 @@ export const firstPasswordChange = async (req: AuthRequest, res: Response) => {
         role: true,
         userType: true,
         isActive: true,
+        tokenVersion: true,
         createdAt: true,
       },
     });
 
-    const sessionToken = generateToken(user.id, user.email, user.role);
+    const sessionToken = generateToken(user.id, user.email, user.role, user.tokenVersion);
     res.cookie("auth_token", sessionToken, TOKEN_COOKIE_OPTIONS);
 
     return res.json({ user });
@@ -507,6 +510,7 @@ export const changePassword = async (req: AuthRequest, res: Response) => {
       data: {
         password: hashedPassword,
         mustChangePassword: false,
+        tokenVersion: { increment: 1 },
       },
     });
 
@@ -566,7 +570,7 @@ export const refreshToken = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const token = generateToken(req.user.id, req.user.email, req.user.role);
+    const token = generateToken(req.user.id, req.user.email, req.user.role, req.user.tokenVersion);
     res.cookie("auth_token", token, TOKEN_COOKIE_OPTIONS);
 
     res.json({ success: true });
@@ -712,6 +716,8 @@ export const resetPassword = async (req: AuthRequest, res: Response) => {
         // invite link lands here) are not stuck in the mustChangePassword
         // loop on their next login.
         mustChangePassword: false,
+        // Bump the version to invalidate any pre-existing JWT sessions.
+        tokenVersion: { increment: 1 },
       },
       select: {
         id: true,
@@ -721,6 +727,7 @@ export const resetPassword = async (req: AuthRequest, res: Response) => {
         role: true,
         userType: true,
         isActive: true,
+        tokenVersion: true,
         createdAt: true,
       },
     });
@@ -734,7 +741,7 @@ export const resetPassword = async (req: AuthRequest, res: Response) => {
     // echo the token in the JSON body for backwards compatibility — older
     // FE builds expect `response.token`; the current build reads the
     // cookie via subsequent /me calls and ignores the body field.
-    const token = generateToken(user.id, user.email, user.role);
+    const token = generateToken(user.id, user.email, user.role, user.tokenVersion);
     res.cookie("auth_token", token, TOKEN_COOKIE_OPTIONS);
 
     return res.json({
