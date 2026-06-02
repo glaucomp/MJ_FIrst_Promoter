@@ -141,7 +141,11 @@ router.post(
   authenticate,
   passwordResetIpLimiter,
   [
-    body('currentPassword').notEmpty().withMessage('Current password is required'),
+    body('currentPassword')
+      .isString()
+      .withMessage('Current password must be a string')
+      .notEmpty()
+      .withMessage('Current password is required'),
     body('newPassword').isString().isLength({ min: PASSWORD_MIN_LENGTH }).withMessage(PASSWORD_TOO_SHORT_MESSAGE),
   ],
   authController.changePassword,
