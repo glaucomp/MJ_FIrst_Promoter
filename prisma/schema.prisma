@@ -75,6 +75,10 @@ model User {
   // one-shot /first-password-change flow that clears the flag and sets
   // their real password before they can use the dashboard.
   mustChangePassword Boolean @default(false)
+  // Incremented on every password change so that any previously-issued JWT
+  // (which embeds the version at mint time) is rejected by the auth
+  // middleware after the password is changed.
+  tokenVersion  Int      @default(0)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
