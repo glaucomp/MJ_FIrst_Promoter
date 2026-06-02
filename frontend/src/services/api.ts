@@ -157,8 +157,14 @@ export const authApi = {
       body: JSON.stringify({ currentPassword, newPassword }),
     });
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to change password');
+      const errorData = await response.json().catch(() => ({} as any));
+      const validationMsg =
+        Array.isArray((errorData as any).errors) && (errorData as any).errors.length
+          ? (errorData as any).errors[0]?.msg
+          : undefined;
+      throw new Error(
+        (errorData as any).error || validationMsg || 'Failed to change password',
+      );
     }
     return response.json();
   },
