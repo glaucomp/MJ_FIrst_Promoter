@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import type { UserRole } from '../types';
-import { wiseApi } from '../services/api';
+import { authApi, wiseApi } from '../services/api';
 
 const ROLE_DISPLAY: Record<UserRole, string> = {
   admin: 'Admin',
@@ -133,6 +133,12 @@ export const Settings = () => {
   const [wiseSaving, setWiseSaving] = useState(false);
   const [wiseMessage, setWiseMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
   useEffect(() => {
     if (user) {
       const anyUser = user as any;
@@ -172,6 +178,36 @@ export const Settings = () => {
       setWiseMessage({ type: 'error', text: err.message || 'Failed to link Wise account' });
     } finally {
       setWiseSaving(false);
+    }
+  };
+
+  const handleChangePassword = async (e: FormEvent) => {
+    e.preventDefault();
+    setPasswordMessage(null);
+
+    if (newPassword.length < 8) {
+      setPasswordMessage({ type: 'error', text: 'Password must be at least 8 characters' });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordMessage({ type: 'error', text: 'Passwords do not match' });
+      return;
+    }
+
+    setPasswordSaving(true);
+    try {
+      await authApi.changePassword(currentPassword, newPassword);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setPasswordMessage({ type: 'success', text: 'Password updated successfully' });
+    } catch (err: unknown) {
+      setPasswordMessage({
+        type: 'error',
+        text: err instanceof Error ? err.message : 'Failed to change password',
+      });
+    } finally {
+      setPasswordSaving(false);
     }
   };
 
@@ -251,29 +287,57 @@ export const Settings = () => {
         </div>
       </div>
 
-      {/* Preferences */}
+      {/* Change password */}
       <div className="bg-linear-to-t from-[#212121] to-[#23252a] border border-[rgba(255,255,255,0.03)] rounded-3xl lg:rounded-sm lg:p-4 p-6 shadow-[1px_-2px_0px_-1px_rgba(255,255,255,0.3),0px_2px_2px_0px_rgba(0,0,0,0.1),0px_8px_8px_-2px_rgba(0,0,0,0.05)] flex flex-col gap-5 w-full col-span-full lg:col-span-1">
         <h2 className="text-lg leading-[1.4] font-bold text-white">
-          Preferences
+          Change Password
         </h2>
-        <div className="flex flex-col gap-[16px]">
-          <label className="flex items-center justify-between p-[16px] bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm cursor-pointer hover:border-tm-primary-color04 transition-colors">
-            <span className="text-white text-base font-medium">Email Notifications</span>
-            <input 
-              type="checkbox" 
-              className="w-[24px] h-[24px] accent-tm-primary-color04 cursor-pointer" 
-              defaultChecked 
-            />
-          </label>
-          <label className="flex items-center justify-between p-[16px] bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm cursor-pointer hover:border-tm-primary-color04 transition-colors">
-            <span className="text-white text-base font-medium">Push Notifications</span>
-            <input 
-              type="checkbox" 
-              className="w-[24px] h-[24px] accent-tm-primary-color04 cursor-pointer" 
-              defaultChecked 
-            />
-          </label>
-        </div>
+        <form onSubmit={handleChangePassword} className="flex flex-col gap-[16px]">
+          <Field
+            label="Current Password"
+            type="password"
+            value={currentPassword}
+            onChange={setCurrentPassword}
+            placeholder="Enter your current password"
+          />
+          <Field
+            label="New Password"
+            type="password"
+            value={newPassword}
+            onChange={setNewPassword}
+            placeholder="At least 8 characters"
+            hint="Must be at least 8 characters"
+          />
+          <Field
+            label="Confirm New Password"
+            type="password"
+            value={confirmPassword}
+            onChange={setConfirmPassword}
+            placeholder="Repeat the new password"
+          />
+          {passwordMessage && (
+            <div
+              className="flex items-center gap-[8px] px-[14px] py-4 rounded-sm text-sm font-medium"
+              style={{
+                background: passwordMessage.type === 'success' ? 'var(--color-tm-success-color12)' : 'var(--color-tm-danger-color12)',
+                border: `1px solid ${passwordMessage.type === 'success' ? 'var(--color-tm-success-color05)' : 'var(--color-tm-danger-color05)'}`,
+                color: passwordMessage.type === 'success' ? 'var(--color-tm-success-color05)' : 'var(--color-tm-danger-color05)',
+              }}
+            >
+              {passwordMessage.type === 'success' ? '✓' : '✕'} {passwordMessage.text}
+            </div>
+          )}
+          <button
+            type="submit"
+            disabled={passwordSaving}
+            className="w-full py-4 rounded-lg text-base font-bold text-[#163400] transition-all disabled:opacity-50"
+            style={{
+              background: passwordSaving ? 'rgba(0,185,255,0.25)' : 'linear-gradient(0deg, rgb(44, 81, 31), rgb(159, 232, 112))',
+            }}
+          >
+            {passwordSaving ? 'Updating…' : 'Update Password'}
+          </button>
+        </form>
       </div>
 
       {/* Payout Settings — Wise */}

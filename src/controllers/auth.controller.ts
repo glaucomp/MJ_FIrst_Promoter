@@ -466,6 +466,59 @@ export const firstPasswordChange = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// POST /api/auth/change-password { currentPassword, newPassword }
+// Authenticated users verify their current password before setting a new one.
+export const changePassword = async (req: AuthRequest, res: Response) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    if (!req.user) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const currentPassword: string = req.body.currentPassword;
+    const newPassword: string = req.body.newPassword;
+
+    const existing = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { id: true, password: true, isActive: true },
+    });
+    if (!existing) {
+      return res.status(401).json({ error: "Account not found" });
+    }
+    if (!existing.isActive) {
+      return res.status(401).json({ error: "Account is inactive" });
+    }
+
+    const isValidPassword = await bcrypt.compare(
+      currentPassword,
+      existing.password,
+    );
+    if (!isValidPassword) {
+      return res.status(401).json({ error: "Current password is incorrect" });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await prisma.user.update({
+      where: { id: existing.id },
+      data: {
+        password: hashedPassword,
+        mustChangePassword: false,
+      },
+    });
+
+    await invalidateUserTokens(existing.id);
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error("Change password error:", error);
+    return res.status(500).json({ error: "Failed to change password" });
+  }
+};
+
 export const getCurrentUser = async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) {
