@@ -50,7 +50,7 @@ const statusBadgeLabel = (status: VipInviteStatus): string => {
     case "verified":
       return "Verified";
     case "logged_in":
-      return "Verified";
+      return "Logged in";
     case "expired":
       return "Expired";
     default:
