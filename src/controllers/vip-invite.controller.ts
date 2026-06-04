@@ -11,8 +11,7 @@ import { AuthRequest } from "../middleware/auth.middleware";
 import {
   chatterCanAccessVipInvite,
   handleVipPreregisterWebhook,
-  isVipInvitePollingActive,
-  reconcileVipInviteFromTeaseme,
+  maybeReconcileStaleVipInvite,
   serializeVipInviteStatus,
   vipInviteRecipientName,
   VipPreregisterWebhookPayload,
@@ -79,9 +78,7 @@ export const getVipInviteStatus = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ error: "Forbidden" });
     }
 
-    if (isVipInvitePollingActive(invite.status)) {
-      invite = await reconcileVipInviteFromTeaseme(invite);
-    }
+    invite = await maybeReconcileStaleVipInvite(invite);
 
     return res.json(serializeVipInviteStatus(invite));
   } catch (error) {
