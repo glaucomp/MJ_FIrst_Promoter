@@ -878,8 +878,7 @@ export const LinkGenerator = ({
   };
 
   const canGenerate = !!(name.trim() && telegramId.trim()) && !loading;
-  const canSendEmail =
-    !!inviteId && !!email.trim() && !sendEmailLoading && !loading;
+  const canSendEmail = !!inviteId && !sendEmailLoading && !loading;
 
   return (
     <div className="flex flex-col gap-[16px] ">
