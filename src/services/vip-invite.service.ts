@@ -72,19 +72,36 @@ export const applyVipInviteStatusUpdate = async (
     occurredAt?: Date | null;
   },
 ): Promise<VipInvite> => {
+  const occurredAt = params.occurredAt ?? new Date();
+  const nextEvent = params.event ?? null;
+
+  // No-op when nothing changed (prevents poll/write churn).
+  if (params.status === invite.status && nextEvent === (invite.lastEvent ?? null)) {
+    return invite;
+  }
+
+  // Ignore downgrades, and guard against races by only updating if the row is
+  // still at the expected status.
   if (!shouldAdvanceVipStatus(invite.status, params.status)) {
     return invite;
   }
 
-  const occurredAt = params.occurredAt ?? new Date();
-  return prisma.vipInvite.update({
-    where: { id: invite.id },
+  const attempted = await prisma.vipInvite.updateMany({
+    where: { id: invite.id, status: invite.status },
     data: {
       status: params.status,
-      ...(params.event ? { lastEvent: params.event } : {}),
+      ...(nextEvent ? { lastEvent: nextEvent } : {}),
       lastEventAt: occurredAt,
     },
   });
+
+  if (attempted.count === 0) {
+    const fresh = await prisma.vipInvite.findUnique({ where: { id: invite.id } });
+    return fresh ?? invite;
+  }
+
+  const updated = await prisma.vipInvite.findUnique({ where: { id: invite.id } });
+  return updated ?? invite;
 };
 
 export const reconcileVipInviteFromTeaseme = async (
