@@ -48,7 +48,7 @@ export const receiveVipPreregisterWebhook = async (
     return res.status(200).json({ ok: true });
   } catch (error) {
     console.error("[vip-preregister-webhook] handler error:", error);
-    return res.status(200).json({ ok: true });
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
 
