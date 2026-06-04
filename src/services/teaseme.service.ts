@@ -45,6 +45,252 @@ const TEASEME_STATUS_TIMEOUT_MS = 10_000;
 // toast while the work was actually in progress.
 const TEASEME_APPROVE_TIMEOUT_MS = 30_000;
 
+const getTeasemeVipUserStatusUrl = () =>
+  (
+    process.env.TEASEME_VIP_USER_STATUS_URL ||
+    "https://tmapi.mxjprod.work/mjpromoter/vip-user-status"
+  ).replace(/\/$/, "");
+
+/** Base URL for MJ Promoter internal routes on the TeaseMe API host. */
+export const getTeasemeMjpromoterBaseUrl = (): string => {
+  const explicit = process.env.TEASEME_MJPROMOTER_BASE_URL?.trim();
+  if (explicit) return explicit.replace(/\/$/, "");
+
+  const prereg =
+    process.env.PREREGISTER_VIP_TEASEME_USER ||
+    process.env.VITE_PREREGISTER_VIP_TEASEME_USER;
+  if (prereg) {
+    try {
+      return `${new URL(prereg).origin}/mjpromoter`;
+    } catch {
+      // fall through
+    }
+  }
+
+  return "https://tmapi.mxjprod.work/mjpromoter";
+};
+
+const getTeasemeVipInviteSendEmailUrl = () =>
+  (
+    process.env.TEASEME_VIP_INVITE_SEND_EMAIL_URL ||
+    `${getTeasemeMjpromoterBaseUrl()}/vip-invites/send-email`
+  ).replace(/\/$/, "");
+
+export const getTeasemeVipInviteEmailAssetsUrl = (influencerId: string) =>
+  (
+    process.env.TEASEME_VIP_INVITE_EMAIL_ASSETS_URL?.replace(
+      "{influencer_id}",
+      encodeURIComponent(influencerId),
+    ) ||
+    `${getTeasemeMjpromoterBaseUrl()}/influencers/${encodeURIComponent(influencerId)}/vip-invite-email-assets`
+  ).replace(/\/$/, "");
+
+export type SendVipInviteEmailPayload = {
+  to_email: string;
+  verification_url: string;
+  influencer_id: string;
+  /** Invitee first name for greeting; TeaseMe uses "Hi there," when omitted. */
+  recipient_name?: string;
+};
+
+export type SendVipInviteEmailResult =
+  | {
+      ok: true;
+      message_id?: string | null;
+      email_subject?: string | null;
+      message: string;
+    }
+  | { ok: false; status: number; error: string };
+
+const pickTeasemeError = (parsed: Record<string, unknown> | null): string => {
+  if (!parsed) return "";
+  for (const key of ["error", "message", "detail"] as const) {
+    const value = parsed[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "";
+};
+
+/**
+ * POST /mjpromoter/vip-invites/send-email — TeaseMe SES VIP invite template.
+ * Uses preregister verification_url (not /auth/verify-email).
+ */
+export const sendVipInviteEmailViaTeaseme = async (
+  payload: SendVipInviteEmailPayload,
+): Promise<SendVipInviteEmailResult> => {
+  const toEmail = payload.to_email.trim();
+  const verificationUrl = payload.verification_url.trim();
+  const influencerId = payload.influencer_id.trim();
+  const recipientName = payload.recipient_name?.trim();
+
+  if (!toEmail || !verificationUrl || !influencerId) {
+    return {
+      ok: false,
+      status: 422,
+      error: "to_email, verification_url, and influencer_id are required",
+    };
+  }
+
+  const token = await getMjfpToken();
+  if (!token) {
+    return {
+      ok: false,
+      status: 503,
+      error: "TeaseMe service is not configured",
+    };
+  }
+
+  const url = getTeasemeVipInviteSendEmailUrl();
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "X-Internal-Token": token,
+      },
+      body: JSON.stringify({
+        to_email: toEmail,
+        verification_url: verificationUrl,
+        influencer_id: influencerId,
+        ...(recipientName ? { recipient_name: recipientName } : {}),
+      }),
+      signal: AbortSignal.timeout(TEASEME_STATUS_TIMEOUT_MS),
+    });
+  } catch {
+    return {
+      ok: false,
+      status: 502,
+      error: "Could not reach TeaseMe email service",
+    };
+  }
+
+  let body: unknown = null;
+  try {
+    body = await res.json();
+  } catch {
+    body = null;
+  }
+
+  const parsed =
+    body && typeof body === "object" ? (body as Record<string, unknown>) : null;
+
+  if (res.status === 401) clearMjfpCredentialsCache();
+
+  if (!res.ok) {
+    const detail = pickTeasemeError(parsed);
+    if (res.status === 502 || detail.toLowerCase().includes("ses")) {
+      return {
+        ok: false,
+        status: 502,
+        error:
+          detail ||
+          "Failed to send VIP invite email. Check SES configuration.",
+      };
+    }
+    return {
+      ok: false,
+      status: res.status,
+      error: detail || `Failed to send VIP invite email (HTTP ${res.status})`,
+    };
+  }
+
+  const messageId =
+    parsed && typeof parsed.message_id === "string" ? parsed.message_id : null;
+  const emailSubject =
+    parsed && typeof parsed.email_subject === "string"
+      ? parsed.email_subject
+      : null;
+  const upstreamMessage =
+    parsed && typeof parsed.message === "string" ? parsed.message : null;
+
+  return {
+    ok: true,
+    message_id: messageId,
+    email_subject: emailSubject,
+    message:
+      upstreamMessage ||
+      (emailSubject
+        ? `Invite email sent (${emailSubject}).`
+        : `Invite email sent to ${toEmail}.`),
+  };
+};
+
+export interface TeasemeVipUserStatus {
+  found: boolean;
+  user_id?: number;
+  telegram_id?: number;
+  email?: string | null;
+  full_name?: string | null;
+  status?: string;
+  is_verified?: boolean;
+  first_login_at?: string | null;
+  preregistered_at?: string | null;
+  updated_at?: string | null;
+}
+
+/** Poll TeaseMe VIP preregister status for webhook-miss reconciliation. */
+export const fetchVipUserStatus = async (
+  userId: number,
+): Promise<TeasemeVipUserStatus | null> => {
+  if (!Number.isInteger(userId) || userId < 1) {
+    throw new Error("fetchVipUserStatus requires a positive integer userId");
+  }
+
+  const token = await getMjfpToken();
+  if (!token) return null;
+
+  const url = `${getTeasemeVipUserStatusUrl()}?user_id=${encodeURIComponent(String(userId))}`;
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        "X-Internal-Token": token,
+      },
+      signal: AbortSignal.timeout(TEASEME_STATUS_TIMEOUT_MS),
+    });
+  } catch {
+    return null;
+  }
+
+  let body: unknown = null;
+  try {
+    body = await res.json();
+  } catch {
+    return null;
+  }
+
+  if (res.status === 401) clearMjfpCredentialsCache();
+  if (res.status < 200 || res.status >= 300) return null;
+  if (!body || typeof body !== "object") return null;
+
+  const raw = body as Record<string, unknown>;
+  if (raw.found === false) {
+    return { found: false };
+  }
+  if (raw.found !== true) return null;
+
+  return {
+    found: true,
+    user_id: typeof raw.user_id === "number" ? raw.user_id : undefined,
+    telegram_id:
+      typeof raw.telegram_id === "number" ? raw.telegram_id : undefined,
+    email: typeof raw.email === "string" ? raw.email : null,
+    full_name: typeof raw.full_name === "string" ? raw.full_name : null,
+    status: typeof raw.status === "string" ? raw.status : undefined,
+    is_verified:
+      typeof raw.is_verified === "boolean" ? raw.is_verified : undefined,
+    first_login_at:
+      typeof raw.first_login_at === "string" ? raw.first_login_at : null,
+    preregistered_at:
+      typeof raw.preregistered_at === "string" ? raw.preregistered_at : null,
+    updated_at: typeof raw.updated_at === "string" ? raw.updated_at : null,
+  };
+};
+
 export interface TeasemePreUserStatus {
   step: number;
   active: boolean;

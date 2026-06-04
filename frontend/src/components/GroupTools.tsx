@@ -12,17 +12,74 @@ import {
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5555/api';
 
 interface PreregisterSuccess {
-  status: "ok";
+  invite_id: string;
+  user_id: number;
   verification_url: string;
+  status: VipInviteStatus;
   expires_at?: string;
-  user_id?: string;
 }
+
+type VipInviteStatus =
+  | "pending"
+  | "profile_completed"
+  | "verified"
+  | "logged_in"
+  | "expired";
+
+interface VipInviteStatusResponse {
+  invite_id: string;
+  status: VipInviteStatus;
+  last_event_at: string | null;
+  verification_url: string;
+  teaseme_user_id: number;
+}
+
+const VIP_POLL_INTERVAL_MS = 10_000;
+
+const POLLING_STATUSES = new Set<VipInviteStatus>([
+  "pending",
+  "profile_completed",
+]);
+
+const statusBadgeLabel = (status: VipInviteStatus): string => {
+  switch (status) {
+    case "pending":
+      return "Pending";
+    case "profile_completed":
+      return "Profile done";
+    case "verified":
+      return "Verified";
+    case "logged_in":
+      return "Verified";
+    case "expired":
+      return "Expired";
+    default:
+      return status;
+  }
+};
+
+const statusBadgeClass = (status: VipInviteStatus): string => {
+  switch (status) {
+    case "pending":
+      return "bg-[rgba(255,170,50,0.12)] border-[rgba(255,170,50,0.35)] text-[#ffcf80]";
+    case "profile_completed":
+      return "bg-[rgba(100,149,237,0.12)] border-[rgba(100,149,237,0.35)] text-[#9ec5ff]";
+    case "verified":
+    case "logged_in":
+      return "bg-[rgba(34,197,94,0.12)] border-[rgba(34,197,94,0.35)] text-tm-success-color05";
+    case "expired":
+      return "bg-[rgba(255,15,95,0.08)] border-[rgba(255,15,95,0.35)] text-tm-primary-color01";
+    default:
+      return "bg-[#141414] border-[rgba(255,255,255,0.1)] text-tm-text-color08";
+  }
+};
 
 const callPreregister = async (payload: {
   email?: string;
   influencer_id: string;
   telegram_id: number;
   full_name: string;
+  group_id: string;
 }): Promise<PreregisterSuccess> => {
   let response: Response;
   try {
@@ -76,7 +133,9 @@ const callPreregister = async (payload: {
     !body ||
     typeof body !== "object" ||
     !("verification_url" in (body as Record<string, unknown>)) ||
-    typeof (body as Record<string, unknown>).verification_url !== "string"
+    typeof (body as Record<string, unknown>).verification_url !== "string" ||
+    !("invite_id" in (body as Record<string, unknown>)) ||
+    typeof (body as Record<string, unknown>).invite_id !== "string"
   ) {
     throw new Error("Unexpected response from the preregistration service.");
   }
@@ -84,25 +143,248 @@ const callPreregister = async (payload: {
   return body as PreregisterSuccess;
 };
 
-// ── Link Generator ─────────────────────────────────────────────────────────────
+const fetchVipInviteStatus = async (
+  inviteId: string,
+): Promise<VipInviteStatusResponse> => {
+  const response = await fetch(
+    `${API_URL}/chatters/vip-invites/${encodeURIComponent(inviteId)}/status`,
+    {
+      method: "GET",
+      credentials: "include",
+    },
+  );
 
-interface LinkGeneratorProps {
-  username: string;
-  name?: string;
-  onNameChange?: (name: string) => void;
+  let body: unknown = null;
+  try {
+    body = await response.json();
+  } catch {
+    body = null;
+  }
+
+  if (!response.ok) {
+    const message =
+      body &&
+      typeof body === "object" &&
+      typeof (body as Record<string, unknown>).error === "string"
+        ? String((body as Record<string, unknown>).error)
+        : `Status check failed (HTTP ${response.status})`;
+    throw new Error(message);
+  }
+
+  if (
+    !body ||
+    typeof body !== "object" ||
+    typeof (body as Record<string, unknown>).status !== "string"
+  ) {
+    throw new Error("Unexpected response from status service.");
+  }
+
+  return body as VipInviteStatusResponse;
+};
+
+const sendVipInviteVerificationEmail = async (
+  inviteId: string,
+): Promise<{ message: string; email: string }> => {
+  const response = await fetch(
+    `${API_URL}/chatters/vip-invites/${encodeURIComponent(inviteId)}/send-email`,
+    {
+      method: "POST",
+      credentials: "include",
+    },
+  );
+
+  let body: unknown = null;
+  try {
+    body = await response.json();
+  } catch {
+    body = null;
+  }
+
+  if (!response.ok) {
+    const message =
+      body &&
+      typeof body === "object" &&
+      typeof (body as Record<string, unknown>).error === "string"
+        ? String((body as Record<string, unknown>).error)
+        : `Failed to send email (HTTP ${response.status})`;
+    throw new Error(message);
+  }
+
+  const record = body as Record<string, unknown>;
+  return {
+    message:
+      typeof record.message === "string"
+        ? record.message
+        : "Verification email sent",
+    email: typeof record.email === "string" ? record.email : "",
+  };
+};
+
+interface VipInviteListItem {
+  invite_id: string;
+  status: VipInviteStatus;
+  last_event_at: string | null;
+  verification_url: string;
+  teaseme_user_id: number;
+  full_name: string;
+  email: string | null;
+  influencer_id: string;
+  telegram_id: string;
+  created_at: string;
 }
 
-export const LinkGenerator = ({
-  username,
-  name: controlledName,
-  onNameChange,
-}: LinkGeneratorProps) => {
-  const [internalName, setInternalName] = useState("");
-  const name = controlledName ?? internalName;
-  const setName = onNameChange ?? setInternalName;
-  const [telegramId, setTelegramId] = useState("");
-  const [email, setEmail] = useState("");
-  const [generatedLink, setGeneratedLink] = useState("");
+const fetchVipInvites = async (
+  groupId: string,
+  search?: string,
+): Promise<VipInviteListItem[]> => {
+  const params = new URLSearchParams({ groupId });
+  const trimmed = search?.trim();
+  if (trimmed) params.set("search", trimmed);
+
+  const response = await fetch(
+    `${API_URL}/chatters/vip-invites?${params.toString()}`,
+    {
+      method: "GET",
+      credentials: "include",
+    },
+  );
+
+  let body: unknown = null;
+  try {
+    body = await response.json();
+  } catch {
+    body = null;
+  }
+
+  if (!response.ok) {
+    const message =
+      body &&
+      typeof body === "object" &&
+      typeof (body as Record<string, unknown>).error === "string"
+        ? String((body as Record<string, unknown>).error)
+        : `Failed to load invites (HTTP ${response.status})`;
+    throw new Error(message);
+  }
+
+  if (
+    !body ||
+    typeof body !== "object" ||
+    !Array.isArray((body as Record<string, unknown>).invites)
+  ) {
+    throw new Error("Unexpected response from invite list.");
+  }
+
+  return (body as { invites: VipInviteListItem[] }).invites;
+};
+
+const formatInviteDate = (iso: string): string => {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+};
+
+// ── Promo Code ─────────────────────────────────────────────────────────────────
+
+interface PromoCodeSuccess {
+  ok: true;
+  code: string;
+  email: string;
+  reward_credits: number;
+  reward_cents: number;
+  influencer_id: string | null;
+  max_redemptions: number;
+  expires_at: string | null;
+}
+
+const callCreatePromoCode = async (payload: {
+  email: string;
+  influencer_id: string;
+  code?: string;
+  reward_credits?: number;
+  max_redemptions?: number;
+  expires_at?: string;
+}): Promise<PromoCodeSuccess> => {
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}/chatters/promo-codes`, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    throw new Error("Could not reach the promo code service. Check your connection and try again.");
+  }
+
+  let body: unknown = null;
+  try {
+    body = await response.json();
+  } catch {
+    body = null;
+  }
+
+  if (!response.ok) {
+    const pickMessage = (raw: unknown): string => {
+      if (!raw || typeof raw !== "object") return "";
+      const record = raw as Record<string, unknown>;
+      for (const key of ["error", "message", "detail"] as const) {
+        const value = record[key];
+        if (typeof value === "string" && value.trim()) return value;
+      }
+      return "";
+    };
+    const serverMessage = pickMessage(body);
+    switch (response.status) {
+      case 401:
+        throw new Error(serverMessage || "Session expired. Please log in again.");
+      case 403:
+        throw new Error(serverMessage || "You are not allowed to create promo codes.");
+      case 404:
+        throw new Error(serverMessage || "Influencer not found.");
+      case 409:
+        throw new Error(serverMessage || "This promo code already exists. Try generating again.");
+      case 422:
+        throw new Error(serverMessage || "Some fields are invalid. Please review and try again.");
+      default:
+        throw new Error(serverMessage || `Promo code creation failed (HTTP ${response.status}).`);
+    }
+  }
+
+  if (
+    !body ||
+    typeof body !== "object" ||
+    !("code" in (body as Record<string, unknown>)) ||
+    typeof (body as Record<string, unknown>).code !== "string"
+  ) {
+    throw new Error("Unexpected response from the promo code service.");
+  }
+
+  return body as PromoCodeSuccess;
+};
+
+interface PromoCodeGeneratorProps {
+  influencerId: string;
+  email?: string;
+  onEmailChange?: (email: string) => void;
+}
+
+export const PromoCodeGenerator = ({
+  influencerId,
+  email: controlledEmail,
+  onEmailChange,
+}: PromoCodeGeneratorProps) => {
+  const [internalEmail, setInternalEmail] = useState("");
+  const email = controlledEmail ?? internalEmail;
+  const setEmail = onEmailChange ?? setInternalEmail;
+  const [customCode, setCustomCode] = useState("");
+  const [generatedCode, setGeneratedCode] = useState("");
+  const [rewardCredits, setRewardCredits] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -113,6 +395,376 @@ export const LinkGenerator = ({
       if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
     };
   }, []);
+
+  const handleGenerate = async () => {
+    if (loading) return;
+
+    const trimmedEmail = email.trim();
+    const trimmedCode = customCode.trim().toUpperCase();
+
+    if (!trimmedEmail) {
+      setErrorMessage("Please enter the user's TeaseMe email.");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setErrorMessage("Please enter a valid email address.");
+      return;
+    }
+    if (trimmedCode && (trimmedCode.length < 1 || trimmedCode.length > 64)) {
+      setErrorMessage("Custom code must be 1–64 characters.");
+      return;
+    }
+
+    setErrorMessage(null);
+    setLoading(true);
+    try {
+      const result = await callCreatePromoCode({
+        email: trimmedEmail,
+        influencer_id: influencerId,
+        ...(trimmedCode ? { code: trimmedCode } : {}),
+      });
+      setGeneratedCode(result.code);
+      setRewardCredits(result.reward_credits);
+      setCopied(false);
+    } catch (err) {
+      setGeneratedCode("");
+      setRewardCredits(null);
+      setErrorMessage(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReset = () => {
+    setEmail("");
+    setCustomCode("");
+    setGeneratedCode("");
+    setRewardCredits(null);
+    setCopied(false);
+    setErrorMessage(null);
+  };
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(generatedCode);
+      setCopied(true);
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+      copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // fallback silently
+    }
+  };
+
+  const canGenerate = !!email.trim() && !loading;
+
+  return (
+    <div className="flex flex-col gap-[16px]">
+      <div className="flex items-center gap-[8px]">
+        <svg
+          className="w-[14px] h-[14px] text-tm-primary-color04"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2.5}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z"
+          />
+        </svg>
+        <p className="text-xs font-bold uppercase text-tm-text-color08">
+          Promo Code
+        </p>
+      </div>
+
+      <p className="text-[#555] text-sm leading-relaxed">
+        Creates a single-use code tied to the user&apos;s TeaseMe email. Standard reward:{" "}
+        <span className="text-tm-text-color08">120 diamonds ($2)</span>.
+      </p>
+
+      <div className="grid lg:grid-cols-2 gap-4">
+        <div className="relative flex-1">
+          <svg
+            className="absolute left-[12px] top-1/2 -translate-y-1/2 w-[14px] h-[14px] text-[#444]"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+            />
+          </svg>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
+            placeholder="User's TeaseMe email"
+            className="buttonXl inputIcon w-full inputMJ text-white focus:outline-none focus:border-tm-primary-color04 placeholder-tm-text-color08"
+          />
+        </div>
+        <input
+          type="text"
+          value={customCode}
+          onChange={(e) => setCustomCode(e.target.value.toUpperCase())}
+          onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
+          placeholder="Custom code (optional)"
+          maxLength={64}
+          className="buttonXl inputMJ text-white focus:outline-none focus:border-tm-primary-color04 placeholder-tm-text-color08 uppercase"
+        />
+      </div>
+
+      <div className="flex flex-col lg:flex-row gap-4">
+        <button
+          onClick={handleReset}
+          title="Reset form"
+          aria-label="Reset form"
+          className="lg:w-[56px] buttonSubtle buttonXl rounded-full flex items-center justify-center bg-[#141414] border border-[rgba(255,255,255,0.1)] text-[#555] hover:text-tm-text-color08 hover:border-[rgba(255,255,255,0.2)] transition-all shrink-0"
+        >
+          <svg
+            className="w-[15px] h-[15px]"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2.5}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+            />
+          </svg>
+        </button>
+        <button
+          onClick={handleGenerate}
+          disabled={!canGenerate}
+          className="buttonSubtle btn-primary-cta rounded-full px-[20px] py-[11px] text-sm font-bold active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0 whitespace-nowrap"
+        >
+          {loading ? "Generating..." : "Generate Code"}
+        </button>
+      </div>
+
+      {errorMessage && (
+        <div className="flex items-start gap-2 border border-[rgba(255,15,95,0.35)] bg-[rgba(255,15,95,0.08)] text-tm-primary-color01 text-xs px-4 py-3 rounded-sm">
+          <svg
+            className="w-[14px] h-[14px] mt-[2px] shrink-0"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 9v2m0 4h.01M4.062 19h15.876c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L2.33 16c-.77 1.333.192 3 1.732 3z"
+            />
+          </svg>
+          <span>{errorMessage}</span>
+        </div>
+      )}
+
+      {generatedCode && (
+        <div className="flex flex-col gap-4 border border-neutral-800 p-8 rounded-xl bg-tm-neutral-color08 min-w-0 w-full overflow-hidden">
+          <div className="flex flex-row w-full">
+            <p className="text-xs font-bold uppercase text-tm-text-color08">
+              Promo Code
+            </p>
+          </div>
+          {rewardCredits != null && (
+            <p className="text-sm text-tm-text-color08">
+              {rewardCredits} diamonds — redeem in the TeaseMe app with this email only.
+            </p>
+          )}
+          <div className="flex flex-col lg:grid-cols-[minmax(0,4fr)_minmax(0,1fr)] lg:grid gap-2 min-w-0 w-full">
+            <div className="flex items-center gap-2 inputMJ p-4 w-full min-w-0 overflow-hidden">
+              <svg
+                className="w-[14px] h-[14px] text-[#555] shrink-0"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z"
+                />
+              </svg>
+              <p className="flex-1 min-w-0 text-white text-lg font-bold tracking-widest truncate font-mono">
+                {generatedCode}
+              </p>
+            </div>
+            <button
+              onClick={handleCopy}
+              aria-label={copied ? "Copied promo code" : "Copy promo code"}
+              className={`flex buttonSubtle buttonLg items-center justify-center px-10 flex-row-reverse transition-all [background:linear-gradient(250deg,#212121_8.83%,#383838_13.08%,#333_23.52%,#2E2E2E_35.88%,#141414_61.39%,#292929_89.22%)] hover:[background:linear-gradient(290deg,#212121_8.83%,#383838_13.08%,#333_23.52%,#2E2E2E_35.88%,#141414_61.39%,#292929_89.22%)] ${copied ? "text-tm-success-color05" : "text-white"}`}
+            >
+              <p className="text-sm font-medium">
+                {copied ? "Copied!" : "Copy"}
+              </p>
+              {copied ? (
+                <svg
+                  className="w-[16px] h-[16px]"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2.5}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              ) : (
+                <svg
+                  className="w-[16px] h-[16px]"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                  />
+                </svg>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── Link Generator ─────────────────────────────────────────────────────────────
+
+interface LinkGeneratorProps {
+  username: string;
+  groupId: string;
+  name?: string;
+  onNameChange?: (name: string) => void;
+}
+
+export const LinkGenerator = ({
+  username,
+  groupId,
+  name: controlledName,
+  onNameChange,
+}: LinkGeneratorProps) => {
+  const [internalName, setInternalName] = useState("");
+  const name = controlledName ?? internalName;
+  const setName = onNameChange ?? setInternalName;
+  const [telegramId, setTelegramId] = useState("");
+  const [email, setEmail] = useState("");
+  const [generatedLink, setGeneratedLink] = useState("");
+  const [inviteId, setInviteId] = useState<string | null>(null);
+  const [inviteStatus, setInviteStatus] = useState<VipInviteStatus | null>(
+    null,
+  );
+  const [copied, setCopied] = useState(false);
+  const [sendEmailLoading, setSendEmailLoading] = useState(false);
+  const [sendEmailSuccess, setSendEmailSuccess] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [trackSearch, setTrackSearch] = useState("");
+  const [trackedInvites, setTrackedInvites] = useState<VipInviteListItem[]>(
+    [],
+  );
+  const [trackLoading, setTrackLoading] = useState(false);
+  const [trackError, setTrackError] = useState<string | null>(null);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const trackSearchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    };
+  }, []);
+
+  const loadTrackedInvites = useCallback(async (search?: string) => {
+    setTrackLoading(true);
+    setTrackError(null);
+    try {
+      const invites = await fetchVipInvites(groupId, search);
+      setTrackedInvites(invites);
+    } catch (err) {
+      setTrackedInvites([]);
+      setTrackError(
+        err instanceof Error ? err.message : "Could not load invites.",
+      );
+    } finally {
+      setTrackLoading(false);
+    }
+  }, [groupId]);
+
+  useEffect(() => {
+    if (trackSearchDebounceRef.current) {
+      clearTimeout(trackSearchDebounceRef.current);
+    }
+    const delay = trackSearch.trim() ? 300 : 0;
+    trackSearchDebounceRef.current = setTimeout(() => {
+      void loadTrackedInvites(trackSearch);
+    }, delay);
+    return () => {
+      if (trackSearchDebounceRef.current) {
+        clearTimeout(trackSearchDebounceRef.current);
+      }
+    };
+  }, [trackSearch, loadTrackedInvites]);
+
+  useEffect(() => {
+    if (!inviteId || !inviteStatus || !POLLING_STATUSES.has(inviteStatus)) {
+      if (pollTimerRef.current) {
+        clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
+      return;
+    }
+
+    const poll = async () => {
+      try {
+        const result = await fetchVipInviteStatus(inviteId);
+        setInviteStatus(result.status);
+        setGeneratedLink(result.verification_url);
+        setTrackedInvites((prev) =>
+          prev.map((inv) =>
+            inv.invite_id === inviteId
+              ? {
+                  ...inv,
+                  status: result.status,
+                  verification_url: result.verification_url,
+                  last_event_at: result.last_event_at,
+                }
+              : inv,
+          ),
+        );
+      } catch {
+        // Keep last-known state on transient poll failures.
+      }
+    };
+
+    void poll();
+    pollTimerRef.current = setInterval(() => {
+      void poll();
+    }, VIP_POLL_INTERVAL_MS);
+
+    return () => {
+      if (pollTimerRef.current) {
+        clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
+    };
+  }, [inviteId, inviteStatus]);
 
   const handleGenerate = async () => {
     if (loading) return;
@@ -142,11 +794,19 @@ export const LinkGenerator = ({
         influencer_id: username,
         telegram_id: Number(trimmedTelegram),
         full_name: trimmedName,
+        group_id: groupId,
       });
       setGeneratedLink(result.verification_url);
+      setInviteId(result.invite_id);
+      setInviteStatus(result.status);
       setCopied(false);
+      setSendEmailSuccess(null);
+      void loadTrackedInvites(trackSearch);
     } catch (err) {
       setGeneratedLink("");
+      setInviteId(null);
+      setInviteStatus(null);
+      setSendEmailSuccess(null);
       setErrorMessage(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setLoading(false);
@@ -158,8 +818,52 @@ export const LinkGenerator = ({
     setTelegramId("");
     setEmail("");
     setGeneratedLink("");
+    setInviteId(null);
+    setInviteStatus(null);
     setCopied(false);
+    setSendEmailSuccess(null);
     setErrorMessage(null);
+  };
+
+  const handleSelectTrackedInvite = (invite: VipInviteListItem) => {
+    setName(invite.full_name);
+    setTelegramId(invite.telegram_id);
+    setEmail(invite.email ?? "");
+    setGeneratedLink(invite.verification_url);
+    setInviteId(invite.invite_id);
+    setInviteStatus(invite.status);
+    setCopied(false);
+    setSendEmailSuccess(null);
+    setErrorMessage(null);
+  };
+
+  const handleSendEmail = async () => {
+    if (sendEmailLoading || !inviteId) return;
+
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setErrorMessage(
+        "Add an email address above to send the TeaseMe verification email.",
+      );
+      setSendEmailSuccess(null);
+      return;
+    }
+
+    setErrorMessage(null);
+    setSendEmailSuccess(null);
+    setSendEmailLoading(true);
+    try {
+      const result = await sendVipInviteVerificationEmail(inviteId);
+      setSendEmailSuccess(
+        result.message || `Verification email sent to ${result.email}.`,
+      );
+    } catch (err) {
+      setErrorMessage(
+        err instanceof Error ? err.message : "Could not send verification email.",
+      );
+    } finally {
+      setSendEmailLoading(false);
+    }
   };
 
   const handleCopy = async () => {
@@ -174,6 +878,8 @@ export const LinkGenerator = ({
   };
 
   const canGenerate = !!(name.trim() && telegramId.trim()) && !loading;
+  const canSendEmail =
+    !!inviteId && !!email.trim() && !sendEmailLoading && !loading;
 
   return (
     <div className="flex flex-col gap-[16px] ">
@@ -195,6 +901,104 @@ export const LinkGenerator = ({
         <p className="text-xs font-bold uppercase text-tm-text-color08">
           Invite Link
         </p>
+      </div>
+
+      {/* Track invites */}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <svg
+            className="absolute left-[12px] top-1/2 -translate-y-1/2 w-[14px] h-[14px] text-[#444]"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
+          </svg>
+          <input
+            type="search"
+            value={trackSearch}
+            onChange={(e) => setTrackSearch(e.target.value)}
+            placeholder="Search by name, email, or Telegram ID…"
+            aria-label="Search VIP invites"
+            className="buttonXl inputIcon w-full inputMJ text-white focus:outline-none focus:border-tm-primary-color04 placeholder-tm-text-color08"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={() => void loadTrackedInvites(trackSearch)}
+          disabled={trackLoading}
+          title="Refresh invite list"
+          aria-label="Refresh invite list"
+          className="lg:w-[56px] buttonSubtle buttonXl rounded-full flex items-center justify-center bg-[#141414] border border-[rgba(255,255,255,0.1)] text-[#555] hover:text-tm-text-color08 hover:border-[rgba(255,255,255,0.2)] transition-all shrink-0 disabled:opacity-40"
+        >
+          <svg
+            className={`w-[15px] h-[15px] ${trackLoading ? "animate-spin" : ""}`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2.5}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+            />
+          </svg>
+        </button>
+      </div>
+
+      <div className="flex flex-col gap-2 border border-[rgba(255,255,255,0.08)] rounded-xl bg-[#141414] p-4 max-h-[220px] overflow-y-auto">
+          <p className="text-xs font-bold uppercase text-tm-text-color08">
+            Tracked invites
+          </p>
+          {trackLoading && (
+            <p className="text-sm text-tm-text-color08">Loading…</p>
+          )}
+          {trackError && !trackLoading && (
+            <p className="text-sm text-tm-primary-color01">{trackError}</p>
+          )}
+          {!trackLoading && !trackError && trackedInvites.length === 0 && (
+            <p className="text-sm text-tm-text-color08">
+              {trackSearch.trim()
+                ? "No invites match your search."
+                : "No invites yet for this group."}
+            </p>
+          )}
+          {!trackLoading &&
+            !trackError &&
+            trackedInvites.map((invite) => (
+                <button
+                  key={invite.invite_id}
+                  type="button"
+                  onClick={() => handleSelectTrackedInvite(invite)}
+                  className="w-full text-left rounded-lg border border-[rgba(255,255,255,0.08)] px-3 py-2.5 transition-colors hover:border-[rgba(255,255,255,0.18)] outline-none focus:outline-none active:border-[rgba(255,255,255,0.08)] active:bg-transparent"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-white truncate">
+                        {invite.full_name}
+                      </p>
+                      <p className="text-xs text-tm-text-color08 truncate">
+                        TG {invite.telegram_id}
+                        {invite.email ? ` · ${invite.email}` : ""}
+                      </p>
+                      <p className="text-xs text-[#555]">
+                        {formatInviteDate(invite.created_at)}
+                      </p>
+                    </div>
+                    <span
+                      className={`shrink-0 inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${statusBadgeClass(invite.status)}`}
+                    >
+                      {statusBadgeLabel(invite.status)}
+                    </span>
+                  </div>
+                </button>
+            ))}
       </div>
 
       {/* Name + Telegram ID row */}
@@ -294,12 +1098,23 @@ export const LinkGenerator = ({
       {/* Generated link */}
       {generatedLink && (
         <div className="flex flex-col gap-4 border border-neutral-800 p-8 rounded-xl bg-tm-neutral-color08 min-w-0 w-full overflow-hidden">
-          <div className="flex flex-row w-full">
+          <div className="flex flex-row w-full items-center justify-between gap-3">
             <p className="text-xs font-bold uppercase text-tm-text-color08">
               Generated Link
             </p>
+            {inviteStatus && (
+              <span
+                className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${statusBadgeClass(inviteStatus)}`}
+              >
+                {statusBadgeLabel(inviteStatus)}
+              </span>
+            )}
           </div>
-          <div className="flex flex-col lg:grid-cols-[minmax(0,4fr)_minmax(0,1fr)] lg:grid gap-2 min-w-0 w-full">
+          <p className="text-xs text-[#555] leading-relaxed">
+            Copy the link to share manually, or send the personal invite email
+            (“An invite from …” + Accept my gift) to the address above.
+          </p>
+          <div className="flex flex-col gap-2 min-w-0 w-full">
             <div className="flex items-center gap-2 inputMJ p-4 w-full min-w-0 overflow-hidden">
               <svg
                 className="w-[14px] h-[14px] text-[#555] shrink-0"
@@ -318,34 +1133,57 @@ export const LinkGenerator = ({
                 {generatedLink}
               </p>
             </div>
-            <button
-              onClick={handleCopy}
-              aria-label={
-                copied ? "Copied generated link" : "Copy generated link"
-              }
-              className={`flex buttonSubtle buttonLg items-center justify-center px-10 flex-row-reverse transition-all [background:linear-gradient(250deg,#212121_8.83%,#383838_13.08%,#333_23.52%,#2E2E2E_35.88%,#141414_61.39%,#292929_89.22%)] hover:[background:linear-gradient(290deg,#212121_8.83%,#383838_13.08%,#333_23.52%,#2E2E2E_35.88%,#141414_61.39%,#292929_89.22%)] ${copied ? "text-tm-success-color05" : "text-white"}`}
-            >
-              <p className="text-sm font-medium">
-                {copied ? "Copied!" : "Copy"}
-              </p>
-
-              {copied ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={handleCopy}
+                aria-label={
+                  copied ? "Copied generated link" : "Copy generated link"
+                }
+                className={`flex buttonSubtle buttonLg items-center justify-center gap-2 px-6 transition-all [background:linear-gradient(250deg,#212121_8.83%,#383838_13.08%,#333_23.52%,#2E2E2E_35.88%,#141414_61.39%,#292929_89.22%)] hover:[background:linear-gradient(290deg,#212121_8.83%,#383838_13.08%,#333_23.52%,#2E2E2E_35.88%,#141414_61.39%,#292929_89.22%)] ${copied ? "text-tm-success-color05" : "text-white"}`}
+              >
+                {copied ? (
+                  <svg
+                    className="w-[16px] h-[16px]"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2.5}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                ) : (
+                  <svg
+                    className="w-[16px] h-[16px]"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                    />
+                  </svg>
+                )}
+                <span className="text-sm font-medium">
+                  {copied ? "Copied!" : "Copy link"}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleSendEmail()}
+                disabled={!canSendEmail}
+                aria-label="Send TeaseMe verification email"
+                className="flex buttonSubtle buttonLg items-center justify-center gap-2 px-6 border border-[rgba(255,15,95,0.35)] bg-[rgba(255,15,95,0.12)] text-white hover:bg-[rgba(255,15,95,0.2)] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
                 <svg
-                  className="w-[16px] h-[16px]"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2.5}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-              ) : (
-                <svg
-                  className="w-[16px] h-[16px]"
+                  className="w-[16px] h-[16px] shrink-0"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -354,12 +1192,20 @@ export const LinkGenerator = ({
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
                   />
                 </svg>
-              )}
-            </button>
+                <span className="text-sm font-medium">
+                  {sendEmailLoading ? "Sending…" : "Send email"}
+                </span>
+              </button>
+            </div>
           </div>
+          {sendEmailSuccess && (
+            <div className="flex items-start gap-2 border border-[rgba(34,197,94,0.35)] bg-[rgba(34,197,94,0.08)] text-tm-success-color05 text-xs px-4 py-3 rounded-sm">
+              <span>{sendEmailSuccess}</span>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -9,18 +9,37 @@ import { Response } from "express";
 import { validationResult } from "express-validator";
 import { nanoid } from "nanoid";
 import crypto from "node:crypto";
+import {
+  clearMjfpCredentialsCache,
+  getMjfpToken,
+} from "../lib/mjfp-credentials";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { emailService } from "../services/email.service";
 import { createPasswordResetToken } from "../services/password-reset.service";
-import { buildSetPasswordUrl } from "../utils/frontend-url";
 import { getPresignedUrl } from "../services/s3.service";
 import { syncUserFromTeaseMe } from "../services/teaseme.service";
-import { clearMjfpCredentialsCache, getMjfpToken } from "../lib/mjfp-credentials";
+import { buildSetPasswordUrl } from "../utils/frontend-url";
+import { createVipInviteRecord } from "./vip-invite.controller";
 
 const prisma = new PrismaClient();
 const PREREGISTER_URL =
   process.env.PREREGISTER_VIP_TEASEME_USER ||
   process.env.VITE_PREREGISTER_VIP_TEASEME_USER;
+
+const PROMO_CODES_URL = (process.env.TEASEME_PROMO_CODES_URL || "").replace(
+  /\/$/,
+  "",
+);
+
+const PROMO_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+const generatePromoCode = (length = 6): string => {
+  const bytes = crypto.randomBytes(length);
+  return Array.from(
+    bytes,
+    (b) => PROMO_CODE_CHARS[b % PROMO_CODE_CHARS.length],
+  ).join("");
+};
 
 const isAccountManagerOrAdmin = (req: AuthRequest): boolean => {
   if (!req.user) return false;
@@ -233,6 +252,170 @@ const callPreregisterUpstream = async (
   return { ok: true, body: parsed };
 };
 
+type PromoCodePayload = {
+  code: string;
+  email: string;
+  reward_credits: number;
+  influencer_id: string;
+  max_redemptions: number;
+  expires_at?: string;
+};
+
+type TeasemeUpstreamResult =
+  | { ok: true; body: Record<string, unknown> }
+  | { ok: false; status: number; error: string };
+
+const pickUpstreamError = (parsed: Record<string, unknown> | null): string => {
+  if (!parsed) return "";
+  for (const key of ["error", "message", "detail"] as const) {
+    const value = parsed[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "";
+};
+
+const callTeasemeJsonUpstream = async (
+  url: string,
+  payload: Record<string, unknown>,
+  token: string,
+  failureLabel: string,
+): Promise<TeasemeUpstreamResult> => {
+  let upstream: globalThis.Response;
+  try {
+    upstream = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Internal-Token": token,
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch (error) {
+    const status =
+      error instanceof Error && error.name === "TimeoutError" ? 504 : 502;
+    const message =
+      status === 504
+        ? `${failureLabel} timed out`
+        : `Could not reach ${failureLabel.toLowerCase()}`;
+    return { ok: false, status, error: message };
+  }
+
+  const raw = await upstream.json().catch(() => null);
+  const parsed =
+    raw && typeof raw === "object" ? (raw as Record<string, unknown>) : null;
+
+  if (!upstream.ok) {
+    if (upstream.status === 401) {
+      clearMjfpCredentialsCache();
+    }
+    const detail = pickUpstreamError(parsed);
+    return {
+      ok: false,
+      status: upstream.status,
+      error: detail || `${failureLabel} failed (HTTP ${upstream.status})`,
+    };
+  }
+
+  if (!parsed) {
+    return {
+      ok: false,
+      status: 502,
+      error: `Unexpected response from ${failureLabel.toLowerCase()}`,
+    };
+  }
+
+  return { ok: true, body: parsed };
+};
+
+// POST /api/chatters/promo-codes — create email-scoped promo code via TeaseMe proxy
+export const createPromoCode = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    if (req.user.userType !== UserType.CHATTER) {
+      return res
+        .status(403)
+        .json({ error: "Only chatters can create promo codes" });
+    }
+
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(422).json({
+        error: "Validation failed",
+        errors: errors.array(),
+      });
+    }
+
+    const mjfpToken = await getMjfpToken();
+    if (!PROMO_CODES_URL || !mjfpToken) {
+      return res
+        .status(503)
+        .json({ error: "Promo code service is not configured" });
+    }
+
+    const rawCode = req.body.code
+      ? String(req.body.code).trim().toUpperCase()
+      : "";
+    const code =
+      rawCode.length > 0 ? rawCode.slice(0, 64) : generatePromoCode();
+
+    const rewardCredits =
+      req.body.reward_credits != null ? Number(req.body.reward_credits) : 120;
+    if (!Number.isInteger(rewardCredits) || rewardCredits < 1) {
+      return res
+        .status(422)
+        .json({ error: "reward_credits must be a positive integer" });
+    }
+
+    const maxRedemptions =
+      req.body.max_redemptions != null ? Number(req.body.max_redemptions) : 1;
+    if (!Number.isInteger(maxRedemptions) || maxRedemptions < 1) {
+      return res
+        .status(422)
+        .json({ error: "max_redemptions must be a positive integer" });
+    }
+
+    const payload: PromoCodePayload = {
+      code,
+      email: String(req.body.email).trim(),
+      reward_credits: rewardCredits,
+      influencer_id: String(req.body.influencer_id).trim(),
+      max_redemptions: maxRedemptions,
+    };
+
+    const expiresAt = req.body.expires_at
+      ? String(req.body.expires_at).trim()
+      : "";
+    if (expiresAt) {
+      payload.expires_at = expiresAt;
+    }
+
+    const result = await callTeasemeJsonUpstream(
+      PROMO_CODES_URL,
+      payload,
+      mjfpToken,
+      "Promo code service",
+    );
+    if (!result.ok) {
+      return res.status(result.status).json({ error: result.error });
+    }
+
+    if (result.body.ok !== true || typeof result.body.code !== "string") {
+      return res.status(502).json({
+        error: "Unexpected response from promo code service",
+      });
+    }
+
+    return res.status(201).json(result.body);
+  } catch (error) {
+    console.error("Create promo code error:", error);
+    return res.status(500).json({ error: "Failed to create promo code" });
+  }
+};
+
 // POST /api/chatters/preregister-vip — preregister via backend proxy (authenticated)
 export const preregisterVipUser = async (req: AuthRequest, res: Response) => {
   try {
@@ -269,6 +452,21 @@ export const preregisterVipUser = async (req: AuthRequest, res: Response) => {
     }
 
     const rawEmail = req.body.email ? String(req.body.email).trim() : undefined;
+    const groupId = String(req.body.group_id ?? "").trim();
+    if (!groupId) {
+      return res.status(422).json({ error: "group_id is required" });
+    }
+
+    const membership = await prisma.chatterGroupMember.findUnique({
+      where: {
+        chatterId_groupId: { chatterId: req.user.id, groupId },
+      },
+    });
+    if (!membership) {
+      return res
+        .status(403)
+        .json({ error: "You are not a member of this group" });
+    }
 
     const payload: PreregisterPayload = {
       ...(rawEmail ? { email: rawEmail } : {}),
@@ -281,7 +479,40 @@ export const preregisterVipUser = async (req: AuthRequest, res: Response) => {
     if (!result.ok) {
       return res.status(result.status).json({ error: result.error });
     }
-    return res.json(result.body);
+
+    const upstreamUserId = result.body.user_id;
+    const teasemeUserId =
+      typeof upstreamUserId === "number"
+        ? upstreamUserId
+        : typeof upstreamUserId === "string" && /^\d+$/.test(upstreamUserId)
+          ? Number(upstreamUserId)
+          : null;
+    if (teasemeUserId === null || !Number.isInteger(teasemeUserId)) {
+      return res.status(502).json({
+        error: "Unexpected response from preregistration service (missing user_id)",
+      });
+    }
+
+    const invite = await createVipInviteRecord({
+      chatterId: req.user.id,
+      groupId,
+      teasemeUserId,
+      telegramId: telegramId,
+      ...(rawEmail ? { email: rawEmail } : {}),
+      fullName: payload.full_name,
+      influencerId: payload.influencer_id,
+      verificationUrl: String(result.body.verification_url),
+    });
+
+    return res.json({
+      invite_id: invite.id,
+      user_id: teasemeUserId,
+      verification_url: invite.verificationUrl,
+      status: invite.status,
+      ...(typeof result.body.expires_at === "string"
+        ? { expires_at: result.body.expires_at }
+        : {}),
+    });
   } catch (error) {
     console.error("Preregister VIP error:", error);
     return res.status(500).json({ error: "Failed to preregister user" });
@@ -566,7 +797,9 @@ export const updateChatter = async (req: AuthRequest, res: Response) => {
 
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ error: "Validation failed", errors: errors.array() });
+      return res
+        .status(400)
+        .json({ error: "Validation failed", errors: errors.array() });
     }
 
     const { id } = req.params;
@@ -582,14 +815,19 @@ export const updateChatter = async (req: AuthRequest, res: Response) => {
     }
 
     const data: Record<string, unknown> = {};
-    if (typeof firstName === "string") data.firstName = firstName.trim() || null;
+    if (typeof firstName === "string")
+      data.firstName = firstName.trim() || null;
     if (typeof lastName === "string") data.lastName = lastName.trim() || null;
     if (typeof email === "string") {
       const trimmed = email.trim().toLowerCase();
       if (trimmed !== existing.email) {
-        const conflict = await prisma.user.findUnique({ where: { email: trimmed } });
+        const conflict = await prisma.user.findUnique({
+          where: { email: trimmed },
+        });
         if (conflict) {
-          return res.status(400).json({ error: "A user with that email already exists" });
+          return res
+            .status(400)
+            .json({ error: "A user with that email already exists" });
         }
         data.email = trimmed;
       }
@@ -608,7 +846,13 @@ export const updateChatter = async (req: AuthRequest, res: Response) => {
         createdBy: { select: createdBySelect },
         chatterGroupMemberships: {
           select: {
-            group: { select: { id: true, name: true, createdBy: { select: createdBySelect } } },
+            group: {
+              select: {
+                id: true,
+                name: true,
+                createdBy: { select: createdBySelect },
+              },
+            },
           },
         },
       },
@@ -647,7 +891,8 @@ export const resendInviteEmail = async (req: AuthRequest, res: Response) => {
 
     if (chatter.isActive) {
       return res.status(400).json({
-        error: "Chatter has already activated their account. Use the password reset flow instead.",
+        error:
+          "Chatter has already activated their account. Use the password reset flow instead.",
       });
     }
 
@@ -657,7 +902,10 @@ export const resendInviteEmail = async (req: AuthRequest, res: Response) => {
       select: { firstName: true, lastName: true, email: true },
     });
     const invitedByName =
-      [callerRecord?.firstName, callerRecord?.lastName].filter(Boolean).join(" ").trim() ||
+      [callerRecord?.firstName, callerRecord?.lastName]
+        .filter(Boolean)
+        .join(" ")
+        .trim() ||
       callerRecord?.email ||
       req.user!.email;
 
