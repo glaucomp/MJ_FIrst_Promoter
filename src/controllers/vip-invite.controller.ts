@@ -252,7 +252,6 @@ export const createVipInviteRecord = async (params: {
       fullName: params.fullName,
       influencerId: params.influencerId,
       verificationUrl: params.verificationUrl,
-      status: VipInviteStatus.pending,
       lastEvent: "link_generated",
       lastEventAt: new Date(),
     },
