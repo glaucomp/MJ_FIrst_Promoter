@@ -217,3 +217,44 @@ export const serializeVipInviteStatus = (invite: VipInvite) => ({
   verification_url: invite.verificationUrl,
   teaseme_user_id: invite.teasemeUserId,
 });
+
+export const createVipInviteRecord = async (params: {
+  chatterId: string;
+  groupId: string;
+  teasemeUserId: number;
+  telegramId: number;
+  email?: string;
+  fullName: string;
+  influencerId: string;
+  verificationUrl: string;
+}) => {
+  const data = {
+    chatterId: params.chatterId,
+    groupId: params.groupId,
+    teasemeUserId: params.teasemeUserId,
+    telegramId: BigInt(params.telegramId),
+    email: params.email ?? null,
+    fullName: params.fullName,
+    influencerId: params.influencerId,
+    verificationUrl: params.verificationUrl,
+    status: VipInviteStatus.pending,
+    lastEvent: "link_generated",
+    lastEventAt: new Date(),
+  };
+
+  return prisma.vipInvite.upsert({
+    where: { teasemeUserId: params.teasemeUserId },
+    create: data,
+    update: {
+      chatterId: params.chatterId,
+      groupId: params.groupId,
+      telegramId: BigInt(params.telegramId),
+      email: params.email ?? null,
+      fullName: params.fullName,
+      influencerId: params.influencerId,
+      verificationUrl: params.verificationUrl,
+      lastEvent: "link_generated",
+      lastEventAt: new Date(),
+    },
+  });
+};

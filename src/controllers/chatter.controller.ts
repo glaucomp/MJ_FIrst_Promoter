@@ -19,7 +19,7 @@ import { createPasswordResetToken } from "../services/password-reset.service";
 import { getPresignedUrl } from "../services/s3.service";
 import { syncUserFromTeaseMe } from "../services/teaseme.service";
 import { buildSetPasswordUrl } from "../utils/frontend-url";
-import { createVipInviteRecord } from "./vip-invite.controller";
+import { createVipInviteRecord } from "../services/vip-invite.service";
 
 const prisma = new PrismaClient();
 const PREREGISTER_URL =

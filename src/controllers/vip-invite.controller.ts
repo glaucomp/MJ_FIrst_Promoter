@@ -3,7 +3,6 @@ import {
   Prisma,
   PrismaClient,
   UserType,
-  VipInviteStatus,
 } from "@prisma/client";
 import { Request, Response } from "express";
 import { validationResult } from "express-validator";
@@ -212,45 +211,4 @@ export const listVipInvites = async (req: AuthRequest, res: Response) => {
     console.error("List VIP invites error:", error);
     return res.status(500).json({ error: "Failed to list invites" });
   }
-};
-
-export const createVipInviteRecord = async (params: {
-  chatterId: string;
-  groupId: string;
-  teasemeUserId: number;
-  telegramId: number;
-  email?: string;
-  fullName: string;
-  influencerId: string;
-  verificationUrl: string;
-}) => {
-  const data = {
-    chatterId: params.chatterId,
-    groupId: params.groupId,
-    teasemeUserId: params.teasemeUserId,
-    telegramId: BigInt(params.telegramId),
-    email: params.email ?? null,
-    fullName: params.fullName,
-    influencerId: params.influencerId,
-    verificationUrl: params.verificationUrl,
-    status: VipInviteStatus.pending,
-    lastEvent: "link_generated",
-    lastEventAt: new Date(),
-  };
-
-  return prisma.vipInvite.upsert({
-    where: { teasemeUserId: params.teasemeUserId },
-    create: data,
-    update: {
-      chatterId: params.chatterId,
-      groupId: params.groupId,
-      telegramId: BigInt(params.telegramId),
-      email: params.email ?? null,
-      fullName: params.fullName,
-      influencerId: params.influencerId,
-      verificationUrl: params.verificationUrl,
-      lastEvent: "link_generated",
-      lastEventAt: new Date(),
-    },
-  });
 };
