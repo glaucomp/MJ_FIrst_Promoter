@@ -840,14 +840,8 @@ export const LinkGenerator = ({
   const handleSendEmail = async () => {
     if (sendEmailLoading || !inviteId) return;
 
-    const trimmedEmail = email.trim();
-    if (!trimmedEmail) {
-      setErrorMessage(
-        "Add an email address above to send the TeaseMe verification email.",
-      );
-      setSendEmailSuccess(null);
-      return;
-    }
+    // Note: /vip-invites/:inviteId/send-email uses the email stored on the invite record (server-side).
+    // Don’t block on the current input value here; let the server return 422 when the invite has no email on file.
 
     setErrorMessage(null);
     setSendEmailSuccess(null);
