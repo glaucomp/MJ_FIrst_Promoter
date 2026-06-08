@@ -13,17 +13,17 @@ import {
   type AdminStructurePromoterUser,
 } from '../services/api';
 
-/** Muted status dots — no bright greens/yellows on this page. */
-const STATUS_DOT: Record<string, string> = {
-  ACTIVE: 'bg-white/50',
-  PENDING: 'bg-white/30',
-  COMPLETED: 'bg-white/25',
-  CANCELLED: 'bg-white/20',
+const STATUS_COLOR: Record<string, string> = {
+  ACTIVE: '#4ade80',
+  PENDING: '#facc15',
+  COMPLETED: '#a5b4fc',
+  CANCELLED: '#f87171',
 };
 
-/** Shared pill style for tier, role, and commission tags. */
-const MUTED_PILL =
-  'text-[10px] px-1.5 py-0.5 rounded-md font-medium border border-white/10 bg-white/[0.04] text-tm-text-color08';
+const avatarColors = [
+  '#ff0f5f', '#f59e0b', '#10b981', '#3b82f6',
+  '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16',
+];
 
 const resolveName = (
   user?: {
@@ -121,8 +121,10 @@ const buildNetworkTree = (manager: AdminStructureManager): NetworkTreeNode[] => 
 
 const TierBadge = ({ tier }: { tier: number }) => (
   <span
-    className={`${MUTED_PILL} ${
-      tier <= 1 ? 'text-tm-text-color08' : 'text-tm-text-color09'
+    className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold border ${
+      tier <= 1
+        ? 'bg-sky-500/15 border-sky-400/30 text-sky-200'
+        : 'bg-amber-500/15 border-amber-400/30 text-amber-200'
     }`}
   >
     {tier <= 1 ? 'T1' : 'T2'}
@@ -132,22 +134,26 @@ const TierBadge = ({ tier }: { tier: number }) => (
 const PercentBadge = ({
   label,
   value,
-  emphasis = false,
+  accent = false,
+  chatter = false,
   title,
 }: {
   label: string;
   value: number | null | undefined;
-  emphasis?: boolean;
+  accent?: boolean;
+  chatter?: boolean;
   title?: string;
 }) => {
   if (value == null) return null;
   return (
     <span
-      className={`text-xs px-2 py-0.5 rounded-full border ${
-        emphasis
-          ? 'border-white/15 bg-white/[0.08] text-white'
-          : 'border-white/8 bg-white/[0.03] text-tm-text-color09'
-      }`}
+      className={
+        chatter
+          ? 'text-xs px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-300'
+          : accent
+            ? 'text-xs px-2 py-0.5 rounded-full bg-tm-primary-color06 text-[var(--color-accent-bright)]'
+            : 'text-xs px-2 py-0.5 rounded-full bg-tm-neutral-color05 text-tm-text-color09'
+      }
       title={title ?? label}
     >
       {label}: {value}%
@@ -171,18 +177,19 @@ const ChatterBadges = ({
       <PercentBadge
         label="Chatter"
         value={group.commissionPercentage}
+        chatter
         title={`${group.name} — ${group.commissionPercentage}% of sale split among chatters`}
       />
       {group.memberCount > 0 && perMember != null && (
         <span
-          className="text-xs px-2 py-0.5 rounded-full border border-white/8 bg-white/[0.03] text-tm-text-color10"
+          className="text-xs px-2 py-0.5 rounded-full bg-tm-neutral-color05 text-tm-text-color09"
           title={`${group.memberCount} chatter${group.memberCount !== 1 ? 's' : ''} in ${group.name}`}
         >
           {group.memberCount} chatter{group.memberCount !== 1 ? 's' : ''} · ~{perMember}% each
         </span>
       )}
       {group.memberCount === 0 && (
-        <span className="text-xs px-2 py-0.5 rounded-full border border-white/8 bg-white/[0.03] text-tm-text-color10">
+        <span className="text-xs px-2 py-0.5 rounded-full bg-tm-neutral-color05 text-tm-text-color09">
           {group.name} · no chatters yet
         </span>
       )}
@@ -194,7 +201,7 @@ const SimulateButton = ({ onClick }: { onClick: () => void }) => (
   <button
     type="button"
     onClick={onClick}
-    className="text-[11px] px-2.5 py-1 rounded-lg border border-white/12 bg-white/[0.04] text-tm-text-color08 hover:text-white hover:bg-white/[0.08] hover:border-white/20 font-medium whitespace-nowrap transition-colors"
+    className="text-[11px] px-2.5 py-1 rounded-lg border border-tm-primary-color06/60 bg-tm-primary-color06/15 text-[var(--color-accent-bright)] hover:bg-tm-primary-color06/30 font-semibold whitespace-nowrap transition-colors"
   >
     Simulate
   </button>
@@ -204,7 +211,7 @@ const TreeRow = ({
   name,
   subLabel,
   invitedByLabel,
-  statusDotClass,
+  statusColor,
   badges,
   headerBadges,
   isChild = false,
@@ -215,7 +222,7 @@ const TreeRow = ({
   name: string;
   subLabel: string;
   invitedByLabel?: string;
-  statusDotClass?: string;
+  statusColor?: string;
   badges: ReactNode;
   headerBadges?: ReactNode;
   isChild?: boolean;
@@ -227,7 +234,7 @@ const TreeRow = ({
     {isChild && (
       <>
         <div
-          className="bg-white/10"
+          className="bg-tm-primary-color05/30"
           style={{
             position: 'absolute',
             left: 16,
@@ -238,7 +245,7 @@ const TreeRow = ({
           }}
         />
         <div
-          className="bg-white/10"
+          className="bg-tm-primary-color05/50"
           style={{
             position: 'absolute',
             left: 16,
@@ -251,16 +258,31 @@ const TreeRow = ({
     )}
 
     <div
-      className={`flex flex-1 items-start gap-2.5 ${
-        isChild
-          ? 'py-2 pl-3 pr-4 ml-9 my-px rounded-md bg-white/[0.02]'
-          : 'py-2.5 px-4'
-      }`}
+      style={{
+        flex: 1,
+        marginLeft: isChild ? 36 : 0,
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 10,
+        padding: isChild ? '8px 16px 8px 12px' : '10px 16px',
+        borderRadius: isChild ? 6 : undefined,
+        margin: isChild ? '1px 8px 1px 36px' : undefined,
+      }}
     >
       <div
-        className={`rounded-full shrink-0 flex items-center justify-center font-semibold border border-white/10 bg-white/[0.06] text-tm-text-color08 ${
-          isChild ? 'w-[22px] h-[22px] text-[8px]' : 'w-7 h-7 text-[10px]'
-        }`}
+        style={{
+          width: isChild ? 22 : 28,
+          height: isChild ? 22 : 28,
+          borderRadius: '50%',
+          flexShrink: 0,
+          background: avatarColors[name.length % avatarColors.length],
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: isChild ? 8 : 10,
+          fontWeight: 700,
+          color: '#fff',
+        }}
       >
         {avatarInitials(name)}
       </div>
@@ -281,14 +303,20 @@ const TreeRow = ({
           {headerBadges}
         </div>
         {invitedByLabel && (
-          <p className="text-[11px] text-tm-text-color10 mt-0.5 truncate">
+          <p className="text-[11px] text-tm-primary-color04 mt-0.5 truncate">
             Invited by {invitedByLabel}
           </p>
         )}
-        <div className="flex items-center gap-1.5 mt-0.5">
-          {statusDotClass && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2 }}>
+          {statusColor && (
             <span
-              className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusDotClass}`}
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: statusColor,
+                flexShrink: 0,
+              }}
             />
           )}
           <span className="text-sm text-tm-text-color08 truncate">{subLabel}</span>
@@ -326,7 +354,7 @@ const NetworkNodeEntry = ({
   const name = resolveName(user);
   const campaign = referral?.campaign ?? user.referralCampaign ?? parentCampaign;
   const status = referral?.status ?? user.referralStatus ?? 'ACTIVE';
-  const statusDotClass = STATUS_DOT[status] ?? STATUS_DOT.ACTIVE;
+  const statusColor = STATUS_COLOR[status] ?? '#4ade80';
   const tier = user.tier ?? (isChild ? 2 : 1);
   const inviterName = user.invitedBy
     ? personName(user.invitedBy)
@@ -345,15 +373,11 @@ const NetworkNodeEntry = ({
         name={name}
         subLabel={subLabel}
         invitedByLabel={inviterName}
-        statusDotClass={statusDotClass}
+        statusColor={statusColor}
         headerBadges={
           <>
             <TierBadge tier={tier} />
-            <UserTypeBadge
-              userType={user.userType}
-              size="sm"
-              className="!bg-transparent !border-white/10 !text-tm-text-color09 !font-medium"
-            />
+            <UserTypeBadge userType={user.userType} size="sm" />
           </>
         }
         badges={
@@ -361,7 +385,7 @@ const NetworkNodeEntry = ({
             <PercentBadge
               label="Primary"
               value={campaign?.commissionRate}
-              emphasis
+              accent
             />
             {campaign?.secondaryRate != null && campaign.secondaryRate > 0 && (
               <PercentBadge
@@ -386,16 +410,30 @@ const NetworkNodeEntry = ({
         expandButton={
           children.length > 0 ? (
             <button
-              type="button"
               onClick={() => setOpen((o) => !o)}
               aria-label={open ? 'Collapse' : 'Expand'}
-              className={`w-5 h-5 rounded flex items-center justify-center shrink-0 ml-1 border border-white/10 bg-white/[0.04] transition-colors ${
-                open ? 'text-tm-text-color08' : 'text-tm-text-color10'
-              }`}
+              style={{
+                width: 20,
+                height: 20,
+                borderRadius: 4,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: '#141416',
+                color: open ? 'var(--color-accent-bright)' : 'var(--color-text-muted)',
+                border: 'none',
+                cursor: 'pointer',
+                flexShrink: 0,
+                marginLeft: 4,
+              }}
             >
               <span
-                className="text-[10px] block transition-transform duration-150"
-                style={{ transform: open ? 'rotate(90deg)' : undefined }}
+                style={{
+                  fontSize: 10,
+                  display: 'block',
+                  transform: open ? 'rotate(90deg)' : undefined,
+                  transition: 'transform 0.15s',
+                }}
               >
                 ▶
               </span>
@@ -409,7 +447,15 @@ const NetworkNodeEntry = ({
       {open && children.length > 0 && (
         <div style={{ position: 'relative' }}>
           <div
-            className="bg-white/10 absolute left-4 top-0 bottom-0 w-px pointer-events-none"
+            className="bg-tm-primary-color05/30"
+            style={{
+              position: 'absolute',
+              left: 16,
+              top: 0,
+              bottom: 0,
+              width: 1,
+              pointerEvents: 'none',
+            }}
           />
           {children.map((child, idx) => (
             <NetworkNodeEntry
@@ -447,8 +493,8 @@ const NetworkTree = ({
       <p className="text-[11px] text-tm-text-color10 -mt-1">
         T1 — invited by the account manager · T2 — invited by a promoter below
       </p>
-      <div className="rounded-xl border border-white/8 bg-tm-text-color01/20 overflow-hidden">
-        <div className="px-3 py-2.5 border-b border-white/6 bg-white/[0.02]">
+      <div className="rounded-xl border border-[rgba(255,255,255,0.07)] overflow-hidden">
+        <div className="px-3 py-2.5 border-b border-[rgba(255,255,255,0.06)]">
           <p className="text-sm font-medium text-white">
             {resolveName(manager)}
           </p>
@@ -483,16 +529,19 @@ const ManagerSection = ({
   const name = resolveName(manager);
 
   return (
-    <div className="rounded-lg bg-tm-neutral-color05 overflow-hidden">
+    <div className="rounded-lg border border-[rgba(255,255,255,0.07)] bg-[#141416] overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
         className="w-full flex items-center gap-3 px-4 py-4 hover:bg-white/[0.02] transition-colors text-left"
       >
         <span
-          className={`text-[10px] text-tm-text-color09 shrink-0 transition-transform duration-150 ${
-            open ? 'rotate-90' : ''
-          }`}
+          style={{
+            fontSize: 10,
+            color: 'var(--color-accent-bright)',
+            transform: open ? 'rotate(90deg)' : undefined,
+            transition: 'transform 0.15s',
+          }}
         >
           ▶
         </span>
@@ -502,7 +551,7 @@ const ManagerSection = ({
         </div>
         <div className="flex flex-wrap gap-1.5 justify-end">
           {manager.amPercent != null && (
-            <PercentBadge label="AM" value={manager.amPercent} />
+            <PercentBadge label="AM" value={manager.amPercent} accent />
           )}
           {manager.publicCampaign && (
             <>
@@ -529,7 +578,7 @@ const ManagerSection = ({
       {open && (
         <div className="border-t border-white/5 px-4 pb-4 pt-3 flex flex-col gap-3">
           {manager.publicCampaign ? (
-            <div className="rounded-md bg-tm-text-color01/40 px-3 py-2 text-sm text-tm-text-color08">
+            <div className="rounded-md border border-[rgba(255,255,255,0.06)] px-3 py-2 text-sm text-tm-text-color08">
               Campaign:{' '}
               <span className="text-white">{manager.publicCampaign.name}</span>
               {!manager.publicCampaign.isActive && (
@@ -610,7 +659,7 @@ export const AdminStructure = () => {
             { label: 'T1 Promoters', value: totals.t1 },
             { label: 'T2 Referrals', value: totals.t2 },
           ].map(({ label, value }) => (
-            <div key={label} className="rounded-lg px-4 py-4 bg-tm-neutral-color05">
+            <div key={label} className="rounded-lg px-4 py-4 border border-[rgba(255,255,255,0.07)] bg-[#141416]">
               <p className="text-sm text-tm-text-color10 mb-1">{label}</p>
               <p className="text-white text-xl font-medium">{value}</p>
             </div>
@@ -623,7 +672,7 @@ export const AdminStructure = () => {
         placeholder="Search by name, email, or campaign…"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        className="w-full max-w-md bg-tm-text-color01/60 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-tm-text-color09 focus:outline-none focus:border-tm-primary-color04"
+        className="w-full max-w-md bg-[#141416] border border-[rgba(255,255,255,0.08)] rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-tm-text-color09 focus:outline-none focus:border-tm-primary-color04"
       />
 
       {loading && (
@@ -631,7 +680,7 @@ export const AdminStructure = () => {
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="h-16 rounded-lg bg-tm-text-color01/50 animate-pulse"
+              className="h-16 rounded-lg border border-[rgba(255,255,255,0.06)] bg-[#141416] animate-pulse"
             />
           ))}
         </div>
