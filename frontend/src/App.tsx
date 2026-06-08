@@ -13,6 +13,9 @@ const Campaigns = lazy(() => import('./pages/Campaigns').then((m) => ({ default:
 const Payouts = lazy(() => import('./pages/Payouts').then((m) => ({ default: m.Payouts })));
 const ChatterGroups = lazy(() => import('./pages/ChatterGroups').then((m) => ({ default: m.ChatterGroups })));
 const Network = lazy(() => import('./pages/Network').then((m) => ({ default: m.Network })));
+const AdminStructure = lazy(() =>
+  import('./pages/AdminStructure').then((m) => ({ default: m.AdminStructure })),
+);
 const ChatterDashboard = lazy(() =>
   import('./pages/ChatterDashboard').then((m) => ({ default: m.ChatterDashboard })),
 );
@@ -169,6 +172,16 @@ function AppRoutes() {
           <ProtectedRoute allowedRoles={['admin']}>
             <DashboardLayout>
               <Campaigns />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/structure"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <DashboardLayout>
+              <AdminStructure />
             </DashboardLayout>
           </ProtectedRoute>
         }

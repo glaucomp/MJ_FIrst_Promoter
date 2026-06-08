@@ -1,6 +1,7 @@
 import { PrismaClient, UserRole, UserType } from "@prisma/client";
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
+import { simulateCommissionForSeller } from "../services/commission-simulator.service";
 
 const prisma = new PrismaClient();
 
@@ -135,5 +136,63 @@ export const updateCommissionStatus = async (
   } catch (error) {
     console.error("Update commission status error:", error);
     res.status(500).json({ error: "Failed to update commission status" });
+  }
+};
+
+/** Admin-only: preview commission splits for a hypothetical sale. */
+export const simulateCommission = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user!;
+    if (user.role !== UserRole.ADMIN) {
+      return res.status(403).json({ error: "Insufficient permissions" });
+    }
+
+    const { sellerUserId, saleAmount, campaignId, referralId } = req.body as {
+      sellerUserId?: string;
+      saleAmount?: number;
+      campaignId?: string;
+      referralId?: string;
+    };
+
+    if (!sellerUserId && !referralId) {
+      return res
+        .status(400)
+        .json({ error: "sellerUserId or referralId is required" });
+    }
+
+    const amount = Number(saleAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return res.status(400).json({ error: "saleAmount must be a positive number" });
+    }
+
+    let resolvedSellerId = sellerUserId;
+    if (!resolvedSellerId && referralId) {
+      const row = await prisma.referral.findUnique({
+        where: { id: referralId },
+        select: { referredUserId: true, referrerId: true },
+      });
+      resolvedSellerId = row?.referredUserId ?? row?.referrerId ?? undefined;
+    }
+
+    if (!resolvedSellerId) {
+      return res.status(400).json({ error: "Could not resolve seller for this referral" });
+    }
+
+    const simulation = await simulateCommissionForSeller({
+      sellerUserId: resolvedSellerId,
+      saleAmount: amount,
+      campaignId,
+      referralId,
+    });
+
+    res.json({ simulation });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to simulate commission";
+    if (message.includes("No active referral")) {
+      return res.status(404).json({ error: message });
+    }
+    console.error("Simulate commission error:", error);
+    res.status(500).json({ error: message });
   }
 };
