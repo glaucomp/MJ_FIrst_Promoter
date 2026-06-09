@@ -1,62 +1,80 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
 const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000);
 
 async function main() {
-  console.log('🌱 Seeding transactions and commissions...');
+  console.log("🌱 Seeding transactions and commissions...");
 
   // Load existing referrals
   const jor2sofia = await prisma.referral.findFirst({
-    where: { inviteCode: 'JOR2SOFIA001' },
+    where: { inviteCode: "JOR2SOFIA001" },
     include: { campaign: true, parentReferral: true },
   });
   const sof2kelly = await prisma.referral.findFirst({
-    where: { inviteCode: 'SOF2KELLY001' },
-    include: { campaign: true, parentReferral: { include: { referrer: true } } },
+    where: { inviteCode: "SOF2KELLY001" },
+    include: {
+      campaign: true,
+      parentReferral: { include: { referrer: true } },
+    },
   });
 
-  if (!jor2sofia) throw new Error('Referral JOR2SOFIA001 not found — run npm run seed first');
-  if (!sof2kelly) throw new Error('Referral SOF2KELLY001 not found — run npm run seed first');
+  if (!jor2sofia)
+    throw new Error("Referral JOR2SOFIA001 not found — run npm run seed first");
+  if (!sof2kelly)
+    throw new Error("Referral SOF2KELLY001 not found — run npm run seed first");
 
-  const kellyUser  = await prisma.user.findUnique({ where: { email: 'kelly@example.com' } });
-  const sofiaUser  = await prisma.user.findUnique({ where: { email: 'sofia@example.com' } });
-  const jorlynUser = await prisma.user.findUnique({ where: { email: 'jorlyn@example.com' } });
-  const nandoUser  = await prisma.user.findUnique({ where: { email: 'nando@example.com' } });
+  const kellyUser = await prisma.user.findUnique({
+    where: { email: "kelly@example.com" },
+  });
+  const sofiaUser = await prisma.user.findUnique({
+    where: { email: "sofia@example.com" },
+  });
+  const jorlynUser = await prisma.user.findUnique({
+    where: { email: "jorlyn@example.com" },
+  });
+  const nandoUser = await prisma.user.findUnique({
+    where: { email: "nando@example.com" },
+  });
 
   if (!kellyUser || !sofiaUser || !jorlynUser) {
-    throw new Error('One or more users not found — run npm run seed first');
+    throw new Error("One or more users not found — run npm run seed first");
   }
 
   const kellyGroup = await prisma.chatterGroup.findFirst({
-    where: { promoter: { email: 'kelly@example.com' } },
+    where: { promoter: { email: "kelly@example.com" } },
     include: { members: true },
   });
 
   // ── Sofia's Sales (Sofia 30%, Jorlyn 10%) ──────────────────────────────────
 
   const sofiaSales = [
-    { amount: 49, eventId: 'seed_sof_001', daysBack: 45, status: 'paid' },
-    { amount: 99, eventId: 'seed_sof_002', daysBack: 30, status: 'paid' },
-    { amount: 29, eventId: 'seed_sof_003', daysBack: 18, status: 'paid' },
-    { amount: 49, eventId: 'seed_sof_004', daysBack: 7,  status: 'unpaid' },
+    { amount: 49, eventId: "seed_sof_001", daysBack: 45, status: "paid" },
+    { amount: 99, eventId: "seed_sof_002", daysBack: 30, status: "paid" },
+    { amount: 29, eventId: "seed_sof_003", daysBack: 18, status: "paid" },
+    { amount: 49, eventId: "seed_sof_004", daysBack: 7, status: "unpaid" },
   ];
 
   for (const sale of sofiaSales) {
     // Skip if already seeded
-    const existing = await prisma.transaction.findFirst({ where: { eventId: sale.eventId } });
-    if (existing) { console.log(`⏭️  Skipping ${sale.eventId} (already exists)`); continue; }
+    const existing = await prisma.transaction.findFirst({
+      where: { eventId: sale.eventId },
+    });
+    if (existing) {
+      console.log(`⏭️  Skipping ${sale.eventId} (already exists)`);
+      continue;
+    }
 
     const createdAt = daysAgo(sale.daysBack);
 
     const customer = await prisma.customer.create({
       data: {
         email: `customer_sof_${sale.eventId}@example.com`,
-        name: 'Sofia Customer',
+        name: "Sofia Customer",
         revenue: sale.amount,
-        status: 'active',
-        subscriptionType: 'premium',
+        status: "active",
+        subscriptionType: "premium",
         campaignId: jor2sofia.campaignId,
         referralId: jor2sofia.id,
         metadata: sale.eventId,
@@ -66,9 +84,9 @@ async function main() {
     const transaction = await prisma.transaction.create({
       data: {
         eventId: sale.eventId,
-        type: 'sale',
+        type: "sale",
         saleAmount: sale.amount,
-        status: 'completed',
+        status: "completed",
         customerId: customer.id,
         campaignId: jor2sofia.campaignId,
         referralId: jor2sofia.id,
@@ -83,7 +101,7 @@ async function main() {
         percentage: 30,
         saleAmount: sale.amount,
         status: sale.status,
-        type: 'promoter',
+        type: "promoter",
         description: `Direct sale ($${sale.amount})`,
         userId: sofiaUser.id,
         campaignId: jor2sofia.campaignId,
@@ -101,7 +119,7 @@ async function main() {
         percentage: 10,
         saleAmount: sale.amount,
         status: sale.status,
-        type: 'promoter',
+        type: "promoter",
         description: `T2 from Sofia's sale ($${sale.amount})`,
         userId: jorlynUser.id,
         campaignId: jor2sofia.campaignId,
@@ -112,31 +130,38 @@ async function main() {
       },
     });
 
-    console.log(`✅ Sofia sale $${sale.amount} → Sofia $${(sale.amount * 30) / 100}, Jorlyn $${(sale.amount * 10) / 100}`);
+    console.log(
+      `✅ Sofia sale $${sale.amount} → Sofia $${(sale.amount * 30) / 100}, Jorlyn $${(sale.amount * 10) / 100}`,
+    );
   }
 
   // ── Kelly's Sales (Kelly 30%, Sofia 5%, Nando chatter %) ──────────────────
 
   const kellySales = [
-    { amount: 29, eventId: 'seed_kel_001', daysBack: 40, status: 'paid' },
-    { amount: 49, eventId: 'seed_kel_002', daysBack: 25, status: 'paid' },
-    { amount: 99, eventId: 'seed_kel_003', daysBack: 14, status: 'paid' },
-    { amount: 29, eventId: 'seed_kel_004', daysBack: 3,  status: 'unpaid' },
+    { amount: 29, eventId: "seed_kel_001", daysBack: 40, status: "paid" },
+    { amount: 49, eventId: "seed_kel_002", daysBack: 25, status: "paid" },
+    { amount: 99, eventId: "seed_kel_003", daysBack: 14, status: "paid" },
+    { amount: 29, eventId: "seed_kel_004", daysBack: 3, status: "unpaid" },
   ];
 
   for (const sale of kellySales) {
-    const existing = await prisma.transaction.findFirst({ where: { eventId: sale.eventId } });
-    if (existing) { console.log(`⏭️  Skipping ${sale.eventId} (already exists)`); continue; }
+    const existing = await prisma.transaction.findFirst({
+      where: { eventId: sale.eventId },
+    });
+    if (existing) {
+      console.log(`⏭️  Skipping ${sale.eventId} (already exists)`);
+      continue;
+    }
 
     const createdAt = daysAgo(sale.daysBack);
 
     const customer = await prisma.customer.create({
       data: {
         email: `customer_kel_${sale.eventId}@example.com`,
-        name: 'Kelly Customer',
+        name: "Kelly Customer",
         revenue: sale.amount,
-        status: 'active',
-        subscriptionType: 'premium',
+        status: "active",
+        subscriptionType: "premium",
         campaignId: sof2kelly.campaignId,
         referralId: sof2kelly.id,
         metadata: sale.eventId,
@@ -146,9 +171,9 @@ async function main() {
     const transaction = await prisma.transaction.create({
       data: {
         eventId: sale.eventId,
-        type: 'sale',
+        type: "sale",
         saleAmount: sale.amount,
-        status: 'completed',
+        status: "completed",
         customerId: customer.id,
         campaignId: sof2kelly.campaignId,
         referralId: sof2kelly.id,
@@ -163,7 +188,7 @@ async function main() {
         percentage: 30,
         saleAmount: sale.amount,
         status: sale.status,
-        type: 'promoter',
+        type: "promoter",
         description: `Direct sale ($${sale.amount})`,
         userId: kellyUser.id,
         campaignId: sof2kelly.campaignId,
@@ -181,7 +206,7 @@ async function main() {
         percentage: 5,
         saleAmount: sale.amount,
         status: sale.status,
-        type: 'promoter',
+        type: "promoter",
         description: `T2 from Kelly's sale ($${sale.amount})`,
         userId: sofiaUser.id,
         campaignId: sof2kelly.campaignId,
@@ -195,7 +220,8 @@ async function main() {
     // Chatter group members earn chatter commission
     if (kellyGroup && kellyGroup.members.length > 0) {
       const memberCount = kellyGroup.members.length;
-      const perChatter = (sale.amount * kellyGroup.commissionPercentage) / 100 / memberCount;
+      const perChatter =
+        (sale.amount * kellyGroup.commissionPercentage) / 100 / memberCount;
 
       for (const member of kellyGroup.members) {
         await prisma.commission.create({
@@ -204,7 +230,7 @@ async function main() {
             percentage: kellyGroup.commissionPercentage / memberCount,
             saleAmount: sale.amount,
             status: sale.status,
-            type: 'chatter',
+            type: "chatter",
             description: `Chatter commission from Kelly's sale ($${sale.amount})`,
             userId: member.chatterId,
             campaignId: sof2kelly.campaignId,
@@ -216,20 +242,24 @@ async function main() {
         });
       }
 
-      console.log(`✅ Kelly sale $${sale.amount} → Kelly $${(sale.amount * 30) / 100}, Sofia $${(sale.amount * 5) / 100}, ${memberCount} chatter${memberCount === 1 ? '' : 's'} $${perChatter.toFixed(2)} each`);
+      console.log(
+        `✅ Kelly sale $${sale.amount} → Kelly $${(sale.amount * 30) / 100}, Sofia $${(sale.amount * 5) / 100}, ${memberCount} chatter${memberCount === 1 ? "" : "s"} $${perChatter.toFixed(2)} each`,
+      );
     } else {
-      console.log(`✅ Kelly sale $${sale.amount} → Kelly $${(sale.amount * 30) / 100}, Sofia $${(sale.amount * 5) / 100}`);
+      console.log(
+        `✅ Kelly sale $${sale.amount} → Kelly $${(sale.amount * 30) / 100}, Sofia $${(sale.amount * 5) / 100}`,
+      );
     }
   }
 
-  console.log('\n🎉 Transaction seed completed!');
-  console.log('   Sofia sales: 4 transactions ($49, $99, $29, $49)');
-  console.log('   Kelly sales: 4 transactions ($29, $49, $99, $29)');
+  console.log("\n🎉 Transaction seed completed!");
+  console.log("   Sofia sales: 4 transactions ($49, $99, $29, $49)");
+  console.log("   Kelly sales: 4 transactions ($29, $49, $99, $29)");
 }
 
 main()
-  .catch(e => {
-    console.error('❌ Error:', e);
+  .catch((e) => {
+    console.error("❌ Error:", e);
     process.exit(1);
   })
   .finally(() => prisma.$disconnect());
