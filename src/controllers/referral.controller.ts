@@ -15,6 +15,7 @@ import {
   supersedeDuplicateInviteeReferrals,
 } from "../services/referral-membership.service";
 import { getPresignedUrl } from "../services/s3.service";
+import { resolveAccountManagersFor } from "../services/ownership.service";
 import {
   approvePreInfluencer,
   denyPreInfluencer,
@@ -3145,5 +3146,422 @@ export const streamReferralStatus = async (req: AuthRequest, res: Response) => {
     } else {
       res.end();
     }
+  }
+};
+
+/** Admin-only overview of every account manager's referral tree + commission %. */
+export const getAdminNetworkStructure = async (
+  req: AuthRequest,
+  res: Response,
+) => {
+  try {
+    if (req.user?.role !== UserRole.ADMIN) {
+      return res.status(403).json({ error: "Insufficient permissions" });
+    }
+
+    const managers = await prisma.user.findMany({
+      where: { userType: UserType.ACCOUNT_MANAGER, isActive: true },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        referralsReceived: {
+          where: { status: "ACTIVE" },
+          select: {
+            campaign: {
+              select: {
+                id: true,
+                name: true,
+                isActive: true,
+                visibleToPromoters: true,
+                commissionRate: true,
+                secondaryRate: true,
+                linkedCampaign: {
+                  select: {
+                    id: true,
+                    name: true,
+                    commissionRate: true,
+                    secondaryRate: true,
+                    isActive: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: [{ firstName: "asc" }, { lastName: "asc" }, { email: "asc" }],
+    });
+
+    if (managers.length === 0) {
+      return res.json({ managers: [] });
+    }
+
+    const amIds = managers.map((m) => m.id);
+
+    const scopeRows = await prisma.$queryRaw<Array<{ id: string; amId: string }>>(
+      Prisma.sql`
+        SELECT DISTINCT r.id, am.id AS "amId"
+        FROM referrals r
+        INNER JOIN users am
+          ON am."userType" = 'ACCOUNT_MANAGER'
+         AND am."isActive" = true
+         AND am.id IN (${Prisma.join(amIds)})
+        WHERE r."referrerId" = am.id
+           OR (
+             r.metadata IS NOT NULL
+             AND LOWER(TRIM(r.metadata::jsonb->>'accountManagerEmail'))
+               = LOWER(TRIM(am.email))
+           )
+      `,
+    );
+
+    const referralIdsByAm = new Map<string, Set<string>>();
+    for (const row of scopeRows) {
+      const set = referralIdsByAm.get(row.amId) ?? new Set<string>();
+      set.add(row.id);
+      referralIdsByAm.set(row.amId, set);
+    }
+
+    const allReferralIds = [...new Set(scopeRows.map((r) => r.id))];
+
+    const shapeInviter = (user: {
+      id: string;
+      email: string;
+      firstName: string | null;
+      lastName: string | null;
+      userType?: string | null;
+    } | null) =>
+      user
+        ? {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            userType: user.userType ?? null,
+          }
+        : null;
+
+    const referrals =
+      allReferralIds.length > 0
+        ? await prisma.referral.findMany({
+            where: { id: { in: allReferralIds } },
+            include: {
+              referrer: {
+                select: {
+                  id: true,
+                  email: true,
+                  firstName: true,
+                  lastName: true,
+                  userType: true,
+                },
+              },
+              campaign: {
+                select: {
+                  id: true,
+                  name: true,
+                  commissionRate: true,
+                  secondaryRate: true,
+                  visibleToPromoters: true,
+                },
+              },
+              referredUser: {
+                select: {
+                  id: true,
+                  email: true,
+                  firstName: true,
+                  lastName: true,
+                  username: true,
+                  userType: true,
+                  chatterGroup: {
+                    select: {
+                      id: true,
+                      name: true,
+                      commissionPercentage: true,
+                      _count: { select: { members: true } },
+                    },
+                  },
+                },
+              },
+              childReferrals: {
+                where: { status: { in: ["ACTIVE", "PENDING"] } },
+                select: {
+                  id: true,
+                  level: true,
+                  status: true,
+                  referredUser: {
+                    select: {
+                      id: true,
+                      email: true,
+                      firstName: true,
+                      lastName: true,
+                      username: true,
+                      userType: true,
+                      chatterGroup: {
+                        select: {
+                          id: true,
+                          name: true,
+                          commissionPercentage: true,
+                          _count: { select: { members: true } },
+                        },
+                      },
+                    },
+                  },
+                },
+                orderBy: { createdAt: "asc" },
+              },
+            },
+            orderBy: { createdAt: "asc" },
+          })
+        : [];
+
+    const referralById = new Map(referrals.map((r) => [r.id, r]));
+
+    const promoterRows = await prisma.user.findMany({
+      where: {
+        userType: { in: [UserType.PROMOTER, UserType.TEAM_MANAGER] },
+        isActive: true,
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        userType: true,
+        createdBy: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            userType: true,
+          },
+        },
+        chatterGroup: {
+          select: {
+            id: true,
+            name: true,
+            commissionPercentage: true,
+            _count: { select: { members: true } },
+          },
+        },
+      },
+      orderBy: [{ firstName: "asc" }, { lastName: "asc" }, { email: "asc" }],
+    });
+
+    const amIdByPromoterId = await resolveAccountManagersFor(
+      promoterRows.map((p) => p.id),
+    );
+
+    const promoterIds = promoterRows.map((p) => p.id);
+    const inviteReferrals =
+      promoterIds.length > 0
+        ? await prisma.referral.findMany({
+            where: {
+              referredUserId: { in: promoterIds },
+              status: { in: ["ACTIVE", "PENDING"] },
+            },
+            select: {
+              id: true,
+              referredUserId: true,
+              level: true,
+              status: true,
+              referrer: {
+                select: {
+                  id: true,
+                  email: true,
+                  firstName: true,
+                  lastName: true,
+                  userType: true,
+                },
+              },
+              campaign: {
+                select: {
+                  id: true,
+                  name: true,
+                  commissionRate: true,
+                  secondaryRate: true,
+                },
+              },
+            },
+            orderBy: { createdAt: "asc" },
+          })
+        : [];
+
+    const inviteByPromoterId = new Map<
+      string,
+      (typeof inviteReferrals)[number]
+    >();
+    for (const row of inviteReferrals) {
+      if (!row.referredUserId) continue;
+      if (!inviteByPromoterId.has(row.referredUserId)) {
+        inviteByPromoterId.set(row.referredUserId, row);
+      }
+    }
+
+    const shaped = managers.map((m) => {
+      const membership = m.referralsReceived.find(
+        (r) => r.campaign.isActive && !r.campaign.visibleToPromoters,
+      );
+      const hiddenCampaign = membership?.campaign ?? null;
+      const publicCampaign = hiddenCampaign?.linkedCampaign ?? null;
+
+      const scopedIds = referralIdsByAm.get(m.id) ?? new Set<string>();
+      const scopedReferrals = [...scopedIds]
+        .map((id) => referralById.get(id))
+        .filter((r): r is NonNullable<typeof r> => !!r)
+        .filter((ref) => {
+          if (ref.referredUserId === m.id) return false;
+          const meta = readReferralMetadata(ref.metadata);
+          if (
+            ref.status === "ACTIVE" &&
+            ref.referredUserId === null &&
+            !meta.inviteeEmail
+          ) {
+            return false;
+          }
+          return ref.status === "ACTIVE" || ref.status === "PENDING";
+        });
+
+      const shapeChatterGroup = (
+        group: {
+          id: string;
+          name: string;
+          commissionPercentage: number;
+          _count: { members: number };
+        } | null,
+      ) =>
+        group
+          ? {
+              id: group.id,
+              name: group.name,
+              commissionPercentage: group.commissionPercentage,
+              memberCount: group._count.members,
+            }
+          : null;
+
+      const tree = scopedReferrals.map((ref) => ({
+        id: ref.id,
+        level: ref.level,
+        status: ref.status,
+        referrer: shapeInviter(ref.referrer),
+        campaign: {
+          id: ref.campaign.id,
+          name: ref.campaign.name,
+          commissionRate: ref.campaign.commissionRate,
+          secondaryRate: ref.campaign.secondaryRate,
+        },
+        referredUser: ref.referredUser
+          ? {
+              id: ref.referredUser.id,
+              email: ref.referredUser.email,
+              firstName: ref.referredUser.firstName,
+              lastName: ref.referredUser.lastName,
+              username: ref.referredUser.username,
+              userType: ref.referredUser.userType,
+              chatterGroup: shapeChatterGroup(ref.referredUser.chatterGroup),
+            }
+          : null,
+        inviteeEmail: readReferralMetadata(ref.metadata).inviteeEmail ?? null,
+        children: ref.childReferrals.map((child) => ({
+          id: child.id,
+          level: child.level,
+          status: child.status,
+          referrer: ref.referredUser
+            ? shapeInviter({
+                id: ref.referredUser.id,
+                email: ref.referredUser.email,
+                firstName: ref.referredUser.firstName,
+                lastName: ref.referredUser.lastName,
+                userType: ref.referredUser.userType,
+              })
+            : shapeInviter(ref.referrer),
+          referredUser: child.referredUser
+            ? {
+                id: child.referredUser.id,
+                email: child.referredUser.email,
+                firstName: child.referredUser.firstName,
+                lastName: child.referredUser.lastName,
+                username: child.referredUser.username,
+                userType: child.referredUser.userType,
+                chatterGroup: shapeChatterGroup(child.referredUser.chatterGroup),
+              }
+            : null,
+        })),
+      }));
+
+      const promoterUsers = promoterRows
+        .filter((p) => amIdByPromoterId.get(p.id) === m.id)
+        .map((p) => {
+          const invite = inviteByPromoterId.get(p.id);
+          const referrerIsPromoter =
+            invite?.referrer &&
+            invite.referrer.userType !== UserType.ACCOUNT_MANAGER &&
+            invite.referrer.id !== m.id;
+          const invitedBy =
+            (invite && invite.level >= 2 && referrerIsPromoter
+              ? shapeInviter(invite.referrer)
+              : null) ??
+            shapeInviter(invite?.referrer ?? null) ??
+            shapeInviter(p.createdBy);
+          const tier =
+            invite?.level ??
+            (invitedBy?.id === m.id ||
+            invitedBy?.userType === UserType.ACCOUNT_MANAGER
+              ? 1
+              : invitedBy
+                ? 2
+                : 1);
+
+          return {
+            id: p.id,
+            email: p.email,
+            firstName: p.firstName,
+            lastName: p.lastName,
+            userType: p.userType,
+            chatterGroup: shapeChatterGroup(p.chatterGroup),
+            invitedBy,
+            tier,
+            referralId: invite?.id ?? null,
+            referralStatus: invite?.status ?? null,
+            referralCampaign: invite?.campaign ?? null,
+          };
+        });
+
+      const t1Count = promoterUsers.filter((p) => p.tier === 1).length;
+      const t2Count = promoterUsers.filter((p) => p.tier === 2).length;
+
+      const { referralsReceived: _drop, ...managerRest } = m;
+
+      return {
+        ...managerRest,
+        promoterUsers,
+        amPercent: hiddenCampaign?.secondaryRate ?? null,
+        hiddenCampaign: hiddenCampaign
+          ? { id: hiddenCampaign.id, name: hiddenCampaign.name }
+          : null,
+        publicCampaign: publicCampaign
+          ? {
+              id: publicCampaign.id,
+              name: publicCampaign.name,
+              commissionRate: publicCampaign.commissionRate,
+              secondaryRate: publicCampaign.secondaryRate,
+              isActive: publicCampaign.isActive,
+            }
+          : null,
+        referrals: tree,
+        stats: {
+          t1Count,
+          t2Count,
+          activeCount: promoterUsers.length,
+        },
+      };
+    });
+
+    res.json({ managers: shaped });
+  } catch (error) {
+    console.error("Get admin network structure error:", error);
+    res.status(500).json({ error: "Failed to fetch network structure" });
   }
 };
