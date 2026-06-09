@@ -1,7 +1,7 @@
-name: Claude Code Review
+name: Gito Code Review
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [opened, synchronize, reopened]
 
 jobs:
   review:
@@ -9,12 +9,23 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
-      id-token: write
 
     steps:
       - uses: actions/checkout@v4
-
-      - uses: anthropics/claude-code-action@beta
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install Gito
+        run: pip install gito.bot
+
+      - name: Run Gito review
+        env:
+          LLM_API_TYPE: anthropic
+          LLM_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          MODEL: claude-sonnet-4-6
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gito review
