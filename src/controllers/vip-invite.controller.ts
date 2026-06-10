@@ -10,7 +10,8 @@ import { AuthRequest } from "../middleware/auth.middleware";
 import {
   chatterCanAccessVipInvite,
   handleVipPreregisterWebhook,
-  maybeReconcileStaleVipInvite,
+  reconcileVipInviteFromTeaseme,
+  reconcileVipInvitesFromTeaseme,
   serializeVipInviteStatus,
   vipInviteRecipientName,
   VipPreregisterWebhookPayload,
@@ -29,16 +30,24 @@ export const receiveVipPreregisterWebhook = async (
   req: Request,
   res: Response,
 ) => {
-  const expectedSecret = process.env.TEASEME_VIP_WEBHOOK_SECRET;
+  const expectedSecret = process.env.TEASEME_VIP_WEBHOOK_SECRET?.trim();
   const rawHeader = req.headers["x-webhook-secret"];
   const receivedSecret = Array.isArray(rawHeader) ? rawHeader[0] : rawHeader;
+  const isDevWithoutSecret =
+    process.env.NODE_ENV === "development" && !expectedSecret;
   const isValid =
-    !!expectedSecret &&
-    !!receivedSecret &&
-    expectedSecret.length === receivedSecret.length &&
-    timingSafeEqual(Buffer.from(expectedSecret), Buffer.from(receivedSecret));
+    isDevWithoutSecret ||
+    (!!expectedSecret &&
+      !!receivedSecret &&
+      expectedSecret.length === receivedSecret.length &&
+      timingSafeEqual(Buffer.from(expectedSecret), Buffer.from(receivedSecret)));
   if (!isValid) {
     return res.status(401).json({ error: "Unauthorized" });
+  }
+  if (isDevWithoutSecret) {
+    console.warn(
+      "[vip-preregister-webhook] TEASEME_VIP_WEBHOOK_SECRET unset — accepting webhook in development only",
+    );
   }
 
   try {
@@ -77,7 +86,7 @@ export const getVipInviteStatus = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ error: "Forbidden" });
     }
 
-    invite = await maybeReconcileStaleVipInvite(invite);
+    invite = await reconcileVipInviteFromTeaseme(invite);
 
     return res.json(serializeVipInviteStatus(invite));
   } catch (error) {
@@ -123,7 +132,7 @@ export const sendVipInviteEmail = async (req: AuthRequest, res: Response) => {
 
     const result = await sendVipInviteEmailViaTeaseme({
       to_email: recipientEmail,
-      verification_url: invite.verificationUrl,
+      invite_code: invite.inviteCode,
       influencer_id: invite.influencerId,
       recipient_name: vipInviteRecipientName(invite.fullName),
     });
@@ -168,6 +177,8 @@ export const listVipInvites = async (req: AuthRequest, res: Response) => {
     }
 
     const groupId = String(req.query.groupId).trim();
+    const includeExpired =
+      String(req.query.includeExpired ?? "").toLowerCase() === "true";
     const searchRaw =
       typeof req.query.search === "string" ? req.query.search.trim() : "";
     const membership = await prisma.chatterGroupMember.findUnique({
@@ -184,6 +195,13 @@ export const listVipInvites = async (req: AuthRequest, res: Response) => {
       const or: Prisma.VipInviteWhereInput[] = [
         { fullName: { contains: searchRaw, mode: "insensitive" } },
         { email: { contains: searchRaw, mode: "insensitive" } },
+        {
+          instagramUsername: {
+            contains: searchRaw.replace(/^@+/, ""),
+            mode: "insensitive",
+          },
+        },
+        { inviteCode: { contains: searchRaw, mode: "insensitive" } },
       ];
       if (/^\d+$/.test(searchRaw)) {
         or.push({ telegramId: BigInt(searchRaw) });
@@ -191,11 +209,16 @@ export const listVipInvites = async (req: AuthRequest, res: Response) => {
       where.OR = or;
     }
 
-    const invites = await prisma.vipInvite.findMany({
+    let invites = await prisma.vipInvite.findMany({
       where,
       orderBy: { createdAt: "desc" },
       take: 50,
     });
+
+    invites = await reconcileVipInvitesFromTeaseme(invites);
+    if (!includeExpired) {
+      invites = invites.filter((invite) => invite.status !== "expired");
+    }
 
     return res.json({
       invites: invites.map((invite) => ({
@@ -203,7 +226,8 @@ export const listVipInvites = async (req: AuthRequest, res: Response) => {
         full_name: invite.fullName,
         email: invite.email,
         influencer_id: invite.influencerId,
-        telegram_id: invite.telegramId.toString(),
+        instagram_username: invite.instagramUsername,
+        telegram_id: invite.telegramId?.toString() ?? null,
         created_at: invite.createdAt.toISOString(),
       })),
     });

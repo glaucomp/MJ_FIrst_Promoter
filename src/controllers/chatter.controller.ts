@@ -19,6 +19,10 @@ import { createPasswordResetToken } from "../services/password-reset.service";
 import { getPresignedUrl } from "../services/s3.service";
 import { syncUserFromTeaseMe } from "../services/teaseme.service";
 import { buildSetPasswordUrl } from "../utils/frontend-url";
+import {
+  isValidInstagramUsername,
+  normalizeInstagramUsername,
+} from "../utils/instagram-username";
 import { createVipInviteRecord } from "../services/vip-invite.service";
 
 const prisma = new PrismaClient();
@@ -189,10 +193,9 @@ export const createChatter = async (req: AuthRequest, res: Response) => {
 };
 
 type PreregisterPayload = {
-  email?: string;
   influencer_id: string;
-  telegram_id: number;
   full_name: string;
+  instagram_username: string;
 };
 
 type PreregisterUpstream =
@@ -241,7 +244,7 @@ const callPreregisterUpstream = async (
     };
   }
 
-  if (!parsed || typeof parsed.verification_url !== "string") {
+  if (!parsed || typeof parsed.invite_code !== "string" || !parsed.invite_code.trim()) {
     return {
       ok: false,
       status: 502,
@@ -444,14 +447,19 @@ export const preregisterVipUser = async (req: AuthRequest, res: Response) => {
         .json({ error: "Preregistration service is not configured" });
     }
 
-    const telegramId = Number(req.body.telegram_id);
-    if (!Number.isInteger(telegramId) || telegramId < 1) {
-      return res
-        .status(422)
-        .json({ error: "telegram_id must be a positive integer" });
+    const instagramUsername = normalizeInstagramUsername(
+      String(req.body.instagram_username ?? ""),
+    );
+    if (!instagramUsername) {
+      return res.status(422).json({ error: "instagram_username is required" });
+    }
+    if (!isValidInstagramUsername(instagramUsername)) {
+      return res.status(422).json({
+        error:
+          "instagram_username must be 1–30 characters (letters, numbers, dots, underscores)",
+      });
     }
 
-    const rawEmail = req.body.email ? String(req.body.email).trim() : undefined;
     const groupId = String(req.body.group_id ?? "").trim();
     if (!groupId) {
       return res.status(422).json({ error: "group_id is required" });
@@ -469,10 +477,10 @@ export const preregisterVipUser = async (req: AuthRequest, res: Response) => {
     }
 
     const payload: PreregisterPayload = {
-      ...(rawEmail ? { email: rawEmail } : {}),
-      influencer_id: String(req.body.influencer_id).trim(),
-      telegram_id: telegramId,
+      // TeaseMe influencer ids are lowercase handles (e.g. "juliana").
+      influencer_id: String(req.body.influencer_id).trim().toLowerCase(),
       full_name: String(req.body.full_name).trim(),
+      instagram_username: instagramUsername,
     };
 
     const result = await callPreregisterUpstream(payload, mjfpToken);
@@ -493,21 +501,27 @@ export const preregisterVipUser = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    const expiresAtRaw = result.body.expires_at;
+    const expiresAt =
+      typeof expiresAtRaw === "string" && !Number.isNaN(Date.parse(expiresAtRaw))
+        ? new Date(expiresAtRaw)
+        : undefined;
+
     const invite = await createVipInviteRecord({
       chatterId: req.user.id,
       groupId,
       teasemeUserId,
-      telegramId: telegramId,
-      ...(rawEmail ? { email: rawEmail } : {}),
+      instagramUsername,
       fullName: payload.full_name,
       influencerId: payload.influencer_id,
-      verificationUrl: String(result.body.verification_url),
+      inviteCode: String(result.body.invite_code).trim(),
+      expiresAt,
     });
 
     return res.json({
       invite_id: invite.id,
       user_id: teasemeUserId,
-      verification_url: invite.verificationUrl,
+      invite_code: invite.inviteCode,
       status: invite.status,
       ...(typeof result.body.expires_at === "string"
         ? { expires_at: result.body.expires_at }

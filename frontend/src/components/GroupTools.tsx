@@ -14,43 +14,45 @@ const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5555/api'
 interface PreregisterSuccess {
   invite_id: string;
   user_id: number;
-  verification_url: string;
+  invite_code: string;
   status: VipInviteStatus;
   expires_at?: string;
 }
 
 type VipInviteStatus =
   | "pending"
-  | "profile_completed"
-  | "verified"
-  | "logged_in"
+  | "in_progress"
+  | "completed"
   | "expired";
 
 interface VipInviteStatusResponse {
   invite_id: string;
   status: VipInviteStatus;
   last_event_at: string | null;
-  verification_url: string;
+  invite_code: string;
   teaseme_user_id: number;
+  email?: string | null;
+  full_name?: string;
+  instagram_username?: string | null;
 }
 
 const VIP_POLL_INTERVAL_MS = 10_000;
 
-const POLLING_STATUSES = new Set<VipInviteStatus>([
-  "pending",
-  "profile_completed",
-]);
+const POLLING_STATUSES = new Set<VipInviteStatus>(["pending", "in_progress"]);
+
+const TERMINAL_INVITE_STATUSES = new Set<VipInviteStatus>(["completed", "expired"]);
+
+const isTerminalInviteStatus = (status: VipInviteStatus | null): boolean =>
+  !!status && TERMINAL_INVITE_STATUSES.has(status);
 
 const statusBadgeLabel = (status: VipInviteStatus): string => {
   switch (status) {
     case "pending":
       return "Pending";
-    case "profile_completed":
-      return "Profile done";
-    case "verified":
-      return "Verified";
-    case "logged_in":
-      return "Logged in";
+    case "in_progress":
+      return "In progress";
+    case "completed":
+      return "Completed";
     case "expired":
       return "Expired";
     default:
@@ -62,10 +64,9 @@ const statusBadgeClass = (status: VipInviteStatus): string => {
   switch (status) {
     case "pending":
       return "bg-[rgba(255,170,50,0.12)] border-[rgba(255,170,50,0.35)] text-[#ffcf80]";
-    case "profile_completed":
+    case "in_progress":
       return "bg-[rgba(100,149,237,0.12)] border-[rgba(100,149,237,0.35)] text-[#9ec5ff]";
-    case "verified":
-    case "logged_in":
+    case "completed":
       return "bg-[rgba(34,197,94,0.12)] border-[rgba(34,197,94,0.35)] text-tm-success-color05";
     case "expired":
       return "bg-[rgba(255,15,95,0.08)] border-[rgba(255,15,95,0.35)] text-tm-primary-color01";
@@ -75,9 +76,8 @@ const statusBadgeClass = (status: VipInviteStatus): string => {
 };
 
 const callPreregister = async (payload: {
-  email?: string;
   influencer_id: string;
-  telegram_id: number;
+  instagram_username: string;
   full_name: string;
   group_id: string;
 }): Promise<PreregisterSuccess> => {
@@ -132,8 +132,8 @@ const callPreregister = async (payload: {
   if (
     !body ||
     typeof body !== "object" ||
-    !("verification_url" in (body as Record<string, unknown>)) ||
-    typeof (body as Record<string, unknown>).verification_url !== "string" ||
+    !("invite_code" in (body as Record<string, unknown>)) ||
+    typeof (body as Record<string, unknown>).invite_code !== "string" ||
     !("invite_id" in (body as Record<string, unknown>)) ||
     typeof (body as Record<string, unknown>).invite_id !== "string"
   ) {
@@ -224,14 +224,31 @@ interface VipInviteListItem {
   invite_id: string;
   status: VipInviteStatus;
   last_event_at: string | null;
-  verification_url: string;
+  invite_code: string;
   teaseme_user_id: number;
+  expires_at: string | null;
   full_name: string;
   email: string | null;
   influencer_id: string;
-  telegram_id: string;
+  instagram_username: string | null;
+  telegram_id: string | null;
   created_at: string;
 }
+
+const INSTAGRAM_USERNAME_PATTERN = /^[a-zA-Z0-9._]{1,30}$/;
+
+const normalizeInstagramUsername = (raw: string): string =>
+  raw.trim().replace(/^@+/, "").toLowerCase();
+
+const formatInviteContact = (invite: VipInviteListItem): string => {
+  if (invite.instagram_username) {
+    return `@${invite.instagram_username}`;
+  }
+  if (invite.telegram_id) {
+    return `TG ${invite.telegram_id}`;
+  }
+  return "";
+};
 
 const fetchVipInvites = async (
   groupId: string,
@@ -661,9 +678,11 @@ export const LinkGenerator = ({
   const [internalName, setInternalName] = useState("");
   const name = controlledName ?? internalName;
   const setName = onNameChange ?? setInternalName;
-  const [telegramId, setTelegramId] = useState("");
-  const [email, setEmail] = useState("");
-  const [generatedLink, setGeneratedLink] = useState("");
+  const [instagramUsername, setInstagramUsername] = useState("");
+  const [selectedInviteEmail, setSelectedInviteEmail] = useState<string | null>(
+    null,
+  );
+  const [generatedInviteCode, setGeneratedInviteCode] = useState("");
   const [inviteId, setInviteId] = useState<string | null>(null);
   const [inviteStatus, setInviteStatus] = useState<VipInviteStatus | null>(
     null,
@@ -691,6 +710,35 @@ export const LinkGenerator = ({
     };
   }, []);
 
+  const effectiveTrackSearch = trackSearch.trim();
+  const showTrackedList = effectiveTrackSearch.length > 0;
+
+  const clearInvitePanelState = () => {
+    setGeneratedInviteCode("");
+    setInviteId(null);
+    setInviteStatus(null);
+    setSelectedInviteEmail(null);
+    setCopied(false);
+    setSendEmailSuccess(null);
+  };
+
+  const handleNameChange = (value: string) => {
+    setName(value);
+    setTrackSearch(value);
+  };
+
+  const handleTrackSearchChange = (value: string) => {
+    setTrackSearch(value);
+    setName(value);
+  };
+
+  // Hide the invite code panel when the form is fully cleared.
+  useEffect(() => {
+    if (!name.trim() && !instagramUsername.trim() && !trackSearch.trim()) {
+      clearInvitePanelState();
+    }
+  }, [name, instagramUsername, trackSearch]);
+
   const loadTrackedInvites = useCallback(async (search?: string) => {
     setTrackLoading(true);
     setTrackError(null);
@@ -711,16 +759,48 @@ export const LinkGenerator = ({
     if (trackSearchDebounceRef.current) {
       clearTimeout(trackSearchDebounceRef.current);
     }
-    const delay = trackSearch.trim() ? 300 : 0;
+    if (!effectiveTrackSearch) {
+      setTrackedInvites([]);
+      setTrackLoading(false);
+      setTrackError(null);
+      return;
+    }
     trackSearchDebounceRef.current = setTimeout(() => {
-      void loadTrackedInvites(trackSearch);
-    }, delay);
+      void loadTrackedInvites(effectiveTrackSearch);
+    }, 300);
     return () => {
       if (trackSearchDebounceRef.current) {
         clearTimeout(trackSearchDebounceRef.current);
       }
     };
-  }, [trackSearch, loadTrackedInvites]);
+  }, [effectiveTrackSearch, loadTrackedInvites]);
+
+  // Refresh the tracked list while any invite is still redeemable.
+  useEffect(() => {
+    if (!showTrackedList) return;
+
+    const hasActive = trackedInvites.some((inv) =>
+      POLLING_STATUSES.has(inv.status),
+    );
+    if (!hasActive) return;
+
+    const timer = setInterval(() => {
+      void loadTrackedInvites(effectiveTrackSearch);
+    }, VIP_POLL_INTERVAL_MS);
+
+    return () => clearInterval(timer);
+  }, [trackedInvites, effectiveTrackSearch, showTrackedList, loadTrackedInvites]);
+
+  // When the selected row moves to completed/expired, drop the active code panel.
+  useEffect(() => {
+    if (!inviteId) return;
+    const selected = trackedInvites.find((inv) => inv.invite_id === inviteId);
+    if (!selected) return;
+    setInviteStatus(selected.status);
+    if (isTerminalInviteStatus(selected.status)) {
+      setGeneratedInviteCode("");
+    }
+  }, [trackedInvites, inviteId]);
 
   useEffect(() => {
     if (!inviteId || !inviteStatus || !POLLING_STATUSES.has(inviteStatus)) {
@@ -735,15 +815,27 @@ export const LinkGenerator = ({
       try {
         const result = await fetchVipInviteStatus(inviteId);
         setInviteStatus(result.status);
-        setGeneratedLink(result.verification_url);
+        if (POLLING_STATUSES.has(result.status)) {
+          setGeneratedInviteCode(result.invite_code);
+        } else {
+          setGeneratedInviteCode("");
+        }
+        if (result.email) {
+          setSelectedInviteEmail(result.email);
+        }
         setTrackedInvites((prev) =>
           prev.map((inv) =>
             inv.invite_id === inviteId
               ? {
                   ...inv,
                   status: result.status,
-                  verification_url: result.verification_url,
+                  invite_code: result.invite_code,
                   last_event_at: result.last_event_at,
+                  ...(result.email !== undefined ? { email: result.email } : {}),
+                  ...(result.full_name ? { full_name: result.full_name } : {}),
+                  ...(result.instagram_username !== undefined
+                    ? { instagram_username: result.instagram_username }
+                    : {}),
                 }
               : inv,
           ),
@@ -770,19 +862,16 @@ export const LinkGenerator = ({
     if (loading) return;
 
     const trimmedName = name.trim();
-    const trimmedEmail = email.trim();
-    const trimmedTelegram = telegramId.trim();
+    const trimmedInstagram = normalizeInstagramUsername(instagramUsername);
 
-    if (!trimmedName || !trimmedTelegram) {
-      setErrorMessage("Please fill in name and telegram ID.");
+    if (!trimmedName || !trimmedInstagram) {
+      setErrorMessage("Please fill in name and Instagram username.");
       return;
     }
-    if (!/^\d+$/.test(trimmedTelegram)) {
-      setErrorMessage("Telegram ID must be a number.");
-      return;
-    }
-    if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      setErrorMessage("Please enter a valid email address.");
+    if (!INSTAGRAM_USERNAME_PATTERN.test(trimmedInstagram)) {
+      setErrorMessage(
+        "Instagram username must be 1–30 characters (letters, numbers, dots, underscores).",
+      );
       return;
     }
 
@@ -790,22 +879,25 @@ export const LinkGenerator = ({
     setLoading(true);
     try {
       const result = await callPreregister({
-        ...(trimmedEmail ? { email: trimmedEmail } : {}),
         influencer_id: username,
-        telegram_id: Number(trimmedTelegram),
+        instagram_username: trimmedInstagram,
         full_name: trimmedName,
         group_id: groupId,
       });
-      setGeneratedLink(result.verification_url);
+      setGeneratedInviteCode(result.invite_code);
       setInviteId(result.invite_id);
       setInviteStatus(result.status);
+      setSelectedInviteEmail(null);
       setCopied(false);
       setSendEmailSuccess(null);
-      void loadTrackedInvites(trackSearch);
+      if (effectiveTrackSearch) {
+        void loadTrackedInvites(effectiveTrackSearch);
+      }
     } catch (err) {
-      setGeneratedLink("");
+      setGeneratedInviteCode("");
       setInviteId(null);
       setInviteStatus(null);
+      setSelectedInviteEmail(null);
       setSendEmailSuccess(null);
       setErrorMessage(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -815,23 +907,22 @@ export const LinkGenerator = ({
 
   const handleReset = () => {
     setName("");
-    setTelegramId("");
-    setEmail("");
-    setGeneratedLink("");
-    setInviteId(null);
-    setInviteStatus(null);
-    setCopied(false);
-    setSendEmailSuccess(null);
+    setTrackSearch("");
+    setInstagramUsername("");
+    clearInvitePanelState();
     setErrorMessage(null);
   };
 
   const handleSelectTrackedInvite = (invite: VipInviteListItem) => {
     setName(invite.full_name);
-    setTelegramId(invite.telegram_id);
-    setEmail(invite.email ?? "");
-    setGeneratedLink(invite.verification_url);
+    setTrackSearch(invite.full_name);
+    setInstagramUsername(invite.instagram_username ?? "");
+    setSelectedInviteEmail(invite.email);
     setInviteId(invite.invite_id);
     setInviteStatus(invite.status);
+    setGeneratedInviteCode(
+      isTerminalInviteStatus(invite.status) ? "" : invite.invite_code,
+    );
     setCopied(false);
     setSendEmailSuccess(null);
     setErrorMessage(null);
@@ -862,7 +953,7 @@ export const LinkGenerator = ({
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(generatedLink);
+      await navigator.clipboard.writeText(generatedInviteCode);
       setCopied(true);
       if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
       copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
@@ -871,8 +962,14 @@ export const LinkGenerator = ({
     }
   };
 
-  const canGenerate = !!(name.trim() && telegramId.trim()) && !loading;
-  const canSendEmail = !!inviteId && !sendEmailLoading && !loading;
+  const canGenerate =
+    !!(name.trim() && instagramUsername.trim()) && !loading;
+  const canSendEmail =
+    !!inviteId &&
+    !!selectedInviteEmail?.trim() &&
+    !sendEmailLoading &&
+    !loading &&
+    !isTerminalInviteStatus(inviteStatus);
 
   return (
     <div className="flex flex-col gap-[16px] ">
@@ -915,16 +1012,16 @@ export const LinkGenerator = ({
           <input
             type="search"
             value={trackSearch}
-            onChange={(e) => setTrackSearch(e.target.value)}
-            placeholder="Search by name, email, or Telegram ID…"
+            onChange={(e) => handleTrackSearchChange(e.target.value)}
+            placeholder="Search by name, Instagram username, or invite code…"
             aria-label="Search VIP invites"
             className="buttonXl inputIcon w-full inputMJ text-white focus:outline-none focus:border-tm-primary-color04 placeholder-tm-text-color08"
           />
         </div>
         <button
           type="button"
-          onClick={() => void loadTrackedInvites(trackSearch)}
-          disabled={trackLoading}
+          onClick={() => void loadTrackedInvites(effectiveTrackSearch)}
+          disabled={trackLoading || !showTrackedList}
           title="Refresh invite list"
           aria-label="Refresh invite list"
           className="lg:w-[56px] buttonSubtle buttonXl rounded-full flex items-center justify-center bg-[#141414] border border-[rgba(255,255,255,0.1)] text-[#555] hover:text-tm-text-color08 hover:border-[rgba(255,255,255,0.2)] transition-all shrink-0 disabled:opacity-40"
@@ -945,6 +1042,7 @@ export const LinkGenerator = ({
         </button>
       </div>
 
+      {showTrackedList && (
       <div className="flex flex-col gap-2 border border-[rgba(255,255,255,0.08)] rounded-xl bg-[#141414] p-4 max-h-[220px] overflow-y-auto">
           <p className="text-xs font-bold uppercase text-tm-text-color08">
             Tracked invites
@@ -957,9 +1055,7 @@ export const LinkGenerator = ({
           )}
           {!trackLoading && !trackError && trackedInvites.length === 0 && (
             <p className="text-sm text-tm-text-color08">
-              {trackSearch.trim()
-                ? "No invites match your search."
-                : "No invites yet for this group."}
+              No invites match your search.
             </p>
           )}
           {!trackLoading &&
@@ -969,7 +1065,11 @@ export const LinkGenerator = ({
                   key={invite.invite_id}
                   type="button"
                   onClick={() => handleSelectTrackedInvite(invite)}
-                  className="w-full text-left rounded-lg border border-[rgba(255,255,255,0.08)] px-3 py-2.5 transition-colors hover:border-[rgba(255,255,255,0.18)] outline-none focus:outline-none active:border-[rgba(255,255,255,0.08)] active:bg-transparent"
+                  className={`w-full text-left rounded-lg border px-3 py-2.5 transition-colors outline-none focus:outline-none ${
+                    inviteId === invite.invite_id
+                      ? "border-[rgba(255,255,255,0.22)] bg-[rgba(255,255,255,0.04)]"
+                      : "border-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.18)] active:border-[rgba(255,255,255,0.08)] active:bg-transparent"
+                  }`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
@@ -977,11 +1077,11 @@ export const LinkGenerator = ({
                         {invite.full_name}
                       </p>
                       <p className="text-xs text-tm-text-color08 truncate">
-                        TG {invite.telegram_id}
+                        {formatInviteContact(invite)}
                         {invite.email ? ` · ${invite.email}` : ""}
                       </p>
-                      <p className="text-xs text-[#555]">
-                        {formatInviteDate(invite.created_at)}
+                      <p className="text-xs text-[#555] truncate">
+                        Code {invite.invite_code} · {formatInviteDate(invite.created_at)}
                       </p>
                     </div>
                     <span
@@ -993,52 +1093,34 @@ export const LinkGenerator = ({
                 </button>
             ))}
       </div>
+      )}
 
-      {/* Name + Telegram ID row */}
+      {/* Name + Instagram username row */}
       <div className="grid lg:grid-cols-2 gap-4">
         <input
           type="text"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => handleNameChange(e.target.value)}
           placeholder="Name"
           className="buttonXl inputMJ text-white focus:outline-none focus:border-tm-primary-color04 placeholder-tm-text-color08"
         />
-        <input
-          type="text"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          value={telegramId}
-          onChange={(e) => setTelegramId(e.target.value.replaceAll(/\D/g, ""))}
-          placeholder="Telegram ID"
-          className="buttonXl inputMJ text-white focus:outline-none focus:border-tm-primary-color04 placeholder-tm-text-color08"
-        />
-      </div>
-
-      {/* Email + Reset + Generate row */}
-      <div className="flex flex-col lg:flex-row gap-4">
-        <div className="relative flex-1">
-          <svg
-            className="absolute left-[12px] top-1/2 -translate-y-1/2 w-[14px] h-[14px] text-[#444]"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-            />
-          </svg>
+        <div className="relative">
+          <span className="absolute left-[12px] top-1/2 -translate-y-1/2 text-sm text-[#555]">
+            @
+          </span>
           <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            type="text"
+            value={instagramUsername}
+            onChange={(e) => setInstagramUsername(e.target.value.replace(/^@+/, ""))}
             onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
-            placeholder="Email"
+            placeholder="Instagram username"
             className="buttonXl inputIcon w-full inputMJ text-white focus:outline-none focus:border-tm-primary-color04 placeholder-tm-text-color08"
           />
         </div>
+      </div>
+
+      {/* Reset + Generate row */}
+      <div className="flex flex-col lg:flex-row gap-4 lg:justify-end">
         <button
           onClick={handleReset}
           title="Reset form"
@@ -1064,7 +1146,7 @@ export const LinkGenerator = ({
           disabled={!canGenerate}
           className="buttonSubtle btn-primary-cta rounded-full px-[20px] py-[11px] text-sm font-bold  active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0 whitespace-nowrap"
         >
-          {loading ? "Generating..." : "Generate Link"}
+          {loading ? "Generating..." : "Generate Code"}
         </button>
       </div>
 
@@ -1088,12 +1170,12 @@ export const LinkGenerator = ({
         </div>
       )}
 
-      {/* Generated link */}
-      {generatedLink && (
-        <div className="flex flex-col gap-4 border border-neutral-800 p-8 rounded-xl bg-tm-neutral-color08 min-w-0 w-full overflow-hidden">
+      {/* Terminal invite — signed up or expired; no code actions */}
+      {inviteId && isTerminalInviteStatus(inviteStatus) && (
+        <div className="flex flex-col gap-3 border border-neutral-800 p-6 rounded-xl bg-tm-neutral-color08 min-w-0 w-full">
           <div className="flex flex-row w-full items-center justify-between gap-3">
             <p className="text-xs font-bold uppercase text-tm-text-color08">
-              Generated Link
+              {inviteStatus === "completed" ? "Invite complete" : "Invite expired"}
             </p>
             {inviteStatus && (
               <span
@@ -1104,8 +1186,33 @@ export const LinkGenerator = ({
             )}
           </div>
           <p className="text-xs text-[#555] leading-relaxed">
-            Copy the link to share manually, or send the personal invite email
-            (“An invite from …” + Accept my gift) to the address above.
+            {inviteStatus === "completed"
+              ? `@${normalizeInstagramUsername(instagramUsername) || "This user"} has signed up on TeaseMe. The invite code is no longer needed.`
+              : "This invite was not redeemed in time and can no longer be used."}
+          </p>
+        </div>
+      )}
+
+      {/* Generated invite code — active invites only */}
+      {generatedInviteCode && !isTerminalInviteStatus(inviteStatus) && (
+        <div className="flex flex-col gap-4 border border-neutral-800 p-8 rounded-xl bg-tm-neutral-color08 min-w-0 w-full overflow-hidden">
+          <div className="flex flex-row w-full items-center justify-between gap-3">
+            <p className="text-xs font-bold uppercase text-tm-text-color08">
+              Invite Code
+            </p>
+            {inviteStatus && (
+              <span
+                className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${statusBadgeClass(inviteStatus)}`}
+              >
+                {statusBadgeLabel(inviteStatus)}
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-[#555] leading-relaxed">
+            Share this code with @{normalizeInstagramUsername(instagramUsername) || "the invitee"}
+            {selectedInviteEmail
+              ? ", or send the personal invite email to the address on file."
+              : " via Instagram DM."}
           </p>
           <div className="flex flex-col gap-2 min-w-0 w-full">
             <div className="flex items-center gap-2 inputMJ p-4 w-full min-w-0 overflow-hidden">
@@ -1119,19 +1226,21 @@ export const LinkGenerator = ({
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                  d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"
                 />
               </svg>
-              <p className="flex-1 min-w-0 text-tm-text-color08 text-sm truncate font-mono">
-                {generatedLink}
+              <p className="flex-1 min-w-0 text-tm-text-color08 text-sm truncate font-mono tracking-wide">
+                {generatedInviteCode}
               </p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div
+              className={`grid gap-2 ${selectedInviteEmail ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"}`}
+            >
               <button
                 type="button"
                 onClick={handleCopy}
                 aria-label={
-                  copied ? "Copied generated link" : "Copy generated link"
+                  copied ? "Copied invite code" : "Copy invite code"
                 }
                 className={`flex buttonSubtle buttonLg items-center justify-center gap-2 px-6 transition-all [background:linear-gradient(250deg,#212121_8.83%,#383838_13.08%,#333_23.52%,#2E2E2E_35.88%,#141414_61.39%,#292929_89.22%)] hover:[background:linear-gradient(290deg,#212121_8.83%,#383838_13.08%,#333_23.52%,#2E2E2E_35.88%,#141414_61.39%,#292929_89.22%)] ${copied ? "text-tm-success-color05" : "text-white"}`}
               >
@@ -1165,9 +1274,10 @@ export const LinkGenerator = ({
                   </svg>
                 )}
                 <span className="text-sm font-medium">
-                  {copied ? "Copied!" : "Copy link"}
+                  {copied ? "Copied!" : "Copy code"}
                 </span>
               </button>
+              {selectedInviteEmail && (
               <button
                 type="button"
                 onClick={() => void handleSendEmail()}
@@ -1192,6 +1302,7 @@ export const LinkGenerator = ({
                   {sendEmailLoading ? "Sending…" : "Send email"}
                 </span>
               </button>
+              )}
             </div>
           </div>
           {sendEmailSuccess && (

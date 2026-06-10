@@ -38,9 +38,8 @@ enum PasswordResetPurpose {
 
 enum VipInviteStatus {
   pending
-  profile_completed
-  verified
-  logged_in
+  in_progress
+  completed
   expired
 }
 
@@ -446,13 +445,15 @@ model VipInvite {
   chatter         User            @relation(fields: [chatterId], references: [id], onDelete: Cascade)
   groupId         String
   group           ChatterGroup    @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  teasemeUserId   Int             @unique
-  telegramId      BigInt
-  email           String?
-  fullName        String
+  teasemeUserId      Int             @unique
+  telegramId         BigInt?
+  instagramUsername  String?
+  email              String?
+  fullName           String
   influencerId    String
-  verificationUrl String          @db.Text
+  inviteCode      String
   status          VipInviteStatus @default(pending)
+  expiresAt       DateTime?
   lastEvent       String?
   lastEventAt     DateTime?
   createdAt       DateTime        @default(now())

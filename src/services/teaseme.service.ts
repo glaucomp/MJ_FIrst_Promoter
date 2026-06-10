@@ -48,7 +48,13 @@ const TEASEME_APPROVE_TIMEOUT_MS = 30_000;
 const getTeasemeVipUserStatusUrl = () =>
   (
     process.env.TEASEME_VIP_USER_STATUS_URL ||
-    "https://tmapi.mxjprod.work/mjpromoter/vip-user-status"
+    `${getTeasemeMjpromoterBaseUrl()}/vip-user-status`
+  ).replace(/\/$/, "");
+
+const getTeasemeVipInvitesStatusUrl = () =>
+  (
+    process.env.TEASEME_VIP_INVITES_STATUS_URL ||
+    `${getTeasemeMjpromoterBaseUrl()}/vip-invites/status`
   ).replace(/\/$/, "");
 
 /** Base URL for MJ Promoter internal routes on the TeaseMe API host. */
@@ -87,7 +93,7 @@ export const getTeasemeVipInviteEmailAssetsUrl = (influencerId: string) =>
 
 export type SendVipInviteEmailPayload = {
   to_email: string;
-  verification_url: string;
+  invite_code: string;
   influencer_id: string;
   /** Invitee first name for greeting; TeaseMe uses "Hi there," when omitted. */
   recipient_name?: string;
@@ -113,21 +119,20 @@ const pickTeasemeError = (parsed: Record<string, unknown> | null): string => {
 
 /**
  * POST /mjpromoter/vip-invites/send-email — TeaseMe SES VIP invite template.
- * Uses preregister verification_url (not /auth/verify-email).
  */
 export const sendVipInviteEmailViaTeaseme = async (
   payload: SendVipInviteEmailPayload,
 ): Promise<SendVipInviteEmailResult> => {
   const toEmail = payload.to_email.trim();
-  const verificationUrl = payload.verification_url.trim();
+  const inviteCode = payload.invite_code.trim();
   const influencerId = payload.influencer_id.trim();
   const recipientName = payload.recipient_name?.trim();
 
-  if (!toEmail || !verificationUrl || !influencerId) {
+  if (!toEmail || !inviteCode || !influencerId) {
     return {
       ok: false,
       status: 422,
-      error: "to_email, verification_url, and influencer_id are required",
+      error: "to_email, invite_code, and influencer_id are required",
     };
   }
 
@@ -152,7 +157,7 @@ export const sendVipInviteEmailViaTeaseme = async (
       },
       body: JSON.stringify({
         to_email: toEmail,
-        verification_url: verificationUrl,
+        invite_code: inviteCode,
         influencer_id: influencerId,
         ...(recipientName ? { recipient_name: recipientName } : {}),
       }),
@@ -229,6 +234,158 @@ export interface TeasemeVipUserStatus {
   preregistered_at?: string | null;
   updated_at?: string | null;
 }
+
+export type TeasemeVipInviteStatusRow = {
+  user_id?: number;
+  invite_code?: string;
+  status?: string;
+  expires_at?: string | null;
+  instagram_username?: string | null;
+  email?: string | null;
+  full_name?: string | null;
+  telegram_id?: number | null;
+  is_verified?: boolean;
+};
+
+export type VipInviteStatusBatchRequest = {
+  inviteCodes?: string[];
+  userIds?: number[];
+};
+
+export type VipInviteStatusBatchResult = {
+  byUserId: Map<number, TeasemeVipInviteStatusRow>;
+  byInviteCode: Map<string, TeasemeVipInviteStatusRow>;
+};
+
+export const normalizeVipInviteCode = (code: string): string =>
+  code.trim().toUpperCase();
+
+const parseVipInviteStatusRow = (
+  raw: Record<string, unknown>,
+): TeasemeVipInviteStatusRow | null => {
+  const userId = raw.user_id;
+  const inviteCode =
+    typeof raw.invite_code === "string" ? raw.invite_code.trim() : undefined;
+  const hasUserId =
+    typeof userId === "number" && Number.isInteger(userId) && userId > 0;
+
+  if (!hasUserId && !inviteCode) return null;
+
+  return {
+    ...(hasUserId ? { user_id: userId } : {}),
+    invite_code: inviteCode,
+    status: typeof raw.status === "string" ? raw.status : undefined,
+    expires_at:
+      typeof raw.expires_at === "string" ? raw.expires_at : null,
+    instagram_username:
+      typeof raw.instagram_username === "string"
+        ? raw.instagram_username
+        : null,
+    email: typeof raw.email === "string" ? raw.email : null,
+    full_name: typeof raw.full_name === "string" ? raw.full_name : null,
+    telegram_id:
+      typeof raw.telegram_id === "number" ? raw.telegram_id : null,
+    is_verified:
+      typeof raw.is_verified === "boolean" ? raw.is_verified : undefined,
+  };
+};
+
+const extractVipInviteStatusRows = (body: unknown): unknown[] => {
+  if (!body || typeof body !== "object") return [];
+  const raw = body as Record<string, unknown>;
+  if (Array.isArray(raw.items)) return raw.items;
+  if (Array.isArray(raw.invites)) return raw.invites;
+  if (Array.isArray(raw.results)) return raw.results;
+  if (Array.isArray(body)) return body;
+  if (typeof raw.status === "string" || typeof raw.invite_code === "string") {
+    return [raw];
+  }
+  return [];
+};
+
+const indexVipInviteStatusRows = (
+  rows: TeasemeVipInviteStatusRow[],
+): VipInviteStatusBatchResult => {
+  const byUserId = new Map<number, TeasemeVipInviteStatusRow>();
+  const byInviteCode = new Map<string, TeasemeVipInviteStatusRow>();
+
+  for (const row of rows) {
+    if (row.user_id && row.user_id > 0) {
+      byUserId.set(row.user_id, row);
+    }
+    if (row.invite_code) {
+      byInviteCode.set(normalizeVipInviteCode(row.invite_code), row);
+    }
+  }
+
+  return { byUserId, byInviteCode };
+};
+
+/**
+ * Batch VIP invite status lookup — POST /mjpromoter/vip-invites/status.
+ * Prefer invite_codes (persistent VIP code); user_ids are sent as fallback.
+ */
+export const fetchVipInviteStatusesBatch = async (
+  request: VipInviteStatusBatchRequest,
+): Promise<VipInviteStatusBatchResult> => {
+  const inviteCodes = [
+    ...new Set(
+      (request.inviteCodes ?? [])
+        .map((code) => code.trim())
+        .filter(Boolean),
+    ),
+  ];
+  const userIds = [
+    ...new Set(
+      (request.userIds ?? []).filter((id) => Number.isInteger(id) && id > 0),
+    ),
+  ];
+
+  const empty = indexVipInviteStatusRows([]);
+  if (inviteCodes.length === 0 && userIds.length === 0) return empty;
+
+  const token = await getMjfpToken();
+  if (!token) return empty;
+
+  const payload: Record<string, unknown> = {};
+  if (inviteCodes.length > 0) payload.invite_codes = inviteCodes;
+  if (userIds.length > 0) payload.user_ids = userIds;
+
+  let res: Response;
+  try {
+    res = await fetch(getTeasemeVipInvitesStatusUrl(), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "X-Internal-Token": token,
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(TEASEME_STATUS_TIMEOUT_MS),
+    });
+  } catch {
+    return empty;
+  }
+
+  let body: unknown = null;
+  try {
+    body = await res.json();
+  } catch {
+    return empty;
+  }
+
+  if (res.status === 401) clearMjfpCredentialsCache();
+  if (res.status < 200 || res.status >= 300) return empty;
+
+  const parsedRows: TeasemeVipInviteStatusRow[] = [];
+  for (const entry of extractVipInviteStatusRows(body)) {
+    if (!entry || typeof entry !== "object") continue;
+    const parsed = parseVipInviteStatusRow(entry as Record<string, unknown>);
+    if (parsed) parsedRows.push(parsed);
+  }
+
+  return indexVipInviteStatusRows(parsedRows);
+};
 
 /** Poll TeaseMe VIP preregister status for webhook-miss reconciliation. */
 export const fetchVipUserStatus = async (
