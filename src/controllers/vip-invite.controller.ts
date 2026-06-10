@@ -123,7 +123,7 @@ export const sendVipInviteEmail = async (req: AuthRequest, res: Response) => {
 
     const result = await sendVipInviteEmailViaTeaseme({
       to_email: recipientEmail,
-      verification_url: invite.verificationUrl,
+      invite_code: invite.inviteCode,
       influencer_id: invite.influencerId,
       recipient_name: vipInviteRecipientName(invite.fullName),
     });
@@ -184,6 +184,13 @@ export const listVipInvites = async (req: AuthRequest, res: Response) => {
       const or: Prisma.VipInviteWhereInput[] = [
         { fullName: { contains: searchRaw, mode: "insensitive" } },
         { email: { contains: searchRaw, mode: "insensitive" } },
+        {
+          instagramUsername: {
+            contains: searchRaw.replace(/^@+/, ""),
+            mode: "insensitive",
+          },
+        },
+        { inviteCode: { contains: searchRaw, mode: "insensitive" } },
       ];
       if (/^\d+$/.test(searchRaw)) {
         or.push({ telegramId: BigInt(searchRaw) });
@@ -203,7 +210,8 @@ export const listVipInvites = async (req: AuthRequest, res: Response) => {
         full_name: invite.fullName,
         email: invite.email,
         influencer_id: invite.influencerId,
-        telegram_id: invite.telegramId.toString(),
+        instagram_username: invite.instagramUsername,
+        telegram_id: invite.telegramId?.toString() ?? null,
         created_at: invite.createdAt.toISOString(),
       })),
     });

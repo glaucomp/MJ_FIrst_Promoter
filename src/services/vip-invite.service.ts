@@ -29,6 +29,7 @@ export type VipPreregisterWebhookPayload = {
   status?: string;
   user_id?: number;
   telegram_id?: number;
+  instagram_username?: string;
   email?: string;
   full_name?: string;
   influencer_id?: string;
@@ -214,7 +215,7 @@ export const serializeVipInviteStatus = (invite: VipInvite) => ({
   invite_id: invite.id,
   status: invite.status,
   last_event_at: invite.lastEventAt?.toISOString() ?? null,
-  verification_url: invite.verificationUrl,
+  invite_code: invite.inviteCode,
   teaseme_user_id: invite.teasemeUserId,
 });
 
@@ -222,21 +223,19 @@ export const createVipInviteRecord = async (params: {
   chatterId: string;
   groupId: string;
   teasemeUserId: number;
-  telegramId: number;
-  email?: string;
+  instagramUsername: string;
   fullName: string;
   influencerId: string;
-  verificationUrl: string;
+  inviteCode: string;
 }) => {
   const data = {
     chatterId: params.chatterId,
     groupId: params.groupId,
     teasemeUserId: params.teasemeUserId,
-    telegramId: BigInt(params.telegramId),
-    email: params.email ?? null,
+    instagramUsername: params.instagramUsername,
     fullName: params.fullName,
     influencerId: params.influencerId,
-    verificationUrl: params.verificationUrl,
+    inviteCode: params.inviteCode,
     status: VipInviteStatus.pending,
     lastEvent: "link_generated",
     lastEventAt: new Date(),
@@ -248,11 +247,10 @@ export const createVipInviteRecord = async (params: {
     update: {
       chatterId: params.chatterId,
       groupId: params.groupId,
-      telegramId: BigInt(params.telegramId),
-      email: params.email ?? null,
+      instagramUsername: params.instagramUsername,
       fullName: params.fullName,
       influencerId: params.influencerId,
-      verificationUrl: params.verificationUrl,
+      inviteCode: params.inviteCode,
       lastEvent: "link_generated",
       lastEventAt: new Date(),
     },

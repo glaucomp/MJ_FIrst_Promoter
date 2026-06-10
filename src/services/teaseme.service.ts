@@ -87,7 +87,7 @@ export const getTeasemeVipInviteEmailAssetsUrl = (influencerId: string) =>
 
 export type SendVipInviteEmailPayload = {
   to_email: string;
-  verification_url: string;
+  invite_code: string;
   influencer_id: string;
   /** Invitee first name for greeting; TeaseMe uses "Hi there," when omitted. */
   recipient_name?: string;
@@ -113,21 +113,20 @@ const pickTeasemeError = (parsed: Record<string, unknown> | null): string => {
 
 /**
  * POST /mjpromoter/vip-invites/send-email — TeaseMe SES VIP invite template.
- * Uses preregister verification_url (not /auth/verify-email).
  */
 export const sendVipInviteEmailViaTeaseme = async (
   payload: SendVipInviteEmailPayload,
 ): Promise<SendVipInviteEmailResult> => {
   const toEmail = payload.to_email.trim();
-  const verificationUrl = payload.verification_url.trim();
+  const inviteCode = payload.invite_code.trim();
   const influencerId = payload.influencer_id.trim();
   const recipientName = payload.recipient_name?.trim();
 
-  if (!toEmail || !verificationUrl || !influencerId) {
+  if (!toEmail || !inviteCode || !influencerId) {
     return {
       ok: false,
       status: 422,
-      error: "to_email, verification_url, and influencer_id are required",
+      error: "to_email, invite_code, and influencer_id are required",
     };
   }
 
@@ -152,7 +151,7 @@ export const sendVipInviteEmailViaTeaseme = async (
       },
       body: JSON.stringify({
         to_email: toEmail,
-        verification_url: verificationUrl,
+        invite_code: inviteCode,
         influencer_id: influencerId,
         ...(recipientName ? { recipient_name: recipientName } : {}),
       }),
