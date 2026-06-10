@@ -40,6 +40,11 @@ const VIP_POLL_INTERVAL_MS = 10_000;
 
 const POLLING_STATUSES = new Set<VipInviteStatus>(["pending", "in_progress"]);
 
+const TERMINAL_INVITE_STATUSES = new Set<VipInviteStatus>(["completed", "expired"]);
+
+const isTerminalInviteStatus = (status: VipInviteStatus | null): boolean =>
+  !!status && TERMINAL_INVITE_STATUSES.has(status);
+
 const statusBadgeLabel = (status: VipInviteStatus): string => {
   switch (status) {
     case "pending":
@@ -705,6 +710,35 @@ export const LinkGenerator = ({
     };
   }, []);
 
+  const effectiveTrackSearch = trackSearch.trim();
+  const showTrackedList = effectiveTrackSearch.length > 0;
+
+  const clearInvitePanelState = () => {
+    setGeneratedInviteCode("");
+    setInviteId(null);
+    setInviteStatus(null);
+    setSelectedInviteEmail(null);
+    setCopied(false);
+    setSendEmailSuccess(null);
+  };
+
+  const handleNameChange = (value: string) => {
+    setName(value);
+    setTrackSearch(value);
+  };
+
+  const handleTrackSearchChange = (value: string) => {
+    setTrackSearch(value);
+    setName(value);
+  };
+
+  // Hide the invite code panel when the form is fully cleared.
+  useEffect(() => {
+    if (!name.trim() && !instagramUsername.trim() && !trackSearch.trim()) {
+      clearInvitePanelState();
+    }
+  }, [name, instagramUsername, trackSearch]);
+
   const loadTrackedInvites = useCallback(async (search?: string) => {
     setTrackLoading(true);
     setTrackError(null);
@@ -725,30 +759,48 @@ export const LinkGenerator = ({
     if (trackSearchDebounceRef.current) {
       clearTimeout(trackSearchDebounceRef.current);
     }
-    const delay = trackSearch.trim() ? 300 : 0;
+    if (!effectiveTrackSearch) {
+      setTrackedInvites([]);
+      setTrackLoading(false);
+      setTrackError(null);
+      return;
+    }
     trackSearchDebounceRef.current = setTimeout(() => {
-      void loadTrackedInvites(trackSearch);
-    }, delay);
+      void loadTrackedInvites(effectiveTrackSearch);
+    }, 300);
     return () => {
       if (trackSearchDebounceRef.current) {
         clearTimeout(trackSearchDebounceRef.current);
       }
     };
-  }, [trackSearch, loadTrackedInvites]);
+  }, [effectiveTrackSearch, loadTrackedInvites]);
 
   // Refresh the tracked list while any invite is still redeemable.
   useEffect(() => {
+    if (!showTrackedList) return;
+
     const hasActive = trackedInvites.some((inv) =>
       POLLING_STATUSES.has(inv.status),
     );
     if (!hasActive) return;
 
     const timer = setInterval(() => {
-      void loadTrackedInvites(trackSearch);
+      void loadTrackedInvites(effectiveTrackSearch);
     }, VIP_POLL_INTERVAL_MS);
 
     return () => clearInterval(timer);
-  }, [trackedInvites, trackSearch, loadTrackedInvites]);
+  }, [trackedInvites, effectiveTrackSearch, showTrackedList, loadTrackedInvites]);
+
+  // When the selected row moves to completed/expired, drop the active code panel.
+  useEffect(() => {
+    if (!inviteId) return;
+    const selected = trackedInvites.find((inv) => inv.invite_id === inviteId);
+    if (!selected) return;
+    setInviteStatus(selected.status);
+    if (isTerminalInviteStatus(selected.status)) {
+      setGeneratedInviteCode("");
+    }
+  }, [trackedInvites, inviteId]);
 
   useEffect(() => {
     if (!inviteId || !inviteStatus || !POLLING_STATUSES.has(inviteStatus)) {
@@ -763,7 +815,11 @@ export const LinkGenerator = ({
       try {
         const result = await fetchVipInviteStatus(inviteId);
         setInviteStatus(result.status);
-        setGeneratedInviteCode(result.invite_code);
+        if (POLLING_STATUSES.has(result.status)) {
+          setGeneratedInviteCode(result.invite_code);
+        } else {
+          setGeneratedInviteCode("");
+        }
         if (result.email) {
           setSelectedInviteEmail(result.email);
         }
@@ -834,7 +890,9 @@ export const LinkGenerator = ({
       setSelectedInviteEmail(null);
       setCopied(false);
       setSendEmailSuccess(null);
-      void loadTrackedInvites(trackSearch);
+      if (effectiveTrackSearch) {
+        void loadTrackedInvites(effectiveTrackSearch);
+      }
     } catch (err) {
       setGeneratedInviteCode("");
       setInviteId(null);
@@ -849,23 +907,22 @@ export const LinkGenerator = ({
 
   const handleReset = () => {
     setName("");
+    setTrackSearch("");
     setInstagramUsername("");
-    setSelectedInviteEmail(null);
-    setGeneratedInviteCode("");
-    setInviteId(null);
-    setInviteStatus(null);
-    setCopied(false);
-    setSendEmailSuccess(null);
+    clearInvitePanelState();
     setErrorMessage(null);
   };
 
   const handleSelectTrackedInvite = (invite: VipInviteListItem) => {
     setName(invite.full_name);
+    setTrackSearch(invite.full_name);
     setInstagramUsername(invite.instagram_username ?? "");
     setSelectedInviteEmail(invite.email);
-    setGeneratedInviteCode(invite.invite_code);
     setInviteId(invite.invite_id);
     setInviteStatus(invite.status);
+    setGeneratedInviteCode(
+      isTerminalInviteStatus(invite.status) ? "" : invite.invite_code,
+    );
     setCopied(false);
     setSendEmailSuccess(null);
     setErrorMessage(null);
@@ -908,7 +965,11 @@ export const LinkGenerator = ({
   const canGenerate =
     !!(name.trim() && instagramUsername.trim()) && !loading;
   const canSendEmail =
-    !!inviteId && !!selectedInviteEmail?.trim() && !sendEmailLoading && !loading;
+    !!inviteId &&
+    !!selectedInviteEmail?.trim() &&
+    !sendEmailLoading &&
+    !loading &&
+    !isTerminalInviteStatus(inviteStatus);
 
   return (
     <div className="flex flex-col gap-[16px] ">
@@ -951,7 +1012,7 @@ export const LinkGenerator = ({
           <input
             type="search"
             value={trackSearch}
-            onChange={(e) => setTrackSearch(e.target.value)}
+            onChange={(e) => handleTrackSearchChange(e.target.value)}
             placeholder="Search by name, Instagram username, or invite code…"
             aria-label="Search VIP invites"
             className="buttonXl inputIcon w-full inputMJ text-white focus:outline-none focus:border-tm-primary-color04 placeholder-tm-text-color08"
@@ -959,8 +1020,8 @@ export const LinkGenerator = ({
         </div>
         <button
           type="button"
-          onClick={() => void loadTrackedInvites(trackSearch)}
-          disabled={trackLoading}
+          onClick={() => void loadTrackedInvites(effectiveTrackSearch)}
+          disabled={trackLoading || !showTrackedList}
           title="Refresh invite list"
           aria-label="Refresh invite list"
           className="lg:w-[56px] buttonSubtle buttonXl rounded-full flex items-center justify-center bg-[#141414] border border-[rgba(255,255,255,0.1)] text-[#555] hover:text-tm-text-color08 hover:border-[rgba(255,255,255,0.2)] transition-all shrink-0 disabled:opacity-40"
@@ -981,6 +1042,7 @@ export const LinkGenerator = ({
         </button>
       </div>
 
+      {showTrackedList && (
       <div className="flex flex-col gap-2 border border-[rgba(255,255,255,0.08)] rounded-xl bg-[#141414] p-4 max-h-[220px] overflow-y-auto">
           <p className="text-xs font-bold uppercase text-tm-text-color08">
             Tracked invites
@@ -993,9 +1055,7 @@ export const LinkGenerator = ({
           )}
           {!trackLoading && !trackError && trackedInvites.length === 0 && (
             <p className="text-sm text-tm-text-color08">
-              {trackSearch.trim()
-                ? "No invites match your search."
-                : "No invites yet for this group."}
+              No invites match your search.
             </p>
           )}
           {!trackLoading &&
@@ -1005,7 +1065,11 @@ export const LinkGenerator = ({
                   key={invite.invite_id}
                   type="button"
                   onClick={() => handleSelectTrackedInvite(invite)}
-                  className="w-full text-left rounded-lg border border-[rgba(255,255,255,0.08)] px-3 py-2.5 transition-colors hover:border-[rgba(255,255,255,0.18)] outline-none focus:outline-none active:border-[rgba(255,255,255,0.08)] active:bg-transparent"
+                  className={`w-full text-left rounded-lg border px-3 py-2.5 transition-colors outline-none focus:outline-none ${
+                    inviteId === invite.invite_id
+                      ? "border-[rgba(255,255,255,0.22)] bg-[rgba(255,255,255,0.04)]"
+                      : "border-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.18)] active:border-[rgba(255,255,255,0.08)] active:bg-transparent"
+                  }`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
@@ -1029,13 +1093,14 @@ export const LinkGenerator = ({
                 </button>
             ))}
       </div>
+      )}
 
       {/* Name + Instagram username row */}
       <div className="grid lg:grid-cols-2 gap-4">
         <input
           type="text"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => handleNameChange(e.target.value)}
           placeholder="Name"
           className="buttonXl inputMJ text-white focus:outline-none focus:border-tm-primary-color04 placeholder-tm-text-color08"
         />
@@ -1105,8 +1170,31 @@ export const LinkGenerator = ({
         </div>
       )}
 
-      {/* Generated invite code */}
-      {generatedInviteCode && (
+      {/* Terminal invite — signed up or expired; no code actions */}
+      {inviteId && isTerminalInviteStatus(inviteStatus) && (
+        <div className="flex flex-col gap-3 border border-neutral-800 p-6 rounded-xl bg-tm-neutral-color08 min-w-0 w-full">
+          <div className="flex flex-row w-full items-center justify-between gap-3">
+            <p className="text-xs font-bold uppercase text-tm-text-color08">
+              {inviteStatus === "completed" ? "Invite complete" : "Invite expired"}
+            </p>
+            {inviteStatus && (
+              <span
+                className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${statusBadgeClass(inviteStatus)}`}
+              >
+                {statusBadgeLabel(inviteStatus)}
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-[#555] leading-relaxed">
+            {inviteStatus === "completed"
+              ? `@${normalizeInstagramUsername(instagramUsername) || "This user"} has signed up on TeaseMe. The invite code is no longer needed.`
+              : "This invite was not redeemed in time and can no longer be used."}
+          </p>
+        </div>
+      )}
+
+      {/* Generated invite code — active invites only */}
+      {generatedInviteCode && !isTerminalInviteStatus(inviteStatus) && (
         <div className="flex flex-col gap-4 border border-neutral-800 p-8 rounded-xl bg-tm-neutral-color08 min-w-0 w-full overflow-hidden">
           <div className="flex flex-row w-full items-center justify-between gap-3">
             <p className="text-xs font-bold uppercase text-tm-text-color08">
