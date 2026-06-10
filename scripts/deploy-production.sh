@@ -50,4 +50,19 @@ sync_database
 
 npm run build
 pm2 restart mj-promoter || pm2 restart all
-curl -sf http://localhost:5555/health
+
+PORT="$(grep -E '^PORT=' .env | cut -d= -f2- | tr -d '\r"' || true)"
+PORT="${PORT:-5000}"
+
+echo "Waiting for health check on http://localhost:${PORT}/health ..."
+for attempt in $(seq 1 30); do
+  if curl -sf "http://localhost:${PORT}/health" >/dev/null; then
+    echo "Health check passed."
+    exit 0
+  fi
+  sleep 2
+done
+
+echo "Health check failed after 60s."
+pm2 logs mj-promoter --lines 50 --nostream || true
+exit 1
