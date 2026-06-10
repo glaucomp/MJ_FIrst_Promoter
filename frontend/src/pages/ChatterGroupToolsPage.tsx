@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { LinkGenerator, VoiceMessage } from "../components/GroupTools";
-import type { ChatterMyGroup } from "../services/api";
+import { chattersApi, type ChatterMyGroup } from "../services/api";
 import onlyFansIcon from "../assets/buttonSocialOnlyFans.png";
 
 const InitialsAvatar = ({
@@ -214,13 +214,62 @@ const SocialCopyButton = ({
 export const ChatterGroupToolsPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const group = location.state?.group as ChatterMyGroup | undefined;
+  const { groupId } = useParams<{ groupId: string }>();
+  const [group, setGroup] = useState<ChatterMyGroup | undefined>(
+    location.state?.group as ChatterMyGroup | undefined,
+  );
+  const [isLoading, setIsLoading] = useState(!group);
+  const [loadError, setLoadError] = useState("");
   const [fanName, setFanName] = useState("");
 
-  if (!group) {
+  useEffect(() => {
+    if (!groupId) return;
+
+    let cancelled = false;
+    (async () => {
+      setIsLoading(true);
+      setLoadError("");
+      try {
+        const data = await chattersApi.getMyGroups();
+        const fresh = data.groups.find((g) => g.id === groupId);
+        if (!cancelled) {
+          if (fresh) {
+            setGroup(fresh);
+          } else {
+            setGroup(undefined);
+            setLoadError("Group not found.");
+          }
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setLoadError(
+            err instanceof Error ? err.message : "Failed to load group",
+          );
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [groupId]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <div className="w-8 h-8 border-2 border-tm-primary-color04 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (loadError || !group) {
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-4">
-        <p className="text-tm-text-color08 text-base">Group not found.</p>
+        <p className="text-tm-text-color08 text-base">
+          {loadError || "Group not found."}
+        </p>
         <button
           onClick={() => navigate("/chatter-portal")}
           className="text-tm-primary-color04  text-sm font-semibold hover:underline"
@@ -293,6 +342,7 @@ export const ChatterGroupToolsPage = () => {
           {group.promoter?.username ? (
             <LinkGenerator
               username={group.promoter.username}
+              groupId={group.id}
               name={fanName}
               onNameChange={setFanName}
             />

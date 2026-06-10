@@ -346,6 +346,101 @@ export interface TrackingLink {
   };
 }
 
+export interface AdminStructureChatterGroup {
+  id: string;
+  name: string;
+  commissionPercentage: number;
+  memberCount: number;
+}
+
+export interface AdminStructurePerson {
+  id: string;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  userType?: string | null;
+}
+
+export interface AdminStructureNode {
+  id: string;
+  level: number;
+  status: 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+  referrer?: AdminStructurePerson | null;
+  campaign?: {
+    id: string;
+    name: string;
+    commissionRate: number;
+    secondaryRate: number | null;
+  };
+  referredUser?: {
+    id: string;
+    email: string;
+    firstName: string | null;
+    lastName: string | null;
+    username?: string | null;
+    userType?: string;
+    chatterGroup?: AdminStructureChatterGroup | null;
+  } | null;
+  inviteeEmail?: string | null;
+  children?: Array<{
+    id: string;
+    level: number;
+    status: 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+    referrer?: AdminStructurePerson | null;
+    referredUser?: {
+      id: string;
+      email: string;
+      firstName: string | null;
+      lastName: string | null;
+      username?: string | null;
+      userType?: string;
+      chatterGroup?: AdminStructureChatterGroup | null;
+    } | null;
+  }>;
+}
+
+export interface AdminStructurePromoterUser {
+  id: string;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  userType: string;
+  chatterGroup?: AdminStructureChatterGroup | null;
+  invitedBy?: AdminStructurePerson | null;
+  tier?: number;
+  referralId?: string | null;
+  referralStatus?: string | null;
+  referralCampaign?: {
+    id: string;
+    name: string;
+    commissionRate: number;
+    secondaryRate: number | null;
+  } | null;
+}
+
+export interface AdminStructureManager {
+  id: string;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  amPercent: number | null;
+  hiddenCampaign: { id: string; name: string } | null;
+  publicCampaign: {
+    id: string;
+    name: string;
+    commissionRate: number;
+    secondaryRate: number | null;
+    isActive: boolean;
+  } | null;
+  promoterUsers: AdminStructurePromoterUser[];
+  referrals: AdminStructureNode[];
+  stats: {
+    t1Count: number;
+    t2Count: number;
+    activeCount: number;
+  };
+}
+
 export interface ApiUser {
   id: string;
   email: string;
@@ -434,6 +529,15 @@ export const modelsApi = {
     });
     const data = await handleResponse(response, 'Failed to fetch referrals');
     return data.referrals;
+  },
+
+  /** Admin-only. All account managers with referral trees and commission %. */
+  async getAdminStructure(): Promise<AdminStructureManager[]> {
+    const response = await apiFetch(`${API_URL}/referrals/admin-structure`, {
+      headers: getAuthHeaders(),
+    });
+    const data = await handleResponse(response, 'Failed to fetch network structure');
+    return data.managers;
   },
 
   async createReferralInvite(campaignId: string, email: string): Promise<{
@@ -859,7 +963,51 @@ export interface Commission {
   transaction: Transaction | null;
 }
 
+export interface CommissionSimSlice {
+  role: 'seller' | 'upline' | 'am_direct' | 'am_indirect' | 'chatter';
+  label: string;
+  userId: string;
+  name: string;
+  email: string;
+  percentage: number;
+  amount: number;
+}
+
+export interface CommissionSimulation {
+  saleAmount: number;
+  campaign: {
+    id: string;
+    name: string;
+    commissionRate: number;
+    secondaryRate: number | null;
+    recurringRate: number | null;
+  };
+  seller: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  slices: CommissionSimSlice[];
+  totalPaidOut: number;
+}
+
 export const commissionApi = {
+  /** Admin-only: preview how a sale would be split (no DB writes). */
+  async simulate(args: {
+    sellerUserId?: string;
+    referralId?: string;
+    campaignId?: string;
+    saleAmount: number;
+  }): Promise<CommissionSimulation> {
+    const response = await apiFetch(`${API_URL}/commissions/simulate`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(args),
+    });
+    const data = await handleResponse(response, 'Failed to simulate commission');
+    return data.simulation;
+  },
+
   async getAll(): Promise<Commission[]> {
     const response = await apiFetch(`${API_URL}/commissions`, {
       headers: getAuthHeaders(),

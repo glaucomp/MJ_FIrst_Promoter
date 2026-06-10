@@ -70,6 +70,13 @@ export const navItems: NavItem[] = [
     path: "/campaigns",
     adminOnly: true,
   },
+  {
+    id: "structure",
+    Icon: IconNetwork,
+    label: "Structure",
+    path: "/structure",
+    adminOnly: true,
+  },
   // Payers are a back-office role that only sees Reports, Payouts and Settings.
   {
     id: "reports",
@@ -116,7 +123,7 @@ export const navItems: NavItem[] = [
 
 /** Ordered list of nav item IDs per role — determines display order in the menu. */
 export const navOrderByRole: Partial<Record<UserRole, string[]>> = {
-  admin: ["users", "campaigns", "reports", "payouts", "help", "settings"],
+  admin: ["users", "campaigns", "structure", "reports", "payouts", "help", "settings"],
   account_manager: [
     "referrals",
     "chatter-groups",

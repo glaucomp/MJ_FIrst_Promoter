@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { body } from "express-validator";
+import { UserRole } from "@prisma/client";
 import * as referralController from "../controllers/referral.controller";
-import { authenticate } from "../middleware/auth.middleware";
+import { authenticate, authorize } from "../middleware/auth.middleware";
 import { EMAIL_NORMALIZE_OPTIONS } from "../utils/email-normalize";
 
 const router = Router();
@@ -31,6 +32,14 @@ router.get("/invite/:inviteCode", referralController.getReferralByInviteCode);
 
 // Get user's referrals
 router.get("/my-referrals", authenticate, referralController.getMyReferrals);
+
+// Admin-only: all account managers with referral trees + commission %
+router.get(
+  "/admin-structure",
+  authenticate,
+  authorize(UserRole.ADMIN),
+  referralController.getAdminNetworkStructure,
+);
 
 // Check invite quota for a campaign (MUST be before /:id route)
 router.get("/quota/:campaignId", authenticate, referralController.checkInviteQuota);

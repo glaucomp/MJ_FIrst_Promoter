@@ -36,6 +36,13 @@ enum PasswordResetPurpose {
   RESET
 }
 
+enum VipInviteStatus {
+  pending
+  in_progress
+  completed
+  expired
+}
+
 // API Key model for external integrations
 model ApiKey {
   id          String   @id @default(cuid())
@@ -127,6 +134,7 @@ model User {
   createdChatterGroups  ChatterGroup[]     @relation("ChatterGroupCreator")
   socialLinks           SocialLink[]
   passwordResetTokens   PasswordResetToken[]
+  vipInvites            VipInvite[]
 
   @@index([email])
   @@index([username])
@@ -424,9 +432,35 @@ model ChatterGroup {
 
   // Promoter linked to this group (one-to-one via User.chatterGroupId)
   promoter             User?    @relation("PromoterChatterGroup")
+  vipInvites           VipInvite[]
 
   @@index([createdById])
   @@map("chatter_groups")
+}
+
+// VIP preregister invite — tracks TeaseMe onboarding for chatter-generated links
+model VipInvite {
+  id              String          @id @default(uuid())
+  chatterId       String
+  chatter         User            @relation(fields: [chatterId], references: [id], onDelete: Cascade)
+  groupId         String
+  group           ChatterGroup    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  teasemeUserId      Int             @unique
+  telegramId         BigInt?
+  instagramUsername  String?
+  email              String?
+  fullName           String
+  influencerId    String
+  inviteCode      String
+  status          VipInviteStatus @default(pending)
+  expiresAt       DateTime?
+  lastEvent       String?
+  lastEventAt     DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([groupId, status])
+  @@map("vip_invites")
 }
 
 // Social links for a user (one-to-many)
