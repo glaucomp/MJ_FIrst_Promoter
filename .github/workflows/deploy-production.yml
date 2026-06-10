@@ -1,0 +1,30 @@
+name: Deploy Production
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - name: Deploy
+        run: |
+          set -e
+          cd /home/ubuntu/MJ_FIrst_Promoter
+          git fetch origin master
+          git reset --hard origin/master
+          npm install
+          cd frontend && npm install && cd ..
+          npx prisma generate
+          npx prisma migrate deploy
+          npm run build
+          pm2 restart mj-promoter || pm2 restart all
+          curl -sf http://localhost:5555/health
