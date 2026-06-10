@@ -55,6 +55,7 @@ router.get(
   [
     query('groupId').isString().trim().notEmpty(),
     query('search').optional().isString().trim(),
+    query('includeExpired').optional().isIn(['true', 'false']),
   ],
   vipInviteController.listVipInvites,
 );

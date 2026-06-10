@@ -501,6 +501,12 @@ export const preregisterVipUser = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    const expiresAtRaw = result.body.expires_at;
+    const expiresAt =
+      typeof expiresAtRaw === "string" && !Number.isNaN(Date.parse(expiresAtRaw))
+        ? new Date(expiresAtRaw)
+        : undefined;
+
     const invite = await createVipInviteRecord({
       chatterId: req.user.id,
       groupId,
@@ -509,6 +515,7 @@ export const preregisterVipUser = async (req: AuthRequest, res: Response) => {
       fullName: payload.full_name,
       influencerId: payload.influencer_id,
       inviteCode: String(result.body.invite_code).trim(),
+      expiresAt,
     });
 
     return res.json({

@@ -21,9 +21,8 @@ interface PreregisterSuccess {
 
 type VipInviteStatus =
   | "pending"
-  | "profile_completed"
-  | "verified"
-  | "logged_in"
+  | "in_progress"
+  | "completed"
   | "expired";
 
 interface VipInviteStatusResponse {
@@ -32,25 +31,23 @@ interface VipInviteStatusResponse {
   last_event_at: string | null;
   invite_code: string;
   teaseme_user_id: number;
+  email?: string | null;
+  full_name?: string;
+  instagram_username?: string | null;
 }
 
 const VIP_POLL_INTERVAL_MS = 10_000;
 
-const POLLING_STATUSES = new Set<VipInviteStatus>([
-  "pending",
-  "profile_completed",
-]);
+const POLLING_STATUSES = new Set<VipInviteStatus>(["pending", "in_progress"]);
 
 const statusBadgeLabel = (status: VipInviteStatus): string => {
   switch (status) {
     case "pending":
       return "Pending";
-    case "profile_completed":
-      return "Profile done";
-    case "verified":
-      return "Verified";
-    case "logged_in":
-      return "Logged in";
+    case "in_progress":
+      return "In progress";
+    case "completed":
+      return "Completed";
     case "expired":
       return "Expired";
     default:
@@ -62,10 +59,9 @@ const statusBadgeClass = (status: VipInviteStatus): string => {
   switch (status) {
     case "pending":
       return "bg-[rgba(255,170,50,0.12)] border-[rgba(255,170,50,0.35)] text-[#ffcf80]";
-    case "profile_completed":
+    case "in_progress":
       return "bg-[rgba(100,149,237,0.12)] border-[rgba(100,149,237,0.35)] text-[#9ec5ff]";
-    case "verified":
-    case "logged_in":
+    case "completed":
       return "bg-[rgba(34,197,94,0.12)] border-[rgba(34,197,94,0.35)] text-tm-success-color05";
     case "expired":
       return "bg-[rgba(255,15,95,0.08)] border-[rgba(255,15,95,0.35)] text-tm-primary-color01";
@@ -225,6 +221,7 @@ interface VipInviteListItem {
   last_event_at: string | null;
   invite_code: string;
   teaseme_user_id: number;
+  expires_at: string | null;
   full_name: string;
   email: string | null;
   influencer_id: string;
@@ -739,6 +736,20 @@ export const LinkGenerator = ({
     };
   }, [trackSearch, loadTrackedInvites]);
 
+  // Refresh the tracked list while any invite is still redeemable.
+  useEffect(() => {
+    const hasActive = trackedInvites.some((inv) =>
+      POLLING_STATUSES.has(inv.status),
+    );
+    if (!hasActive) return;
+
+    const timer = setInterval(() => {
+      void loadTrackedInvites(trackSearch);
+    }, VIP_POLL_INTERVAL_MS);
+
+    return () => clearInterval(timer);
+  }, [trackedInvites, trackSearch, loadTrackedInvites]);
+
   useEffect(() => {
     if (!inviteId || !inviteStatus || !POLLING_STATUSES.has(inviteStatus)) {
       if (pollTimerRef.current) {
@@ -753,6 +764,9 @@ export const LinkGenerator = ({
         const result = await fetchVipInviteStatus(inviteId);
         setInviteStatus(result.status);
         setGeneratedInviteCode(result.invite_code);
+        if (result.email) {
+          setSelectedInviteEmail(result.email);
+        }
         setTrackedInvites((prev) =>
           prev.map((inv) =>
             inv.invite_id === inviteId
@@ -761,6 +775,11 @@ export const LinkGenerator = ({
                   status: result.status,
                   invite_code: result.invite_code,
                   last_event_at: result.last_event_at,
+                  ...(result.email !== undefined ? { email: result.email } : {}),
+                  ...(result.full_name ? { full_name: result.full_name } : {}),
+                  ...(result.instagram_username !== undefined
+                    ? { instagram_username: result.instagram_username }
+                    : {}),
                 }
               : inv,
           ),

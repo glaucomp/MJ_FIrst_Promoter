@@ -38,9 +38,8 @@ enum PasswordResetPurpose {
 
 enum VipInviteStatus {
   pending
-  profile_completed
-  verified
-  logged_in
+  in_progress
+  completed
   expired
 }
 
@@ -454,6 +453,7 @@ model VipInvite {
   influencerId    String
   inviteCode      String
   status          VipInviteStatus @default(pending)
+  expiresAt       DateTime?
   lastEvent       String?
   lastEventAt     DateTime?
   createdAt       DateTime        @default(now())

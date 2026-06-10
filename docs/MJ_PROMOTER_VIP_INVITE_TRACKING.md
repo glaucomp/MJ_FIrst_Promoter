@@ -91,6 +91,43 @@ npx prisma migrate deploy
 npx prisma generate
 ```
 
+## Invite status contract
+
+| Status | Meaning |
+|--------|---------|
+| `pending` | Code generated; user has not finished the VIP profile form |
+| `in_progress` | Profile completed; awaiting email verification |
+| `completed` | Fully signed up (`is_verified=true` on TeaseMe) |
+| `expired` | Never redeemed within 2 days of `created_at` / `expires_at` |
+
+MJ Promoter stores `expires_at` from the TeaseMe preregister response and hides `expired` invites from the default list.
+
+## TeaseMe batch status API
+
+`POST /mjpromoter/vip-invites/status` (same `X-Internal-Token` auth).
+
+**Request** — prefer persistent VIP codes; `user_ids` are a fallback:
+
+```json
+{ "invite_codes": ["75G9SU"], "user_ids": [110] }
+```
+
+TeaseMe resolves by `users.vip_invite_code` (set at preregister, never overwritten). Do not rely on `email_token` alone after signup — it is replaced during verification.
+
+**Response** — rows in `items` (or legacy `invites` / `results`):
+
+```json
+{ "items": [{ "invite_code": "75G9SU", "user_id": 110, "status": "completed", "email": "…", "is_verified": true }] }
+```
+
+MJ Promoter calls this on tracked-invite list refresh and per-invite status poll to reconcile badges.
+
+Env: `TEASEME_VIP_INVITES_STATUS_URL` (defaults to `{mjpromoter base}/vip-invites/status`).
+
 ## Webhook
 
-`POST /api/webhooks/teaseme/vip-preregister` — updates invite status (`pending` → `profile_completed` → `verified` / `logged_in`).
+`POST /api/webhooks/teaseme/vip-preregister` — updates invite status (`pending` → `in_progress` → `completed`).
+
+Auth: `x-webhook-secret` header (`TEASEME_VIP_WEBHOOK_SECRET`).
+
+Fire on TeaseMe when complete-profile succeeds (`in_progress`) and verify-email succeeds (`completed`).
