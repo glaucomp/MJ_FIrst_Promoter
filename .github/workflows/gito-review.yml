@@ -23,6 +23,7 @@ jobs:
         run: pip install gito.bot
 
       - name: Run Gito review
+        continue-on-error: true
         env:
           LLM_API_TYPE: anthropic
           LLM_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
