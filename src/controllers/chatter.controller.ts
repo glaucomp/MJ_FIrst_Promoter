@@ -978,6 +978,29 @@ export const deleteChatter = async (req: AuthRequest, res: Response) => {
   }
 };
 
+type SaleTxnRow = { saleAmount: number; createdAt: Date };
+
+const latestSaleTime = (txns: SaleTxnRow[]): number =>
+  txns.length > 0 ? Math.max(...txns.map((t) => t.createdAt.getTime())) : 0;
+
+/** Aggregate sale transactions for one payer (matches feed + send eligibility). */
+const aggregatePayerSales = (txns: SaleTxnRow[]) => {
+  const sorted = [...txns].sort(
+    (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+  );
+  const depositCount = sorted.length;
+  return {
+    depositCount,
+    isFirstDeposit: depositCount === 1,
+    lifetimeCents: Math.round(
+      sorted.reduce((sum, t) => sum + t.saleAmount, 0) * 100,
+    ),
+    lastDepositCents:
+      sorted.length > 0 ? Math.round(sorted[0].saleAmount * 100) : 0,
+    lastDate: sorted.length > 0 ? sorted[0].createdAt : null,
+  };
+};
+
 // GET /api/chatters/gift-activity?influencer_id=X&search=Y
 export const getGiftActivity = async (req: AuthRequest, res: Response) => {
   try {
@@ -1088,9 +1111,14 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
       if (!existing) {
         seenEmails.set(key, c);
       } else {
-        // Merge transactions into the first record seen for this email
+        // Prefer the customer tied to the most recent sale as the row identity.
+        if (latestSaleTime(c.transactions) > latestSaleTime(existing.transactions)) {
+          existing.id = c.id;
+          existing.name = c.name ?? existing.name;
+          existing.referral = c.referral ?? existing.referral;
+          existing.createdAt = c.createdAt;
+        }
         existing.transactions.push(...c.transactions);
-        // Sort merged transactions newest-first
         existing.transactions.sort((a, b) =>
           b.createdAt.getTime() - a.createdAt.getTime()
         );
@@ -1099,12 +1127,14 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
 
     const allItems = Array.from(seenEmails.values())
       .map((c) => {
-        const txns = c.transactions;
-        const lifetimeCents = Math.round(txns.reduce((sum, t) => sum + t.saleAmount, 0) * 100);
-        const lastDepositCents = txns.length > 0 ? Math.round(txns[0].saleAmount * 100) : 0;
-        const lastDate = txns.length > 0 ? txns[0].createdAt.toISOString() : c.createdAt.toISOString();
-        const depositCount = txns.length;
-        const isFirstDeposit = depositCount === 1;
+        const {
+          depositCount,
+          isFirstDeposit,
+          lifetimeCents,
+          lastDepositCents,
+          lastDate,
+        } = aggregatePayerSales(c.transactions);
+        const date = lastDate?.toISOString() ?? c.createdAt.toISOString();
 
         const gift = giftByEmail.get(c.email?.toLowerCase() ?? "");
         const giftStatus = gift
@@ -1120,13 +1150,14 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
           influencer_id: influencerId,
           name: c.name ?? null,
           email: c.email ?? "",
-          date: lastDate,
+          date,
           ref: c.referral?.inviteCode ?? null,
           lifetime_cents: lifetimeCents,
           last_deposit_cents: lastDepositCents,
           gift_status: giftStatus,
           gift_code: giftStatus === "sent" ? (gift?.promoCode ?? null) : null,
           gift_id: gift?.id ?? null,
+          expires_at: gift?.expiresAt?.toISOString() ?? null,
           diamonds: gift ? 120 : null,
           is_first_deposit: isFirstDeposit,
           deposit_count: depositCount,
@@ -1223,7 +1254,7 @@ export const sendGiftCode = async (req: AuthRequest, res: Response) => {
     // Ownership confirmed — now safe to load customer details.
     const customer = await prisma.customer.findUnique({
       where: { id: customerId },
-      select: { id: true, email: true, name: true, transactions: { where: { type: "sale" }, select: { saleAmount: true } } },
+      select: { id: true, email: true, name: true },
     });
 
     if (!customer) {
@@ -1235,11 +1266,25 @@ export const sendGiftCode = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: "Customer email is required to send a gift code" });
     }
 
-    const depositCount = customer.transactions.length;
-    const isFirstDeposit = depositCount === 1;
-    const depositCents = Math.round(
-      customer.transactions.reduce((sum, t) => sum + t.saleAmount, 0) * 100,
-    );
+    // Eligibility is per payer email — same aggregation as getGiftActivity merge.
+    const relatedCustomers = await prisma.customer.findMany({
+      where: {
+        email: { equals: payerEmail, mode: "insensitive" },
+        commissions: {
+          some: { userId: promoter.id, type: "promoter" },
+        },
+      },
+      select: {
+        transactions: {
+          where: { type: "sale" },
+          select: { saleAmount: true, createdAt: true },
+        },
+      },
+    });
+
+    const payerTransactions = relatedCustomers.flatMap((c) => c.transactions);
+    const { isFirstDeposit, lifetimeCents: depositCents } =
+      aggregatePayerSales(payerTransactions);
 
     // Check for an existing gift record (newest first)
     const existing = await prisma.firstDepositGift.findFirst({

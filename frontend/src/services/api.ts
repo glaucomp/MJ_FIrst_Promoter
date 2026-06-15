@@ -1560,6 +1560,7 @@ export interface GiftActivityItem {
   gift_status: 'none' | 'pending' | 'sent' | 'accepted' | 'expired' | 'deposit';
   gift_code: string | null;
   gift_id: number | null;
+  expires_at: string | null;
   diamonds: number | null;
   is_first_deposit: boolean;
   deposit_count: number;

@@ -1,5 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { chattersApi, type GiftActivityItem } from "../services/api";
+
+const effectiveGiftStatus = (item: GiftActivityItem): GiftActivityItem["gift_status"] => {
+  if (item.gift_status === "sent" && item.expires_at) {
+    const expiresAt = new Date(item.expires_at);
+    if (!Number.isNaN(expiresAt.getTime()) && expiresAt < new Date()) {
+      return "expired";
+    }
+  }
+  return item.gift_status;
+};
 
 interface Props {
   influencerId: string;
@@ -70,8 +80,14 @@ const ActivityRow = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const status = effectiveGiftStatus(item);
+
   const handleGiftClick = () => {
-    if (item.gift_status === "sent") {
+    if (status === "sent") {
+      if (!item.gift_code) {
+        onSend();
+        return;
+      }
       if (!expanded) setAnimKey((k) => k + 1);
       onToggleExpand();
     } else {
@@ -80,7 +96,7 @@ const ActivityRow = ({
   };
 
   const hasEmail = Boolean(item.email?.trim());
-  const showPanel = expanded && item.gift_status === "sent" && Boolean(item.gift_code);
+  const showPanel = expanded && status === "sent" && Boolean(item.gift_code);
 
   return (
     <>
@@ -122,8 +138,8 @@ const ActivityRow = ({
         {/* Actions */}
         <div className="flex flex-wrap items-center gap-3 mt-3">
 
-          {/* Orange Gift — unsent (first deposit only) */}
-          {item.is_first_deposit && hasEmail && (item.gift_status === "none" || item.gift_status === "pending") && (
+          {/* Orange Gift — send or re-send (first deposit only) */}
+          {item.is_first_deposit && hasEmail && (status === "none" || status === "pending" || status === "expired") && (
             <button
               type="button"
               onClick={handleGiftClick}
@@ -136,7 +152,7 @@ const ActivityRow = ({
           )}
 
           {/* Sent state: orange Gift always — dimmed when panel open */}
-          {item.gift_status === "sent" && (
+          {status === "sent" && (
             <button
               type="button"
               onClick={handleGiftClick}
@@ -151,22 +167,22 @@ const ActivityRow = ({
           )}
 
           {/* Status labels */}
-          {item.gift_status === "accepted" && (
+          {status === "accepted" && (
             <span className="inline-flex items-center gap-1.5 text-[#4ade80] text-[13px] font-semibold">
               <EnvelopeIcon color="#4ade80" /> Accepted
             </span>
           )}
-          {item.gift_status === "expired" && (
+          {status === "expired" && !item.is_first_deposit && (
             <span className="inline-flex items-center gap-1.5 text-[#f87171] text-[13px] font-semibold">
               <EnvelopeIcon color="#f87171" /> Expired
             </span>
           )}
-          {item.gift_status === "deposit" && (
+          {status === "deposit" && (
             <span className="inline-flex items-center gap-1.5 text-[#4ade80] text-[13px] font-semibold">
               ✅ Deposit
             </span>
           )}
-          {(item.gift_status as string) === "invited" && (
+          {(status as string) === "invited" && (
             <span className="inline-flex items-center gap-1.5 text-[rgba(255,255,255,0.5)] text-[13px] font-semibold">
               <EnvelopeIcon color="rgba(255,255,255,0.5)" /> Invited
             </span>
@@ -236,8 +252,10 @@ export const GiftActivityFeed = ({ influencerId }: Props) => {
   // Reset to page 1 when filter changes
   useEffect(() => { setPage(1); }, [showMissingOnly]);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) {
+      setLoading(true);
+    }
     setError(null);
     try {
       const res = await chattersApi.getGiftActivity(
@@ -251,52 +269,73 @@ export const GiftActivityFeed = ({ influencerId }: Props) => {
       setTotalPages(res.total_pages ?? 1);
       if (res.page != null) setPage(res.page);
     } catch {
-      setError("Unable to load gift activity");
+      if (!opts?.silent) {
+        setError("Unable to load gift activity");
+      }
     } finally {
-      setLoading(false);
+      if (!opts?.silent) {
+        setLoading(false);
+      }
     }
   }, [influencerId, debouncedSearch, page, showMissingOnly]);
 
   useEffect(() => { void load(); }, [load]);
 
-  const handleSend = async (userId: string, itemInfluencerId: string) => {
-    const rowKey = `${userId}:${itemInfluencerId}`;
-    const targetItem = items.find(
-      (item) => item.user_id === userId && item.influencer_id === itemInfluencerId,
-    );
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        void load({ silent: true });
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [load]);
+
+  const handleSend = useCallback(async (target: GiftActivityItem) => {
+    const { user_id: userId, influencer_id: itemInfluencerId } = target;
+    const rowKey = activityRowKey(target);
     const wasPending =
-      targetItem?.is_first_deposit &&
-      (targetItem.gift_status === "none" || targetItem.gift_status === "pending");
+      target.is_first_deposit &&
+      (effectiveGiftStatus(target) === "none" || effectiveGiftStatus(target) === "pending");
+    setError(null);
     setSendingRowKey(rowKey);
     try {
       const res = await chattersApi.sendGiftCode(userId, itemInfluencerId);
+      setItems((prev) =>
+        prev.map((item) => {
+          if (item.user_id !== userId || item.influencer_id !== itemInfluencerId) {
+            return item;
+          }
+          return {
+            ...item,
+            gift_status: res.status as GiftActivityItem["gift_status"],
+            gift_code: res.code,
+            diamonds: res.diamonds,
+            expires_at: res.expires_at || null,
+          };
+        }),
+      );
       if (wasPending) {
         setPendingCount((count) => Math.max(0, count - 1));
       }
-      setItems((prev) =>
-        prev.map((item) =>
-          item.user_id === userId && item.influencer_id === itemInfluencerId
-            ? { ...item, gift_status: res.status as GiftActivityItem["gift_status"], gift_code: res.code, diamonds: res.diamonds }
-            : item,
-        ),
-      );
       setExpandedRowKey(rowKey);
+      void load({ silent: true });
     } catch {
       setError("Unable to send gift");
     } finally {
       setSendingRowKey(null);
     }
-  };
+  }, [load]);
 
-  const rows = useMemo(() => {
-    if (loading) {
+  const renderRows = () => {
+    if (loading && !items.length) {
       return (
         <div className="flex items-center justify-center py-8">
           <div className="w-6 h-6 border-2 border-tm-primary-color04 border-t-transparent rounded-full animate-spin" />
         </div>
       );
     }
-    if (error) {
+    if (error && !items.length) {
       return <p className="text-[rgba(255,255,255,0.5)] text-sm py-6 text-center">{error}</p>;
     }
     if (!items.length) {
@@ -310,12 +349,12 @@ export const GiftActivityFeed = ({ influencerId }: Props) => {
           item={item}
           expanded={expandedRowKey === rowKey}
           onToggleExpand={() => setExpandedRowKey((cur) => (cur === rowKey ? null : rowKey))}
-          onSend={() => void handleSend(item.user_id, item.influencer_id)}
+          onSend={() => void handleSend(item)}
           sending={sendingRowKey === rowKey}
         />
       );
     });
-  }, [error, expandedRowKey, items, loading, sendingRowKey]);
+  };
 
   const renderPagination = () => {
     if (totalPages <= 1) return null;
@@ -410,7 +449,10 @@ export const GiftActivityFeed = ({ influencerId }: Props) => {
       </div>
 
       {/* Activity list */}
-      <div className={loading ? "opacity-60 pointer-events-none" : ""}>{rows}</div>
+      {error && items.length > 0 && (
+        <p className="text-[#f87171] text-sm text-center">{error}</p>
+      )}
+      <div className={loading && items.length > 0 ? "opacity-60 pointer-events-none" : ""}>{renderRows()}</div>
 
       {/* Pagination */}
       {renderPagination()}
