@@ -43,6 +43,14 @@ enum VipInviteStatus {
   expired
 }
 
+enum FirstDepositGiftStatus {
+  INVITED
+  PENDING
+  SENT
+  ACCEPTED
+  EXPIRED
+}
+
 // API Key model for external integrations
 model ApiKey {
   id          String   @id @default(cuid())
@@ -461,6 +469,26 @@ model VipInvite {
 
   @@index([groupId, status])
   @@map("vip_invites")
+}
+
+// First-deposit gift promo code — created when a payer makes their first TeaseMe top-up.
+model FirstDepositGift {
+  id              String                 @id @default(cuid())
+  promoCode       String                 @unique
+  payerEmail      String?
+  payerName       String?
+  transactionRef  String?
+  depositCents    Int?
+  status          FirstDepositGiftStatus @default(PENDING)
+  sentAt          DateTime?
+  acceptedAt      DateTime?
+  expiresAt       DateTime?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  @@index([status])
+  @@index([payerEmail])
+  @@map("first_deposit_gifts")
 }
 
 // Social links for a user (one-to-many)

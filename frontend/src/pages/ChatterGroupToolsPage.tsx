@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { GiftActivityFeed } from "../components/GiftActivityFeed";
 import { LinkGenerator, VoiceMessage } from "../components/GroupTools";
 import { chattersApi, type ChatterMyGroup } from "../services/api";
 import onlyFansIcon from "../assets/buttonSocialOnlyFans.png";
@@ -327,54 +328,7 @@ export const ChatterGroupToolsPage = () => {
 
       {/* Tools */}
       <div className="flex flex-col gap-5">
-        {/* Talk Like [Influencer] */}
-        <div className="bg-linear-to-t from-[#212121] to-[#23252a] rounded-2xl p-5 py-8 border border-neutral-600/50 lg:p-8">
-          <VoiceMessage
-            modelName={promoterName}
-            voiceId={voiceId}
-            userName={fanName}
-            onUserNameChange={setFanName}
-          />
-        </div>
-
-        {/* Invite Link */}
-        <div className="bg-[#1a1a1c] border border-neutral-600/50 rounded-2xl p-4 lg:p-8">
-          {group.promoter?.username ? (
-            <LinkGenerator
-              username={group.promoter.username}
-              groupId={group.id}
-              name={fanName}
-              onNameChange={setFanName}
-            />
-          ) : (
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <svg
-                  className="w-3.5 h-3.5 text-tm-primary-color04 "
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2.5}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
-                  />
-                </svg>
-                <p className="text-xs font-bold uppercase text-tm-text-color08">
-                  Invite Link
-                </p>
-              </div>
-              <p className="text-[#555] text-sm">
-                Link generation unavailable — this group's promoter has no
-                username set.
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Model Info */}
+        {/* Model Info — moved to top */}
         <div className="bg-[#1a1a1c] border border-[rgba(255,255,255,0.07)] rounded-2xl p-6 flex flex-col gap-5 lg:w-1/2">
           {/* Section header */}
           <div className="flex items-center gap-2.5">
@@ -434,6 +388,61 @@ export const ChatterGroupToolsPage = () => {
             )}
           </div>
         </div>
+
+        {/* Talk Like [Influencer] */}
+        <div className="bg-linear-to-t from-[#212121] to-[#23252a] rounded-2xl p-5 py-8 border border-neutral-600/50 lg:p-8">
+          <VoiceMessage
+            modelName={promoterName}
+            voiceId={voiceId}
+            userName={fanName}
+            onUserNameChange={setFanName}
+          />
+        </div>
+
+        {/* Invite Link */}
+        <div className="bg-[#1a1a1c] border border-neutral-600/50 rounded-2xl p-4 lg:p-8">
+          {group.promoter?.username ? (
+            <LinkGenerator
+              username={group.promoter.username}
+              groupId={group.id}
+              name={fanName}
+              onNameChange={setFanName}
+            />
+          ) : (
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <svg
+                  className="w-3.5 h-3.5 text-tm-primary-color04 "
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2.5}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                  />
+                </svg>
+                <p className="text-xs font-bold uppercase text-tm-text-color08">
+                  Invite Link
+                </p>
+              </div>
+              <p className="text-[#555] text-sm">
+                Link generation unavailable — this group's promoter has no
+                username set.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Gift Activity */}
+        {group.promoter?.username && (
+          <div className="bg-[#1a1a1c] border border-neutral-600/50 rounded-2xl p-4 lg:p-8">
+            <GiftActivityFeed influencerId={group.promoter.username} />
+          </div>
+        )}
+
       </div>
     </div>
   );

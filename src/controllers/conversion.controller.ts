@@ -173,15 +173,19 @@ async function trySyntheticAmDirectFromLinkedHiddenProgram(args: {
 // POST /api/v2/track/sale
 export const trackSale = async (req: ApiKeyRequest, res: Response) => {
   try {
-    const { email, uid, amount, event_id, ref_id, tid, plan, username } = req.body;
+    const { email, uid, amount, event_id, ref_id, tid, plan } = req.body;
+    // Accept both "username" and "Username" from callers
+    const username: string | undefined = req.body.username ?? req.body.Username;
 
     // Validation
     if (!event_id) {
       return res.status(400).json({ error: 'event_id is required' });
     }
 
-    if (!email && !uid) {
-      return res.status(400).json({ error: 'email or uid is required' });
+    // username alone is sufficient to identify the promoter; email/uid are
+    // only required when username is absent (customer-based referral lookup).
+    if (!username && !email && !uid) {
+      return res.status(400).json({ error: 'username, email, or uid is required' });
     }
 
     if (!amount || amount <= 0) {
@@ -321,7 +325,9 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
       }
     }
 
-    if (!referral && (email || uid)) {
+    // Only fall back to email/uid referral lookup when no username was supplied.
+    // When username is present, email is the payer's email only (not a lookup key).
+    if (!referral && !username && (email || uid)) {
       // Try to find by referred user email/uid
       referral = await prisma.referral.findFirst({
         where: {

@@ -101,6 +101,24 @@ router.post(
   chatterController.createPromoCode,
 );
 router.get('/me/groups', authenticate, chatterController.getMyGroups);
+router.get(
+  '/gift-activity',
+  authenticate,
+  [
+    query('influencer_id').optional().isString().trim(),
+    query('search').optional().isString().trim(),
+  ],
+  chatterController.getGiftActivity,
+);
+router.post(
+  '/gift-activity/:userId/send',
+  authenticate,
+  [
+    param('userId').isString().trim().notEmpty(),
+    query('influencer_id').trim().notEmpty(),
+  ],
+  chatterController.sendGiftCode,
+);
 router.get('/', authenticate, chatterController.listChatters);
 router.get('/:id', authenticate, chatterController.getChatter);
 router.patch(

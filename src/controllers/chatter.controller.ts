@@ -35,6 +35,8 @@ const PROMO_CODES_URL = (process.env.TEASEME_PROMO_CODES_URL || "").replace(
   "",
 );
 
+const TEASEME_API_URL = (process.env.TEASEME_API_URL || "").replace(/\/$/, "");
+
 const PROMO_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 const generatePromoCode = (length = 6): string => {
@@ -973,5 +975,231 @@ export const deleteChatter = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error("Delete chatter error:", error);
     res.status(500).json({ error: "Failed to delete chatter" });
+  }
+};
+
+// GET /api/chatters/gift-activity?influencer_id=X&search=Y
+export const getGiftActivity = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ error: "Unauthorized" });
+
+    const influencerId = String(req.query.influencer_id ?? "").trim();
+    const search = String(req.query.search ?? "").trim().toLowerCase();
+
+    if (!influencerId) {
+      return res.status(400).json({ error: "influencer_id is required" });
+    }
+
+    // Resolve the promoter by username
+    const promoter = await prisma.user.findUnique({
+      where: { username: influencerId },
+      select: { id: true },
+    });
+
+    if (!promoter) {
+      return res.json({ items: [], pending_count: 0 });
+    }
+
+    // Find all customers who generated commissions for this promoter (level-1 commissions)
+    const commissions = await prisma.commission.findMany({
+      where: {
+        userId: promoter.id,
+        type: "promoter",
+        customer: { isNot: null },
+      },
+      select: {
+        customerId: true,
+      },
+      distinct: ["customerId"],
+    });
+
+    const customerIds = commissions
+      .map((c) => c.customerId)
+      .filter((id): id is string => !!id);
+
+    if (!customerIds.length) {
+      return res.json({ items: [], pending_count: 0 });
+    }
+
+    // Load full customer data with aggregated transaction info
+    const customers = await prisma.customer.findMany({
+      where: { id: { in: customerIds } },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        createdAt: true,
+        referral: { select: { inviteCode: true } },
+        transactions: {
+          select: { saleAmount: true, createdAt: true },
+          orderBy: { createdAt: "desc" },
+        },
+      },
+    });
+
+    // Fetch gift records keyed by payer email
+    const emails = customers
+      .map((c) => c.email)
+      .filter((e): e is string => !!e);
+    const gifts = await prisma.firstDepositGift.findMany({
+      where: { payerEmail: { in: emails } },
+      orderBy: { createdAt: "desc" },
+    });
+    const giftByEmail = new Map(gifts.map((g) => [g.payerEmail?.toLowerCase(), g]));
+
+    // Build response items — deduplicated by email (one row per unique payer)
+    const seenEmails = new Map<string, typeof customers[0]>();
+    for (const c of customers) {
+      const key = (c.email ?? c.id).toLowerCase();
+      const existing = seenEmails.get(key);
+      if (!existing) {
+        seenEmails.set(key, c);
+      } else {
+        // Merge transactions into the first record seen for this email
+        existing.transactions.push(...c.transactions);
+        // Sort merged transactions newest-first
+        existing.transactions.sort((a, b) =>
+          b.createdAt.getTime() - a.createdAt.getTime()
+        );
+      }
+    }
+
+    const items = Array.from(seenEmails.values())
+      .map((c) => {
+        const txns = c.transactions;
+        const lifetimeCents = Math.round(txns.reduce((sum, t) => sum + t.saleAmount, 0) * 100);
+        const lastDepositCents = txns.length > 0 ? Math.round(txns[0].saleAmount * 100) : 0;
+        const lastDate = txns.length > 0 ? txns[0].createdAt.toISOString() : c.createdAt.toISOString();
+        const depositCount = txns.length;
+        const isFirstDeposit = depositCount === 1;
+
+        const gift = giftByEmail.get(c.email?.toLowerCase() ?? "");
+        const giftStatus = gift
+          ? (gift.status.toLowerCase() as "pending" | "sent" | "accepted" | "expired")
+          : "none";
+
+        return {
+          user_id: c.id,
+          influencer_id: influencerId,
+          name: c.name ?? null,
+          email: c.email ?? "",
+          date: lastDate,
+          ref: c.referral?.inviteCode ?? null,
+          lifetime_cents: lifetimeCents,
+          last_deposit_cents: lastDepositCents,
+          gift_status: giftStatus,
+          gift_code: gift?.promoCode ?? null,
+          gift_id: gift?.id ?? null,
+          diamonds: gift ? 120 : null,
+          is_first_deposit: isFirstDeposit,
+          deposit_count: depositCount,
+        };
+      })
+      .filter((item) => {
+        if (!search) return true;
+        return (
+          item.name?.toLowerCase().includes(search) ||
+          item.email.toLowerCase().includes(search)
+        );
+      })
+      .sort((a, b) => (b.date > a.date ? 1 : -1));
+
+    const pendingCount = items.filter(
+      (i) => i.is_first_deposit && i.gift_status !== "accepted",
+    ).length;
+    return res.json({ items, pending_count: pendingCount });
+  } catch (error) {
+    console.error("Get gift activity error:", error);
+    return res.status(500).json({ error: "Failed to fetch gift activity" });
+  }
+};
+
+// POST /api/chatters/gift-activity/:userId/send
+export const sendGiftCode = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ error: "Unauthorized" });
+
+    const customerId = req.params.userId;
+    if (!customerId) {
+      return res.status(400).json({ error: "userId (customer id) is required" });
+    }
+
+    const influencerId = String(req.query.influencer_id ?? "").trim();
+    if (!influencerId) {
+      return res.status(400).json({ error: "influencer_id is required" });
+    }
+
+    // Load the customer
+    const customer = await prisma.customer.findUnique({
+      where: { id: customerId },
+      select: { id: true, email: true, name: true, transactions: { select: { saleAmount: true } } },
+    });
+
+    if (!customer) {
+      return res.status(404).json({ error: "Customer not found" });
+    }
+
+    const payerEmail = customer.email ?? "";
+    const depositCents = Math.round(
+      customer.transactions.reduce((sum, t) => sum + t.saleAmount, 0) * 100,
+    );
+
+    // Check for an existing gift record
+    const existing = payerEmail
+      ? await prisma.firstDepositGift.findFirst({
+          where: { payerEmail },
+          orderBy: { createdAt: "desc" },
+        })
+      : null;
+
+    if (existing && existing.status === "SENT") {
+      return res.json({
+        ok: true,
+        code: existing.promoCode,
+        status: "sent",
+        diamonds: existing.depositCents ?? 120,
+        expires_at: existing.expiresAt?.toISOString() ?? "",
+      });
+    }
+
+    // Generate a unique promo code
+    const PROMO_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    const genCode = (len = 8) => {
+      const bytes = require("node:crypto").randomBytes(len) as Buffer;
+      return Array.from(bytes, (b: number) => PROMO_CHARS[b % PROMO_CHARS.length]).join("");
+    };
+
+    let promoCode = genCode();
+    // Ensure uniqueness
+    while (await prisma.firstDepositGift.findUnique({ where: { promoCode } })) {
+      promoCode = genCode();
+    }
+
+    const diamonds = 120;
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+    const gift = await prisma.firstDepositGift.create({
+      data: {
+        promoCode,
+        payerEmail: payerEmail || null,
+        payerName: customer.name ?? null,
+        transactionRef: customerId,
+        depositCents,
+        status: "SENT",
+        sentAt: new Date(),
+        expiresAt,
+      },
+    });
+
+    return res.json({
+      ok: true,
+      code: gift.promoCode,
+      status: "sent",
+      diamonds,
+      expires_at: gift.expiresAt?.toISOString() ?? "",
+    });
+  } catch (error) {
+    console.error("Send gift code error:", error);
+    return res.status(500).json({ error: "Failed to send gift code" });
   }
 };

@@ -1274,6 +1274,22 @@ export const chattersApi = {
     const response = await apiFetch(`${API_URL}/chatters/me/groups`, { headers: getAuthHeaders() });
     return handleResponse(response, 'Failed to fetch my groups');
   },
+
+  async getGiftActivity(influencerId: string, search?: string): Promise<GiftActivityResponse> {
+    const params = new URLSearchParams({ influencer_id: influencerId });
+    if (search) params.set('search', search);
+    const response = await apiFetch(`${API_URL}/chatters/gift-activity?${params}`, { headers: getAuthHeaders() });
+    return handleResponse(response, 'Failed to fetch gift activity');
+  },
+
+  async sendGiftCode(userId: string, influencerId: string): Promise<SendGiftResponse> {
+    const params = new URLSearchParams({ influencer_id: influencerId });
+    const response = await apiFetch(`${API_URL}/chatters/gift-activity/${userId}/send?${params}`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response, 'Failed to send gift code');
+  },
 };
 
 export interface ChatterMyGroup {
@@ -1528,3 +1544,35 @@ export const helpApi = {
     return handleResponse(response, 'Failed to delete help video');
   },
 };
+
+// ── Gift Activity types ───────────────────────────────────────────────────────
+
+export interface GiftActivityItem {
+  user_id: string;
+  influencer_id: string;
+  name: string | null;
+  email: string;
+  date: string | null;
+  ref: string | null;
+  lifetime_cents: number;
+  last_deposit_cents: number;
+  gift_status: 'none' | 'pending' | 'sent' | 'accepted' | 'expired' | 'deposit';
+  gift_code: string | null;
+  gift_id: number | null;
+  diamonds: number | null;
+  is_first_deposit: boolean;
+  deposit_count: number;
+}
+
+export interface GiftActivityResponse {
+  items: GiftActivityItem[];
+  pending_count: number;
+}
+
+export interface SendGiftResponse {
+  ok: boolean;
+  code: string;
+  status: string;
+  diamonds: number;
+  expires_at: string;
+}
