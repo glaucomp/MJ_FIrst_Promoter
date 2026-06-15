@@ -1091,7 +1091,7 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
       .map((c) => c.email)
       .filter((e): e is string => !!e);
     const gifts = await prisma.firstDepositGift.findMany({
-      where: { payerEmail: { in: emails } },
+      where: { payerEmail: { in: emails, mode: "insensitive" } },
       orderBy: { createdAt: "desc" },
     });
     // Build the map so the newest gift per email wins (gifts are ordered desc).
@@ -1165,10 +1165,14 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
       })
       .sort((a, b) => (b.date > a.date ? 1 : -1));
 
-    // Badge counts all first-deposit customers who still need a code (none/pending),
+    // Badge counts all first-deposit customers who still need a code (none/pending/expired),
     // independent of search or missing_only filters.
     const pendingCount = allItems.filter(
-      (i) => i.is_first_deposit && (i.gift_status === "none" || i.gift_status === "pending"),
+      (i) =>
+        i.is_first_deposit &&
+        (i.gift_status === "none" ||
+          i.gift_status === "pending" ||
+          i.gift_status === "expired"),
     ).length;
 
     const items = search
@@ -1286,9 +1290,9 @@ export const sendGiftCode = async (req: AuthRequest, res: Response) => {
     const { isFirstDeposit, lifetimeCents: depositCents } =
       aggregatePayerSales(payerTransactions);
 
-    // Check for an existing gift record (newest first)
+    // Check for an existing gift record (newest first; match payer email case-insensitively)
     const existing = await prisma.firstDepositGift.findFirst({
-      where: { payerEmail },
+      where: { payerEmail: { equals: payerEmail, mode: "insensitive" } },
       orderBy: { createdAt: "desc" },
     });
 

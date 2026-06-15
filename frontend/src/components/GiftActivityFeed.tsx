@@ -294,9 +294,10 @@ export const GiftActivityFeed = ({ influencerId }: Props) => {
   const handleSend = useCallback(async (target: GiftActivityItem) => {
     const { user_id: userId, influencer_id: itemInfluencerId } = target;
     const rowKey = activityRowKey(target);
+    const status = effectiveGiftStatus(target);
     const wasPending =
       target.is_first_deposit &&
-      (effectiveGiftStatus(target) === "none" || effectiveGiftStatus(target) === "pending");
+      (status === "none" || status === "pending" || status === "expired");
     setError(null);
     setSendingRowKey(rowKey);
     try {
