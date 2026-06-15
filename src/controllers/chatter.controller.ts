@@ -985,19 +985,44 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
 
     const influencerId = String(req.query.influencer_id ?? "").trim();
     const search = String(req.query.search ?? "").trim().toLowerCase();
+    const missingOnly = req.query.missing_only === "true";
+    const page = Math.max(1, parseInt(String(req.query.page ?? "1"), 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit ?? "10"), 10) || 10));
 
     if (!influencerId) {
       return res.status(400).json({ error: "influencer_id is required" });
     }
 
-    // Resolve the promoter by username
+    // Resolve the promoter by username (include chatterGroupId for membership check below)
     const promoter = await prisma.user.findUnique({
       where: { username: influencerId },
-      select: { id: true },
+      select: { id: true, chatterGroupId: true },
     });
 
     if (!promoter) {
       return res.json({ items: [], pending_count: 0 });
+    }
+
+    // Admins and account managers can always read gift activity.
+    // The promoter themselves can always read their own feed.
+    // Chatters may read it only when they are a member of the group linked to
+    // this promoter — mirroring the same check used by listVipInvites and
+    // preregisterVipUser.
+    if (!isAccountManagerOrAdmin(req) && req.user.id !== promoter.id) {
+      const isGroupMember = promoter.chatterGroupId
+        ? !!(await prisma.chatterGroupMember.findUnique({
+            where: {
+              chatterId_groupId: {
+                chatterId: req.user.id,
+                groupId: promoter.chatterGroupId,
+              },
+            },
+            select: { id: true },
+          }))
+        : false;
+      if (!isGroupMember) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
     }
 
     // Find all customers who generated commissions for this promoter (level-1 commissions)
@@ -1045,7 +1070,14 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
       where: { payerEmail: { in: emails } },
       orderBy: { createdAt: "desc" },
     });
-    const giftByEmail = new Map(gifts.map((g) => [g.payerEmail?.toLowerCase(), g]));
+    // Build the map so the newest gift per email wins (gifts are ordered desc).
+    const giftByEmail = new Map<string, (typeof gifts)[0]>();
+    for (const g of gifts) {
+      const key = g.payerEmail?.toLowerCase();
+      if (key && !giftByEmail.has(key)) {
+        giftByEmail.set(key, g);
+      }
+    }
 
     // Build response items — deduplicated by email (one row per unique payer)
     const seenEmails = new Map<string, typeof customers[0]>();
@@ -1104,10 +1136,22 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
       })
       .sort((a, b) => (b.date > a.date ? 1 : -1));
 
+    // Badge counts first-deposit customers who still need a code (none/pending).
+    // "sent" is excluded: a code has already been dispatched, so no action is needed.
     const pendingCount = items.filter(
-      (i) => i.is_first_deposit && i.gift_status !== "accepted",
+      (i) => i.is_first_deposit && (i.gift_status === "none" || i.gift_status === "pending"),
     ).length;
-    return res.json({ items, pending_count: pendingCount });
+
+    const filteredItems = missingOnly
+      ? items.filter((i) => i.is_first_deposit && i.gift_status !== "accepted")
+      : items;
+
+    const total = filteredItems.length;
+    const total_pages = Math.max(1, Math.ceil(total / limit));
+    const safePage = Math.min(page, total_pages);
+    const pagedItems = filteredItems.slice((safePage - 1) * limit, safePage * limit);
+
+    return res.json({ items: pagedItems, pending_count: pendingCount, total, page: safePage, total_pages });
   } catch (error) {
     console.error("Get gift activity error:", error);
     return res.status(500).json({ error: "Failed to fetch gift activity" });
@@ -1129,7 +1173,48 @@ export const sendGiftCode = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: "influencer_id is required" });
     }
 
-    // Load the customer
+    // Resolve the promoter and enforce ownership before touching any customer data.
+    const promoter = await prisma.user.findUnique({
+      where: { username: influencerId },
+      select: { id: true, chatterGroupId: true },
+    });
+
+    if (!promoter) {
+      return res.status(404).json({ error: "Influencer not found" });
+    }
+
+    // Same group-membership guard as getGiftActivity — chatters must belong to
+    // the group linked to this promoter; everyone else needs AM/admin privileges.
+    if (!isAccountManagerOrAdmin(req) && req.user.id !== promoter.id) {
+      const isGroupMember = promoter.chatterGroupId
+        ? !!(await prisma.chatterGroupMember.findUnique({
+            where: {
+              chatterId_groupId: {
+                chatterId: req.user.id,
+                groupId: promoter.chatterGroupId,
+              },
+            },
+            select: { id: true },
+          }))
+        : false;
+      if (!isGroupMember) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+    }
+
+    // Verify ownership BEFORE loading any customer PII. This prevents
+    // callers from probing arbitrary customer IDs (404 vs 403 enumeration)
+    // and ensures no sensitive data is read unless the relationship is confirmed.
+    const commission = await prisma.commission.findFirst({
+      where: { userId: promoter.id, customerId, type: "promoter" },
+      select: { id: true },
+    });
+
+    if (!commission) {
+      return res.status(403).json({ error: "Customer is not a referral of this influencer" });
+    }
+
+    // Ownership confirmed — now safe to load customer details.
     const customer = await prisma.customer.findUnique({
       where: { id: customerId },
       select: { id: true, email: true, name: true, transactions: { select: { saleAmount: true } } },
@@ -1144,7 +1229,7 @@ export const sendGiftCode = async (req: AuthRequest, res: Response) => {
       customer.transactions.reduce((sum, t) => sum + t.saleAmount, 0) * 100,
     );
 
-    // Check for an existing gift record
+    // Check for an existing gift record (newest first)
     const existing = payerEmail
       ? await prisma.firstDepositGift.findFirst({
           where: { payerEmail },
@@ -1152,17 +1237,45 @@ export const sendGiftCode = async (req: AuthRequest, res: Response) => {
         })
       : null;
 
-    if (existing && existing.status === "SENT") {
+    // Already redeemed — return as-is, no new record.
+    if (existing && existing.status === "ACCEPTED") {
       return res.json({
         ok: true,
         code: existing.promoCode,
-        status: "sent",
+        status: "accepted",
         diamonds: existing.depositCents ?? 120,
         expires_at: existing.expiresAt?.toISOString() ?? "",
       });
     }
 
-    // Generate a unique promo code
+    // Already sent and still valid — return the existing code.
+    if (existing && existing.status === "SENT") {
+      return res.json({
+        ok: true,
+        code: existing.promoCode,
+        status: "sent",
+        diamonds: 120,
+        expires_at: existing.expiresAt?.toISOString() ?? "",
+      });
+    }
+
+    // PENDING or INVITED — upgrade the existing row to SENT rather than inserting a duplicate.
+    if (existing && (existing.status === "PENDING" || existing.status === "INVITED")) {
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      const updated = await prisma.firstDepositGift.update({
+        where: { id: existing.id },
+        data: { status: "SENT", sentAt: new Date(), expiresAt },
+      });
+      return res.json({
+        ok: true,
+        code: updated.promoCode,
+        status: "sent",
+        diamonds: updated.depositCents ?? 120,
+        expires_at: updated.expiresAt?.toISOString() ?? "",
+      });
+    }
+
+    // No record, or the only existing one is EXPIRED — generate a fresh code.
     const PROMO_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     const genCode = (len = 8) => {
       const bytes = require("node:crypto").randomBytes(len) as Buffer;
@@ -1170,7 +1283,7 @@ export const sendGiftCode = async (req: AuthRequest, res: Response) => {
     };
 
     let promoCode = genCode();
-    // Ensure uniqueness
+    // Ensure global uniqueness
     while (await prisma.firstDepositGift.findUnique({ where: { promoCode } })) {
       promoCode = genCode();
     }

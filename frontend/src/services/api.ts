@@ -1275,9 +1275,10 @@ export const chattersApi = {
     return handleResponse(response, 'Failed to fetch my groups');
   },
 
-  async getGiftActivity(influencerId: string, search?: string): Promise<GiftActivityResponse> {
-    const params = new URLSearchParams({ influencer_id: influencerId });
+  async getGiftActivity(influencerId: string, search?: string, page = 1, missingOnly = false): Promise<GiftActivityResponse> {
+    const params = new URLSearchParams({ influencer_id: influencerId, page: String(page) });
     if (search) params.set('search', search);
+    if (missingOnly) params.set('missing_only', 'true');
     const response = await apiFetch(`${API_URL}/chatters/gift-activity?${params}`, { headers: getAuthHeaders() });
     return handleResponse(response, 'Failed to fetch gift activity');
   },
@@ -1567,6 +1568,9 @@ export interface GiftActivityItem {
 export interface GiftActivityResponse {
   items: GiftActivityItem[];
   pending_count: number;
+  total: number;
+  page: number;
+  total_pages: number;
 }
 
 export interface SendGiftResponse {

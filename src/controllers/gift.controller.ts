@@ -77,29 +77,40 @@ export const verifyPromoCode = async (req: Request, res: Response) => {
       return res.json({ ok: true, valid: false, reason: "not_available" });
     }
 
-    // Check expiry
+    // Check expiry — conditional update so concurrent expiry writes are idempotent.
     if (gift.expiresAt && gift.expiresAt < new Date()) {
-      await prisma.firstDepositGift.update({
-        where: { promoCode },
+      await prisma.firstDepositGift.updateMany({
+        where: { promoCode, status: "SENT" },
         data: { status: "EXPIRED" },
       });
       return res.json({ ok: true, valid: false, reason: "expired" });
     }
 
-    // If email provided, verify it matches the intended recipient
-    if (email && gift.payerEmail) {
-      const normalizedEmail = email.trim().toLowerCase();
-      const expectedEmail = gift.payerEmail.trim().toLowerCase();
-      if (normalizedEmail !== expectedEmail) {
-        return res.json({ ok: true, valid: false, reason: "email_mismatch" });
-      }
+    // Both the caller-supplied email AND the stored payerEmail must be present
+    // and must match. Accepting a code without confirming the redeemer's identity
+    // would allow anyone who knows (or guesses) a valid code to claim it.
+    if (!email) {
+      return res.json({ ok: true, valid: false, reason: "email_required" });
+    }
+    if (!gift.payerEmail) {
+      return res.json({ ok: true, valid: false, reason: "no_payer_on_record" });
+    }
+    if (email.trim().toLowerCase() !== gift.payerEmail.trim().toLowerCase()) {
+      return res.json({ ok: true, valid: false, reason: "email_mismatch" });
     }
 
-    // All checks passed — mark as ACCEPTED
-    await prisma.firstDepositGift.update({
-      where: { promoCode },
+    // Atomic redemption: update only if the row is still SENT.
+    // If two requests race here, exactly one UPDATE will match (count=1); the
+    // other gets count=0 and must report already_redeemed rather than granting
+    // diamonds a second time.
+    const redeemed = await prisma.firstDepositGift.updateMany({
+      where: { promoCode, status: "SENT" },
       data: { status: "ACCEPTED", acceptedAt: new Date() },
     });
+
+    if (redeemed.count === 0) {
+      return res.json({ ok: true, valid: false, reason: "already_redeemed" });
+    }
 
     return res.json({
       ok: true,
@@ -156,6 +167,22 @@ export const receivePromoCodeRedeemedWebhook = async (
 
     if (gift.status === "ACCEPTED") {
       return res.status(200).json({ ok: true, matched: true, duplicate: true });
+    }
+
+    // Only a SENT gift may be redeemed — guard against EXPIRED/PENDING/INVITED rows.
+    if (gift.status !== "SENT") {
+      console.warn("[promo-code-redeemed-webhook] gift not in SENT state", { promoCode, status: gift.status });
+      return res.status(200).json({ ok: true, matched: true, skipped: true, reason: "not_sent" });
+    }
+
+    // Honour the expiry timestamp even if TeaseMe omits the check on their side.
+    if (gift.expiresAt && gift.expiresAt < new Date()) {
+      await prisma.firstDepositGift.update({
+        where: { promoCode },
+        data: { status: "EXPIRED" },
+      });
+      console.warn("[promo-code-redeemed-webhook] gift expired", { promoCode, expiresAt: gift.expiresAt });
+      return res.status(200).json({ ok: true, matched: true, skipped: true, reason: "expired" });
     }
 
     await prisma.firstDepositGift.update({

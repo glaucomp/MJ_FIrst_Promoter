@@ -212,6 +212,8 @@ export const GiftActivityFeed = ({ influencerId }: Props) => {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [items, setItems] = useState<GiftActivityItem[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedRowKey, setExpandedRowKey] = useState<string | null>(null);
@@ -221,23 +223,35 @@ export const GiftActivityFeed = ({ influencerId }: Props) => {
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setPage(1);
+    }, 300);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [search]);
+
+  // Reset to page 1 when filter changes
+  useEffect(() => { setPage(1); }, [showMissingOnly]);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await chattersApi.getGiftActivity(influencerId, debouncedSearch || undefined);
+      const res = await chattersApi.getGiftActivity(
+        influencerId,
+        debouncedSearch || undefined,
+        page,
+        showMissingOnly,
+      );
       setItems(res.items);
       setPendingCount(res.pending_count);
+      setTotalPages(res.total_pages ?? 1);
     } catch {
       setError("Unable to load gift activity");
     } finally {
       setLoading(false);
     }
-  }, [influencerId, debouncedSearch]);
+  }, [influencerId, debouncedSearch, page, showMissingOnly]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -246,28 +260,27 @@ export const GiftActivityFeed = ({ influencerId }: Props) => {
     setSendingRowKey(rowKey);
     try {
       const res = await chattersApi.sendGiftCode(userId, itemInfluencerId);
-      setItems((prev) =>
-        prev.map((item) =>
+      setItems((prev) => {
+        const next = prev.map((item) =>
           item.user_id === userId && item.influencer_id === itemInfluencerId
             ? { ...item, gift_status: res.status as GiftActivityItem["gift_status"], gift_code: res.code, diamonds: res.diamonds }
             : item,
-        ),
-      );
+        );
+        // Recompute the badge from the updated list so it stays in sync with
+        // the server definition: first-deposit rows still awaiting a code.
+        const newPending = next.filter(
+          (i) => i.is_first_deposit && (i.gift_status === "none" || i.gift_status === "pending"),
+        ).length;
+        setPendingCount(newPending);
+        return next;
+      });
       setExpandedRowKey(rowKey);
-      setPendingCount((n) => Math.max(0, n - 1));
     } catch {
       setError("Unable to send gift");
     } finally {
       setSendingRowKey(null);
     }
   };
-
-  const visibleItems = useMemo(
-    () => showMissingOnly
-      ? items.filter((i) => i.is_first_deposit && i.gift_status !== "accepted")
-      : items,
-    [items, showMissingOnly],
-  );
 
   const rows = useMemo(() => {
     if (loading) {
@@ -280,10 +293,10 @@ export const GiftActivityFeed = ({ influencerId }: Props) => {
     if (error) {
       return <p className="text-[rgba(255,255,255,0.5)] text-sm py-6 text-center">{error}</p>;
     }
-    if (!visibleItems.length) {
+    if (!items.length) {
       return <p className="text-[rgba(255,255,255,0.4)] text-sm py-6 text-center">No activity yet.</p>;
     }
-    return visibleItems.map((item) => {
+    return items.map((item) => {
       const rowKey = activityRowKey(item);
       return (
         <ActivityRow
@@ -296,7 +309,62 @@ export const GiftActivityFeed = ({ influencerId }: Props) => {
         />
       );
     });
-  }, [error, expandedRowKey, visibleItems, loading, sendingRowKey]);
+  }, [error, expandedRowKey, items, loading, sendingRowKey]);
+
+  const renderPagination = () => {
+    if (totalPages <= 1) return null;
+
+    const maxVisible = 6;
+    let startPage = Math.max(1, page - Math.floor(maxVisible / 2));
+    const endPage = Math.min(totalPages, startPage + maxVisible - 1);
+    if (endPage - startPage < maxVisible - 1) {
+      startPage = Math.max(1, endPage - maxVisible + 1);
+    }
+    const pageNums: number[] = [];
+    for (let i = startPage; i <= endPage; i++) pageNums.push(i);
+
+    const btnBase =
+      "w-9 h-9 flex items-center justify-center rounded-xl text-[14px] font-bold transition-colors select-none";
+
+    return (
+      <div className="flex items-center justify-center gap-1 pt-2 pb-1">
+        <button
+          type="button"
+          onClick={() => setPage((p) => Math.max(1, p - 1))}
+          disabled={page <= 1}
+          className={`${btnBase} text-[rgba(255,255,255,0.5)] hover:text-white hover:bg-[rgba(255,255,255,0.08)] disabled:opacity-25 disabled:cursor-not-allowed`}
+          aria-label="Previous page"
+        >
+          ‹
+        </button>
+
+        {pageNums.map((n) => (
+          <button
+            key={n}
+            type="button"
+            onClick={() => setPage(n)}
+            className={`${btnBase} ${
+              n === page
+                ? "bg-[rgba(255,140,0,0.25)] text-[#ffb347] border border-[rgba(255,140,0,0.45)]"
+                : "text-[rgba(255,255,255,0.55)] hover:text-white hover:bg-[rgba(255,255,255,0.08)]"
+            }`}
+          >
+            {n}
+          </button>
+        ))}
+
+        <button
+          type="button"
+          onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          disabled={page >= totalPages}
+          className={`${btnBase} text-[rgba(255,255,255,0.5)] hover:text-white hover:bg-[rgba(255,255,255,0.08)] disabled:opacity-25 disabled:cursor-not-allowed`}
+          aria-label="Next page"
+        >
+          ›
+        </button>
+      </div>
+    );
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -337,6 +405,9 @@ export const GiftActivityFeed = ({ influencerId }: Props) => {
 
       {/* Activity list */}
       <div className={loading ? "opacity-60 pointer-events-none" : ""}>{rows}</div>
+
+      {/* Pagination */}
+      {renderPagination()}
     </div>
   );
 };
