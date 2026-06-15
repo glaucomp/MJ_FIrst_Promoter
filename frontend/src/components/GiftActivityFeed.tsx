@@ -79,6 +79,7 @@ const ActivityRow = ({
     }
   };
 
+  const hasEmail = Boolean(item.email?.trim());
   const showPanel = expanded && item.gift_status === "sent" && Boolean(item.gift_code);
 
   return (
@@ -93,7 +94,9 @@ const ActivityRow = ({
         </div>
 
         {/* Email */}
-        <p className="text-[rgba(255,255,255,0.75)] text-[12px] mt-[4px]">{item.email}</p>
+        <p className="text-[rgba(255,255,255,0.75)] text-[12px] mt-[4px]">
+          {item.email || "No email on file"}
+        </p>
 
         {/* Date */}
         <p className="text-[rgba(255,255,255,0.45)] text-[11px] mt-[2px]">{formatDate(item.date)}</p>
@@ -119,8 +122,8 @@ const ActivityRow = ({
         {/* Actions */}
         <div className="flex flex-wrap items-center gap-3 mt-3">
 
-          {/* Orange Gift — unsent */}
-          {(item.gift_status === "none" || item.gift_status === "pending") && (
+          {/* Orange Gift — unsent (first deposit only) */}
+          {item.is_first_deposit && hasEmail && (item.gift_status === "none" || item.gift_status === "pending") && (
             <button
               type="button"
               onClick={handleGiftClick}

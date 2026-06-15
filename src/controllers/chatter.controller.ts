@@ -1108,7 +1108,11 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
 
         const gift = giftByEmail.get(c.email?.toLowerCase() ?? "");
         const giftStatus = gift
-          ? (gift.status.toLowerCase() as "pending" | "sent" | "accepted" | "expired")
+          ? gift.status === "SENT" &&
+            gift.expiresAt != null &&
+            gift.expiresAt < new Date()
+            ? "expired"
+            : (gift.status.toLowerCase() as "pending" | "sent" | "accepted" | "expired")
           : "none";
 
         return {
@@ -1121,7 +1125,7 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
           lifetime_cents: lifetimeCents,
           last_deposit_cents: lastDepositCents,
           gift_status: giftStatus,
-          gift_code: gift?.promoCode ?? null,
+          gift_code: giftStatus === "sent" ? (gift?.promoCode ?? null) : null,
           gift_id: gift?.id ?? null,
           diamonds: gift ? 120 : null,
           is_first_deposit: isFirstDeposit,
@@ -1226,18 +1230,22 @@ export const sendGiftCode = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: "Customer not found" });
     }
 
-    const payerEmail = customer.email ?? "";
+    const payerEmail = (customer.email ?? "").trim();
+    if (!payerEmail) {
+      return res.status(400).json({ error: "Customer email is required to send a gift code" });
+    }
+
+    const depositCount = customer.transactions.length;
+    const isFirstDeposit = depositCount === 1;
     const depositCents = Math.round(
       customer.transactions.reduce((sum, t) => sum + t.saleAmount, 0) * 100,
     );
 
     // Check for an existing gift record (newest first)
-    const existing = payerEmail
-      ? await prisma.firstDepositGift.findFirst({
-          where: { payerEmail },
-          orderBy: { createdAt: "desc" },
-        })
-      : null;
+    const existing = await prisma.firstDepositGift.findFirst({
+      where: { payerEmail },
+      orderBy: { createdAt: "desc" },
+    });
 
     // Already redeemed — return as-is, no new record.
     if (existing && existing.status === "ACCEPTED") {
@@ -1252,17 +1260,29 @@ export const sendGiftCode = async (req: AuthRequest, res: Response) => {
 
     // Already sent and still valid — return the existing code.
     if (existing && existing.status === "SENT") {
-      return res.json({
-        ok: true,
-        code: existing.promoCode,
-        status: "sent",
-        diamonds: 120,
-        expires_at: existing.expiresAt?.toISOString() ?? "",
+      const isExpired =
+        existing.expiresAt != null && existing.expiresAt < new Date();
+      if (!isExpired) {
+        return res.json({
+          ok: true,
+          code: existing.promoCode,
+          status: "sent",
+          diamonds: 120,
+          expires_at: existing.expiresAt?.toISOString() ?? "",
+        });
+      }
+      await prisma.firstDepositGift.updateMany({
+        where: { id: existing.id, status: "SENT" },
+        data: { status: "EXPIRED" },
       });
+      // Fall through — issue a fresh code below.
     }
 
     // PENDING or INVITED — upgrade the existing row to SENT rather than inserting a duplicate.
     if (existing && (existing.status === "PENDING" || existing.status === "INVITED")) {
+      if (!isFirstDeposit) {
+        return res.status(400).json({ error: "Gift codes are only available for first-deposit customers" });
+      }
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
       const updated = await prisma.firstDepositGift.update({
         where: { id: existing.id },
@@ -1278,6 +1298,10 @@ export const sendGiftCode = async (req: AuthRequest, res: Response) => {
     }
 
     // No record, or the only existing one is EXPIRED — generate a fresh code.
+    if (!isFirstDeposit) {
+      return res.status(400).json({ error: "Gift codes are only available for first-deposit customers" });
+    }
+
     const PROMO_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     const genCode = (len = 8) => {
       const bytes = require("node:crypto").randomBytes(len) as Buffer;
@@ -1296,7 +1320,7 @@ export const sendGiftCode = async (req: AuthRequest, res: Response) => {
     const gift = await prisma.firstDepositGift.create({
       data: {
         promoCode,
-        payerEmail: payerEmail || null,
+        payerEmail: payerEmail,
         payerName: customer.name ?? null,
         transactionRef: customerId,
         depositCents,
