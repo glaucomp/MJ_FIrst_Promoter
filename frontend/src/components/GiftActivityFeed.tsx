@@ -246,6 +246,7 @@ export const GiftActivityFeed = ({ influencerId }: Props) => {
       setItems(res.items);
       setPendingCount(res.pending_count);
       setTotalPages(res.total_pages ?? 1);
+      if (res.page != null) setPage(res.page);
     } catch {
       setError("Unable to load gift activity");
     } finally {
@@ -257,23 +258,25 @@ export const GiftActivityFeed = ({ influencerId }: Props) => {
 
   const handleSend = async (userId: string, itemInfluencerId: string) => {
     const rowKey = `${userId}:${itemInfluencerId}`;
+    const targetItem = items.find(
+      (item) => item.user_id === userId && item.influencer_id === itemInfluencerId,
+    );
+    const wasPending =
+      targetItem?.is_first_deposit &&
+      (targetItem.gift_status === "none" || targetItem.gift_status === "pending");
     setSendingRowKey(rowKey);
     try {
       const res = await chattersApi.sendGiftCode(userId, itemInfluencerId);
-      setItems((prev) => {
-        const next = prev.map((item) =>
+      if (wasPending) {
+        setPendingCount((count) => Math.max(0, count - 1));
+      }
+      setItems((prev) =>
+        prev.map((item) =>
           item.user_id === userId && item.influencer_id === itemInfluencerId
             ? { ...item, gift_status: res.status as GiftActivityItem["gift_status"], gift_code: res.code, diamonds: res.diamonds }
             : item,
-        );
-        // Recompute the badge from the updated list so it stays in sync with
-        // the server definition: first-deposit rows still awaiting a code.
-        const newPending = next.filter(
-          (i) => i.is_first_deposit && (i.gift_status === "none" || i.gift_status === "pending"),
-        ).length;
-        setPendingCount(newPending);
-        return next;
-      });
+        ),
+      );
       setExpandedRowKey(rowKey);
     } catch {
       setError("Unable to send gift");

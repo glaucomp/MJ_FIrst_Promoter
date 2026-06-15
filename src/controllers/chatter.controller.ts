@@ -1097,7 +1097,7 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    const items = Array.from(seenEmails.values())
+    const allItems = Array.from(seenEmails.values())
       .map((c) => {
         const txns = c.transactions;
         const lifetimeCents = Math.round(txns.reduce((sum, t) => sum + t.saleAmount, 0) * 100);
@@ -1128,20 +1128,21 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
           deposit_count: depositCount,
         };
       })
-      .filter((item) => {
-        if (!search) return true;
-        return (
-          item.name?.toLowerCase().includes(search) ||
-          item.email.toLowerCase().includes(search)
-        );
-      })
       .sort((a, b) => (b.date > a.date ? 1 : -1));
 
-    // Badge counts first-deposit customers who still need a code (none/pending).
-    // "sent" is excluded: a code has already been dispatched, so no action is needed.
-    const pendingCount = items.filter(
+    // Badge counts all first-deposit customers who still need a code (none/pending),
+    // independent of search or missing_only filters.
+    const pendingCount = allItems.filter(
       (i) => i.is_first_deposit && (i.gift_status === "none" || i.gift_status === "pending"),
     ).length;
+
+    const items = search
+      ? allItems.filter(
+          (item) =>
+            item.name?.toLowerCase().includes(search) ||
+            item.email.toLowerCase().includes(search),
+        )
+      : allItems;
 
     const filteredItems = missingOnly
       ? items.filter((i) => i.is_first_deposit && i.gift_status !== "accepted")
