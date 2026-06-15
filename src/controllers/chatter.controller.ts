@@ -1056,6 +1056,7 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
         createdAt: true,
         referral: { select: { inviteCode: true } },
         transactions: {
+          where: { type: "sale" },
           select: { saleAmount: true, createdAt: true },
           orderBy: { createdAt: "desc" },
         },
@@ -1217,7 +1218,7 @@ export const sendGiftCode = async (req: AuthRequest, res: Response) => {
     // Ownership confirmed — now safe to load customer details.
     const customer = await prisma.customer.findUnique({
       where: { id: customerId },
-      select: { id: true, email: true, name: true, transactions: { select: { saleAmount: true } } },
+      select: { id: true, email: true, name: true, transactions: { where: { type: "sale" }, select: { saleAmount: true } } },
     });
 
     if (!customer) {
