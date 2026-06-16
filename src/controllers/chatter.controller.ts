@@ -1155,15 +1155,15 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // Direct (level-1) sales only — exclude T2/upline and AM commissions that
-    // share the same customerId but belong to a different referral chain.
+    // Payers who generated promoter commissions for this influencer. We key off
+    // commission.userId (not customer.referral.referrerId) because level-2 sales
+    // credit the selling promoter while the customer referral row still points at
+    // the link-sharer (e.g. jorlyn → juliana chain).
     const commissions = await prisma.commission.findMany({
       where: {
         userId: promoter.id,
         type: "promoter",
-        customer: {
-          referral: { referrerId: promoter.id },
-        },
+        customerId: { not: null },
       },
       select: {
         customerId: true,
@@ -1382,7 +1382,6 @@ export const sendGiftCode = async (req: AuthRequest, res: Response) => {
         userId: promoter.id,
         customerId,
         type: "promoter",
-        customer: { referral: { referrerId: promoter.id } },
       },
       select: { id: true },
     });
@@ -1410,7 +1409,9 @@ export const sendGiftCode = async (req: AuthRequest, res: Response) => {
     const relatedCustomers = await prisma.customer.findMany({
       where: {
         email: { equals: payerEmail, mode: "insensitive" },
-        referral: { referrerId: promoter.id },
+        commissions: {
+          some: { userId: promoter.id, type: "promoter" },
+        },
       },
       select: {
         transactions: {
