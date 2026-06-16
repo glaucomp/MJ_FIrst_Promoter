@@ -1155,12 +1155,15 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // Find all customers who generated commissions for this promoter (level-1 commissions)
+    // Direct (level-1) sales only — exclude T2/upline and AM commissions that
+    // share the same customerId but belong to a different referral chain.
     const commissions = await prisma.commission.findMany({
       where: {
         userId: promoter.id,
         type: "promoter",
-        customer: { isNot: null },
+        customer: {
+          referral: { referrerId: promoter.id },
+        },
       },
       select: {
         customerId: true,
@@ -1375,7 +1378,12 @@ export const sendGiftCode = async (req: AuthRequest, res: Response) => {
     // callers from probing arbitrary customer IDs (404 vs 403 enumeration)
     // and ensures no sensitive data is read unless the relationship is confirmed.
     const commission = await prisma.commission.findFirst({
-      where: { userId: promoter.id, customerId, type: "promoter" },
+      where: {
+        userId: promoter.id,
+        customerId,
+        type: "promoter",
+        customer: { referral: { referrerId: promoter.id } },
+      },
       select: { id: true },
     });
 
@@ -1402,9 +1410,7 @@ export const sendGiftCode = async (req: AuthRequest, res: Response) => {
     const relatedCustomers = await prisma.customer.findMany({
       where: {
         email: { equals: payerEmail, mode: "insensitive" },
-        commissions: {
-          some: { userId: promoter.id, type: "promoter" },
-        },
+        referral: { referrerId: promoter.id },
       },
       select: {
         transactions: {
