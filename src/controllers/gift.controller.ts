@@ -7,6 +7,7 @@ const prisma = new PrismaClient();
 export type PromoCodeRedeemedWebhookPayload = {
   promo_code?: string;
   redeemed_at?: string;
+  email?: string;
 };
 
 const normalizePromoCode = (code: string): string => code.trim().toUpperCase();
@@ -130,6 +131,8 @@ export const verifyPromoCode = async (req: Request, res: Response) => {
  *
  * Called by TeaseMe when a first-deposit promo code is redeemed.
  * Auth via x-webhook-secret (TEASEME_WEBHOOK_SECRET).
+ *
+ * Request body: { promo_code: string, redeemed_at: string, email: string }
  */
 export const receivePromoCodeRedeemedWebhook = async (
   req: Request,
@@ -139,13 +142,17 @@ export const receivePromoCodeRedeemedWebhook = async (
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  const { promo_code, redeemed_at } = req.body as PromoCodeRedeemedWebhookPayload;
+  const { promo_code, redeemed_at, email } =
+    req.body as PromoCodeRedeemedWebhookPayload;
 
   if (!promo_code || typeof promo_code !== "string") {
     return res.status(400).json({ error: "promo_code is required" });
   }
   if (!redeemed_at || typeof redeemed_at !== "string") {
     return res.status(400).json({ error: "redeemed_at is required" });
+  }
+  if (!email || typeof email !== "string") {
+    return res.status(400).json({ error: "email is required" });
   }
 
   const acceptedAt = parseRedeemedAt(redeemed_at);
@@ -177,18 +184,35 @@ export const receivePromoCodeRedeemedWebhook = async (
 
     // Honour the expiry timestamp even if TeaseMe omits the check on their side.
     if (gift.expiresAt && gift.expiresAt < new Date()) {
-      await prisma.firstDepositGift.update({
-        where: { promoCode },
+      await prisma.firstDepositGift.updateMany({
+        where: { promoCode, status: "SENT" },
         data: { status: "EXPIRED" },
       });
       console.warn("[promo-code-redeemed-webhook] gift expired", { promoCode, expiresAt: gift.expiresAt });
       return res.status(200).json({ ok: true, matched: true, skipped: true, reason: "expired" });
     }
 
-    await prisma.firstDepositGift.update({
-      where: { promoCode },
+    // Same identity check as verifyPromoCode — promo_code alone must not flip state.
+    if (!gift.payerEmail) {
+      console.warn("[promo-code-redeemed-webhook] no payer on record", { promoCode });
+      return res.status(200).json({ ok: true, matched: true, skipped: true, reason: "no_payer_on_record" });
+    }
+    if (email.trim().toLowerCase() !== gift.payerEmail.trim().toLowerCase()) {
+      console.warn("[promo-code-redeemed-webhook] email mismatch", {
+        promoCode,
+        payerEmail: gift.payerEmail,
+      });
+      return res.status(200).json({ ok: true, matched: true, skipped: true, reason: "email_mismatch" });
+    }
+
+    const redeemed = await prisma.firstDepositGift.updateMany({
+      where: { promoCode, status: "SENT" },
       data: { status: "ACCEPTED", acceptedAt },
     });
+
+    if (redeemed.count === 0) {
+      return res.status(200).json({ ok: true, matched: true, duplicate: true });
+    }
 
     return res.status(200).json({ ok: true, matched: true });
   } catch (error) {

@@ -400,8 +400,8 @@ export const GiftActivityFeed = ({ influencerId }: Props) => {
   const load = useCallback(async (opts?: { silent?: boolean }) => {
     if (!opts?.silent) {
       setLoading(true);
+      setError(null);
     }
-    setError(null);
     try {
       const res = await chattersApi.getGiftActivity(
         influencerId,
@@ -414,6 +414,11 @@ export const GiftActivityFeed = ({ influencerId }: Props) => {
       setPendingCount(res.pending_count);
       setTotalPages(res.total_pages ?? 1);
       if (res.page != null) setPage(res.page);
+      if (opts?.silent) {
+        setError((prev) =>
+          prev === "Unable to load gift activity" ? null : prev,
+        );
+      }
     } catch {
       if (!opts?.silent) {
         setError("Unable to load gift activity");
