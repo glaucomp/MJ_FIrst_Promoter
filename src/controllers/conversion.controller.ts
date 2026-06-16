@@ -1,6 +1,24 @@
 import { Response } from 'express';
 import { PrismaClient, UserRole, UserType } from '@prisma/client';
 import { ApiKeyRequest } from '../middleware/apiKey.middleware';
+import { ensureCustomerTrackingReferralForPromotedUser } from '../services/referral-membership.service';
+
+const saleReferralInclude = {
+  campaign: true,
+  referrer: true,
+  parentReferral: {
+    include: {
+      referrer: true,
+      campaign: true,
+      parentReferral: {
+        include: {
+          referrer: true,
+          campaign: true,
+        },
+      },
+    },
+  },
+} as const;
 
 const prisma = new PrismaClient();
 
@@ -221,22 +239,7 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
           inviteCode: ref_id,
           status: 'ACTIVE'
         },
-        include: {
-          campaign: true,
-          referrer: true,
-          parentReferral: {
-            include: {
-              referrer: true,
-              campaign: true,
-              parentReferral: {
-                include: {
-                  referrer: true,
-                  campaign: true
-                }
-              }
-            }
-          }
-        }
+        include: saleReferralInclude,
       });
     }
 
@@ -247,87 +250,88 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
         select: {
           id: true,
           email: true,
-          firstName: true,
-          lastName: true,
           referralsReceived: {
             where: { status: 'ACTIVE' },
             select: {
               id: true,
-              referrerId: true,
-              campaign: true,
-              referrer: {
+              campaignId: true,
+              campaign: {
                 select: {
-                  id: true,
-                  email: true,
-                  firstName: true,
-                  lastName: true
-                }
+                  visibleToPromoters: true,
+                  linkedCampaignId: true,
+                },
               },
-              parentReferral: {
-                select: {
-                  id: true,
-                  referrerId: true,
-                  campaign: true,
-                  referrer: {
-                    select: {
-                      id: true,
-                      email: true,
-                      firstName: true,
-                      lastName: true
-                    }
-                  },
-                  parentReferral: {
-                    select: {
-                      id: true,
-                      referrerId: true,
-                      campaign: true,
-                      referrer: {
-                        select: {
-                          id: true,
-                          email: true,
-                          firstName: true,
-                          lastName: true
-                        }
-                      }
-                    }
-                  }
-                }
-              }
             },
-            orderBy: { createdAt: 'desc' },
-            take: 1
-          }
-        }
+            orderBy: { acceptedAt: 'desc' },
+            take: 1,
+          },
+        },
       });
 
-      if (user && user.referralsReceived.length > 0) {
-        const userReferral = user.referralsReceived[0];
-        
-        // Create a structure where the USER is the primary earner
-        referral = {
-          id: userReferral.id,
-          campaign: userReferral.campaign,
-          referrerId: user.id, // Critical: userId for commission creation
-          referrer: {
-            id: user.id,
-            email: user.email,
-            firstName: user.firstName,
-            lastName: user.lastName
-          },
-          parentReferral: {
-            id: userReferral.id,
-            referrer: userReferral.referrer,
-            referrerId: userReferral.referrerId,
-            campaign: userReferral.campaign,
-            parentReferral: userReferral.parentReferral ?? null
-          }
-        } as any;
+      if (user?.referralsReceived.length) {
+        const inviteRow = user.referralsReceived[0];
+        const camp = inviteRow.campaign;
+        let saleCampaignId = inviteRow.campaignId;
+        if (!camp.visibleToPromoters && camp.linkedCampaignId) {
+          saleCampaignId = camp.linkedCampaignId;
+        }
+
+        const customerTrackingWhere = {
+          referrerId: user.id,
+          referredUserId: null,
+          status: 'ACTIVE' as const,
+          campaignId: saleCampaignId,
+        };
+
+        // Prefer a payer-specific row when we know who paid.
+        if (email) {
+          referral = await prisma.referral.findFirst({
+            where: {
+              referrerId: user.id,
+              status: 'ACTIVE',
+              campaignId: saleCampaignId,
+              referredUser: { email },
+            },
+            include: saleReferralInclude,
+          });
+        } else if (uid) {
+          referral = await prisma.referral.findFirst({
+            where: {
+              referrerId: user.id,
+              status: 'ACTIVE',
+              campaignId: saleCampaignId,
+              referredUserId: uid,
+            },
+            include: saleReferralInclude,
+          });
+        }
+
+        if (!referral) {
+          referral = await prisma.referral.findFirst({
+            where: customerTrackingWhere,
+            include: saleReferralInclude,
+          });
+        }
+
+        // Promoters enrolled via invite should already have a customer-tracking
+        // shell row; create one on demand for legacy accounts that don't.
+        if (!referral && user.email) {
+          await ensureCustomerTrackingReferralForPromotedUser(prisma, {
+            inviteReferralId: inviteRow.id,
+            promotedUserId: user.id,
+            promotedEmail: user.email,
+          });
+          referral = await prisma.referral.findFirst({
+            where: customerTrackingWhere,
+            include: saleReferralInclude,
+          });
+        }
       }
     }
 
-    // Only fall back to email/uid referral lookup when no username was supplied.
-    // When username is present, email is the payer's email only (not a lookup key).
-    if (!referral && !username && (email || uid)) {
+    // Fall back to email/uid when earlier lookups (ref_id, username) did not resolve.
+    // email/uid identify the referred payer; username identifies the earning promoter.
+    if (!referral && (email || uid)) {
       // Try to find by referred user email/uid
       referral = await prisma.referral.findFirst({
         where: {
@@ -338,22 +342,7 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
             ? { id: uid }
             : undefined
         },
-        include: {
-          campaign: true,
-          referrer: true,
-          parentReferral: {
-            include: {
-              referrer: true,
-              campaign: true,
-              parentReferral: {
-                include: {
-                  referrer: true,
-                  campaign: true
-                }
-              }
-            }
-          }
-        }
+        include: saleReferralInclude,
       });
     }
 

@@ -368,6 +368,19 @@ const ActivityRow = ({
 
 const activityRowKey = (item: GiftActivityItem) => `${item.user_id}:${item.influencer_id}`;
 
+type GiftActivityFilters = {
+  influencerId: string;
+  debouncedSearch: string;
+  page: number;
+  showMissingOnly: boolean;
+};
+
+const filtersMatch = (a: GiftActivityFilters, b: GiftActivityFilters) =>
+  a.influencerId === b.influencerId &&
+  a.debouncedSearch === b.debouncedSearch &&
+  a.page === b.page &&
+  a.showMissingOnly === b.showMissingOnly;
+
 export const GiftActivityFeed = ({ influencerId }: Props) => {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -381,6 +394,22 @@ export const GiftActivityFeed = ({ influencerId }: Props) => {
   const [sendingRowKey, setSendingRowKey] = useState<string | null>(null);
   const [showMissingOnly, setShowMissingOnly] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loadRequestIdRef = useRef(0);
+  const filtersRef = useRef<GiftActivityFilters>({
+    influencerId,
+    debouncedSearch: "",
+    page: 1,
+    showMissingOnly: false,
+  });
+
+  useEffect(() => {
+    filtersRef.current = {
+      influencerId,
+      debouncedSearch,
+      page,
+      showMissingOnly,
+    };
+  }, [influencerId, debouncedSearch, page, showMissingOnly]);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -398,39 +427,50 @@ export const GiftActivityFeed = ({ influencerId }: Props) => {
   }, [page, debouncedSearch, showMissingOnly]);
 
   const load = useCallback(async (opts?: { silent?: boolean }) => {
-    if (!opts?.silent) {
+    const silent = opts?.silent ?? false;
+    const filtersAtStart = { ...filtersRef.current };
+    const requestId = silent ? loadRequestIdRef.current : ++loadRequestIdRef.current;
+
+    const isStale = () =>
+      silent
+        ? !filtersMatch(filtersAtStart, filtersRef.current)
+        : requestId !== loadRequestIdRef.current;
+
+    if (!silent) {
       setLoading(true);
       setError(null);
     }
     try {
       const res = await chattersApi.getGiftActivity(
-        influencerId,
-        debouncedSearch || undefined,
-        page,
-        showMissingOnly,
+        filtersAtStart.influencerId,
+        filtersAtStart.debouncedSearch || undefined,
+        filtersAtStart.page,
+        filtersAtStart.showMissingOnly,
         FEED_PAGE_SIZE,
       );
+      if (isStale()) return;
       setItems(res.items);
       setPendingCount(res.pending_count);
       setTotalPages(res.total_pages ?? 1);
       if (res.page != null) setPage(res.page);
-      if (opts?.silent) {
+      if (silent) {
         setError((prev) =>
           prev === "Unable to load gift activity" ? null : prev,
         );
       }
     } catch {
-      if (!opts?.silent) {
+      if (isStale()) return;
+      if (!silent) {
         setError("Unable to load gift activity");
       }
     } finally {
-      if (!opts?.silent) {
+      if (!silent && requestId === loadRequestIdRef.current) {
         setLoading(false);
       }
     }
-  }, [influencerId, debouncedSearch, page, showMissingOnly]);
+  }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void load(); }, [influencerId, debouncedSearch, page, showMissingOnly, load]);
 
   useEffect(() => {
     const onVisible = () => {

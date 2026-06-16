@@ -1001,6 +1001,23 @@ type GiftRecord = {
 const latestSaleTime = (txns: SaleTxnRow[]): number =>
   txns.length > 0 ? Math.max(...txns.map((t) => t.createdAt.getTime())) : 0;
 
+/** One row per eventId when merging payer emails (same sale can appear on multiple customers). */
+const dedupeSaleTransactionsByEventId = <T extends SaleTxnRow>(txns: T[]): T[] => {
+  const seen = new Set<string>();
+  const deduped: T[] = [];
+  for (const t of txns) {
+    const eventId = t.eventId?.trim();
+    if (eventId) {
+      if (seen.has(eventId)) continue;
+      seen.add(eventId);
+    }
+    deduped.push(t);
+  }
+  return deduped.sort(
+    (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+  );
+};
+
 const resolveGiftStatus = (
   gift: GiftRecord | undefined,
 ): "none" | "pending" | "sent" | "accepted" | "expired" | "invited" => {
@@ -1092,9 +1109,7 @@ const buildGiftActivityEvents = (
 
 /** Aggregate sale transactions for one payer (matches feed + send eligibility). */
 const aggregatePayerSales = (txns: SaleTxnRow[]) => {
-  const sorted = [...txns].sort(
-    (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
-  );
+  const sorted = dedupeSaleTransactionsByEventId(txns);
   const depositCount = sorted.length;
   return {
     depositCount,
@@ -1246,10 +1261,10 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
         if (c.createdAt < existing.joinedAt) {
           existing.joinedAt = c.createdAt;
         }
-        existing.transactions.push(...c.transactions);
-        existing.transactions.sort((a, b) =>
-          b.createdAt.getTime() - a.createdAt.getTime()
-        );
+        existing.transactions = dedupeSaleTransactionsByEventId([
+          ...existing.transactions,
+          ...c.transactions,
+        ]);
       }
     }
 
@@ -1297,14 +1312,14 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
       })
       .sort((a, b) => (b.date > a.date ? 1 : -1));
 
-    // Badge counts customers with deposits who still need a code (none/pending/expired).
-    const pendingCount = allItems.filter(
-      (i) =>
-        i.deposit_count >= 1 &&
-        (i.gift_status === "none" ||
-          i.gift_status === "pending" ||
-          i.gift_status === "expired"),
-    ).length;
+    // Customers with deposits who still need a code (none/pending/expired).
+    const needsGiftCode = (i: (typeof allItems)[number]) =>
+      i.deposit_count >= 1 &&
+      (i.gift_status === "none" ||
+        i.gift_status === "pending" ||
+        i.gift_status === "expired");
+
+    const pendingCount = allItems.filter(needsGiftCode).length;
 
     const items = search
       ? allItems.filter(
@@ -1314,9 +1329,7 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
         )
       : allItems;
 
-    const filteredItems = missingOnly
-      ? items.filter((i) => i.deposit_count >= 1 && i.gift_status !== "accepted")
-      : items;
+    const filteredItems = missingOnly ? items.filter(needsGiftCode) : items;
 
     const total = filteredItems.length;
     const total_pages = Math.max(1, Math.ceil(total / limit));
@@ -1416,7 +1429,7 @@ export const sendGiftCode = async (req: AuthRequest, res: Response) => {
       select: {
         transactions: {
           where: { type: "sale" },
-          select: { saleAmount: true, createdAt: true },
+          select: { saleAmount: true, createdAt: true, eventId: true },
         },
       },
     });
