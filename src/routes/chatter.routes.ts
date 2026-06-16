@@ -106,6 +106,7 @@ router.get(
   authenticate,
   [
     query('influencer_id').optional().isString().trim(),
+    query('groupId').optional().isString().trim(),
     query('search').optional().isString().trim(),
   ],
   chatterController.getGiftActivity,
@@ -116,6 +117,7 @@ router.post(
   [
     param('userId').isString().trim().notEmpty(),
     query('influencer_id').trim().notEmpty(),
+    query('groupId').optional().isString().trim(),
   ],
   chatterController.sendGiftCode,
 );

@@ -17,6 +17,7 @@ const effectiveGiftStatus = (item: GiftActivityItem): GiftActivityItem["gift_sta
 
 interface Props {
   influencerId: string;
+  groupId: string;
 }
 
 const formatMoney = (cents: number) => `$${(cents / 100).toFixed(2)}`;
@@ -370,6 +371,7 @@ const activityRowKey = (item: GiftActivityItem) => `${item.user_id}:${item.influ
 
 type GiftActivityFilters = {
   influencerId: string;
+  groupId: string;
   debouncedSearch: string;
   page: number;
   showMissingOnly: boolean;
@@ -377,11 +379,12 @@ type GiftActivityFilters = {
 
 const filtersMatch = (a: GiftActivityFilters, b: GiftActivityFilters) =>
   a.influencerId === b.influencerId &&
+  a.groupId === b.groupId &&
   a.debouncedSearch === b.debouncedSearch &&
   a.page === b.page &&
   a.showMissingOnly === b.showMissingOnly;
 
-export const GiftActivityFeed = ({ influencerId }: Props) => {
+export const GiftActivityFeed = ({ influencerId, groupId }: Props) => {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [items, setItems] = useState<GiftActivityItem[]>([]);
@@ -397,6 +400,7 @@ export const GiftActivityFeed = ({ influencerId }: Props) => {
   const loadRequestIdRef = useRef(0);
   const filtersRef = useRef<GiftActivityFilters>({
     influencerId,
+    groupId,
     debouncedSearch: "",
     page: 1,
     showMissingOnly: false,
@@ -405,11 +409,12 @@ export const GiftActivityFeed = ({ influencerId }: Props) => {
   useEffect(() => {
     filtersRef.current = {
       influencerId,
+      groupId,
       debouncedSearch,
       page,
       showMissingOnly,
     };
-  }, [influencerId, debouncedSearch, page, showMissingOnly]);
+  }, [influencerId, groupId, debouncedSearch, page, showMissingOnly]);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -443,16 +448,21 @@ export const GiftActivityFeed = ({ influencerId }: Props) => {
     try {
       const res = await chattersApi.getGiftActivity(
         filtersAtStart.influencerId,
+        filtersAtStart.groupId,
         filtersAtStart.debouncedSearch || undefined,
         filtersAtStart.page,
         filtersAtStart.showMissingOnly,
         FEED_PAGE_SIZE,
       );
       if (isStale()) return;
-      setItems(res.items);
+      const pageWasClamped =
+        res.page != null && res.page !== filtersAtStart.page;
       setPendingCount(res.pending_count);
       setTotalPages(res.total_pages ?? 1);
-      if (res.page != null) setPage(res.page);
+      // Silent polls must not change the user's page or swap in another page's rows.
+      if (silent && pageWasClamped) return;
+      setItems(res.items);
+      if (!silent && res.page != null) setPage(res.page);
       if (silent) {
         setError((prev) =>
           prev === "Unable to load gift activity" ? null : prev,
@@ -470,7 +480,7 @@ export const GiftActivityFeed = ({ influencerId }: Props) => {
     }
   }, []);
 
-  useEffect(() => { void load(); }, [influencerId, debouncedSearch, page, showMissingOnly, load]);
+  useEffect(() => { void load(); }, [influencerId, groupId, debouncedSearch, page, showMissingOnly, load]);
 
   useEffect(() => {
     const onVisible = () => {
@@ -510,7 +520,7 @@ export const GiftActivityFeed = ({ influencerId }: Props) => {
     setError(null);
     setSendingRowKey(rowKey);
     try {
-      const res = await chattersApi.sendGiftCode(userId, itemInfluencerId);
+      const res = await chattersApi.sendGiftCode(userId, itemInfluencerId, groupId);
       setItems((prev) =>
         prev.map((item) => {
           if (item.user_id !== userId || item.influencer_id !== itemInfluencerId) {
@@ -534,7 +544,7 @@ export const GiftActivityFeed = ({ influencerId }: Props) => {
     } finally {
       setSendingRowKey(null);
     }
-  }, [load]);
+  }, [groupId, load]);
 
   const renderRows = () => {
     if (loading && !items.length) {

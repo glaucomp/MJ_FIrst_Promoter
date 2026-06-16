@@ -1277,6 +1277,7 @@ export const chattersApi = {
 
   async getGiftActivity(
     influencerId: string,
+    groupId: string,
     search?: string,
     page = 1,
     missingOnly = false,
@@ -1284,6 +1285,7 @@ export const chattersApi = {
   ): Promise<GiftActivityResponse> {
     const params = new URLSearchParams({
       influencer_id: influencerId,
+      groupId,
       page: String(page),
       limit: String(limit),
     });
@@ -1293,8 +1295,12 @@ export const chattersApi = {
     return handleResponse(response, 'Failed to fetch gift activity');
   },
 
-  async sendGiftCode(userId: string, influencerId: string): Promise<SendGiftResponse> {
-    const params = new URLSearchParams({ influencer_id: influencerId });
+  async sendGiftCode(
+    userId: string,
+    influencerId: string,
+    groupId: string,
+  ): Promise<SendGiftResponse> {
+    const params = new URLSearchParams({ influencer_id: influencerId, groupId });
     const response = await apiFetch(`${API_URL}/chatters/gift-activity/${userId}/send?${params}`, {
       method: 'POST',
       headers: getAuthHeaders(),

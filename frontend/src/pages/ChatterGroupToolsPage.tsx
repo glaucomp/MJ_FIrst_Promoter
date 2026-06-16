@@ -439,7 +439,10 @@ export const ChatterGroupToolsPage = () => {
         {/* Gift Activity */}
         {group.promoter?.username && (
           <div className="bg-[#1a1a1c] border border-neutral-600/50 rounded-2xl p-4 lg:p-8">
-            <GiftActivityFeed influencerId={group.promoter.username} />
+            <GiftActivityFeed
+              influencerId={group.promoter.username}
+              groupId={group.id}
+            />
           </div>
         )}
 

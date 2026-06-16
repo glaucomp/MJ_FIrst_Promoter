@@ -1047,19 +1047,13 @@ const buildGiftActivityEvents = (
   const sorted = [...txns].sort(
     (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
   );
-  const earliest =
+  const firstDeposit =
     txns.length > 0
       ? [...txns].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())[0]
       : null;
 
-  const earliestTime = earliest?.createdAt.getTime();
-  const earliestRef = earliest?.eventId;
-
   for (const t of sorted) {
-    const isFirst =
-      earliest != null &&
-      t.createdAt.getTime() === earliestTime &&
-      t.eventId === earliestRef;
+    const isFirst = firstDeposit != null && t === firstDeposit;
     events.push({
       type: isFirst ? "first_deposit" : "deposit",
       date: t.createdAt.toISOString(),
@@ -1123,7 +1117,32 @@ const aggregatePayerSales = (txns: SaleTxnRow[]) => {
   };
 };
 
-// GET /api/chatters/gift-activity?influencer_id=X&search=Y
+/** Gift activity access for chatters — same groupId membership check as listVipInvites. */
+const canAccessGiftActivity = async (
+  req: AuthRequest,
+  promoter: { id: string },
+  groupId: string,
+): Promise<boolean> => {
+  if (isAccountManagerOrAdmin(req)) return true;
+  if (req.user!.id === promoter.id) return true;
+  if (!groupId) return false;
+
+  const membership = await prisma.chatterGroupMember.findUnique({
+    where: {
+      chatterId_groupId: { chatterId: req.user!.id, groupId },
+    },
+    select: { id: true },
+  });
+  if (!membership) return false;
+
+  const group = await prisma.chatterGroup.findUnique({
+    where: { id: groupId },
+    select: { promoter: { select: { id: true } } },
+  });
+  return group?.promoter?.id === promoter.id;
+};
+
+// GET /api/chatters/gift-activity?influencer_id=X&groupId=Y&search=Z
 export const getGiftActivity = async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) return res.status(401).json({ error: "Unauthorized" });
@@ -1138,36 +1157,23 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: "influencer_id is required" });
     }
 
-    // Resolve the promoter by username (include chatterGroupId for membership check below)
+    const groupId = String(req.query.groupId ?? "").trim();
+
+    // Resolve the promoter by username
     const promoter = await prisma.user.findUnique({
       where: { username: influencerId },
-      select: { id: true, chatterGroupId: true },
+      select: { id: true },
     });
 
     if (!promoter) {
       return res.json({ items: [], pending_count: 0 });
     }
 
-    // Admins and account managers can always read gift activity.
-    // The promoter themselves can always read their own feed.
-    // Chatters may read it only when they are a member of the group linked to
-    // this promoter — mirroring the same check used by listVipInvites and
-    // preregisterVipUser.
-    if (!isAccountManagerOrAdmin(req) && req.user.id !== promoter.id) {
-      const isGroupMember = promoter.chatterGroupId
-        ? !!(await prisma.chatterGroupMember.findUnique({
-            where: {
-              chatterId_groupId: {
-                chatterId: req.user.id,
-                groupId: promoter.chatterGroupId,
-              },
-            },
-            select: { id: true },
-          }))
-        : false;
-      if (!isGroupMember) {
-        return res.status(403).json({ error: "Forbidden" });
-      }
+    // Admins, account managers, and the promoter always have access.
+    // Chatters must pass groupId and be a member of that group for this promoter
+    // (same pattern as listVipInvites / preregisterVipUser).
+    if (!(await canAccessGiftActivity(req, promoter, groupId))) {
+      return res.status(403).json({ error: "Forbidden" });
     }
 
     // Payers who generated promoter commissions for this influencer. We key off
@@ -1358,33 +1364,20 @@ export const sendGiftCode = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: "influencer_id is required" });
     }
 
+    const groupId = String(req.query.groupId ?? "").trim();
+
     // Resolve the promoter and enforce ownership before touching any customer data.
     const promoter = await prisma.user.findUnique({
       where: { username: influencerId },
-      select: { id: true, chatterGroupId: true },
+      select: { id: true },
     });
 
     if (!promoter) {
       return res.status(404).json({ error: "Influencer not found" });
     }
 
-    // Same group-membership guard as getGiftActivity — chatters must belong to
-    // the group linked to this promoter; everyone else needs AM/admin privileges.
-    if (!isAccountManagerOrAdmin(req) && req.user.id !== promoter.id) {
-      const isGroupMember = promoter.chatterGroupId
-        ? !!(await prisma.chatterGroupMember.findUnique({
-            where: {
-              chatterId_groupId: {
-                chatterId: req.user.id,
-                groupId: promoter.chatterGroupId,
-              },
-            },
-            select: { id: true },
-          }))
-        : false;
-      if (!isGroupMember) {
-        return res.status(403).json({ error: "Forbidden" });
-      }
+    if (!(await canAccessGiftActivity(req, promoter, groupId))) {
+      return res.status(403).json({ error: "Forbidden" });
     }
 
     // Verify ownership BEFORE loading any customer PII. This prevents
