@@ -35,6 +35,8 @@ const PROMO_CODES_URL = (process.env.TEASEME_PROMO_CODES_URL || "").replace(
   "",
 );
 
+const TEASEME_API_URL = (process.env.TEASEME_API_URL || "").replace(/\/$/, "");
+
 const PROMO_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 const generatePromoCode = (length = 6): string => {
@@ -973,5 +975,557 @@ export const deleteChatter = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error("Delete chatter error:", error);
     res.status(500).json({ error: "Failed to delete chatter" });
+  }
+};
+
+type SaleTxnRow = { saleAmount: number; createdAt: Date; eventId?: string };
+
+type GiftActivityEvent = {
+  type: "deposit" | "first_deposit" | "gift" | "accepted" | "invited" | "expired";
+  date: string;
+  amount_cents?: number;
+  ref?: string;
+  code?: string;
+};
+
+type GiftRecord = {
+  status: string;
+  promoCode: string;
+  sentAt: Date | null;
+  acceptedAt: Date | null;
+  expiresAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+const latestSaleTime = (txns: SaleTxnRow[]): number =>
+  txns.length > 0 ? Math.max(...txns.map((t) => t.createdAt.getTime())) : 0;
+
+/** One row per eventId when merging payer emails (same sale can appear on multiple customers). */
+const dedupeSaleTransactionsByEventId = <T extends SaleTxnRow>(txns: T[]): T[] => {
+  const seen = new Set<string>();
+  const deduped: T[] = [];
+  for (const t of txns) {
+    const eventId = t.eventId?.trim();
+    if (eventId) {
+      if (seen.has(eventId)) continue;
+      seen.add(eventId);
+    }
+    deduped.push(t);
+  }
+  return deduped.sort(
+    (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+  );
+};
+
+const resolveGiftStatus = (
+  gift: GiftRecord | undefined,
+): "none" | "pending" | "sent" | "accepted" | "expired" | "invited" => {
+  if (!gift) return "none";
+  if (
+    gift.status === "SENT" &&
+    gift.expiresAt != null &&
+    gift.expiresAt < new Date()
+  ) {
+    return "expired";
+  }
+  return gift.status.toLowerCase() as
+    | "pending"
+    | "sent"
+    | "accepted"
+    | "expired"
+    | "invited";
+};
+
+const buildGiftActivityEvents = (
+  txns: SaleTxnRow[],
+  gift: GiftRecord | undefined,
+  giftStatus: ReturnType<typeof resolveGiftStatus>,
+  referral: { status: string; createdAt: Date } | null | undefined,
+): GiftActivityEvent[] => {
+  const events: GiftActivityEvent[] = [];
+  const sorted = [...txns].sort(
+    (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+  );
+  const firstDeposit =
+    txns.length > 0
+      ? [...txns].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())[0]
+      : null;
+
+  for (const t of sorted) {
+    const isFirst = firstDeposit != null && t === firstDeposit;
+    events.push({
+      type: isFirst ? "first_deposit" : "deposit",
+      date: t.createdAt.toISOString(),
+      amount_cents: Math.round(t.saleAmount * 100),
+      ref: t.eventId,
+    });
+  }
+
+  if (gift) {
+    if (giftStatus === "sent" || giftStatus === "accepted") {
+      events.push({
+        type: "gift",
+        date: (gift.sentAt ?? gift.createdAt).toISOString(),
+        code: gift.promoCode,
+      });
+    }
+    if (giftStatus === "accepted") {
+      events.push({
+        type: "accepted",
+        date: (gift.acceptedAt ?? gift.sentAt ?? gift.createdAt).toISOString(),
+        code: gift.promoCode,
+      });
+    }
+    if (giftStatus === "invited") {
+      events.push({
+        type: "invited",
+        date: gift.createdAt.toISOString(),
+      });
+    }
+    if (giftStatus === "expired") {
+      events.push({
+        type: "expired",
+        date: (gift.expiresAt ?? gift.updatedAt).toISOString(),
+        code: gift.promoCode,
+      });
+    }
+  } else if (referral?.status === "PENDING") {
+    events.push({
+      type: "invited",
+      date: referral.createdAt.toISOString(),
+    });
+  }
+
+  events.sort((a, b) => (b.date > a.date ? 1 : -1));
+  return events;
+};
+
+/** Aggregate sale transactions for one payer (matches feed + send eligibility). */
+const aggregatePayerSales = (txns: SaleTxnRow[]) => {
+  const sorted = dedupeSaleTransactionsByEventId(txns);
+  const depositCount = sorted.length;
+  return {
+    depositCount,
+    isFirstDeposit: depositCount === 1,
+    lifetimeCents: Math.round(
+      sorted.reduce((sum, t) => sum + t.saleAmount, 0) * 100,
+    ),
+    lastDepositCents:
+      sorted.length > 0 ? Math.round(sorted[0].saleAmount * 100) : 0,
+    lastDate: sorted.length > 0 ? sorted[0].createdAt : null,
+  };
+};
+
+/** Gift activity access for chatters — same groupId membership check as listVipInvites. */
+const canAccessGiftActivity = async (
+  req: AuthRequest,
+  promoter: { id: string },
+  groupId: string,
+): Promise<boolean> => {
+  if (isAccountManagerOrAdmin(req)) return true;
+  if (req.user!.id === promoter.id) return true;
+  if (!groupId) return false;
+
+  const membership = await prisma.chatterGroupMember.findUnique({
+    where: {
+      chatterId_groupId: { chatterId: req.user!.id, groupId },
+    },
+    select: { id: true },
+  });
+  if (!membership) return false;
+
+  const group = await prisma.chatterGroup.findUnique({
+    where: { id: groupId },
+    select: { promoter: { select: { id: true } } },
+  });
+  return group?.promoter?.id === promoter.id;
+};
+
+// GET /api/chatters/gift-activity?influencer_id=X&groupId=Y&search=Z
+export const getGiftActivity = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ error: "Unauthorized" });
+
+    const influencerId = String(req.query.influencer_id ?? "").trim();
+    const search = String(req.query.search ?? "").trim().toLowerCase();
+    const missingOnly = req.query.missing_only === "true";
+    const page = Math.max(1, parseInt(String(req.query.page ?? "1"), 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit ?? "10"), 10) || 10));
+
+    if (!influencerId) {
+      return res.status(400).json({ error: "influencer_id is required" });
+    }
+
+    const groupId = String(req.query.groupId ?? "").trim();
+
+    // Resolve the promoter by username
+    const promoter = await prisma.user.findUnique({
+      where: { username: influencerId },
+      select: { id: true },
+    });
+
+    if (!promoter) {
+      return res.json({ items: [], pending_count: 0 });
+    }
+
+    // Admins, account managers, and the promoter always have access.
+    // Chatters must pass groupId and be a member of that group for this promoter
+    // (same pattern as listVipInvites / preregisterVipUser).
+    if (!(await canAccessGiftActivity(req, promoter, groupId))) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    // Payers who generated promoter commissions for this influencer. We key off
+    // commission.userId (not customer.referral.referrerId) because level-2 sales
+    // credit the selling promoter while the customer referral row still points at
+    // the link-sharer (e.g. jorlyn → juliana chain).
+    const commissions = await prisma.commission.findMany({
+      where: {
+        userId: promoter.id,
+        type: "promoter",
+        customerId: { not: null },
+      },
+      select: {
+        customerId: true,
+      },
+      distinct: ["customerId"],
+    });
+
+    const customerIds = commissions
+      .map((c) => c.customerId)
+      .filter((id): id is string => !!id);
+
+    if (!customerIds.length) {
+      return res.json({ items: [], pending_count: 0 });
+    }
+
+    // Load full customer data with aggregated transaction info
+    const customers = await prisma.customer.findMany({
+      where: { id: { in: customerIds } },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        createdAt: true,
+        referral: { select: { inviteCode: true, status: true, createdAt: true } },
+        transactions: {
+          where: { type: "sale" },
+          select: { saleAmount: true, createdAt: true, eventId: true },
+          orderBy: { createdAt: "desc" },
+        },
+      },
+    });
+
+    // Fetch gift records keyed by payer email
+    const emails = customers
+      .map((c) => c.email)
+      .filter((e): e is string => !!e);
+    const gifts = await prisma.firstDepositGift.findMany({
+      where: { payerEmail: { in: emails, mode: "insensitive" } },
+      orderBy: { createdAt: "desc" },
+    });
+    // Build the map so the newest gift per email wins (gifts are ordered desc).
+    const giftByEmail = new Map<string, (typeof gifts)[0]>();
+    for (const g of gifts) {
+      const key = g.payerEmail?.toLowerCase();
+      if (key && !giftByEmail.has(key)) {
+        giftByEmail.set(key, g);
+      }
+    }
+
+    const vipInvites = await prisma.vipInvite.findMany({
+      where: { email: { in: emails, mode: "insensitive" } },
+      select: { email: true, instagramUsername: true },
+      orderBy: { createdAt: "desc" },
+    });
+    const handleByEmail = new Map<string, string>();
+    for (const invite of vipInvites) {
+      const key = invite.email?.toLowerCase();
+      if (key && invite.instagramUsername && !handleByEmail.has(key)) {
+        handleByEmail.set(key, invite.instagramUsername);
+      }
+    }
+
+    // Build response items — deduplicated by email (one row per unique payer)
+    const seenEmails = new Map<
+      string,
+      (typeof customers)[0] & { joinedAt: Date }
+    >();
+    for (const c of customers) {
+      const key = (c.email ?? c.id).toLowerCase();
+      const existing = seenEmails.get(key);
+      if (!existing) {
+        seenEmails.set(key, { ...c, joinedAt: c.createdAt });
+      } else {
+        // Prefer the customer tied to the most recent sale as the row identity.
+        if (latestSaleTime(c.transactions) > latestSaleTime(existing.transactions)) {
+          existing.id = c.id;
+          existing.name = c.name ?? existing.name;
+          existing.referral = c.referral ?? existing.referral;
+        }
+        if (c.createdAt < existing.joinedAt) {
+          existing.joinedAt = c.createdAt;
+        }
+        existing.transactions = dedupeSaleTransactionsByEventId([
+          ...existing.transactions,
+          ...c.transactions,
+        ]);
+      }
+    }
+
+    const allItems = Array.from(seenEmails.values())
+      .map((c) => {
+        const {
+          depositCount,
+          isFirstDeposit,
+          lifetimeCents,
+          lastDepositCents,
+          lastDate,
+        } = aggregatePayerSales(c.transactions);
+        const date = lastDate?.toISOString() ?? c.createdAt.toISOString();
+
+        const emailKey = c.email?.toLowerCase() ?? "";
+        const gift = giftByEmail.get(emailKey);
+        const giftStatus = resolveGiftStatus(gift);
+        const handle = handleByEmail.get(emailKey) ?? null;
+
+        return {
+          user_id: c.id,
+          influencer_id: influencerId,
+          name: c.name ?? null,
+          email: c.email ?? "",
+          date,
+          joined_at: c.joinedAt.toISOString(),
+          handle,
+          ref: c.referral?.inviteCode ?? null,
+          lifetime_cents: lifetimeCents,
+          last_deposit_cents: lastDepositCents,
+          gift_status: giftStatus,
+          gift_code: giftStatus === "sent" ? (gift?.promoCode ?? null) : null,
+          gift_id: gift?.id ?? null,
+          expires_at: gift?.expiresAt?.toISOString() ?? null,
+          diamonds: gift ? 120 : null,
+          is_first_deposit: isFirstDeposit,
+          deposit_count: depositCount,
+          events: buildGiftActivityEvents(
+            c.transactions,
+            gift,
+            giftStatus,
+            c.referral,
+          ),
+        };
+      })
+      .sort((a, b) => (b.date > a.date ? 1 : -1));
+
+    // Customers with deposits who still need a code (none/pending/expired).
+    const needsGiftCode = (i: (typeof allItems)[number]) =>
+      i.deposit_count >= 1 &&
+      (i.gift_status === "none" ||
+        i.gift_status === "pending" ||
+        i.gift_status === "expired");
+
+    const items = search
+      ? allItems.filter(
+          (item) =>
+            item.name?.toLowerCase().includes(search) ||
+            item.email.toLowerCase().includes(search),
+        )
+      : allItems;
+
+    const pendingCount = items.filter(needsGiftCode).length;
+
+    const filteredItems = missingOnly ? items.filter(needsGiftCode) : items;
+
+    const total = filteredItems.length;
+    const total_pages = Math.max(1, Math.ceil(total / limit));
+    const safePage = Math.min(page, total_pages);
+    const pagedItems = filteredItems.slice((safePage - 1) * limit, safePage * limit);
+
+    return res.json({ items: pagedItems, pending_count: pendingCount, total, page: safePage, total_pages });
+  } catch (error) {
+    console.error("Get gift activity error:", error);
+    return res.status(500).json({ error: "Failed to fetch gift activity" });
+  }
+};
+
+// POST /api/chatters/gift-activity/:userId/send
+export const sendGiftCode = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ error: "Unauthorized" });
+
+    const customerId = req.params.userId;
+    if (!customerId) {
+      return res.status(400).json({ error: "userId (customer id) is required" });
+    }
+
+    const influencerId = String(req.query.influencer_id ?? "").trim();
+    if (!influencerId) {
+      return res.status(400).json({ error: "influencer_id is required" });
+    }
+
+    const groupId = String(req.query.groupId ?? "").trim();
+
+    // Resolve the promoter and enforce ownership before touching any customer data.
+    const promoter = await prisma.user.findUnique({
+      where: { username: influencerId },
+      select: { id: true },
+    });
+
+    if (!promoter) {
+      return res.status(404).json({ error: "Influencer not found" });
+    }
+
+    if (!(await canAccessGiftActivity(req, promoter, groupId))) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    // Verify ownership BEFORE loading any customer PII. This prevents
+    // callers from probing arbitrary customer IDs (404 vs 403 enumeration)
+    // and ensures no sensitive data is read unless the relationship is confirmed.
+    const commission = await prisma.commission.findFirst({
+      where: {
+        userId: promoter.id,
+        customerId,
+        type: "promoter",
+      },
+      select: { id: true },
+    });
+
+    if (!commission) {
+      return res.status(403).json({ error: "Customer is not a referral of this influencer" });
+    }
+
+    // Ownership confirmed — now safe to load customer details.
+    const customer = await prisma.customer.findUnique({
+      where: { id: customerId },
+      select: { id: true, email: true, name: true },
+    });
+
+    if (!customer) {
+      return res.status(404).json({ error: "Customer not found" });
+    }
+
+    const payerEmail = (customer.email ?? "").trim();
+    if (!payerEmail) {
+      return res.status(400).json({ error: "Customer email is required to send a gift code" });
+    }
+
+    // Eligibility is per payer email — same aggregation as getGiftActivity merge.
+    const relatedCustomers = await prisma.customer.findMany({
+      where: {
+        email: { equals: payerEmail, mode: "insensitive" },
+        commissions: {
+          some: { userId: promoter.id, type: "promoter" },
+        },
+      },
+      select: {
+        transactions: {
+          where: { type: "sale" },
+          select: { saleAmount: true, createdAt: true, eventId: true },
+        },
+      },
+    });
+
+    const payerTransactions = relatedCustomers.flatMap((c) => c.transactions);
+    const { depositCount, lifetimeCents: depositCents } =
+      aggregatePayerSales(payerTransactions);
+
+    if (depositCount < 1) {
+      return res.status(400).json({ error: "Customer must have at least one deposit" });
+    }
+
+    // Check for an existing gift record (newest first; match payer email case-insensitively)
+    const existing = await prisma.firstDepositGift.findFirst({
+      where: { payerEmail: { equals: payerEmail, mode: "insensitive" } },
+      orderBy: { createdAt: "desc" },
+    });
+
+    // Already redeemed — return as-is, no new record.
+    if (existing && existing.status === "ACCEPTED") {
+      return res.json({
+        ok: true,
+        code: existing.promoCode,
+        status: "accepted",
+        diamonds: existing.depositCents ?? 120,
+        expires_at: existing.expiresAt?.toISOString() ?? "",
+      });
+    }
+
+    // Already sent and still valid — return the existing code.
+    if (existing && existing.status === "SENT") {
+      const isExpired =
+        existing.expiresAt != null && existing.expiresAt < new Date();
+      if (!isExpired) {
+        return res.json({
+          ok: true,
+          code: existing.promoCode,
+          status: "sent",
+          diamonds: 120,
+          expires_at: existing.expiresAt?.toISOString() ?? "",
+        });
+      }
+      await prisma.firstDepositGift.updateMany({
+        where: { id: existing.id, status: "SENT" },
+        data: { status: "EXPIRED" },
+      });
+      // Fall through — issue a fresh code below.
+    }
+
+    // PENDING or INVITED — upgrade the existing row to SENT rather than inserting a duplicate.
+    if (existing && (existing.status === "PENDING" || existing.status === "INVITED")) {
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      const updated = await prisma.firstDepositGift.update({
+        where: { id: existing.id },
+        data: { status: "SENT", sentAt: new Date(), expiresAt },
+      });
+      return res.json({
+        ok: true,
+        code: updated.promoCode,
+        status: "sent",
+        diamonds: updated.depositCents ?? 120,
+        expires_at: updated.expiresAt?.toISOString() ?? "",
+      });
+    }
+
+    // No record, or the only existing one is EXPIRED — generate a fresh code.
+    const PROMO_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    const genCode = (len = 8) => {
+      const bytes = require("node:crypto").randomBytes(len) as Buffer;
+      return Array.from(bytes, (b: number) => PROMO_CHARS[b % PROMO_CHARS.length]).join("");
+    };
+
+    let promoCode = genCode();
+    // Ensure global uniqueness
+    while (await prisma.firstDepositGift.findUnique({ where: { promoCode } })) {
+      promoCode = genCode();
+    }
+
+    const diamonds = 120;
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+    const gift = await prisma.firstDepositGift.create({
+      data: {
+        promoCode,
+        payerEmail: payerEmail,
+        payerName: customer.name ?? null,
+        transactionRef: customerId,
+        depositCents,
+        status: "SENT",
+        sentAt: new Date(),
+        expiresAt,
+      },
+    });
+
+    return res.json({
+      ok: true,
+      code: gift.promoCode,
+      status: "sent",
+      diamonds,
+      expires_at: gift.expiresAt?.toISOString() ?? "",
+    });
+  } catch (error) {
+    console.error("Send gift code error:", error);
+    return res.status(500).json({ error: "Failed to send gift code" });
   }
 };
