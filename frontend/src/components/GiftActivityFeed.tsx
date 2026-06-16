@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { chattersApi, type GiftActivityItem } from "../services/api";
+import {
+  chattersApi,
+  type GiftActivityEvent,
+  type GiftActivityItem,
+} from "../services/api";
 
 const effectiveGiftStatus = (item: GiftActivityItem): GiftActivityItem["gift_status"] => {
   if (item.gift_status === "sent" && item.expires_at) {
@@ -21,14 +25,27 @@ const formatDate = (value: string | null) => {
   if (!value) return "—";
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString(undefined, {
-    day: "2-digit",
-    month: "2-digit",
-    year: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${String(d.getFullYear()).slice(-2)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
+
+const ChevronDown = ({ className = "" }: { className?: string }) => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 16 16"
+    fill="none"
+    className={className}
+  >
+    <path
+      d="M4 6l4 4 4-4"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
 
 const EnvelopeIcon = ({ color }: { color: string }) => (
   <svg
@@ -57,6 +74,91 @@ const BOUNCE_STYLE = `
   }
 `;
 
+const EVENTS_INITIAL = 5;
+const EVENTS_MORE = 5;
+const FEED_PAGE_SIZE = 5;
+const GIFT_POLL_INTERVAL_MS = 10_000;
+
+const EventStatus = ({ event }: { event: GiftActivityEvent }) => {
+  switch (event.type) {
+    case "deposit":
+      return (
+        <span className="inline-flex items-center gap-1.5 text-[#4ade80] text-[13px] font-semibold">
+          ✅ Deposit
+        </span>
+      );
+    case "first_deposit":
+      return (
+        <span className="inline-flex items-center gap-1 text-[#fbbf24] text-[13px] font-semibold">
+          ⭐ 1st Deposit
+        </span>
+      );
+    case "gift":
+      return (
+        <span className="inline-flex items-center gap-1.5 text-[#ff8c00] text-[13px] font-semibold">
+          🎁 Gifted!
+        </span>
+      );
+    case "accepted":
+      return (
+        <span className="inline-flex items-center gap-1.5 text-[#4ade80] text-[13px] font-semibold">
+          <EnvelopeIcon color="#4ade80" /> Accepted
+        </span>
+      );
+    case "invited":
+      return (
+        <span className="inline-flex items-center gap-1.5 text-[rgba(255,255,255,0.5)] text-[13px] font-semibold">
+          <EnvelopeIcon color="rgba(255,255,255,0.5)" /> Invited
+        </span>
+      );
+    case "expired":
+      return (
+        <span className="inline-flex items-center gap-1.5 text-[#f87171] text-[13px] font-semibold">
+          <EnvelopeIcon color="#f87171" /> Expired
+        </span>
+      );
+    default:
+      return null;
+  }
+};
+
+const TimelineRow = ({ event }: { event: GiftActivityEvent }) => {
+  const isDepositLike =
+    event.type === "deposit" || event.type === "first_deposit";
+  const isGift = event.type === "gift";
+
+  return (
+    <div className="flex items-start justify-between gap-3 py-3 border-b border-[rgba(255,255,255,0.07)] last:border-b-0">
+      <div className="flex flex-col gap-[2px] min-w-0">
+        {isDepositLike && event.amount_cents != null && (
+          <span className="text-[#4ade80] font-bold text-[15px]">
+            {formatMoney(event.amount_cents)}
+          </span>
+        )}
+        {isGift && (
+          <span className="text-[#ff8c00] font-bold text-[14px]">
+            {event.code ? `Gift - ${event.code}` : "Gift"}
+          </span>
+        )}
+        {event.type === "expired" && event.code && (
+          <span className="text-[rgba(255,255,255,0.55)] text-[11px]">
+            Code: {event.code}
+          </span>
+        )}
+        <span className="text-[rgba(255,255,255,0.45)] text-[11px]">
+          {formatDate(event.date)}
+        </span>
+        {isDepositLike && event.ref && (
+          <span className="text-[rgba(255,255,255,0.45)] text-[11px] truncate">
+            Ref: {event.ref}
+          </span>
+        )}
+      </div>
+      <EventStatus event={event} />
+    </div>
+  );
+};
+
 const ActivityRow = ({
   item,
   expanded,
@@ -72,6 +174,11 @@ const ActivityRow = ({
 }) => {
   const [copied, setCopied] = useState(false);
   const [animKey, setAnimKey] = useState(0);
+  const [visibleEventCount, setVisibleEventCount] = useState(EVENTS_INITIAL);
+
+  useEffect(() => {
+    if (!expanded) setVisibleEventCount(EVENTS_INITIAL);
+  }, [expanded]);
 
   const handleCopy = async () => {
     if (!item.gift_code) return;
@@ -81,142 +188,177 @@ const ActivityRow = ({
   };
 
   const status = effectiveGiftStatus(item);
+  const hasEmail = Boolean(item.email?.trim());
+  const isAccepted = status === "accepted";
+  const isSent = status === "sent";
+  const needsCreate =
+    status === "none" || status === "pending" || status === "expired";
+  const showPromoPanel = expanded && !isAccepted && (isSent || needsCreate);
+  const hasCode = Boolean(item.gift_code) && isSent;
+  const events = item.events ?? [];
+  const visibleEvents = events.slice(0, visibleEventCount);
+  const hasMoreEvents = visibleEventCount < events.length;
 
-  const handleGiftClick = () => {
-    if (status === "sent") {
-      if (!item.gift_code) {
-        onSend();
-        return;
-      }
-      if (!expanded) setAnimKey((k) => k + 1);
+  const openCard = () => {
+    if (!expanded) {
+      setAnimKey((k) => k + 1);
       onToggleExpand();
-    } else {
-      onSend();
     }
   };
 
-  const hasEmail = Boolean(item.email?.trim());
-  const showPanel = expanded && status === "sent" && Boolean(item.gift_code);
+  const handleGiftClick = () => {
+    openCard();
+  };
+
+  const handleToggleExpand = () => {
+    if (!expanded) setAnimKey((k) => k + 1);
+    onToggleExpand();
+  };
+
+  const giftedButton = (onClick?: () => void) => (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center justify-center h-[26px] px-3 rounded-[90px] text-[14px] font-bold text-[rgba(255,255,255,0.85)]"
+      style={{
+        background:
+          "linear-gradient(180deg, #454547 0%, #2e2e30 55%, #1c1c1e 100%)",
+        boxShadow:
+          "inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 0 rgba(0,0,0,0.35)",
+      }}
+    >
+      Gifted!
+    </button>
+  );
+
+  const renderGiftAction = () => {
+    if (isAccepted) {
+      return giftedButton(handleGiftClick);
+    }
+
+    return (
+      <button
+        type="button"
+        onClick={handleGiftClick}
+        disabled={sending || !hasEmail}
+        className="inline-flex items-center gap-2 px-4 py-1.5 rounded-[90px] text-[14px] font-bold text-black disabled:opacity-40"
+        style={{
+          background:
+            "linear-gradient(180deg, #f5d058 0%, #e8b84a 50%, #d4972a 100%)",
+        }}
+      >
+        <span aria-hidden>🎁</span>
+        <span>Gift</span>
+      </button>
+    );
+  };
 
   return (
     <>
       <style>{BOUNCE_STYLE}</style>
-      <div className="py-4 border-b border-[rgba(255,255,255,0.07)]">
+      <div className="rounded-2xl bg-[#2a2a2c] overflow-hidden">
 
-        {/* Name + ID */}
-        <div className="flex justify-between items-baseline gap-2">
-          <span className="text-white font-bold text-[15px]">{item.name || "User"}</span>
-          <span className="text-[rgba(255,255,255,0.3)] text-[12px] font-mono shrink-0">{item.user_id}</span>
-        </div>
+        {/* Header + Life row */}
+        <div className="px-4 pt-4">
+          <p className="text-white font-bold text-[15px]">
+            {item.email || "No email on file"}
+          </p>
 
-        {/* Email */}
-        <p className="text-[rgba(255,255,255,0.75)] text-[12px] mt-[4px]">
-          {item.email || "No email on file"}
-        </p>
+          <p className="text-[rgba(255,255,255,0.4)] text-[12px] mt-[2px]">
+            Joined: {formatDate(item.joined_at)}
+          </p>
 
-        {/* Date */}
-        <p className="text-[rgba(255,255,255,0.45)] text-[11px] mt-[2px]">{formatDate(item.date)}</p>
+          <div className="mt-3 border-t border-[rgba(255,255,255,0.08)]" />
 
-        {/* Ref */}
-        {item.ref && (
-          <p className="text-[rgba(255,255,255,0.45)] text-[11px] mt-[2px]">Ref: {item.ref}</p>
-        )}
-
-        {/* Divider + Lifetime — only when there is revenue */}
-        {item.lifetime_cents > 0 && (
-          <>
-            <div className="my-3 border-t border-[rgba(255,255,255,0.07)]" />
-            <div className="flex justify-between items-center">
-              <span className="text-[rgba(255,255,255,0.7)] text-[13px]">
-                Lifetime <span className="text-[#4ade80] font-bold">{formatMoney(item.lifetime_cents)}</span>
+          <div className="flex justify-between items-center py-3">
+            <span className="text-white text-[13px]">
+              Life{" "}
+              <span className="text-[#4ade80] font-bold text-[15px]">
+                {formatMoney(item.lifetime_cents)}
               </span>
-              <span className="text-[#4ade80] font-bold text-[15px]">{formatMoney(item.last_deposit_cents)}</span>
-            </div>
-          </>
-        )}
-
-        {/* Actions */}
-        <div className="flex flex-wrap items-center gap-3 mt-3">
-
-          {/* Orange Gift — send or re-send (first deposit only) */}
-          {item.is_first_deposit && hasEmail && (status === "none" || status === "pending" || status === "expired") && (
-            <button
-              type="button"
-              onClick={handleGiftClick}
-              disabled={sending}
-              className="inline-flex items-center gap-1.5 px-5 py-2 rounded-full text-[14px] font-bold text-[#111] disabled:opacity-40"
-              style={{ background: "linear-gradient(180deg, #ffb347 0%, #ff8c00 100%)" }}
-            >
-              🎁 Gift
-            </button>
-          )}
-
-          {/* Sent state: orange Gift always — dimmed when panel open */}
-          {status === "sent" && (
-            <button
-              type="button"
-              onClick={handleGiftClick}
-              className="inline-flex items-center gap-1.5 px-5 py-2 rounded-full text-[14px] font-bold text-[#111] transition-opacity"
-              style={{
-                background: "linear-gradient(180deg, #ffb347 0%, #ff8c00 100%)",
-                opacity: expanded ? 0.45 : 1,
-              }}
-            >
-              🎁 Gift
-            </button>
-          )}
-
-          {/* Status labels */}
-          {status === "accepted" && (
-            <span className="inline-flex items-center gap-1.5 text-[#4ade80] text-[13px] font-semibold">
-              <EnvelopeIcon color="#4ade80" /> Accepted
             </span>
-          )}
-          {status === "expired" && !item.is_first_deposit && (
-            <span className="inline-flex items-center gap-1.5 text-[#f87171] text-[13px] font-semibold">
-              <EnvelopeIcon color="#f87171" /> Expired
-            </span>
-          )}
-          {status === "deposit" && (
-            <span className="inline-flex items-center gap-1.5 text-[#4ade80] text-[13px] font-semibold">
-              ✅ Deposit
-            </span>
-          )}
-          {(status as string) === "invited" && (
-            <span className="inline-flex items-center gap-1.5 text-[rgba(255,255,255,0.5)] text-[13px] font-semibold">
-              <EnvelopeIcon color="rgba(255,255,255,0.5)" /> Invited
-            </span>
-          )}
-
-          {item.is_first_deposit && (
-            <span className="inline-flex items-center gap-1 text-[#fbbf24] text-[13px] font-semibold">
-              ⭐ 1st Deposit
-            </span>
-          )}
+            {renderGiftAction()}
+          </div>
         </div>
 
-        {/* Promo code panel — drops in from top */}
-        {showPanel && (
-          <div key={animKey} className="gift-panel-enter mt-3 p-4 rounded-2xl bg-[rgba(255,255,255,0.05)] flex flex-col gap-3">
-            <p className="text-white text-[13px] font-extrabold tracking-wider uppercase">
-              Promo Code
-            </p>
-            <p className="text-[rgba(255,255,255,0.6)] text-[12px]">
-              {item.diamonds ?? 120} diamonds. Redeem in Teaseme with this email only
-            </p>
-            <div className="px-4 py-3 rounded-xl bg-[rgba(0,0,0,0.35)] font-mono text-white text-[18px] tracking-widest text-center">
-              {item.gift_code}
-            </div>
-            <button
-              type="button"
-              onClick={handleCopy}
-              className="w-full py-3 rounded-full border border-[rgba(255,255,255,0.12)] bg-[rgba(0,0,0,0.4)] text-white font-bold text-[13px] hover:bg-[rgba(255,255,255,0.06)] transition-colors flex items-center justify-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
-              {copied ? "✅ Copied" : "Copy"}
-            </button>
+        {/* Bottom chevron — borderless inset, smaller */}
+        <div className="px-4 pb-3">
+          <button
+            type="button"
+            onClick={handleToggleExpand}
+            aria-label={expanded ? "Collapse" : "Expand"}
+            style={{ borderWidth: "0.25px" }}
+            className="w-full h-[24px] flex items-center justify-center rounded-md border border-[rgba(255,255,255,0.12)] text-[rgba(255,255,255,0.4)] hover:text-[rgba(255,255,255,0.65)] hover:bg-[rgba(255,255,255,0.03)] transition-colors"
+          >
+            <ChevronDown
+              className={`transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
+            />
+          </button>
+        </div>
+
+        {/* Expanded body */}
+        {expanded && (
+          <div className="px-4 pb-4 bg-[#2a2a2c] border-t border-[rgba(255,255,255,0.08)]">
+            {showPromoPanel && (
+              <div
+                key={animKey}
+                className="gift-panel-enter mt-3 p-4 rounded-2xl bg-[rgba(255,255,255,0.05)] flex flex-col gap-3"
+              >
+                <p className="text-[#ff8c00] text-[13px] font-extrabold tracking-wider uppercase">
+                  Promo Code
+                </p>
+                <p className="text-[rgba(255,255,255,0.6)] text-[12px]">
+                  {item.diamonds ?? 120} diamonds. Redeem in Teaseme with this email only
+                </p>
+                {hasCode ? (
+                  <>
+                    <div className="px-4 py-3 rounded-xl bg-[rgba(0,0,0,0.35)] font-mono text-white text-[18px] tracking-widest text-center">
+                      {item.gift_code}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleCopy}
+                      className="w-full py-3 rounded-full border border-[rgba(255,255,255,0.12)] bg-[rgba(0,0,0,0.4)] text-white font-bold text-[13px] hover:bg-[rgba(255,255,255,0.06)] transition-colors flex items-center justify-center gap-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                      {copied ? "✅ Copied" : "Copy"}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={onSend}
+                    disabled={sending || !hasEmail}
+                    className="w-full py-3 rounded-full border border-[rgba(255,255,255,0.12)] bg-[rgba(0,0,0,0.4)] text-white font-bold text-[13px] hover:bg-[rgba(255,255,255,0.06)] transition-colors disabled:opacity-40"
+                  >
+                    {sending ? "Creating…" : "Create"}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {events.length > 0 && (
+              <div className="mt-3">
+                {visibleEvents.map((event, idx) => (
+                  <TimelineRow key={`${event.type}-${event.date}-${idx}`} event={event} />
+                ))}
+                {hasMoreEvents && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setVisibleEventCount((count) =>
+                        Math.min(count + EVENTS_MORE, events.length),
+                      )
+                    }
+                    className="w-full py-3 text-center text-[rgba(255,255,255,0.45)] text-[13px] hover:text-[rgba(255,255,255,0.7)] transition-colors"
+                  >
+                    Show More...
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -249,8 +391,11 @@ export const GiftActivityFeed = ({ influencerId }: Props) => {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [search]);
 
-  // Reset to page 1 when filter changes
   useEffect(() => { setPage(1); }, [showMissingOnly]);
+
+  useEffect(() => {
+    setExpandedRowKey(null);
+  }, [page, debouncedSearch, showMissingOnly]);
 
   const load = useCallback(async (opts?: { silent?: boolean }) => {
     if (!opts?.silent) {
@@ -263,6 +408,7 @@ export const GiftActivityFeed = ({ influencerId }: Props) => {
         debouncedSearch || undefined,
         page,
         showMissingOnly,
+        FEED_PAGE_SIZE,
       );
       setItems(res.items);
       setPendingCount(res.pending_count);
@@ -291,12 +437,30 @@ export const GiftActivityFeed = ({ influencerId }: Props) => {
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [load]);
 
+  const hasAwaitingRedemption = items.some(
+    (item) => effectiveGiftStatus(item) === "sent",
+  );
+
+  useEffect(() => {
+    if (!hasAwaitingRedemption || document.visibilityState !== "visible") {
+      return;
+    }
+
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        void load({ silent: true });
+      }
+    }, GIFT_POLL_INTERVAL_MS);
+
+    return () => clearInterval(timer);
+  }, [hasAwaitingRedemption, load]);
+
   const handleSend = useCallback(async (target: GiftActivityItem) => {
     const { user_id: userId, influencer_id: itemInfluencerId } = target;
     const rowKey = activityRowKey(target);
     const status = effectiveGiftStatus(target);
     const wasPending =
-      target.is_first_deposit &&
+      target.deposit_count >= 1 &&
       (status === "none" || status === "pending" || status === "expired");
     setError(null);
     setSendingRowKey(rowKey);
@@ -319,7 +483,6 @@ export const GiftActivityFeed = ({ influencerId }: Props) => {
       if (wasPending) {
         setPendingCount((count) => Math.max(0, count - 1));
       }
-      setExpandedRowKey(rowKey);
       void load({ silent: true });
     } catch {
       setError("Unable to send gift");
@@ -342,19 +505,23 @@ export const GiftActivityFeed = ({ influencerId }: Props) => {
     if (!items.length) {
       return <p className="text-[rgba(255,255,255,0.4)] text-sm py-6 text-center">No activity yet.</p>;
     }
-    return items.map((item) => {
-      const rowKey = activityRowKey(item);
-      return (
-        <ActivityRow
-          key={rowKey}
-          item={item}
-          expanded={expandedRowKey === rowKey}
-          onToggleExpand={() => setExpandedRowKey((cur) => (cur === rowKey ? null : rowKey))}
-          onSend={() => void handleSend(item)}
-          sending={sendingRowKey === rowKey}
-        />
-      );
-    });
+    return (
+      <div className="flex flex-col gap-3">
+        {items.map((item) => {
+          const rowKey = activityRowKey(item);
+          return (
+            <ActivityRow
+              key={rowKey}
+              item={item}
+              expanded={expandedRowKey === rowKey}
+              onToggleExpand={() => setExpandedRowKey((cur) => (cur === rowKey ? null : rowKey))}
+              onSend={() => void handleSend(item)}
+              sending={sendingRowKey === rowKey}
+            />
+          );
+        })}
+      </div>
+    );
   };
 
   const renderPagination = () => {
@@ -414,7 +581,6 @@ export const GiftActivityFeed = ({ influencerId }: Props) => {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Header */}
       <div className="flex flex-col gap-2">
         <span className="text-[rgba(255,255,255,0.45)] text-[13px]">Filter by</span>
         <div className="flex items-center gap-3">
@@ -449,13 +615,13 @@ export const GiftActivityFeed = ({ influencerId }: Props) => {
         </div>
       </div>
 
-      {/* Activity list */}
       {error && items.length > 0 && (
         <p className="text-[#f87171] text-sm text-center">{error}</p>
       )}
-      <div className={loading && items.length > 0 ? "opacity-60 pointer-events-none" : ""}>{renderRows()}</div>
+      <div className={loading && items.length > 0 ? "opacity-60 pointer-events-none" : ""}>
+        {renderRows()}
+      </div>
 
-      {/* Pagination */}
       {renderPagination()}
     </div>
   );

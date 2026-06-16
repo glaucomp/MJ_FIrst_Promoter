@@ -978,10 +978,117 @@ export const deleteChatter = async (req: AuthRequest, res: Response) => {
   }
 };
 
-type SaleTxnRow = { saleAmount: number; createdAt: Date };
+type SaleTxnRow = { saleAmount: number; createdAt: Date; eventId?: string };
+
+type GiftActivityEvent = {
+  type: "deposit" | "first_deposit" | "gift" | "accepted" | "invited" | "expired";
+  date: string;
+  amount_cents?: number;
+  ref?: string;
+  code?: string;
+};
+
+type GiftRecord = {
+  status: string;
+  promoCode: string;
+  sentAt: Date | null;
+  acceptedAt: Date | null;
+  expiresAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
 const latestSaleTime = (txns: SaleTxnRow[]): number =>
   txns.length > 0 ? Math.max(...txns.map((t) => t.createdAt.getTime())) : 0;
+
+const resolveGiftStatus = (
+  gift: GiftRecord | undefined,
+): "none" | "pending" | "sent" | "accepted" | "expired" | "invited" => {
+  if (!gift) return "none";
+  if (
+    gift.status === "SENT" &&
+    gift.expiresAt != null &&
+    gift.expiresAt < new Date()
+  ) {
+    return "expired";
+  }
+  return gift.status.toLowerCase() as
+    | "pending"
+    | "sent"
+    | "accepted"
+    | "expired"
+    | "invited";
+};
+
+const buildGiftActivityEvents = (
+  txns: SaleTxnRow[],
+  gift: GiftRecord | undefined,
+  giftStatus: ReturnType<typeof resolveGiftStatus>,
+  referral: { status: string; createdAt: Date } | null | undefined,
+): GiftActivityEvent[] => {
+  const events: GiftActivityEvent[] = [];
+  const sorted = [...txns].sort(
+    (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+  );
+  const earliest =
+    txns.length > 0
+      ? [...txns].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())[0]
+      : null;
+
+  const earliestTime = earliest?.createdAt.getTime();
+  const earliestRef = earliest?.eventId;
+
+  for (const t of sorted) {
+    const isFirst =
+      earliest != null &&
+      t.createdAt.getTime() === earliestTime &&
+      t.eventId === earliestRef;
+    events.push({
+      type: isFirst ? "first_deposit" : "deposit",
+      date: t.createdAt.toISOString(),
+      amount_cents: Math.round(t.saleAmount * 100),
+      ref: t.eventId,
+    });
+  }
+
+  if (gift) {
+    if (giftStatus === "sent" || giftStatus === "accepted") {
+      events.push({
+        type: "gift",
+        date: (gift.sentAt ?? gift.createdAt).toISOString(),
+        code: gift.promoCode,
+      });
+    }
+    if (giftStatus === "accepted") {
+      events.push({
+        type: "accepted",
+        date: (gift.acceptedAt ?? gift.sentAt ?? gift.createdAt).toISOString(),
+        code: gift.promoCode,
+      });
+    }
+    if (giftStatus === "invited") {
+      events.push({
+        type: "invited",
+        date: gift.createdAt.toISOString(),
+      });
+    }
+    if (giftStatus === "expired") {
+      events.push({
+        type: "expired",
+        date: (gift.expiresAt ?? gift.updatedAt).toISOString(),
+        code: gift.promoCode,
+      });
+    }
+  } else if (referral?.status === "PENDING") {
+    events.push({
+      type: "invited",
+      date: referral.createdAt.toISOString(),
+    });
+  }
+
+  events.sort((a, b) => (b.date > a.date ? 1 : -1));
+  return events;
+};
 
 /** Aggregate sale transactions for one payer (matches feed + send eligibility). */
 const aggregatePayerSales = (txns: SaleTxnRow[]) => {
@@ -1077,10 +1184,10 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
         email: true,
         name: true,
         createdAt: true,
-        referral: { select: { inviteCode: true } },
+        referral: { select: { inviteCode: true, status: true, createdAt: true } },
         transactions: {
           where: { type: "sale" },
-          select: { saleAmount: true, createdAt: true },
+          select: { saleAmount: true, createdAt: true, eventId: true },
           orderBy: { createdAt: "desc" },
         },
       },
@@ -1103,20 +1210,38 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
       }
     }
 
+    const vipInvites = await prisma.vipInvite.findMany({
+      where: { email: { in: emails, mode: "insensitive" } },
+      select: { email: true, instagramUsername: true },
+      orderBy: { createdAt: "desc" },
+    });
+    const handleByEmail = new Map<string, string>();
+    for (const invite of vipInvites) {
+      const key = invite.email?.toLowerCase();
+      if (key && invite.instagramUsername && !handleByEmail.has(key)) {
+        handleByEmail.set(key, invite.instagramUsername);
+      }
+    }
+
     // Build response items — deduplicated by email (one row per unique payer)
-    const seenEmails = new Map<string, typeof customers[0]>();
+    const seenEmails = new Map<
+      string,
+      (typeof customers)[0] & { joinedAt: Date }
+    >();
     for (const c of customers) {
       const key = (c.email ?? c.id).toLowerCase();
       const existing = seenEmails.get(key);
       if (!existing) {
-        seenEmails.set(key, c);
+        seenEmails.set(key, { ...c, joinedAt: c.createdAt });
       } else {
         // Prefer the customer tied to the most recent sale as the row identity.
         if (latestSaleTime(c.transactions) > latestSaleTime(existing.transactions)) {
           existing.id = c.id;
           existing.name = c.name ?? existing.name;
           existing.referral = c.referral ?? existing.referral;
-          existing.createdAt = c.createdAt;
+        }
+        if (c.createdAt < existing.joinedAt) {
+          existing.joinedAt = c.createdAt;
         }
         existing.transactions.push(...c.transactions);
         existing.transactions.sort((a, b) =>
@@ -1136,14 +1261,10 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
         } = aggregatePayerSales(c.transactions);
         const date = lastDate?.toISOString() ?? c.createdAt.toISOString();
 
-        const gift = giftByEmail.get(c.email?.toLowerCase() ?? "");
-        const giftStatus = gift
-          ? gift.status === "SENT" &&
-            gift.expiresAt != null &&
-            gift.expiresAt < new Date()
-            ? "expired"
-            : (gift.status.toLowerCase() as "pending" | "sent" | "accepted" | "expired")
-          : "none";
+        const emailKey = c.email?.toLowerCase() ?? "";
+        const gift = giftByEmail.get(emailKey);
+        const giftStatus = resolveGiftStatus(gift);
+        const handle = handleByEmail.get(emailKey) ?? null;
 
         return {
           user_id: c.id,
@@ -1151,6 +1272,8 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
           name: c.name ?? null,
           email: c.email ?? "",
           date,
+          joined_at: c.joinedAt.toISOString(),
+          handle,
           ref: c.referral?.inviteCode ?? null,
           lifetime_cents: lifetimeCents,
           last_deposit_cents: lastDepositCents,
@@ -1161,15 +1284,20 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
           diamonds: gift ? 120 : null,
           is_first_deposit: isFirstDeposit,
           deposit_count: depositCount,
+          events: buildGiftActivityEvents(
+            c.transactions,
+            gift,
+            giftStatus,
+            c.referral,
+          ),
         };
       })
       .sort((a, b) => (b.date > a.date ? 1 : -1));
 
-    // Badge counts all first-deposit customers who still need a code (none/pending/expired),
-    // independent of search or missing_only filters.
+    // Badge counts customers with deposits who still need a code (none/pending/expired).
     const pendingCount = allItems.filter(
       (i) =>
-        i.is_first_deposit &&
+        i.deposit_count >= 1 &&
         (i.gift_status === "none" ||
           i.gift_status === "pending" ||
           i.gift_status === "expired"),
@@ -1184,7 +1312,7 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
       : allItems;
 
     const filteredItems = missingOnly
-      ? items.filter((i) => i.is_first_deposit && i.gift_status !== "accepted")
+      ? items.filter((i) => i.deposit_count >= 1 && i.gift_status !== "accepted")
       : items;
 
     const total = filteredItems.length;
@@ -1287,8 +1415,12 @@ export const sendGiftCode = async (req: AuthRequest, res: Response) => {
     });
 
     const payerTransactions = relatedCustomers.flatMap((c) => c.transactions);
-    const { isFirstDeposit, lifetimeCents: depositCents } =
+    const { depositCount, lifetimeCents: depositCents } =
       aggregatePayerSales(payerTransactions);
+
+    if (depositCount < 1) {
+      return res.status(400).json({ error: "Customer must have at least one deposit" });
+    }
 
     // Check for an existing gift record (newest first; match payer email case-insensitively)
     const existing = await prisma.firstDepositGift.findFirst({
@@ -1329,9 +1461,6 @@ export const sendGiftCode = async (req: AuthRequest, res: Response) => {
 
     // PENDING or INVITED — upgrade the existing row to SENT rather than inserting a duplicate.
     if (existing && (existing.status === "PENDING" || existing.status === "INVITED")) {
-      if (!isFirstDeposit) {
-        return res.status(400).json({ error: "Gift codes are only available for first-deposit customers" });
-      }
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
       const updated = await prisma.firstDepositGift.update({
         where: { id: existing.id },
@@ -1347,10 +1476,6 @@ export const sendGiftCode = async (req: AuthRequest, res: Response) => {
     }
 
     // No record, or the only existing one is EXPIRED — generate a fresh code.
-    if (!isFirstDeposit) {
-      return res.status(400).json({ error: "Gift codes are only available for first-deposit customers" });
-    }
-
     const PROMO_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     const genCode = (len = 8) => {
       const bytes = require("node:crypto").randomBytes(len) as Buffer;

@@ -1275,8 +1275,18 @@ export const chattersApi = {
     return handleResponse(response, 'Failed to fetch my groups');
   },
 
-  async getGiftActivity(influencerId: string, search?: string, page = 1, missingOnly = false): Promise<GiftActivityResponse> {
-    const params = new URLSearchParams({ influencer_id: influencerId, page: String(page) });
+  async getGiftActivity(
+    influencerId: string,
+    search?: string,
+    page = 1,
+    missingOnly = false,
+    limit = 5,
+  ): Promise<GiftActivityResponse> {
+    const params = new URLSearchParams({
+      influencer_id: influencerId,
+      page: String(page),
+      limit: String(limit),
+    });
     if (search) params.set('search', search);
     if (missingOnly) params.set('missing_only', 'true');
     const response = await apiFetch(`${API_URL}/chatters/gift-activity?${params}`, { headers: getAuthHeaders() });
@@ -1548,22 +1558,41 @@ export const helpApi = {
 
 // ── Gift Activity types ───────────────────────────────────────────────────────
 
+export type GiftActivityEventType =
+  | 'deposit'
+  | 'first_deposit'
+  | 'gift'
+  | 'accepted'
+  | 'invited'
+  | 'expired';
+
+export interface GiftActivityEvent {
+  type: GiftActivityEventType;
+  date: string;
+  amount_cents?: number;
+  ref?: string;
+  code?: string;
+}
+
 export interface GiftActivityItem {
   user_id: string;
   influencer_id: string;
   name: string | null;
   email: string;
   date: string | null;
+  joined_at: string;
+  handle: string | null;
   ref: string | null;
   lifetime_cents: number;
   last_deposit_cents: number;
-  gift_status: 'none' | 'pending' | 'sent' | 'accepted' | 'expired' | 'deposit';
+  gift_status: 'none' | 'pending' | 'sent' | 'accepted' | 'expired' | 'invited' | 'deposit';
   gift_code: string | null;
   gift_id: number | null;
   expires_at: string | null;
   diamonds: number | null;
   is_first_deposit: boolean;
   deposit_count: number;
+  events: GiftActivityEvent[];
 }
 
 export interface GiftActivityResponse {
