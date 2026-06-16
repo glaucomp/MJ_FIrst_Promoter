@@ -1319,8 +1319,6 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
         i.gift_status === "pending" ||
         i.gift_status === "expired");
 
-    const pendingCount = allItems.filter(needsGiftCode).length;
-
     const items = search
       ? allItems.filter(
           (item) =>
@@ -1328,6 +1326,8 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
             item.email.toLowerCase().includes(search),
         )
       : allItems;
+
+    const pendingCount = items.filter(needsGiftCode).length;
 
     const filteredItems = missingOnly ? items.filter(needsGiftCode) : items;
 
