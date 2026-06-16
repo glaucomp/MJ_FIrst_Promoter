@@ -865,12 +865,12 @@ export const LinkGenerator = ({
     const trimmedInstagram = normalizeInstagramUsername(instagramUsername);
 
     if (!trimmedName || !trimmedInstagram) {
-      setErrorMessage("Please fill in name and Instagram username.");
+      setErrorMessage("Please fill in name and User handle.");
       return;
     }
     if (!INSTAGRAM_USERNAME_PATTERN.test(trimmedInstagram)) {
       setErrorMessage(
-        "Instagram username must be 1–30 characters (letters, numbers, dots, underscores).",
+        "User handle must be 1–30 characters (letters, numbers, dots, underscores).",
       );
       return;
     }
@@ -1013,7 +1013,7 @@ export const LinkGenerator = ({
             type="search"
             value={trackSearch}
             onChange={(e) => handleTrackSearchChange(e.target.value)}
-            placeholder="Search by name, Instagram username, or invite code…"
+            placeholder="Search by name, User handle, or invite code…"
             aria-label="Search VIP invites"
             className="buttonXl inputIcon w-full inputMJ text-white focus:outline-none focus:border-tm-primary-color04 placeholder-tm-text-color08"
           />
@@ -1095,7 +1095,7 @@ export const LinkGenerator = ({
       </div>
       )}
 
-      {/* Name + Instagram username row */}
+      {/* Name + User handle row */}
       <div className="grid lg:grid-cols-2 gap-4">
         <input
           type="text"
@@ -1113,7 +1113,7 @@ export const LinkGenerator = ({
             value={instagramUsername}
             onChange={(e) => setInstagramUsername(e.target.value.replace(/^@+/, ""))}
             onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
-            placeholder="Instagram username"
+            placeholder="User handle"
             className="buttonXl inputIcon w-full inputMJ text-white focus:outline-none focus:border-tm-primary-color04 placeholder-tm-text-color08"
           />
         </div>
