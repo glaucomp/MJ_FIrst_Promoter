@@ -417,6 +417,9 @@ export const GiftActivityFeed = ({ influencerId, groupId }: Props) => {
   const [expandedRowKey, setExpandedRowKey] = useState<string | null>(null);
   const [sendingRowKey, setSendingRowKey] = useState<string | null>(null);
   const [showMissingOnly, setShowMissingOnly] = useState(false);
+  const [isDocumentVisible, setIsDocumentVisible] = useState(
+    () => document.visibilityState === "visible",
+  );
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadGenerationRef = useRef(0);
   const activeForegroundGenerationRef = useRef<number | null>(null);
@@ -504,13 +507,15 @@ export const GiftActivityFeed = ({ influencerId, groupId }: Props) => {
   useEffect(() => { void load(); }, [influencerId, groupId, debouncedSearch, page, showMissingOnly, load]);
 
   useEffect(() => {
-    const onVisible = () => {
-      if (document.visibilityState === "visible") {
+    const onVisibilityChange = () => {
+      const visible = document.visibilityState === "visible";
+      setIsDocumentVisible(visible);
+      if (visible) {
         void load({ silent: true });
       }
     };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
   }, [load]);
 
   const hasSentGiftOnPage = items.some(
@@ -520,18 +525,16 @@ export const GiftActivityFeed = ({ influencerId, groupId }: Props) => {
     awaitingRedemptionCount > 0 || hasSentGiftOnPage;
 
   useEffect(() => {
-    if (!shouldPollForRedemption || document.visibilityState !== "visible") {
+    if (!shouldPollForRedemption || !isDocumentVisible) {
       return;
     }
 
     const timer = setInterval(() => {
-      if (document.visibilityState === "visible") {
-        void load({ silent: true });
-      }
+      void load({ silent: true });
     }, GIFT_POLL_INTERVAL_MS);
 
     return () => clearInterval(timer);
-  }, [shouldPollForRedemption, load]);
+  }, [shouldPollForRedemption, isDocumentVisible, load]);
 
   const handleSend = useCallback(async (target: GiftActivityItem, payerEmail?: string) => {
     const { user_id: userId, influencer_id: itemInfluencerId } = target;

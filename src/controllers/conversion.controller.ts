@@ -5,6 +5,7 @@ import {
   ensureCustomerTrackingReferralForPromotedUser,
   pickCanonicalInviteeReferral,
 } from '../services/referral-membership.service';
+import { isStablePayerCustomerEmail } from '../utils/payer-email';
 
 const saleReferralInclude = {
   campaign: true,
@@ -296,22 +297,27 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
 
     const customerIdentity = resolveSaleCustomerIdentity({ email, uid, event_id });
 
-    // Check if event already tracked (prevent duplicates)
-    const existingCustomer = await prisma.customer.findFirst({
-      where: {
-        OR: [
-          { metadata: event_id },
-          { email: customerIdentity.email }
-        ]
-      }
+    // Prevent duplicate processing of the same payment event.
+    const existingSaleTransaction = await prisma.transaction.findUnique({
+      where: { eventId: event_id },
+      select: { id: true },
     });
-
-    if (existingCustomer && existingCustomer.metadata === event_id) {
+    if (existingSaleTransaction) {
       return res.status(200).json({
         success: true,
         message: 'Sale already tracked',
         event_id,
         duplicate: true
+      });
+    }
+
+    // Repeat sales from the same payer reuse one customer row (real email or uid-*).
+    let existingPayerCustomer: { id: string } | null = null;
+    if (isStablePayerCustomerEmail(customerIdentity.email)) {
+      existingPayerCustomer = await prisma.customer.findFirst({
+        where: { email: customerIdentity.email },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true },
       });
     }
 
@@ -657,18 +663,27 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
       commission2,
       commission3,
     } = await prisma.$transaction(async (tx) => {
-        const customer = await tx.customer.create({
-          data: {
-            email: customerIdentity.email,
-            name: customerIdentity.name,
-            revenue,
-            subscriptionType: plan || 'one-time',
-            status: 'active',
-            campaignId: campaign.id,
-            referralId: referral.id,
-            metadata: event_id,
-          },
-        });
+        const customer = existingPayerCustomer
+          ? await tx.customer.update({
+              where: { id: existingPayerCustomer.id },
+              data: {
+                revenue: { increment: revenue },
+                ...(plan ? { subscriptionType: plan } : {}),
+                status: 'active',
+              },
+            })
+          : await tx.customer.create({
+              data: {
+                email: customerIdentity.email,
+                name: customerIdentity.name,
+                revenue,
+                subscriptionType: plan || 'one-time',
+                status: 'active',
+                campaignId: campaign.id,
+                referralId: referral.id,
+                metadata: event_id,
+              },
+            });
 
         const transaction = await tx.transaction.create({
           data: {
@@ -938,24 +953,26 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
       return res.status(400).json({ error: 'amount must be positive' });
     }
 
-    // Find the original customer by event_id
-    const customer = await prisma.customer.findFirst({
-      where: {
-        metadata: event_id
-      },
+    // Find the original sale by event_id (each sale has a unique transaction row).
+    const originalTransaction = await prisma.transaction.findUnique({
+      where: { eventId: event_id },
       include: {
-        referral: {
+        customer: {
           include: {
-            campaign: true,
-            referrer: true,
-            parentReferral: {
+            referral: {
               include: {
-                referrer: true,
                 campaign: true,
+                referrer: true,
                 parentReferral: {
                   include: {
                     referrer: true,
-                    campaign: true
+                    campaign: true,
+                    parentReferral: {
+                      include: {
+                        referrer: true,
+                        campaign: true
+                      }
+                    }
                   }
                 }
               }
@@ -965,6 +982,7 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
       }
     });
 
+    const customer = originalTransaction?.customer;
     if (!customer || !customer.referral) {
       return res.status(404).json({ error: 'Original sale not found' });
     }
@@ -974,22 +992,19 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
     const campaign = referral.campaign;
 
     // Read-only lookups before the write transaction
-    const [originalTransaction, promoterWithGroupRefund] = await Promise.all([
-      prisma.transaction.findFirst({ where: { customerId: customer.id, type: 'sale' } }),
-      prisma.user.findUnique({
-        where: { id: referral.referrerId },
-        select: {
-          accountManagerId: true,
-          chatterGroup: {
-            select: {
-              id: true,
-              commissionPercentage: true,
-              members: { select: { chatterId: true } },
-            },
+    const promoterWithGroupRefund = await prisma.user.findUnique({
+      where: { id: referral.referrerId },
+      select: {
+        accountManagerId: true,
+        chatterGroup: {
+          select: {
+            id: true,
+            commissionPercentage: true,
+            members: { select: { chatterId: true } },
           },
         },
-      }),
-    ]);
+      },
+    });
 
     // Pre-compute all refund amounts before entering the transaction.
     // Mirrors the AM-aware payout logic in trackSale: we reverse whichever
@@ -1241,7 +1256,20 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
 
       await tx.customer.update({
         where: { id: customer.id },
-        data: { status: 'cancelled' },
+        data: {
+          revenue: { decrement: refundRevenue },
+          status:
+            (await tx.transaction.count({
+              where: {
+                customerId: customer.id,
+                type: 'sale',
+                status: 'completed',
+                id: { not: originalTransaction.id },
+              },
+            })) === 0
+              ? 'cancelled'
+              : 'active',
+        },
       });
 
       if (originalTransaction) {

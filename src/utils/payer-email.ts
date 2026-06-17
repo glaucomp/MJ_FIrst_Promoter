@@ -11,6 +11,16 @@ export function isUidSyntheticPayerEmail(
   return local.startsWith("uid-");
 }
 
+/** Real payer emails and uid-*@temp.com — one customer row across repeat sales. */
+export function isStablePayerCustomerEmail(
+  email: string | null | undefined,
+): boolean {
+  const trimmed = (email ?? "").trim();
+  if (!trimmed) return false;
+  if (isUidSyntheticPayerEmail(trimmed)) return true;
+  return !isSyntheticPayerEmail(trimmed);
+}
+
 /** True for uid-*@temp.com and event-*@temp.com placeholders from track/sale. */
 export function isSyntheticPayerEmail(
   email: string | null | undefined,
