@@ -1,5 +1,6 @@
 import {
   PasswordResetPurpose,
+  Prisma,
   PrismaClient,
   UserRole,
   UserType,
@@ -23,6 +24,7 @@ import {
   isValidInstagramUsername,
   normalizeInstagramUsername,
 } from "../utils/instagram-username";
+import { resolveAccountManagersFor } from "../services/ownership.service";
 import { createVipInviteRecord } from "../services/vip-invite.service";
 
 const prisma = new PrismaClient();
@@ -1117,29 +1119,67 @@ const aggregatePayerSales = (txns: SaleTxnRow[]) => {
   };
 };
 
-/** Gift activity access for chatters — same groupId membership check as listVipInvites. */
+/** Gift activity access — admins always; promoters for self; AMs via ownership; chatters via group membership. */
 const canAccessGiftActivity = async (
   req: AuthRequest,
   promoter: { id: string },
   groupId: string,
 ): Promise<boolean> => {
-  if (isAccountManagerOrAdmin(req)) return true;
-  if (req.user!.id === promoter.id) return true;
-  if (!groupId) return false;
+  if (isAdmin(req)) return true;
+  const callerId = req.user!.id;
+  if (callerId === promoter.id) return true;
 
-  const membership = await prisma.chatterGroupMember.findUnique({
-    where: {
-      chatterId_groupId: { chatterId: req.user!.id, groupId },
-    },
-    select: { id: true },
-  });
-  if (!membership) return false;
+  const isAccountManager = req.user!.userType === UserType.ACCOUNT_MANAGER;
 
-  const group = await prisma.chatterGroup.findUnique({
-    where: { id: groupId },
-    select: { promoter: { select: { id: true } } },
-  });
-  return group?.promoter?.id === promoter.id;
+  if (groupId) {
+    if (isAccountManager) {
+      const group = await prisma.chatterGroup.findUnique({
+        where: { id: groupId },
+        select: {
+          createdById: true,
+          promoter: { select: { id: true } },
+          members: { select: { chatterId: true } },
+        },
+      });
+      if (!group || group.promoter?.id !== promoter.id) return false;
+      if (group.createdById === callerId) return true;
+
+      const ids = new Set<string>();
+      if (group.createdById) ids.add(group.createdById);
+      if (group.promoter?.id) ids.add(group.promoter.id);
+      for (const m of group.members) {
+        if (m.chatterId) ids.add(m.chatterId);
+      }
+      if (ids.size === 0) return false;
+
+      const amByUser = await resolveAccountManagersFor(Array.from(ids));
+      for (const uid of ids) {
+        if (amByUser.get(uid) === callerId) return true;
+      }
+      return false;
+    }
+
+    const membership = await prisma.chatterGroupMember.findUnique({
+      where: {
+        chatterId_groupId: { chatterId: callerId, groupId },
+      },
+      select: { id: true },
+    });
+    if (!membership) return false;
+
+    const group = await prisma.chatterGroup.findUnique({
+      where: { id: groupId },
+      select: { promoter: { select: { id: true } } },
+    });
+    return group?.promoter?.id === promoter.id;
+  }
+
+  if (isAccountManager) {
+    const amByUser = await resolveAccountManagersFor([promoter.id]);
+    return amByUser.get(promoter.id) === callerId;
+  }
+
+  return false;
 };
 
 // GET /api/chatters/gift-activity?influencer_id=X&groupId=Y&search=Z
@@ -1169,9 +1209,9 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
       return res.json({ items: [], pending_count: 0 });
     }
 
-    // Admins, account managers, and the promoter always have access.
-    // Chatters must pass groupId and be a member of that group for this promoter
-    // (same pattern as listVipInvites / preregisterVipUser).
+    // Admins and the promoter always have access. Account managers must own the
+    // promoter or group (same ownership rule as canAccessLoadedGroup). Chatters
+    // must pass groupId and be a member of that group for this promoter.
     if (!(await canAccessGiftActivity(req, promoter, groupId))) {
       return res.status(403).json({ error: "Forbidden" });
     }
@@ -1349,6 +1389,31 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
   }
 };
 
+const giftSendPayload = (gift: {
+  promoCode: string;
+  expiresAt: Date | null;
+  status: string;
+}) => ({
+  ok: true as const,
+  code: gift.promoCode,
+  status: gift.status === "ACCEPTED" ? ("accepted" as const) : ("sent" as const),
+  diamonds: 120,
+  expires_at: gift.expiresAt?.toISOString() ?? "",
+});
+
+const findActiveGiftForPayer = (payerEmail: string) =>
+  prisma.firstDepositGift.findFirst({
+    where: {
+      payerEmail: { equals: payerEmail, mode: "insensitive" },
+      status: { not: "EXPIRED" },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+const isPrismaUniqueViolation = (error: unknown): boolean =>
+  error instanceof Prisma.PrismaClientKnownRequestError &&
+  error.code === "P2002";
+
 // POST /api/chatters/gift-activity/:userId/send
 export const sendGiftCode = async (req: AuthRequest, res: Response) => {
   try {
@@ -1443,13 +1508,7 @@ export const sendGiftCode = async (req: AuthRequest, res: Response) => {
 
     // Already redeemed — return as-is, no new record.
     if (existing && existing.status === "ACCEPTED") {
-      return res.json({
-        ok: true,
-        code: existing.promoCode,
-        status: "accepted",
-        diamonds: 120,
-        expires_at: existing.expiresAt?.toISOString() ?? "",
-      });
+      return res.json(giftSendPayload(existing));
     }
 
     // Already sent and still valid — return the existing code.
@@ -1457,13 +1516,7 @@ export const sendGiftCode = async (req: AuthRequest, res: Response) => {
       const isExpired =
         existing.expiresAt != null && existing.expiresAt < new Date();
       if (!isExpired) {
-        return res.json({
-          ok: true,
-          code: existing.promoCode,
-          status: "sent",
-          diamonds: 120,
-          expires_at: existing.expiresAt?.toISOString() ?? "",
-        });
+        return res.json(giftSendPayload(existing));
       }
       await prisma.firstDepositGift.updateMany({
         where: { id: existing.id, status: "SENT" },
@@ -1475,55 +1528,66 @@ export const sendGiftCode = async (req: AuthRequest, res: Response) => {
     // PENDING or INVITED — upgrade the existing row to SENT rather than inserting a duplicate.
     if (existing && (existing.status === "PENDING" || existing.status === "INVITED")) {
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-      const updated = await prisma.firstDepositGift.update({
-        where: { id: existing.id },
+      const upgraded = await prisma.firstDepositGift.updateMany({
+        where: {
+          id: existing.id,
+          status: { in: ["PENDING", "INVITED"] },
+        },
         data: { status: "SENT", sentAt: new Date(), expiresAt },
       });
-      return res.json({
-        ok: true,
-        code: updated.promoCode,
-        status: "sent",
-        diamonds: 120,
-        expires_at: updated.expiresAt?.toISOString() ?? "",
-      });
+      if (upgraded.count === 1) {
+        return res.json(
+          giftSendPayload({ ...existing, status: "SENT", expiresAt }),
+        );
+      }
+      const winner = await findActiveGiftForPayer(payerEmail);
+      if (winner) {
+        return res.json(giftSendPayload(winner));
+      }
     }
 
     // No record, or the only existing one is EXPIRED — generate a fresh code.
     const PROMO_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     const genCode = (len = 8) => {
-      const bytes = require("node:crypto").randomBytes(len) as Buffer;
-      return Array.from(bytes, (b: number) => PROMO_CHARS[b % PROMO_CHARS.length]).join("");
+      const bytes = crypto.randomBytes(len);
+      return Array.from(bytes, (b) => PROMO_CHARS[b % PROMO_CHARS.length]).join("");
     };
 
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
     let promoCode = genCode();
-    // Ensure global uniqueness
     while (await prisma.firstDepositGift.findUnique({ where: { promoCode } })) {
       promoCode = genCode();
     }
 
-    const diamonds = 120;
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const gift = await prisma.firstDepositGift.create({
+          data: {
+            promoCode,
+            payerEmail: payerEmail,
+            payerName: customer.name ?? null,
+            transactionRef: customerId,
+            depositCents,
+            status: "SENT",
+            sentAt: new Date(),
+            expiresAt,
+          },
+        });
+        return res.json(giftSendPayload(gift));
+      } catch (error) {
+        if (!isPrismaUniqueViolation(error)) {
+          throw error;
+        }
+        const winner = await findActiveGiftForPayer(payerEmail);
+        if (winner) {
+          return res.json(giftSendPayload(winner));
+        }
+        promoCode = genCode();
+      }
+    }
 
-    const gift = await prisma.firstDepositGift.create({
-      data: {
-        promoCode,
-        payerEmail: payerEmail,
-        payerName: customer.name ?? null,
-        transactionRef: customerId,
-        depositCents,
-        status: "SENT",
-        sentAt: new Date(),
-        expiresAt,
-      },
-    });
-
-    return res.json({
-      ok: true,
-      code: gift.promoCode,
-      status: "sent",
-      diamonds,
-      expires_at: gift.expiresAt?.toISOString() ?? "",
-    });
+    throw new Error("Failed to create first-deposit gift after concurrent retries");
   } catch (error) {
     console.error("Send gift code error:", error);
     return res.status(500).json({ error: "Failed to send gift code" });
