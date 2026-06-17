@@ -1447,7 +1447,7 @@ export const sendGiftCode = async (req: AuthRequest, res: Response) => {
         ok: true,
         code: existing.promoCode,
         status: "accepted",
-        diamonds: existing.depositCents ?? 120,
+        diamonds: 120,
         expires_at: existing.expiresAt?.toISOString() ?? "",
       });
     }
@@ -1483,7 +1483,7 @@ export const sendGiftCode = async (req: AuthRequest, res: Response) => {
         ok: true,
         code: updated.promoCode,
         status: "sent",
-        diamonds: updated.depositCents ?? 120,
+        diamonds: 120,
         expires_at: updated.expiresAt?.toISOString() ?? "",
       });
     }
