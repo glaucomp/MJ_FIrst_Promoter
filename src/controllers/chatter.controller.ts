@@ -1,5 +1,6 @@
 import {
   PasswordResetPurpose,
+  Prisma,
   PrismaClient,
   UserRole,
   UserType,
@@ -1435,95 +1436,125 @@ export const sendGiftCode = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: "Customer must have at least one deposit" });
     }
 
-    // Check for an existing gift record (newest first; match payer email case-insensitively)
-    const existing = await prisma.firstDepositGift.findFirst({
-      where: { payerEmail: { equals: payerEmail, mode: "insensitive" } },
-      orderBy: { createdAt: "desc" },
-    });
-
-    // Already redeemed — return as-is, no new record.
-    if (existing && existing.status === "ACCEPTED") {
-      return res.json({
-        ok: true,
-        code: existing.promoCode,
-        status: "accepted",
-        diamonds: 120,
-        expires_at: existing.expiresAt?.toISOString() ?? "",
-      });
-    }
-
-    // Already sent and still valid — return the existing code.
-    if (existing && existing.status === "SENT") {
-      const isExpired =
-        existing.expiresAt != null && existing.expiresAt < new Date();
-      if (!isExpired) {
-        return res.json({
-          ok: true,
-          code: existing.promoCode,
-          status: "sent",
-          diamonds: 120,
-          expires_at: existing.expiresAt?.toISOString() ?? "",
-        });
-      }
-      await prisma.firstDepositGift.updateMany({
-        where: { id: existing.id, status: "SENT" },
-        data: { status: "EXPIRED" },
-      });
-      // Fall through — issue a fresh code below.
-    }
-
-    // PENDING or INVITED — upgrade the existing row to SENT rather than inserting a duplicate.
-    if (existing && (existing.status === "PENDING" || existing.status === "INVITED")) {
-      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-      const updated = await prisma.firstDepositGift.update({
-        where: { id: existing.id },
-        data: { status: "SENT", sentAt: new Date(), expiresAt },
-      });
-      return res.json({
-        ok: true,
-        code: updated.promoCode,
-        status: "sent",
-        diamonds: 120,
-        expires_at: updated.expiresAt?.toISOString() ?? "",
-      });
-    }
-
-    // No record, or the only existing one is EXPIRED — generate a fresh code.
+    const normalizedPayerEmail = payerEmail.toLowerCase();
+    const giftDiamonds = 120;
+    const giftTtlMs = 7 * 24 * 60 * 60 * 1000;
     const PROMO_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-    const genCode = (len = 8) => {
-      const bytes = require("node:crypto").randomBytes(len) as Buffer;
-      return Array.from(bytes, (b: number) => PROMO_CHARS[b % PROMO_CHARS.length]).join("");
+    const genPromoCode = (len = 8) => {
+      const bytes = crypto.randomBytes(len);
+      return Array.from(bytes, (b) => PROMO_CHARS[b % PROMO_CHARS.length]).join("");
     };
 
-    let promoCode = genCode();
-    // Ensure global uniqueness
-    while (await prisma.firstDepositGift.findUnique({ where: { promoCode } })) {
-      promoCode = genCode();
+    const giftCodeJson = (
+      gift: { promoCode: string; expiresAt: Date | null },
+      status: "accepted" | "sent",
+    ) =>
+      res.json({
+        ok: true,
+        code: gift.promoCode,
+        status,
+        diamonds: giftDiamonds,
+        expires_at: gift.expiresAt?.toISOString() ?? "",
+      });
+
+    const findActiveGiftForPayer = async (
+      db: Pick<PrismaClient, "firstDepositGift"> = prisma,
+    ) =>
+      db.firstDepositGift.findFirst({
+        where: { payerEmail: { equals: normalizedPayerEmail, mode: "insensitive" } },
+        orderBy: { createdAt: "desc" },
+      });
+
+    const issueGiftCode = async () => {
+      const outcome = await prisma.$transaction(async (tx) => {
+        const existing = await findActiveGiftForPayer(tx);
+
+        if (existing?.status === "ACCEPTED") {
+          return { gift: existing, status: "accepted" as const };
+        }
+
+        if (existing?.status === "SENT") {
+          const isExpired =
+            existing.expiresAt != null && existing.expiresAt < new Date();
+          if (!isExpired) {
+            return { gift: existing, status: "sent" as const };
+          }
+          await tx.firstDepositGift.updateMany({
+            where: { id: existing.id, status: "SENT" },
+            data: { status: "EXPIRED" },
+          });
+        }
+
+        if (
+          existing &&
+          (existing.status === "PENDING" || existing.status === "INVITED")
+        ) {
+          const expiresAt = new Date(Date.now() + giftTtlMs);
+          const upgraded = await tx.firstDepositGift.updateMany({
+            where: {
+              id: existing.id,
+              status: { in: ["PENDING", "INVITED"] },
+            },
+            data: { status: "SENT", sentAt: new Date(), expiresAt },
+          });
+          if (upgraded.count > 0) {
+            const gift = await tx.firstDepositGift.findUniqueOrThrow({
+              where: { id: existing.id },
+            });
+            return { gift, status: "sent" as const };
+          }
+          const refetched = await findActiveGiftForPayer(tx);
+          if (refetched) {
+            return { gift: refetched, status: "sent" as const };
+          }
+        }
+
+        let promoCode = genPromoCode();
+        while (await tx.firstDepositGift.findUnique({ where: { promoCode } })) {
+          promoCode = genPromoCode();
+        }
+
+        const expiresAt = new Date(Date.now() + giftTtlMs);
+        const gift = await tx.firstDepositGift.create({
+          data: {
+            promoCode,
+            payerEmail: normalizedPayerEmail,
+            payerName: customer.name ?? null,
+            transactionRef: customerId,
+            depositCents,
+            status: "SENT",
+            sentAt: new Date(),
+            expiresAt,
+          },
+        });
+
+        return { gift, status: "sent" as const };
+      });
+
+      return giftCodeJson(outcome.gift, outcome.status);
+    };
+
+    try {
+      return await issueGiftCode();
+    } catch (error) {
+      // Concurrent sendGiftCode calls for the same payer can race past findFirst;
+      // the partial unique index on active payerEmail lets one INSERT win and the
+      // other raises P2002 — return the winner's code instead of failing.
+      if (
+        (error as Prisma.PrismaClientKnownRequestError)?.code === "P2002"
+      ) {
+        const winner = await findActiveGiftForPayer();
+        if (winner) {
+          if (winner.status === "ACCEPTED") {
+            return giftCodeJson(winner, "accepted");
+          }
+          if (winner.status === "SENT") {
+            return giftCodeJson(winner, "sent");
+          }
+        }
+      }
+      throw error;
     }
-
-    const diamonds = 120;
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
-
-    const gift = await prisma.firstDepositGift.create({
-      data: {
-        promoCode,
-        payerEmail: payerEmail,
-        payerName: customer.name ?? null,
-        transactionRef: customerId,
-        depositCents,
-        status: "SENT",
-        sentAt: new Date(),
-        expiresAt,
-      },
-    });
-
-    return res.json({
-      ok: true,
-      code: gift.promoCode,
-      status: "sent",
-      diamonds,
-      expires_at: gift.expiresAt?.toISOString() ?? "",
-    });
   } catch (error) {
     console.error("Send gift code error:", error);
     return res.status(500).json({ error: "Failed to send gift code" });
