@@ -309,6 +309,35 @@ const isSaleEventAlreadyTracked = async (event_id: string): Promise<boolean> => 
   return !!legacySaleCustomer;
 };
 
+/**
+ * Legacy customer.metadata refunds may not resolve a transaction by eventId.
+ * Match the sale row on that customer by eventId or an unambiguous amount.
+ */
+const resolveLegacySaleTransactionIdForRefund = async (
+  customerId: string,
+  event_id: string,
+  refundRevenue: number,
+): Promise<string | null> => {
+  const completedSales = await prisma.transaction.findMany({
+    where: {
+      customerId,
+      type: 'sale',
+      status: 'completed',
+    },
+    select: { id: true, eventId: true, saleAmount: true },
+  });
+
+  const byEventId = completedSales.find((t) => t.eventId === event_id);
+  if (byEventId) return byEventId.id;
+
+  const byAmount = completedSales.filter(
+    (t) => Math.abs(t.saleAmount - refundRevenue) < 0.011,
+  );
+  if (byAmount.length === 1) return byAmount[0]!.id;
+
+  return null;
+};
+
 /** One canonical payer row per stable identity (case-insensitive email / uid-*). */
 const findExistingPayerCustomer = async (
   email: string,
@@ -1034,6 +1063,16 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
     const refundRevenue = amount / 100; // amount is in cents, convert to dollars
     const campaign = referral.campaign;
 
+    const saleTransactionToRefundId =
+      originalTransaction?.id ??
+      (customer.metadata === event_id
+        ? await resolveLegacySaleTransactionIdForRefund(
+            customer.id,
+            event_id,
+            refundRevenue,
+          )
+        : null);
+
     // Read-only lookups before the write transaction
     const promoterWithGroupRefund = await prisma.user.findUnique({
       where: { id: referral.referrerId },
@@ -1188,7 +1227,7 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
           customerId: customer.id,
           campaignId: campaign.id,
           referralId: referral.id,
-          originalTransactionId: originalTransaction?.id ?? null,
+          originalTransactionId: saleTransactionToRefundId,
         },
       });
 
@@ -1297,6 +1336,13 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
         });
       }
 
+      if (saleTransactionToRefundId) {
+        await tx.transaction.update({
+          where: { id: saleTransactionToRefundId },
+          data: { status: 'refunded' },
+        });
+      }
+
       await tx.customer.update({
         where: { id: customer.id },
         data: {
@@ -1307,22 +1353,12 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
                 customerId: customer.id,
                 type: 'sale',
                 status: 'completed',
-                ...(originalTransaction
-                  ? { id: { not: originalTransaction.id } }
-                  : {}),
               },
             })) === 0
               ? 'cancelled'
               : 'active',
         },
       });
-
-      if (originalTransaction) {
-        await tx.transaction.update({
-          where: { id: originalTransaction.id },
-          data: { status: 'refunded' },
-        });
-      }
 
       return refundTransaction;
     });
