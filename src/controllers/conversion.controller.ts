@@ -250,6 +250,24 @@ async function buildSyntheticSaleReferralFromInvite(args: {
   };
 }
 
+/** Stable payer identity for customer rows when track/sale omits a real email. */
+function resolveSaleCustomerIdentity(args: {
+  email?: string;
+  uid?: string;
+  event_id: string;
+}): { email: string; name: string } {
+  const { email, uid, event_id } = args;
+  if (email) {
+    return { email, name: email.split('@')[0] };
+  }
+  if (uid) {
+    return { email: `uid-${uid}@temp.com`, name: `User ${uid}` };
+  }
+  // Username-only sales have no payer email/uid — key by event_id so each sale
+  // gets its own customer instead of collapsing on uid-undefined@temp.com.
+  return { email: `event-${event_id}@temp.com`, name: `Sale ${event_id}` };
+}
+
 // POST /api/v2/track/sale
 export const trackSale = async (req: ApiKeyRequest, res: Response) => {
   try {
@@ -272,12 +290,14 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
       return res.status(400).json({ error: 'amount must be positive' });
     }
 
+    const customerIdentity = resolveSaleCustomerIdentity({ email, uid, event_id });
+
     // Check if event already tracked (prevent duplicates)
     const existingCustomer = await prisma.customer.findFirst({
       where: {
         OR: [
           { metadata: event_id },
-          { email: email || '' }
+          { email: customerIdentity.email }
         ]
       }
     });
@@ -632,8 +652,8 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
     } = await prisma.$transaction(async (tx) => {
         const customer = await tx.customer.create({
           data: {
-            email: email || `uid-${uid}@temp.com`,
-            name: email ? email.split('@')[0] : `User ${uid}`,
+            email: customerIdentity.email,
+            name: customerIdentity.name,
             revenue,
             subscriptionType: plan || 'one-time',
             status: 'active',
