@@ -188,6 +188,68 @@ async function trySyntheticAmDirectFromLinkedHiddenProgram(args: {
   };
 }
 
+/**
+ * Username-identified sales attribute to the promoter (seller), not a payer row.
+ * When no customer-tracking referral exists yet, synthesize the sale shape from
+ * the promoter's invite row so commissions still flow (legacy behavior).
+ */
+async function buildSyntheticSaleReferralFromInvite(args: {
+  promoterUser: {
+    id: string;
+    email: string | null;
+    firstName: string | null;
+    lastName: string | null;
+  };
+  inviteReferralId: string;
+  saleCampaignId: string;
+}) {
+  const { promoterUser, inviteReferralId, saleCampaignId } = args;
+
+  const [saleCampaign, inviteRow] = await Promise.all([
+    prisma.campaign.findUnique({ where: { id: saleCampaignId } }),
+    prisma.referral.findUnique({
+      where: { id: inviteReferralId },
+      include: {
+        campaign: true,
+        referrer: true,
+        parentReferral: {
+          include: {
+            referrer: true,
+            campaign: true,
+            parentReferral: {
+              include: {
+                referrer: true,
+                campaign: true,
+              },
+            },
+          },
+        },
+      },
+    }),
+  ]);
+
+  if (!saleCampaign || !inviteRow) return null;
+
+  return {
+    id: inviteRow.id,
+    campaign: saleCampaign,
+    referrerId: promoterUser.id,
+    referrer: {
+      id: promoterUser.id,
+      email: promoterUser.email,
+      firstName: promoterUser.firstName,
+      lastName: promoterUser.lastName,
+    },
+    parentReferral: {
+      id: inviteRow.id,
+      referrer: inviteRow.referrer,
+      referrerId: inviteRow.referrerId,
+      campaign: inviteRow.campaign,
+      parentReferral: inviteRow.parentReferral ?? null,
+    },
+  };
+}
+
 // POST /api/v2/track/sale
 export const trackSale = async (req: ApiKeyRequest, res: Response) => {
   try {
@@ -250,6 +312,8 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
         select: {
           id: true,
           email: true,
+          firstName: true,
+          lastName: true,
           referralsReceived: {
             where: { status: 'ACTIVE' },
             select: {
@@ -324,6 +388,16 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
           referral = await prisma.referral.findFirst({
             where: customerTrackingWhere,
             include: saleReferralInclude,
+          });
+        }
+
+        // No tracking row (e.g. promoter has no email for shell creation) —
+        // build a synthetic sale referral so username sales still attribute.
+        if (!referral) {
+          referral = await buildSyntheticSaleReferralFromInvite({
+            promoterUser: user,
+            inviteReferralId: inviteRow.id,
+            saleCampaignId,
           });
         }
       }
