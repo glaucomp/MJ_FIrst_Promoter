@@ -294,6 +294,33 @@ const respondSaleAlreadyTracked = (res: Response, event_id: string) =>
     duplicate: true,
   });
 
+/** Transaction row or legacy customer.metadata before transactions existed. */
+const isSaleEventAlreadyTracked = async (event_id: string): Promise<boolean> => {
+  const existingSaleTransaction = await prisma.transaction.findUnique({
+    where: { eventId: event_id },
+    select: { id: true },
+  });
+  if (existingSaleTransaction) return true;
+
+  const legacySaleCustomer = await prisma.customer.findFirst({
+    where: { metadata: event_id },
+    select: { id: true },
+  });
+  return !!legacySaleCustomer;
+};
+
+/** One canonical payer row per stable identity (case-insensitive email / uid-*). */
+const findExistingPayerCustomer = async (
+  email: string,
+): Promise<{ id: string } | null> => {
+  if (!isStablePayerCustomerEmail(email)) return null;
+  return prisma.customer.findFirst({
+    where: { email: { equals: email, mode: 'insensitive' } },
+    orderBy: [{ revenue: 'desc' }, { createdAt: 'asc' }],
+    select: { id: true },
+  });
+};
+
 // POST /api/v2/track/sale
 export const trackSale = async (req: ApiKeyRequest, res: Response) => {
   try {
@@ -319,23 +346,14 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
     const customerIdentity = resolveSaleCustomerIdentity({ email, uid, event_id });
 
     // Prevent duplicate processing of the same payment event.
-    const existingSaleTransaction = await prisma.transaction.findUnique({
-      where: { eventId: event_id },
-      select: { id: true },
-    });
-    if (existingSaleTransaction) {
+    if (await isSaleEventAlreadyTracked(event_id)) {
       return respondSaleAlreadyTracked(res, event_id);
     }
 
     // Repeat sales from the same payer reuse one customer row (real email or uid-*).
-    let existingPayerCustomer: { id: string } | null = null;
-    if (isStablePayerCustomerEmail(customerIdentity.email)) {
-      existingPayerCustomer = await prisma.customer.findFirst({
-        where: { email: customerIdentity.email },
-        orderBy: { createdAt: 'asc' },
-        select: { id: true },
-      });
-    }
+    const existingPayerCustomer = await findExistingPayerCustomer(
+      customerIdentity.email,
+    );
 
     // Find referral by ref_id, username, tid, or email/uid
     let referral;
@@ -906,11 +924,7 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
   } catch (error) {
     const event_id: string | undefined = req.body?.event_id;
     if (event_id && isTransactionEventIdUniqueViolation(error)) {
-      const existingSaleTransaction = await prisma.transaction.findUnique({
-        where: { eventId: event_id },
-        select: { id: true },
-      });
-      if (existingSaleTransaction) {
+      if (await isSaleEventAlreadyTracked(event_id)) {
         return respondSaleAlreadyTracked(res, event_id);
       }
     }
@@ -979,7 +993,7 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
       return res.status(400).json({ error: 'amount must be positive' });
     }
 
-    // Find the original sale by event_id (each sale has a unique transaction row).
+    // Prefer transaction.eventId; fall back to legacy customer.metadata rows.
     const originalTransaction = await prisma.transaction.findUnique({
       where: { eventId: event_id },
       include: {
@@ -988,7 +1002,6 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
         },
         customer: {
           include: {
-            // Legacy fallback when transaction.referralId was not set.
             referral: {
               include: saleReferralInclude,
             },
@@ -997,9 +1010,23 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
       },
     });
 
-    const customer = originalTransaction?.customer;
-    const referral =
+    let customer = originalTransaction?.customer ?? null;
+    let referral =
       originalTransaction?.referral ?? originalTransaction?.customer?.referral ?? null;
+
+    if (!customer) {
+      const legacyCustomer = await prisma.customer.findFirst({
+        where: { metadata: event_id },
+        include: {
+          referral: {
+            include: saleReferralInclude,
+          },
+        },
+      });
+      customer = legacyCustomer;
+      referral = legacyCustomer?.referral ?? null;
+    }
+
     if (!customer || !referral) {
       return res.status(404).json({ error: 'Original sale not found' });
     }
@@ -1280,7 +1307,9 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
                 customerId: customer.id,
                 type: 'sale',
                 status: 'completed',
-                id: { not: originalTransaction.id },
+                ...(originalTransaction
+                  ? { id: { not: originalTransaction.id } }
+                  : {}),
               },
             })) === 0
               ? 'cancelled'

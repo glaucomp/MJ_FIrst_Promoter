@@ -1224,15 +1224,13 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
       select: { id: true },
     });
 
-    if (!promoter) {
+    // Same empty payload for unknown usernames and callers without access so
+    // authenticated users cannot infer which influencer_id values exist.
+    if (
+      !promoter ||
+      !(await canAccessGiftActivity(req, promoter, groupId))
+    ) {
       return res.json({ items: [], pending_count: 0, awaiting_redemption_count: 0 });
-    }
-
-    // Admins and the promoter always have access. Account managers must own the
-    // promoter or group (same ownership rule as canAccessLoadedGroup). Chatters
-    // must pass groupId and be a member of that group for this promoter.
-    if (!(await canAccessGiftActivity(req, promoter, groupId))) {
-      return res.status(403).json({ error: "Forbidden" });
     }
 
     // Payers who generated promoter commissions for this influencer. We key off
@@ -1535,12 +1533,11 @@ export const sendGiftCode = async (req: AuthRequest, res: Response) => {
       select: { id: true },
     });
 
-    if (!promoter) {
+    if (
+      !promoter ||
+      !(await canAccessGiftActivity(req, promoter, groupId))
+    ) {
       return res.status(404).json({ error: "Influencer not found" });
-    }
-
-    if (!(await canAccessGiftActivity(req, promoter, groupId))) {
-      return res.status(403).json({ error: "Forbidden" });
     }
 
     // Verify ownership BEFORE loading any customer PII. This prevents
