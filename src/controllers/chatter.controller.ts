@@ -992,6 +992,14 @@ type SaleTxnRow = { saleAmount: number; createdAt: Date; eventId?: string };
 /** Completed sales only — refunded originals keep type "sale" but status "refunded". */
 const completedSaleWhere = { type: "sale" as const, status: "completed" as const };
 
+/** Sales on a shared customer row that earned promoter commission for one influencer. */
+const completedSalesForPromoter = (promoterId: string) => ({
+  ...completedSaleWhere,
+  commissions: {
+    some: { userId: promoterId, type: "promoter" as const },
+  },
+});
+
 type GiftActivityEvent = {
   type: "deposit" | "first_deposit" | "gift" | "accepted" | "invited" | "expired";
   date: string;
@@ -1261,7 +1269,7 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
         createdAt: true,
         referral: { select: { inviteCode: true, status: true, createdAt: true } },
         transactions: {
-          where: completedSaleWhere,
+          where: completedSalesForPromoter(promoter.id),
           select: { saleAmount: true, createdAt: true, eventId: true },
           orderBy: { createdAt: "desc" },
         },
@@ -1616,7 +1624,7 @@ export const sendGiftCode = async (req: AuthRequest, res: Response) => {
       where: { OR: relatedCustomerClauses },
       select: {
         transactions: {
-          where: completedSaleWhere,
+          where: completedSalesForPromoter(promoter.id),
           select: { saleAmount: true, createdAt: true, eventId: true },
         },
       },
