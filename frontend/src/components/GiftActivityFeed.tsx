@@ -377,13 +377,6 @@ type GiftActivityFilters = {
   showMissingOnly: boolean;
 };
 
-const filtersMatch = (a: GiftActivityFilters, b: GiftActivityFilters) =>
-  a.influencerId === b.influencerId &&
-  a.groupId === b.groupId &&
-  a.debouncedSearch === b.debouncedSearch &&
-  a.page === b.page &&
-  a.showMissingOnly === b.showMissingOnly;
-
 export const GiftActivityFeed = ({ influencerId, groupId }: Props) => {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -397,7 +390,8 @@ export const GiftActivityFeed = ({ influencerId, groupId }: Props) => {
   const [sendingRowKey, setSendingRowKey] = useState<string | null>(null);
   const [showMissingOnly, setShowMissingOnly] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const loadRequestIdRef = useRef(0);
+  const loadGenerationRef = useRef(0);
+  const activeForegroundGenerationRef = useRef<number | null>(null);
   const filtersRef = useRef<GiftActivityFilters>({
     influencerId,
     groupId,
@@ -434,14 +428,12 @@ export const GiftActivityFeed = ({ influencerId, groupId }: Props) => {
   const load = useCallback(async (opts?: { silent?: boolean }) => {
     const silent = opts?.silent ?? false;
     const filtersAtStart = { ...filtersRef.current };
-    const requestId = silent ? loadRequestIdRef.current : ++loadRequestIdRef.current;
+    const generation = ++loadGenerationRef.current;
 
-    const isStale = () =>
-      silent
-        ? !filtersMatch(filtersAtStart, filtersRef.current)
-        : requestId !== loadRequestIdRef.current;
+    const isStale = () => generation !== loadGenerationRef.current;
 
     if (!silent) {
+      activeForegroundGenerationRef.current = generation;
       setLoading(true);
       setError(null);
     }
@@ -474,7 +466,8 @@ export const GiftActivityFeed = ({ influencerId, groupId }: Props) => {
         setError("Unable to load gift activity");
       }
     } finally {
-      if (!silent && requestId === loadRequestIdRef.current) {
+      if (!silent && activeForegroundGenerationRef.current === generation) {
+        activeForegroundGenerationRef.current = null;
         setLoading(false);
       }
     }
