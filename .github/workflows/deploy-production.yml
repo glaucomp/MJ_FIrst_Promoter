@@ -4,10 +4,12 @@ on:
   push:
     branches:
       - master
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: self-hosted
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
