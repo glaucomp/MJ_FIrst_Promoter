@@ -15,6 +15,12 @@ const effectiveGiftStatus = (item: GiftActivityItem): GiftActivityItem["gift_sta
   return item.gift_status;
 };
 
+const needsGiftCode = (status: GiftActivityItem["gift_status"]) =>
+  status === "none" ||
+  status === "pending" ||
+  status === "invited" ||
+  status === "expired";
+
 interface Props {
   influencerId: string;
   groupId: string;
@@ -201,8 +207,7 @@ const ActivityRow = ({
       : item.email || "No email on file";
   const isAccepted = status === "accepted";
   const isSent = status === "sent";
-  const needsCreate =
-    status === "none" || status === "pending" || status === "expired";
+  const needsCreate = needsGiftCode(status);
   const showPromoPanel = expanded && !isAccepted && (isSent || needsCreate);
   const hasCode = Boolean(item.gift_code) && isSent;
   const events = item.events ?? [];
@@ -525,10 +530,6 @@ export const GiftActivityFeed = ({ influencerId, groupId }: Props) => {
   const handleSend = useCallback(async (target: GiftActivityItem, payerEmail?: string) => {
     const { user_id: userId, influencer_id: itemInfluencerId } = target;
     const rowKey = activityRowKey(target);
-    const status = effectiveGiftStatus(target);
-    const wasPending =
-      target.deposit_count >= 1 &&
-      (status === "none" || status === "pending" || status === "expired");
     setError(null);
     setSendingRowKey(rowKey);
     try {
@@ -554,9 +555,6 @@ export const GiftActivityFeed = ({ influencerId, groupId }: Props) => {
           };
         }),
       );
-      if (wasPending) {
-        setPendingCount((count) => Math.max(0, count - 1));
-      }
       void load({ silent: true });
     } catch {
       setError("Unable to send gift");

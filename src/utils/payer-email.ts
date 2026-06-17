@@ -20,3 +20,37 @@ export function resolveRedeemablePayerEmail(
   if (!trimmed || isSyntheticPayerEmail(trimmed)) return null;
   return trimmed;
 }
+
+/** When merging customer rows, keep a real payer email over a synthetic placeholder. */
+export function preferStoredPayerEmail(
+  left: string | null | undefined,
+  right: string | null | undefined,
+): string | null {
+  const leftRedeemable = resolveRedeemablePayerEmail(left);
+  const rightRedeemable = resolveRedeemablePayerEmail(right);
+  if (rightRedeemable && right) return right.trim();
+  if (leftRedeemable && left) return left.trim();
+  const rightTrimmed = (right ?? "").trim();
+  if (rightTrimmed) return rightTrimmed;
+  const leftTrimmed = (left ?? "").trim();
+  return leftTrimmed || null;
+}
+
+/**
+ * Gift-activity row key: real emails merge payers; uid-*@temp.com merges by uid;
+ * event-*@temp.com stays one row per sale (customer id).
+ */
+export function giftActivityDedupeKey(c: {
+  email: string | null | undefined;
+  id: string;
+}): string {
+  const redeemable = resolveRedeemablePayerEmail(c.email);
+  if (redeemable) return redeemable.toLowerCase();
+  const email = (c.email ?? "").trim().toLowerCase();
+  if (isSyntheticPayerEmail(email)) {
+    const local = email.slice(0, -SYNTHETIC_PAYER_EMAIL_DOMAIN.length);
+    if (local.startsWith("uid-")) return email;
+    return c.id.toLowerCase();
+  }
+  return (email || c.id).toLowerCase();
+}

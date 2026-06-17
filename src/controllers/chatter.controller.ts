@@ -25,7 +25,9 @@ import {
   normalizeInstagramUsername,
 } from "../utils/instagram-username";
 import {
+  giftActivityDedupeKey,
   isSyntheticPayerEmail,
+  preferStoredPayerEmail,
   resolveRedeemablePayerEmail,
 } from "../utils/payer-email";
 import { resolveAccountManagersFor } from "../services/ownership.service";
@@ -1262,22 +1264,35 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
       },
     });
 
-    // Fetch gift records keyed by real payer email (skip track/sale placeholders).
+    // Fetch gifts by redeemable payer email and by customer id (transactionRef).
     const redeemableEmails = customers
       .map((c) => resolveRedeemablePayerEmail(c.email))
       .filter((e): e is string => !!e);
-    const gifts = redeemableEmails.length
+    const giftWhere: Prisma.FirstDepositGiftWhereInput[] = [];
+    if (redeemableEmails.length) {
+      giftWhere.push({
+        payerEmail: { in: redeemableEmails, mode: "insensitive" },
+      });
+    }
+    if (customerIds.length) {
+      giftWhere.push({ transactionRef: { in: customerIds } });
+    }
+    const gifts = giftWhere.length
       ? await prisma.firstDepositGift.findMany({
-          where: { payerEmail: { in: redeemableEmails, mode: "insensitive" } },
+          where: { OR: giftWhere },
           orderBy: { createdAt: "desc" },
         })
       : [];
-    // Build the map so the newest gift per email wins (gifts are ordered desc).
+    // Newest gift per email / transactionRef wins (gifts are ordered desc).
     const giftByEmail = new Map<string, (typeof gifts)[0]>();
+    const giftByTransactionRef = new Map<string, (typeof gifts)[0]>();
     for (const g of gifts) {
-      const key = g.payerEmail?.toLowerCase();
-      if (key && !giftByEmail.has(key)) {
-        giftByEmail.set(key, g);
+      const emailKey = g.payerEmail?.toLowerCase();
+      if (emailKey && !giftByEmail.has(emailKey)) {
+        giftByEmail.set(emailKey, g);
+      }
+      if (g.transactionRef && !giftByTransactionRef.has(g.transactionRef)) {
+        giftByTransactionRef.set(g.transactionRef, g);
       }
     }
 
@@ -1296,19 +1311,34 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // Build response items — deduplicated by email (one row per unique payer)
-    const seenEmails = new Map<
-      string,
-      (typeof customers)[0] & { joinedAt: Date }
-    >();
+    // Build response items — one row per payer (real email / uid / sale).
+    type MergedCustomer = (typeof customers)[0] & {
+      joinedAt: Date;
+      mergedCustomerIds: string[];
+    };
+    const seenEmails = new Map<string, MergedCustomer>();
     for (const c of customers) {
-      const key = (c.email ?? c.id).toLowerCase();
+      const key = giftActivityDedupeKey(c);
       const existing = seenEmails.get(key);
       if (!existing) {
-        seenEmails.set(key, { ...c, joinedAt: c.createdAt });
+        seenEmails.set(key, {
+          ...c,
+          joinedAt: c.createdAt,
+          mergedCustomerIds: [c.id],
+        });
       } else {
-        // Prefer the customer tied to the most recent sale as the row identity.
-        if (latestSaleTime(c.transactions) > latestSaleTime(existing.transactions)) {
+        existing.mergedCustomerIds.push(c.id);
+        existing.email = preferStoredPayerEmail(existing.email, c.email);
+        const existingRedeemable = resolveRedeemablePayerEmail(existing.email);
+        const incomingRedeemable = resolveRedeemablePayerEmail(c.email);
+        // Prefer the customer row that carries a real payer email, else latest sale.
+        if (incomingRedeemable && !existingRedeemable) {
+          existing.id = c.id;
+          existing.name = c.name ?? existing.name;
+          existing.referral = c.referral ?? existing.referral;
+        } else if (
+          latestSaleTime(c.transactions) > latestSaleTime(existing.transactions)
+        ) {
           existing.id = c.id;
           existing.name = c.name ?? existing.name;
           existing.referral = c.referral ?? existing.referral;
@@ -1323,6 +1353,19 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
       }
     }
 
+    const resolveGiftForCustomer = (c: MergedCustomer) => {
+      const redeemableEmail = resolveRedeemablePayerEmail(c.email);
+      if (redeemableEmail) {
+        const byEmail = giftByEmail.get(redeemableEmail.toLowerCase());
+        if (byEmail) return byEmail;
+      }
+      for (const id of c.mergedCustomerIds) {
+        const byRef = giftByTransactionRef.get(id);
+        if (byRef) return byRef;
+      }
+      return undefined;
+    };
+
     const allItems = Array.from(seenEmails.values())
       .map((c) => {
         const {
@@ -1336,7 +1379,7 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
 
         const redeemableEmail = resolveRedeemablePayerEmail(c.email);
         const emailKey = redeemableEmail?.toLowerCase() ?? "";
-        const gift = emailKey ? giftByEmail.get(emailKey) : undefined;
+        const gift = resolveGiftForCustomer(c);
         const giftStatus = resolveGiftStatus(gift);
         const handle = emailKey ? (handleByEmail.get(emailKey) ?? null) : null;
 
@@ -1369,11 +1412,12 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
       })
       .sort((a, b) => (b.date > a.date ? 1 : -1));
 
-    // Customers with deposits who still need a code (none/pending/expired).
+    // Customers with deposits who still need a code (none/pending/invited/expired).
     const needsGiftCode = (i: (typeof allItems)[number]) =>
       i.deposit_count >= 1 &&
       (i.gift_status === "none" ||
         i.gift_status === "pending" ||
+        i.gift_status === "invited" ||
         i.gift_status === "expired");
 
     const items = search
