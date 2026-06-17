@@ -265,6 +265,7 @@ function resolveSaleCustomerIdentity(args: {
   }
   // Username-only sales have no payer email/uid — key by event_id so each sale
   // gets its own customer instead of collapsing on uid-undefined@temp.com.
+  // Gift flows treat *@temp.com placeholders via isSyntheticPayerEmail().
   return { email: `event-${event_id}@temp.com`, name: `Sale ${event_id}` };
 }
 

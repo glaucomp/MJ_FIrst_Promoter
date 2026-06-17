@@ -118,6 +118,7 @@ router.post(
     param('userId').isString().trim().notEmpty(),
     query('influencer_id').trim().notEmpty(),
     query('groupId').optional().isString().trim(),
+    body('payer_email').optional().isEmail().normalizeEmail(EMAIL_NORMALIZE_OPTIONS),
   ],
   chatterController.sendGiftCode,
 );

@@ -488,6 +488,8 @@ model FirstDepositGift {
 
   @@index([status])
   @@index([payerEmail])
+  // Partial unique index (LOWER(payerEmail) WHERE status <> EXPIRED) is created in
+  // migration 20260617120000_first_deposit_gift_payer_active_unique — not expressible in Prisma schema.
   @@map("first_deposit_gifts")
 }
 

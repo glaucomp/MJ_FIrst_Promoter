@@ -24,6 +24,10 @@ import {
   isValidInstagramUsername,
   normalizeInstagramUsername,
 } from "../utils/instagram-username";
+import {
+  isSyntheticPayerEmail,
+  resolveRedeemablePayerEmail,
+} from "../utils/payer-email";
 import { resolveAccountManagersFor } from "../services/ownership.service";
 import { createVipInviteRecord } from "../services/vip-invite.service";
 
@@ -1020,15 +1024,16 @@ const dedupeSaleTransactionsByEventId = <T extends SaleTxnRow>(txns: T[]): T[] =
   );
 };
 
+const isGiftTimeExpired = (gift: Pick<GiftRecord, "status" | "expiresAt">): boolean =>
+  gift.status === "SENT" &&
+  gift.expiresAt != null &&
+  gift.expiresAt < new Date();
+
 const resolveGiftStatus = (
   gift: GiftRecord | undefined,
 ): "none" | "pending" | "sent" | "accepted" | "expired" | "invited" => {
   if (!gift) return "none";
-  if (
-    gift.status === "SENT" &&
-    gift.expiresAt != null &&
-    gift.expiresAt < new Date()
-  ) {
+  if (isGiftTimeExpired(gift)) {
     return "expired";
   }
   return gift.status.toLowerCase() as
@@ -1257,14 +1262,16 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
       },
     });
 
-    // Fetch gift records keyed by payer email
-    const emails = customers
-      .map((c) => c.email)
+    // Fetch gift records keyed by real payer email (skip track/sale placeholders).
+    const redeemableEmails = customers
+      .map((c) => resolveRedeemablePayerEmail(c.email))
       .filter((e): e is string => !!e);
-    const gifts = await prisma.firstDepositGift.findMany({
-      where: { payerEmail: { in: emails, mode: "insensitive" } },
-      orderBy: { createdAt: "desc" },
-    });
+    const gifts = redeemableEmails.length
+      ? await prisma.firstDepositGift.findMany({
+          where: { payerEmail: { in: redeemableEmails, mode: "insensitive" } },
+          orderBy: { createdAt: "desc" },
+        })
+      : [];
     // Build the map so the newest gift per email wins (gifts are ordered desc).
     const giftByEmail = new Map<string, (typeof gifts)[0]>();
     for (const g of gifts) {
@@ -1274,11 +1281,13 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    const vipInvites = await prisma.vipInvite.findMany({
-      where: { email: { in: emails, mode: "insensitive" } },
-      select: { email: true, instagramUsername: true },
-      orderBy: { createdAt: "desc" },
-    });
+    const vipInvites = redeemableEmails.length
+      ? await prisma.vipInvite.findMany({
+          where: { email: { in: redeemableEmails, mode: "insensitive" } },
+          select: { email: true, instagramUsername: true },
+          orderBy: { createdAt: "desc" },
+        })
+      : [];
     const handleByEmail = new Map<string, string>();
     for (const invite of vipInvites) {
       const key = invite.email?.toLowerCase();
@@ -1325,16 +1334,18 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
         } = aggregatePayerSales(c.transactions);
         const date = lastDate?.toISOString() ?? c.createdAt.toISOString();
 
-        const emailKey = c.email?.toLowerCase() ?? "";
-        const gift = giftByEmail.get(emailKey);
+        const redeemableEmail = resolveRedeemablePayerEmail(c.email);
+        const emailKey = redeemableEmail?.toLowerCase() ?? "";
+        const gift = emailKey ? giftByEmail.get(emailKey) : undefined;
         const giftStatus = resolveGiftStatus(gift);
-        const handle = handleByEmail.get(emailKey) ?? null;
+        const handle = emailKey ? (handleByEmail.get(emailKey) ?? null) : null;
 
         return {
           user_id: c.id,
           influencer_id: influencerId,
           name: c.name ?? null,
-          email: c.email ?? "",
+          email: redeemableEmail ?? "",
+          needs_payer_email: !redeemableEmail && isSyntheticPayerEmail(c.email),
           date,
           joined_at: c.joinedAt.toISOString(),
           handle,
@@ -1405,9 +1416,25 @@ const findActiveGiftForPayer = (payerEmail: string) =>
   prisma.firstDepositGift.findFirst({
     where: {
       payerEmail: { equals: payerEmail, mode: "insensitive" },
-      status: { not: "EXPIRED" },
+      OR: [
+        { status: "ACCEPTED" },
+        {
+          status: "SENT",
+          OR: [{ expiresAt: null }, { expiresAt: { gte: new Date() } }],
+        },
+      ],
     },
     orderBy: { createdAt: "desc" },
+  });
+
+const expireTimeExpiredSentGiftsForPayer = (payerEmail: string) =>
+  prisma.firstDepositGift.updateMany({
+    where: {
+      payerEmail: { equals: payerEmail, mode: "insensitive" },
+      status: "SENT",
+      expiresAt: { lt: new Date() },
+    },
+    data: { status: "EXPIRED" },
   });
 
 const isPrismaUniqueViolation = (error: unknown): boolean =>
@@ -1418,6 +1445,11 @@ const isPrismaUniqueViolation = (error: unknown): boolean =>
 export const sendGiftCode = async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) return res.status(401).json({ error: "Unauthorized" });
+
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
 
     const customerId = req.params.userId;
     if (!customerId) {
@@ -1471,18 +1503,50 @@ export const sendGiftCode = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: "Customer not found" });
     }
 
-    const payerEmail = (customer.email ?? "").trim();
-    if (!payerEmail) {
+    const storedEmail = (customer.email ?? "").trim();
+    const bodyPayerEmail =
+      typeof req.body?.payer_email === "string" ? req.body.payer_email.trim() : "";
+
+    let payerEmail: string;
+    if (isSyntheticPayerEmail(storedEmail)) {
+      if (!bodyPayerEmail) {
+        return res.status(400).json({
+          error: "Real payer email is required — this sale has no redeemable email on file",
+        });
+      }
+      if (isSyntheticPayerEmail(bodyPayerEmail)) {
+        return res.status(400).json({ error: "Invalid payer email" });
+      }
+      payerEmail = bodyPayerEmail;
+    } else if (!storedEmail) {
       return res.status(400).json({ error: "Customer email is required to send a gift code" });
+    } else {
+      payerEmail = storedEmail;
     }
+
+    const persistRedeemableEmailIfNeeded = async () => {
+      if (isSyntheticPayerEmail(storedEmail)) {
+        await prisma.customer.update({
+          where: { id: customerId },
+          data: { email: payerEmail },
+        });
+      }
+    };
 
     // Eligibility is per payer email — same aggregation as getGiftActivity merge.
     const relatedCustomers = await prisma.customer.findMany({
       where: {
-        email: { equals: payerEmail, mode: "insensitive" },
-        commissions: {
-          some: { userId: promoter.id, type: "promoter" },
-        },
+        OR: [
+          {
+            email: { equals: payerEmail, mode: "insensitive" },
+            commissions: {
+              some: { userId: promoter.id, type: "promoter" },
+            },
+          },
+          ...(isSyntheticPayerEmail(storedEmail)
+            ? [{ id: customerId }]
+            : []),
+        ],
       },
       select: {
         transactions: {
@@ -1508,14 +1572,14 @@ export const sendGiftCode = async (req: AuthRequest, res: Response) => {
 
     // Already redeemed — return as-is, no new record.
     if (existing && existing.status === "ACCEPTED") {
+      await persistRedeemableEmailIfNeeded();
       return res.json(giftSendPayload(existing));
     }
 
     // Already sent and still valid — return the existing code.
     if (existing && existing.status === "SENT") {
-      const isExpired =
-        existing.expiresAt != null && existing.expiresAt < new Date();
-      if (!isExpired) {
+      if (!isGiftTimeExpired(existing)) {
+        await persistRedeemableEmailIfNeeded();
         return res.json(giftSendPayload(existing));
       }
       await prisma.firstDepositGift.updateMany({
@@ -1536,17 +1600,22 @@ export const sendGiftCode = async (req: AuthRequest, res: Response) => {
         data: { status: "SENT", sentAt: new Date(), expiresAt },
       });
       if (upgraded.count === 1) {
+        await persistRedeemableEmailIfNeeded();
         return res.json(
           giftSendPayload({ ...existing, status: "SENT", expiresAt }),
         );
       }
       const winner = await findActiveGiftForPayer(payerEmail);
       if (winner) {
+        await persistRedeemableEmailIfNeeded();
         return res.json(giftSendPayload(winner));
       }
     }
 
     // No record, or the only existing one is EXPIRED — generate a fresh code.
+    // Clear any stale SENT rows whose expiresAt passed but status was not updated yet.
+    await expireTimeExpiredSentGiftsForPayer(payerEmail);
+
     const PROMO_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     const genCode = (len = 8) => {
       const bytes = crypto.randomBytes(len);
@@ -1574,6 +1643,7 @@ export const sendGiftCode = async (req: AuthRequest, res: Response) => {
             expiresAt,
           },
         });
+        await persistRedeemableEmailIfNeeded();
         return res.json(giftSendPayload(gift));
       } catch (error) {
         if (!isPrismaUniqueViolation(error)) {
@@ -1581,8 +1651,10 @@ export const sendGiftCode = async (req: AuthRequest, res: Response) => {
         }
         const winner = await findActiveGiftForPayer(payerEmail);
         if (winner) {
+          await persistRedeemableEmailIfNeeded();
           return res.json(giftSendPayload(winner));
         }
+        await expireTimeExpiredSentGiftsForPayer(payerEmail);
         promoCode = genCode();
       }
     }

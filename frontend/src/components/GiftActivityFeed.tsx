@@ -170,12 +170,13 @@ const ActivityRow = ({
   item: GiftActivityItem;
   expanded: boolean;
   onToggleExpand: () => void;
-  onSend: () => void;
+  onSend: (payerEmail?: string) => void;
   sending: boolean;
 }) => {
   const [copied, setCopied] = useState(false);
   const [animKey, setAnimKey] = useState(0);
   const [visibleEventCount, setVisibleEventCount] = useState(EVENTS_INITIAL);
+  const [payerEmailInput, setPayerEmailInput] = useState("");
 
   useEffect(() => {
     if (!expanded) setVisibleEventCount(EVENTS_INITIAL);
@@ -189,7 +190,15 @@ const ActivityRow = ({
   };
 
   const status = effectiveGiftStatus(item);
-  const hasEmail = Boolean(item.email?.trim());
+  const hasRedeemableEmail = Boolean(item.email?.trim());
+  const needsPayerEmail = Boolean(item.needs_payer_email);
+  const canSendGift =
+    hasRedeemableEmail || (needsPayerEmail && payerEmailInput.trim());
+  const displayEmail = hasRedeemableEmail
+    ? item.email
+    : needsPayerEmail
+      ? "No email on file"
+      : item.email || "No email on file";
   const isAccepted = status === "accepted";
   const isSent = status === "sent";
   const needsCreate =
@@ -241,7 +250,7 @@ const ActivityRow = ({
       <button
         type="button"
         onClick={handleGiftClick}
-        disabled={sending || !hasEmail}
+        disabled={sending || !canSendGift}
         className="inline-flex items-center gap-2 px-4 py-1.5 rounded-[90px] text-[14px] font-bold text-black disabled:opacity-40"
         style={{
           background:
@@ -262,7 +271,7 @@ const ActivityRow = ({
         {/* Header + Life row */}
         <div className="px-4 pt-4">
           <p className="text-white font-bold text-[15px]">
-            {item.email || "No email on file"}
+            {displayEmail}
           </p>
 
           <p className="text-[rgba(255,255,255,0.4)] text-[12px] mt-[2px]">
@@ -311,6 +320,15 @@ const ActivityRow = ({
                 <p className="text-[rgba(255,255,255,0.6)] text-[12px]">
                   {item.diamonds ?? 120} diamonds. Redeem in Teaseme with this email only
                 </p>
+                {needsPayerEmail && !hasRedeemableEmail && !hasCode && (
+                  <input
+                    type="email"
+                    value={payerEmailInput}
+                    onChange={(e) => setPayerEmailInput(e.target.value)}
+                    placeholder="Payer email for TeaseMe redemption"
+                    className="w-full px-4 py-3 rounded-xl bg-[rgba(0,0,0,0.35)] text-white text-[14px] placeholder:text-[rgba(255,255,255,0.35)] focus:outline-none focus:ring-1 focus:ring-[#ff8c00]"
+                  />
+                )}
                 {hasCode ? (
                   <>
                     <div className="px-4 py-3 rounded-xl bg-[rgba(0,0,0,0.35)] font-mono text-white text-[18px] tracking-widest text-center">
@@ -330,8 +348,10 @@ const ActivityRow = ({
                 ) : (
                   <button
                     type="button"
-                    onClick={onSend}
-                    disabled={sending || !hasEmail}
+                    onClick={() =>
+                      onSend(needsPayerEmail ? payerEmailInput.trim() : undefined)
+                    }
+                    disabled={sending || !canSendGift}
                     className="w-full py-3 rounded-full border border-[rgba(255,255,255,0.12)] bg-[rgba(0,0,0,0.4)] text-white font-bold text-[13px] hover:bg-[rgba(255,255,255,0.06)] transition-colors disabled:opacity-40"
                   >
                     {sending ? "Creating…" : "Create"}
@@ -451,10 +471,9 @@ export const GiftActivityFeed = ({ influencerId, groupId }: Props) => {
         res.page != null && res.page !== filtersAtStart.page;
       setPendingCount(res.pending_count);
       setTotalPages(res.total_pages ?? 1);
-      // Silent polls must not change the user's page or swap in another page's rows.
-      if (silent && pageWasClamped) return;
       setItems(res.items);
-      if (!silent && res.page != null) setPage(res.page);
+      // Silent polls keep the current page unless the API clamped it (page no longer exists).
+      if (res.page != null && (!silent || pageWasClamped)) setPage(res.page);
       if (silent) {
         setError((prev) =>
           prev === "Unable to load gift activity" ? null : prev,
@@ -503,7 +522,7 @@ export const GiftActivityFeed = ({ influencerId, groupId }: Props) => {
     return () => clearInterval(timer);
   }, [hasAwaitingRedemption, load]);
 
-  const handleSend = useCallback(async (target: GiftActivityItem) => {
+  const handleSend = useCallback(async (target: GiftActivityItem, payerEmail?: string) => {
     const { user_id: userId, influencer_id: itemInfluencerId } = target;
     const rowKey = activityRowKey(target);
     const status = effectiveGiftStatus(target);
@@ -513,7 +532,12 @@ export const GiftActivityFeed = ({ influencerId, groupId }: Props) => {
     setError(null);
     setSendingRowKey(rowKey);
     try {
-      const res = await chattersApi.sendGiftCode(userId, itemInfluencerId, groupId);
+      const res = await chattersApi.sendGiftCode(
+        userId,
+        itemInfluencerId,
+        groupId,
+        payerEmail,
+      );
       setItems((prev) =>
         prev.map((item) => {
           if (item.user_id !== userId || item.influencer_id !== itemInfluencerId) {
@@ -521,6 +545,8 @@ export const GiftActivityFeed = ({ influencerId, groupId }: Props) => {
           }
           return {
             ...item,
+            email: payerEmail ?? item.email,
+            needs_payer_email: payerEmail ? false : item.needs_payer_email,
             gift_status: res.status as GiftActivityItem["gift_status"],
             gift_code: res.code,
             diamonds: res.diamonds,
@@ -563,7 +589,7 @@ export const GiftActivityFeed = ({ influencerId, groupId }: Props) => {
               item={item}
               expanded={expandedRowKey === rowKey}
               onToggleExpand={() => setExpandedRowKey((cur) => (cur === rowKey ? null : rowKey))}
-              onSend={() => void handleSend(item)}
+              onSend={(payerEmail) => void handleSend(item, payerEmail)}
               sending={sendingRowKey === rowKey}
             />
           );

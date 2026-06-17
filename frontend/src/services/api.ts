@@ -1299,11 +1299,15 @@ export const chattersApi = {
     userId: string,
     influencerId: string,
     groupId: string,
+    payerEmail?: string,
   ): Promise<SendGiftResponse> {
     const params = new URLSearchParams({ influencer_id: influencerId, groupId });
     const response = await apiFetch(`${API_URL}/chatters/gift-activity/${userId}/send?${params}`, {
       method: 'POST',
       headers: getAuthHeaders(),
+      body: JSON.stringify(
+        payerEmail ? { payer_email: payerEmail } : {},
+      ),
     });
     return handleResponse(response, 'Failed to send gift code');
   },
@@ -1585,6 +1589,7 @@ export interface GiftActivityItem {
   influencer_id: string;
   name: string | null;
   email: string;
+  needs_payer_email?: boolean;
   date: string | null;
   joined_at: string;
   handle: string | null;
