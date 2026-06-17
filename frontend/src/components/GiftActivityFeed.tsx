@@ -196,10 +196,12 @@ const ActivityRow = ({
   };
 
   const status = effectiveGiftStatus(item);
+  const hasDeposits = item.deposit_count >= 1;
   const hasRedeemableEmail = Boolean(item.email?.trim());
   const needsPayerEmail = Boolean(item.needs_payer_email);
-  const canSendGift =
-    hasRedeemableEmail || (needsPayerEmail && payerEmailInput.trim());
+  const canCreateGift =
+    hasDeposits &&
+    (hasRedeemableEmail || (needsPayerEmail && payerEmailInput.trim()));
   const displayEmail = hasRedeemableEmail
     ? item.email
     : needsPayerEmail
@@ -255,7 +257,7 @@ const ActivityRow = ({
       <button
         type="button"
         onClick={handleGiftClick}
-        disabled={sending || !canSendGift}
+        disabled={sending || (needsCreate && !canCreateGift)}
         className="inline-flex items-center gap-2 px-4 py-1.5 rounded-[90px] text-[14px] font-bold text-black disabled:opacity-40"
         style={{
           background:
@@ -356,7 +358,7 @@ const ActivityRow = ({
                     onClick={() =>
                       onSend(needsPayerEmail ? payerEmailInput.trim() : undefined)
                     }
-                    disabled={sending || !canSendGift}
+                    disabled={sending || !canCreateGift}
                     className="w-full py-3 rounded-full border border-[rgba(255,255,255,0.12)] bg-[rgba(0,0,0,0.4)] text-white font-bold text-[13px] hover:bg-[rgba(255,255,255,0.06)] transition-colors disabled:opacity-40"
                   >
                     {sending ? "Creating…" : "Create"}
@@ -407,6 +409,7 @@ export const GiftActivityFeed = ({ influencerId, groupId }: Props) => {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [items, setItems] = useState<GiftActivityItem[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
+  const [awaitingRedemptionCount, setAwaitingRedemptionCount] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -475,6 +478,7 @@ export const GiftActivityFeed = ({ influencerId, groupId }: Props) => {
       const pageWasClamped =
         res.page != null && res.page !== filtersAtStart.page;
       setPendingCount(res.pending_count);
+      setAwaitingRedemptionCount(res.awaiting_redemption_count ?? 0);
       setTotalPages(res.total_pages ?? 1);
       setItems(res.items);
       // Silent polls keep the current page unless the API clamped it (page no longer exists).
@@ -509,12 +513,14 @@ export const GiftActivityFeed = ({ influencerId, groupId }: Props) => {
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [load]);
 
-  const hasAwaitingRedemption = items.some(
+  const hasSentGiftOnPage = items.some(
     (item) => effectiveGiftStatus(item) === "sent",
   );
+  const shouldPollForRedemption =
+    awaitingRedemptionCount > 0 || hasSentGiftOnPage;
 
   useEffect(() => {
-    if (!hasAwaitingRedemption || document.visibilityState !== "visible") {
+    if (!shouldPollForRedemption || document.visibilityState !== "visible") {
       return;
     }
 
@@ -525,7 +531,7 @@ export const GiftActivityFeed = ({ influencerId, groupId }: Props) => {
     }, GIFT_POLL_INTERVAL_MS);
 
     return () => clearInterval(timer);
-  }, [hasAwaitingRedemption, load]);
+  }, [shouldPollForRedemption, load]);
 
   const handleSend = useCallback(async (target: GiftActivityItem, payerEmail?: string) => {
     const { user_id: userId, influencer_id: itemInfluencerId } = target;

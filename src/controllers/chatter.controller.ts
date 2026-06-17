@@ -27,6 +27,7 @@ import {
 import {
   giftActivityDedupeKey,
   isSyntheticPayerEmail,
+  isUidSyntheticPayerEmail,
   preferStoredPayerEmail,
   resolveRedeemablePayerEmail,
 } from "../utils/payer-email";
@@ -1213,7 +1214,7 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
     });
 
     if (!promoter) {
-      return res.json({ items: [], pending_count: 0 });
+      return res.json({ items: [], pending_count: 0, awaiting_redemption_count: 0 });
     }
 
     // Admins and the promoter always have access. Account managers must own the
@@ -1244,7 +1245,7 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
       .filter((id): id is string => !!id);
 
     if (!customerIds.length) {
-      return res.json({ items: [], pending_count: 0 });
+      return res.json({ items: [], pending_count: 0, awaiting_redemption_count: 0 });
     }
 
     // Load full customer data with aggregated transaction info
@@ -1429,6 +1430,9 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
       : allItems;
 
     const pendingCount = allItems.filter(needsGiftCode).length;
+    const awaitingRedemptionCount = allItems.filter(
+      (i) => i.gift_status === "sent",
+    ).length;
 
     const filteredItems = missingOnly ? items.filter(needsGiftCode) : items;
 
@@ -1437,7 +1441,14 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
     const safePage = Math.min(page, total_pages);
     const pagedItems = filteredItems.slice((safePage - 1) * limit, safePage * limit);
 
-    return res.json({ items: pagedItems, pending_count: pendingCount, total, page: safePage, total_pages });
+    return res.json({
+      items: pagedItems,
+      pending_count: pendingCount,
+      awaiting_redemption_count: awaitingRedemptionCount,
+      total,
+      page: safePage,
+      total_pages,
+    });
   } catch (error) {
     console.error("Get gift activity error:", error);
     return res.status(500).json({ error: "Failed to fetch gift activity" });
@@ -1578,20 +1589,28 @@ export const sendGiftCode = async (req: AuthRequest, res: Response) => {
     };
 
     // Eligibility is per payer email — same aggregation as getGiftActivity merge.
-    const relatedCustomers = await prisma.customer.findMany({
-      where: {
-        OR: [
-          {
-            email: { equals: payerEmail, mode: "insensitive" },
-            commissions: {
-              some: { userId: promoter.id, type: "promoter" },
-            },
-          },
-          ...(isSyntheticPayerEmail(storedEmail)
-            ? [{ id: customerId }]
-            : []),
-        ],
+    const commissionedForPromoter = {
+      some: { userId: promoter.id, type: "promoter" as const },
+    };
+    const relatedCustomerClauses: Prisma.CustomerWhereInput[] = [
+      {
+        email: { equals: payerEmail, mode: "insensitive" },
+        commissions: commissionedForPromoter,
       },
+    ];
+    if (isUidSyntheticPayerEmail(storedEmail)) {
+      // uid-*@temp.com rows merge by placeholder email in the feed.
+      relatedCustomerClauses.push({
+        email: { equals: storedEmail, mode: "insensitive" },
+        commissions: commissionedForPromoter,
+      });
+    } else if (isSyntheticPayerEmail(storedEmail)) {
+      // event-*@temp.com stays one row per customer id.
+      relatedCustomerClauses.push({ id: customerId });
+    }
+
+    const relatedCustomers = await prisma.customer.findMany({
+      where: { OR: relatedCustomerClauses },
       select: {
         transactions: {
           where: { type: "sale" },

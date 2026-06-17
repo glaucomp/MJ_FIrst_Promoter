@@ -1609,6 +1609,8 @@ export interface GiftActivityItem {
 export interface GiftActivityResponse {
   items: GiftActivityItem[];
   pending_count: number;
+  /** Sent gifts awaiting payer redemption, across all pages (not just the current page). */
+  awaiting_redemption_count: number;
   total: number;
   page: number;
   total_pages: number;

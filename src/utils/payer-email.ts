@@ -1,6 +1,16 @@
 /** Placeholder domain for track/sale customers without a real payer email. */
 export const SYNTHETIC_PAYER_EMAIL_DOMAIN = "@temp.com";
 
+/** True for uid-*@temp.com placeholders that merge in gift activity by email. */
+export function isUidSyntheticPayerEmail(
+  email: string | null | undefined,
+): boolean {
+  const normalized = (email ?? "").trim().toLowerCase();
+  if (!isSyntheticPayerEmail(normalized)) return false;
+  const local = normalized.slice(0, -SYNTHETIC_PAYER_EMAIL_DOMAIN.length);
+  return local.startsWith("uid-");
+}
+
 /** True for uid-*@temp.com and event-*@temp.com placeholders from track/sale. */
 export function isSyntheticPayerEmail(
   email: string | null | undefined,

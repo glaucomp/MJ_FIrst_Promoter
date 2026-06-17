@@ -90,6 +90,24 @@ export const referralDisplayScore = (row: {
   (row.preUser?.currentStep ?? 0) * 1000 +
   (row.level ?? 0);
 
+/** Pick the canonical ACTIVE invitee row for a promoted user (highest score; lowest id breaks ties). */
+export function pickCanonicalInviteeReferral<
+  T extends {
+    id: string;
+    preUser?: { currentStep: number } | null;
+    level: number;
+  },
+>(rows: readonly T[]): T | null {
+  if (rows.length === 0) return null;
+  return rows.reduce((winner, row) => {
+    const rowScore = referralDisplayScore(row);
+    const winnerScore = referralDisplayScore(winner);
+    if (rowScore > winnerScore) return row;
+    if (rowScore < winnerScore) return winner;
+    return row.id < winner.id ? row : winner;
+  });
+}
+
 /**
  * Collapse multiple list rows that share the same promoted user (`referredUserId`)
  * into one card. Pending invites (no invitee user yet) are never merged.
@@ -159,14 +177,8 @@ export async function supersedeDuplicateInviteeReferrals(
 
   if (allActive.length <= 1) return 0;
 
-  // Pick the highest-scored row; the id (asc) ordering means the first element
-  // wins any score tie, giving a stable result across concurrent callers.
-  let winner = allActive[0]!;
-  for (const row of allActive) {
-    if (referralDisplayScore(row) > referralDisplayScore(winner)) {
-      winner = row;
-    }
-  }
+  const winner = pickCanonicalInviteeReferral(allActive);
+  if (!winner) return 0;
 
   const duplicates = allActive.filter((r: typeof winner) => r.id !== winner.id);
 

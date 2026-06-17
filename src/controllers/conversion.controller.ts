@@ -1,7 +1,10 @@
 import { Response } from 'express';
 import { PrismaClient, UserRole, UserType } from '@prisma/client';
 import { ApiKeyRequest } from '../middleware/apiKey.middleware';
-import { ensureCustomerTrackingReferralForPromotedUser } from '../services/referral-membership.service';
+import {
+  ensureCustomerTrackingReferralForPromotedUser,
+  pickCanonicalInviteeReferral,
+} from '../services/referral-membership.service';
 
 const saleReferralInclude = {
   campaign: true,
@@ -340,6 +343,8 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
             select: {
               id: true,
               campaignId: true,
+              level: true,
+              preUser: { select: { currentStep: true } },
               campaign: {
                 select: {
                   visibleToPromoters: true,
@@ -347,14 +352,15 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
                 },
               },
             },
-            orderBy: { acceptedAt: 'desc' },
-            take: 1,
           },
         },
       });
 
-      if (user?.referralsReceived.length) {
-        const inviteRow = user.referralsReceived[0];
+      const inviteRow = user
+        ? pickCanonicalInviteeReferral(user.referralsReceived)
+        : null;
+
+      if (user && inviteRow) {
         const camp = inviteRow.campaign;
         let saleCampaignId = inviteRow.campaignId;
         if (!camp.visibleToPromoters && camp.linkedCampaignId) {
