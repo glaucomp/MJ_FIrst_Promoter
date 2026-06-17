@@ -1333,7 +1333,7 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
         )
       : allItems;
 
-    const pendingCount = items.filter(needsGiftCode).length;
+    const pendingCount = allItems.filter(needsGiftCode).length;
 
     const filteredItems = missingOnly ? items.filter(needsGiftCode) : items;
 
