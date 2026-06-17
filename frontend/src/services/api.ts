@@ -1274,6 +1274,43 @@ export const chattersApi = {
     const response = await apiFetch(`${API_URL}/chatters/me/groups`, { headers: getAuthHeaders() });
     return handleResponse(response, 'Failed to fetch my groups');
   },
+
+  async getGiftActivity(
+    influencerId: string,
+    groupId: string,
+    search?: string,
+    page = 1,
+    missingOnly = false,
+    limit = 5,
+  ): Promise<GiftActivityResponse> {
+    const params = new URLSearchParams({
+      influencer_id: influencerId,
+      groupId,
+      page: String(page),
+      limit: String(limit),
+    });
+    if (search) params.set('search', search);
+    if (missingOnly) params.set('missing_only', 'true');
+    const response = await apiFetch(`${API_URL}/chatters/gift-activity?${params}`, { headers: getAuthHeaders() });
+    return handleResponse(response, 'Failed to fetch gift activity');
+  },
+
+  async sendGiftCode(
+    userId: string,
+    influencerId: string,
+    groupId: string,
+    payerEmail?: string,
+  ): Promise<SendGiftResponse> {
+    const params = new URLSearchParams({ influencer_id: influencerId, groupId });
+    const response = await apiFetch(`${API_URL}/chatters/gift-activity/${userId}/send?${params}`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(
+        payerEmail ? { payer_email: payerEmail } : {},
+      ),
+    });
+    return handleResponse(response, 'Failed to send gift code');
+  },
 };
 
 export interface ChatterMyGroup {
@@ -1528,3 +1565,61 @@ export const helpApi = {
     return handleResponse(response, 'Failed to delete help video');
   },
 };
+
+// ── Gift Activity types ───────────────────────────────────────────────────────
+
+export type GiftActivityEventType =
+  | 'deposit'
+  | 'first_deposit'
+  | 'gift'
+  | 'accepted'
+  | 'invited'
+  | 'expired';
+
+export interface GiftActivityEvent {
+  type: GiftActivityEventType;
+  date: string;
+  amount_cents?: number;
+  ref?: string;
+  code?: string;
+}
+
+export interface GiftActivityItem {
+  user_id: string;
+  influencer_id: string;
+  name: string | null;
+  email: string;
+  needs_payer_email?: boolean;
+  date: string | null;
+  joined_at: string;
+  handle: string | null;
+  ref: string | null;
+  lifetime_cents: number;
+  last_deposit_cents: number;
+  gift_status: 'none' | 'pending' | 'sent' | 'accepted' | 'expired' | 'invited' | 'deposit';
+  gift_code: string | null;
+  gift_id: number | null;
+  expires_at: string | null;
+  diamonds: number | null;
+  is_first_deposit: boolean;
+  deposit_count: number;
+  events: GiftActivityEvent[];
+}
+
+export interface GiftActivityResponse {
+  items: GiftActivityItem[];
+  pending_count: number;
+  /** Sent gifts awaiting payer redemption, across all pages (not just the current page). */
+  awaiting_redemption_count: number;
+  total: number;
+  page: number;
+  total_pages: number;
+}
+
+export interface SendGiftResponse {
+  ok: boolean;
+  code: string;
+  status: string;
+  diamonds: number;
+  expires_at: string;
+}

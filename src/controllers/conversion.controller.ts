@@ -1,6 +1,28 @@
 import { Response } from 'express';
-import { PrismaClient, UserRole, UserType } from '@prisma/client';
+import { Prisma, PrismaClient, UserRole, UserType } from '@prisma/client';
 import { ApiKeyRequest } from '../middleware/apiKey.middleware';
+import {
+  ensureCustomerTrackingReferralForPromotedUser,
+  pickCanonicalInviteeReferral,
+} from '../services/referral-membership.service';
+import { isStablePayerCustomerEmail } from '../utils/payer-email';
+
+const saleReferralInclude = {
+  campaign: true,
+  referrer: true,
+  parentReferral: {
+    include: {
+      referrer: true,
+      campaign: true,
+      parentReferral: {
+        include: {
+          referrer: true,
+          campaign: true,
+        },
+      },
+    },
+  },
+} as const;
 
 const prisma = new PrismaClient();
 
@@ -170,42 +192,197 @@ async function trySyntheticAmDirectFromLinkedHiddenProgram(args: {
   };
 }
 
+/**
+ * Username-identified sales attribute to the promoter (seller), not a payer row.
+ * When no customer-tracking referral exists yet, synthesize the sale shape from
+ * the promoter's invite row so commissions still flow (legacy behavior).
+ */
+async function buildSyntheticSaleReferralFromInvite(args: {
+  promoterUser: {
+    id: string;
+    email: string | null;
+    firstName: string | null;
+    lastName: string | null;
+  };
+  inviteReferralId: string;
+  saleCampaignId: string;
+}) {
+  const { promoterUser, inviteReferralId, saleCampaignId } = args;
+
+  const [saleCampaign, inviteRow] = await Promise.all([
+    prisma.campaign.findUnique({ where: { id: saleCampaignId } }),
+    prisma.referral.findUnique({
+      where: { id: inviteReferralId },
+      include: {
+        campaign: true,
+        referrer: true,
+        parentReferral: {
+          include: {
+            referrer: true,
+            campaign: true,
+            parentReferral: {
+              include: {
+                referrer: true,
+                campaign: true,
+              },
+            },
+          },
+        },
+      },
+    }),
+  ]);
+
+  if (!saleCampaign || !inviteRow) return null;
+
+  return {
+    id: inviteRow.id,
+    campaign: saleCampaign,
+    referrerId: promoterUser.id,
+    referrer: {
+      id: promoterUser.id,
+      email: promoterUser.email,
+      firstName: promoterUser.firstName,
+      lastName: promoterUser.lastName,
+    },
+    parentReferral: {
+      id: inviteRow.id,
+      referrer: inviteRow.referrer,
+      referrerId: inviteRow.referrerId,
+      campaign: inviteRow.campaign,
+      parentReferral: inviteRow.parentReferral ?? null,
+    },
+  };
+}
+
+/** Stable payer identity for customer rows when track/sale omits a real email. */
+function resolveSaleCustomerIdentity(args: {
+  email?: string;
+  uid?: string;
+  event_id: string;
+}): { email: string; name: string } {
+  const { email, uid, event_id } = args;
+  if (email) {
+    return { email, name: email.split('@')[0] };
+  }
+  if (uid) {
+    return { email: `uid-${uid}@temp.com`, name: `User ${uid}` };
+  }
+  // Username-only sales have no payer email/uid — key by event_id so each sale
+  // gets its own customer instead of collapsing on uid-undefined@temp.com.
+  // Gift flows treat *@temp.com placeholders via isSyntheticPayerEmail().
+  return { email: `event-${event_id}@temp.com`, name: `Sale ${event_id}` };
+}
+
+const isPrismaUniqueViolation = (error: unknown): boolean =>
+  error instanceof Prisma.PrismaClientKnownRequestError &&
+  error.code === 'P2002';
+
+const isTransactionEventIdUniqueViolation = (error: unknown): boolean =>
+  isPrismaUniqueViolation(error) &&
+  Array.isArray(
+    (error as Prisma.PrismaClientKnownRequestError).meta?.target,
+  ) &&
+  (
+    (error as Prisma.PrismaClientKnownRequestError).meta!.target as string[]
+  ).includes('eventId');
+
+const respondSaleAlreadyTracked = (res: Response, event_id: string) =>
+  res.status(200).json({
+    success: true,
+    message: 'Sale already tracked',
+    event_id,
+    duplicate: true,
+  });
+
+/** Transaction row or legacy customer.metadata before transactions existed. */
+const isSaleEventAlreadyTracked = async (event_id: string): Promise<boolean> => {
+  const existingSaleTransaction = await prisma.transaction.findUnique({
+    where: { eventId: event_id },
+    select: { id: true },
+  });
+  if (existingSaleTransaction) return true;
+
+  const legacySaleCustomer = await prisma.customer.findFirst({
+    where: { metadata: event_id },
+    select: { id: true },
+  });
+  return !!legacySaleCustomer;
+};
+
+/**
+ * Legacy customer.metadata refunds may not resolve a transaction by eventId.
+ * Match the sale row on that customer by eventId or an unambiguous amount.
+ */
+const resolveLegacySaleTransactionIdForRefund = async (
+  customerId: string,
+  event_id: string,
+  refundRevenue: number,
+): Promise<string | null> => {
+  const completedSales = await prisma.transaction.findMany({
+    where: {
+      customerId,
+      type: 'sale',
+      status: 'completed',
+    },
+    select: { id: true, eventId: true, saleAmount: true },
+  });
+
+  const byEventId = completedSales.find((t) => t.eventId === event_id);
+  if (byEventId) return byEventId.id;
+
+  const byAmount = completedSales.filter(
+    (t) => Math.abs(t.saleAmount - refundRevenue) < 0.011,
+  );
+  if (byAmount.length === 1) return byAmount[0]!.id;
+
+  return null;
+};
+
+/** One canonical payer row per stable identity (case-insensitive email / uid-*). */
+const findExistingPayerCustomer = async (
+  email: string,
+): Promise<{ id: string } | null> => {
+  if (!isStablePayerCustomerEmail(email)) return null;
+  return prisma.customer.findFirst({
+    where: { email: { equals: email, mode: 'insensitive' } },
+    orderBy: [{ revenue: 'desc' }, { createdAt: 'asc' }],
+    select: { id: true },
+  });
+};
+
 // POST /api/v2/track/sale
 export const trackSale = async (req: ApiKeyRequest, res: Response) => {
   try {
-    const { email, uid, amount, event_id, ref_id, tid, plan, username } = req.body;
+    const { email, uid, amount, event_id, ref_id, tid, plan } = req.body;
+    // Accept both "username" and "Username" from callers
+    const username: string | undefined = req.body.username ?? req.body.Username;
 
     // Validation
     if (!event_id) {
       return res.status(400).json({ error: 'event_id is required' });
     }
 
-    if (!email && !uid) {
-      return res.status(400).json({ error: 'email or uid is required' });
+    // username alone is sufficient to identify the promoter; email/uid are
+    // only required when username is absent (customer-based referral lookup).
+    if (!username && !email && !uid) {
+      return res.status(400).json({ error: 'username, email, or uid is required' });
     }
 
     if (!amount || amount <= 0) {
       return res.status(400).json({ error: 'amount must be positive' });
     }
 
-    // Check if event already tracked (prevent duplicates)
-    const existingCustomer = await prisma.customer.findFirst({
-      where: {
-        OR: [
-          { metadata: event_id },
-          { email: email || '' }
-        ]
-      }
-    });
+    const customerIdentity = resolveSaleCustomerIdentity({ email, uid, event_id });
 
-    if (existingCustomer && existingCustomer.metadata === event_id) {
-      return res.status(200).json({
-        success: true,
-        message: 'Sale already tracked',
-        event_id,
-        duplicate: true
-      });
+    // Prevent duplicate processing of the same payment event.
+    if (await isSaleEventAlreadyTracked(event_id)) {
+      return respondSaleAlreadyTracked(res, event_id);
     }
+
+    // Repeat sales from the same payer reuse one customer row (real email or uid-*).
+    const existingPayerCustomer = await findExistingPayerCustomer(
+      customerIdentity.email,
+    );
 
     // Find referral by ref_id, username, tid, or email/uid
     let referral;
@@ -217,22 +394,7 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
           inviteCode: ref_id,
           status: 'ACTIVE'
         },
-        include: {
-          campaign: true,
-          referrer: true,
-          parentReferral: {
-            include: {
-              referrer: true,
-              campaign: true,
-              parentReferral: {
-                include: {
-                  referrer: true,
-                  campaign: true
-                }
-              }
-            }
-          }
-        }
+        include: saleReferralInclude,
       });
     }
 
@@ -249,78 +411,96 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
             where: { status: 'ACTIVE' },
             select: {
               id: true,
-              referrerId: true,
-              campaign: true,
-              referrer: {
+              campaignId: true,
+              level: true,
+              preUser: { select: { currentStep: true } },
+              campaign: {
                 select: {
-                  id: true,
-                  email: true,
-                  firstName: true,
-                  lastName: true
-                }
+                  visibleToPromoters: true,
+                  linkedCampaignId: true,
+                },
               },
-              parentReferral: {
-                select: {
-                  id: true,
-                  referrerId: true,
-                  campaign: true,
-                  referrer: {
-                    select: {
-                      id: true,
-                      email: true,
-                      firstName: true,
-                      lastName: true
-                    }
-                  },
-                  parentReferral: {
-                    select: {
-                      id: true,
-                      referrerId: true,
-                      campaign: true,
-                      referrer: {
-                        select: {
-                          id: true,
-                          email: true,
-                          firstName: true,
-                          lastName: true
-                        }
-                      }
-                    }
-                  }
-                }
-              }
             },
-            orderBy: { createdAt: 'desc' },
-            take: 1
-          }
-        }
+          },
+        },
       });
 
-      if (user && user.referralsReceived.length > 0) {
-        const userReferral = user.referralsReceived[0];
-        
-        // Create a structure where the USER is the primary earner
-        referral = {
-          id: userReferral.id,
-          campaign: userReferral.campaign,
-          referrerId: user.id, // Critical: userId for commission creation
-          referrer: {
-            id: user.id,
-            email: user.email,
-            firstName: user.firstName,
-            lastName: user.lastName
-          },
-          parentReferral: {
-            id: userReferral.id,
-            referrer: userReferral.referrer,
-            referrerId: userReferral.referrerId,
-            campaign: userReferral.campaign,
-            parentReferral: userReferral.parentReferral ?? null
-          }
-        } as any;
+      const inviteRow = user
+        ? pickCanonicalInviteeReferral(user.referralsReceived)
+        : null;
+
+      if (user && inviteRow) {
+        const camp = inviteRow.campaign;
+        let saleCampaignId = inviteRow.campaignId;
+        if (!camp.visibleToPromoters && camp.linkedCampaignId) {
+          saleCampaignId = camp.linkedCampaignId;
+        }
+
+        const customerTrackingWhere = {
+          referrerId: user.id,
+          referredUserId: null,
+          status: 'ACTIVE' as const,
+          campaignId: saleCampaignId,
+        };
+
+        // Prefer a payer-specific row when we know who paid.
+        if (email) {
+          referral = await prisma.referral.findFirst({
+            where: {
+              referrerId: user.id,
+              status: 'ACTIVE',
+              campaignId: saleCampaignId,
+              referredUser: { email },
+            },
+            include: saleReferralInclude,
+          });
+        } else if (uid) {
+          referral = await prisma.referral.findFirst({
+            where: {
+              referrerId: user.id,
+              status: 'ACTIVE',
+              campaignId: saleCampaignId,
+              referredUserId: uid,
+            },
+            include: saleReferralInclude,
+          });
+        }
+
+        if (!referral) {
+          referral = await prisma.referral.findFirst({
+            where: customerTrackingWhere,
+            include: saleReferralInclude,
+          });
+        }
+
+        // Promoters enrolled via invite should already have a customer-tracking
+        // shell row; create one on demand for legacy accounts that don't.
+        if (!referral && user.email) {
+          await ensureCustomerTrackingReferralForPromotedUser(prisma, {
+            inviteReferralId: inviteRow.id,
+            promotedUserId: user.id,
+            promotedEmail: user.email,
+          });
+          referral = await prisma.referral.findFirst({
+            where: customerTrackingWhere,
+            include: saleReferralInclude,
+          });
+        }
+
+        // No tracking row (e.g. promoter has no email for shell creation) —
+        // build a synthetic sale referral so username sales still attribute.
+        if (!referral) {
+          referral = await buildSyntheticSaleReferralFromInvite({
+            promoterUser: user,
+            inviteReferralId: inviteRow.id,
+            saleCampaignId,
+          });
+        }
       }
     }
 
+    // Fall back to email/uid when earlier lookups (ref_id, username) did not resolve.
+    // email/uid identify the referred payer; username identifies the earning promoter.
     if (!referral && (email || uid)) {
       // Try to find by referred user email/uid
       referral = await prisma.referral.findFirst({
@@ -332,22 +512,7 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
             ? { id: uid }
             : undefined
         },
-        include: {
-          campaign: true,
-          referrer: true,
-          parentReferral: {
-            include: {
-              referrer: true,
-              campaign: true,
-              parentReferral: {
-                include: {
-                  referrer: true,
-                  campaign: true
-                }
-              }
-            }
-          }
-        }
+        include: saleReferralInclude,
       });
     }
 
@@ -561,18 +726,27 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
       commission2,
       commission3,
     } = await prisma.$transaction(async (tx) => {
-        const customer = await tx.customer.create({
-          data: {
-            email: email || `uid-${uid}@temp.com`,
-            name: email ? email.split('@')[0] : `User ${uid}`,
-            revenue,
-            subscriptionType: plan || 'one-time',
-            status: 'active',
-            campaignId: campaign.id,
-            referralId: referral.id,
-            metadata: event_id,
-          },
-        });
+        const customer = existingPayerCustomer
+          ? await tx.customer.update({
+              where: { id: existingPayerCustomer.id },
+              data: {
+                revenue: { increment: revenue },
+                ...(plan ? { subscriptionType: plan } : {}),
+                status: 'active',
+              },
+            })
+          : await tx.customer.create({
+              data: {
+                email: customerIdentity.email,
+                name: customerIdentity.name,
+                revenue,
+                subscriptionType: plan || 'one-time',
+                status: 'active',
+                campaignId: campaign.id,
+                referralId: referral.id,
+                metadata: event_id,
+              },
+            });
 
         const transaction = await tx.transaction.create({
           data: {
@@ -777,6 +951,12 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
       }
     });
   } catch (error) {
+    const event_id: string | undefined = req.body?.event_id;
+    if (event_id && isTransactionEventIdUniqueViolation(error)) {
+      if (await isSaleEventAlreadyTracked(event_id)) {
+        return respondSaleAlreadyTracked(res, event_id);
+      }
+    }
     console.error('Track sale error:', error);
     res.status(500).json({ error: 'Failed to track sale' });
   }
@@ -842,58 +1022,71 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
       return res.status(400).json({ error: 'amount must be positive' });
     }
 
-    // Find the original customer by event_id
-    const customer = await prisma.customer.findFirst({
-      where: {
-        metadata: event_id
-      },
+    // Prefer transaction.eventId; fall back to legacy customer.metadata rows.
+    const originalTransaction = await prisma.transaction.findUnique({
+      where: { eventId: event_id },
       include: {
         referral: {
+          include: saleReferralInclude,
+        },
+        customer: {
           include: {
-            campaign: true,
-            referrer: true,
-            parentReferral: {
-              include: {
-                referrer: true,
-                campaign: true,
-                parentReferral: {
-                  include: {
-                    referrer: true,
-                    campaign: true
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+            referral: {
+              include: saleReferralInclude,
+            },
+          },
+        },
+      },
     });
 
-    if (!customer || !customer.referral) {
+    let customer = originalTransaction?.customer ?? null;
+    let referral =
+      originalTransaction?.referral ?? originalTransaction?.customer?.referral ?? null;
+
+    if (!customer) {
+      const legacyCustomer = await prisma.customer.findFirst({
+        where: { metadata: event_id },
+        include: {
+          referral: {
+            include: saleReferralInclude,
+          },
+        },
+      });
+      customer = legacyCustomer;
+      referral = legacyCustomer?.referral ?? null;
+    }
+
+    if (!customer || !referral) {
       return res.status(404).json({ error: 'Original sale not found' });
     }
 
     const refundRevenue = amount / 100; // amount is in cents, convert to dollars
-    const referral = customer.referral; // narrowed: null already excluded above
     const campaign = referral.campaign;
 
+    const saleTransactionToRefundId =
+      originalTransaction?.id ??
+      (customer.metadata === event_id
+        ? await resolveLegacySaleTransactionIdForRefund(
+            customer.id,
+            event_id,
+            refundRevenue,
+          )
+        : null);
+
     // Read-only lookups before the write transaction
-    const [originalTransaction, promoterWithGroupRefund] = await Promise.all([
-      prisma.transaction.findFirst({ where: { customerId: customer.id, type: 'sale' } }),
-      prisma.user.findUnique({
-        where: { id: referral.referrerId },
-        select: {
-          accountManagerId: true,
-          chatterGroup: {
-            select: {
-              id: true,
-              commissionPercentage: true,
-              members: { select: { chatterId: true } },
-            },
+    const promoterWithGroupRefund = await prisma.user.findUnique({
+      where: { id: referral.referrerId },
+      select: {
+        accountManagerId: true,
+        chatterGroup: {
+          select: {
+            id: true,
+            commissionPercentage: true,
+            members: { select: { chatterId: true } },
           },
         },
-      }),
-    ]);
+      },
+    });
 
     // Pre-compute all refund amounts before entering the transaction.
     // Mirrors the AM-aware payout logic in trackSale: we reverse whichever
@@ -1034,7 +1227,7 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
           customerId: customer.id,
           campaignId: campaign.id,
           referralId: referral.id,
-          originalTransactionId: originalTransaction?.id ?? null,
+          originalTransactionId: saleTransactionToRefundId,
         },
       });
 
@@ -1143,17 +1336,29 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
         });
       }
 
-      await tx.customer.update({
-        where: { id: customer.id },
-        data: { status: 'cancelled' },
-      });
-
-      if (originalTransaction) {
+      if (saleTransactionToRefundId) {
         await tx.transaction.update({
-          where: { id: originalTransaction.id },
+          where: { id: saleTransactionToRefundId },
           data: { status: 'refunded' },
         });
       }
+
+      await tx.customer.update({
+        where: { id: customer.id },
+        data: {
+          revenue: { decrement: refundRevenue },
+          status:
+            (await tx.transaction.count({
+              where: {
+                customerId: customer.id,
+                type: 'sale',
+                status: 'completed',
+              },
+            })) === 0
+              ? 'cancelled'
+              : 'active',
+        },
+      });
 
       return refundTransaction;
     });
