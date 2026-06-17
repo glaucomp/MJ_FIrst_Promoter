@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { PrismaClient, UserRole, UserType } from '@prisma/client';
+import { Prisma, PrismaClient, UserRole, UserType } from '@prisma/client';
 import { ApiKeyRequest } from '../middleware/apiKey.middleware';
 import {
   ensureCustomerTrackingReferralForPromotedUser,
@@ -273,6 +273,27 @@ function resolveSaleCustomerIdentity(args: {
   return { email: `event-${event_id}@temp.com`, name: `Sale ${event_id}` };
 }
 
+const isPrismaUniqueViolation = (error: unknown): boolean =>
+  error instanceof Prisma.PrismaClientKnownRequestError &&
+  error.code === 'P2002';
+
+const isTransactionEventIdUniqueViolation = (error: unknown): boolean =>
+  isPrismaUniqueViolation(error) &&
+  Array.isArray(
+    (error as Prisma.PrismaClientKnownRequestError).meta?.target,
+  ) &&
+  (
+    (error as Prisma.PrismaClientKnownRequestError).meta!.target as string[]
+  ).includes('eventId');
+
+const respondSaleAlreadyTracked = (res: Response, event_id: string) =>
+  res.status(200).json({
+    success: true,
+    message: 'Sale already tracked',
+    event_id,
+    duplicate: true,
+  });
+
 // POST /api/v2/track/sale
 export const trackSale = async (req: ApiKeyRequest, res: Response) => {
   try {
@@ -303,12 +324,7 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
       select: { id: true },
     });
     if (existingSaleTransaction) {
-      return res.status(200).json({
-        success: true,
-        message: 'Sale already tracked',
-        event_id,
-        duplicate: true
-      });
+      return respondSaleAlreadyTracked(res, event_id);
     }
 
     // Repeat sales from the same payer reuse one customer row (real email or uid-*).
@@ -888,6 +904,16 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
       }
     });
   } catch (error) {
+    const event_id: string | undefined = req.body?.event_id;
+    if (event_id && isTransactionEventIdUniqueViolation(error)) {
+      const existingSaleTransaction = await prisma.transaction.findUnique({
+        where: { eventId: event_id },
+        select: { id: true },
+      });
+      if (existingSaleTransaction) {
+        return respondSaleAlreadyTracked(res, event_id);
+      }
+    }
     console.error('Track sale error:', error);
     res.status(500).json({ error: 'Failed to track sale' });
   }
