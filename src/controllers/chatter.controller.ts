@@ -989,6 +989,9 @@ export const deleteChatter = async (req: AuthRequest, res: Response) => {
 
 type SaleTxnRow = { saleAmount: number; createdAt: Date; eventId?: string };
 
+/** Completed sales only — refunded originals keep type "sale" but status "refunded". */
+const completedSaleWhere = { type: "sale" as const, status: "completed" as const };
+
 type GiftActivityEvent = {
   type: "deposit" | "first_deposit" | "gift" | "accepted" | "invited" | "expired";
   date: string;
@@ -1258,7 +1261,7 @@ export const getGiftActivity = async (req: AuthRequest, res: Response) => {
         createdAt: true,
         referral: { select: { inviteCode: true, status: true, createdAt: true } },
         transactions: {
-          where: { type: "sale" },
+          where: completedSaleWhere,
           select: { saleAmount: true, createdAt: true, eventId: true },
           orderBy: { createdAt: "desc" },
         },
@@ -1613,7 +1616,7 @@ export const sendGiftCode = async (req: AuthRequest, res: Response) => {
       where: { OR: relatedCustomerClauses },
       select: {
         transactions: {
-          where: { type: "sale" },
+          where: completedSaleWhere,
           select: { saleAmount: true, createdAt: true, eventId: true },
         },
       },

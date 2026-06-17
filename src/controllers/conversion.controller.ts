@@ -957,38 +957,28 @@ export const trackRefund = async (req: ApiKeyRequest, res: Response) => {
     const originalTransaction = await prisma.transaction.findUnique({
       where: { eventId: event_id },
       include: {
+        referral: {
+          include: saleReferralInclude,
+        },
         customer: {
           include: {
+            // Legacy fallback when transaction.referralId was not set.
             referral: {
-              include: {
-                campaign: true,
-                referrer: true,
-                parentReferral: {
-                  include: {
-                    referrer: true,
-                    campaign: true,
-                    parentReferral: {
-                      include: {
-                        referrer: true,
-                        campaign: true
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+              include: saleReferralInclude,
+            },
+          },
+        },
+      },
     });
 
     const customer = originalTransaction?.customer;
-    if (!customer || !customer.referral) {
+    const referral =
+      originalTransaction?.referral ?? originalTransaction?.customer?.referral ?? null;
+    if (!customer || !referral) {
       return res.status(404).json({ error: 'Original sale not found' });
     }
 
     const refundRevenue = amount / 100; // amount is in cents, convert to dollars
-    const referral = customer.referral; // narrowed: null already excluded above
     const campaign = referral.campaign;
 
     // Read-only lookups before the write transaction
