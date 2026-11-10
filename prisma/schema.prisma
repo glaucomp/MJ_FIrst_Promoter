@@ -192,7 +192,10 @@ model Campaign {
   visibleToPromoters Boolean @default(true) // Whether promoters can see and promote this campaign
   maxInvitesPerMonth Int?    // Max invites per promoter per month (NULL = unlimited)
   linkedCampaignId  String?  // Campaign to assign when inviting from a hidden campaign
-  
+  // Public campaigns store the hidden campaign whose website they use.
+  // This is the website source. It is not inferred from linkedBy order.
+  mainCampaignId    String?
+
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -201,6 +204,8 @@ model Campaign {
   createdBy         User              @relation("CampaignCreator", fields: [createdById], references: [id])
   linkedCampaign    Campaign?         @relation("CampaignLink", fields: [linkedCampaignId], references: [id], onDelete: SetNull)
   linkedBy          Campaign[]        @relation("CampaignLink")
+  mainCampaign      Campaign?         @relation("CampaignWebsiteSource", fields: [mainCampaignId], references: [id], onDelete: SetNull)
+  sourcedCampaigns  Campaign[]        @relation("CampaignWebsiteSource")
   referrals         Referral[]
   trackingLinks     TrackingLink[]
   commissions       Commission[]
@@ -210,6 +215,7 @@ model Campaign {
   @@index([createdById])
   @@index([isActive])
   @@index([linkedCampaignId])
+  @@index([mainCampaignId])
   @@map("campaigns")
 }
 
