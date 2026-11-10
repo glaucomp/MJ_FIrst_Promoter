@@ -416,7 +416,8 @@ export const updateCampaign = async (req: AuthRequest, res: Response) => {
       websiteUrl !== undefined ||
       defaultReferralUrl !== undefined ||
       linkedCampaignId !== undefined ||
-      mainCampaignId !== undefined;
+      mainCampaignId !== undefined ||
+      visibleToPromoters !== undefined;
 
     let resolvedWebsite: string | undefined = websiteUrl || undefined;
     let resolvedReferral: string | null | undefined =
