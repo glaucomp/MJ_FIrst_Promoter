@@ -67,7 +67,11 @@ export const Campaigns = () => {
   };
 
   const openEdit = (c: Campaign) => {
-    const main = c.visibleToPromoters ? (c.mainCampaign ?? null) : null;
+    const explicit = c.visibleToPromoters ? (c.mainCampaign ?? null) : null;
+    // Ignore a stored main whose website is not the one on this campaign.
+    // Saving would otherwise copy that other site onto the live referral URL.
+    const main =
+      explicit && explicit.websiteUrl === c.websiteUrl ? explicit : null;
     setEditingCampaign(c);
     setForm({
       name: c.name,
