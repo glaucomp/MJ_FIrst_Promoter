@@ -15,6 +15,7 @@ const EMPTY_FORM: CampaignInput = {
   visibleToPromoters: true,
   maxInvitesPerMonth: null,
   linkedCampaignId: null,
+  mainCampaignId: null,
 };
 
 export const Campaigns = () => {
@@ -66,12 +67,17 @@ export const Campaigns = () => {
   };
 
   const openEdit = (c: Campaign) => {
+    const explicit = c.visibleToPromoters ? (c.mainCampaign ?? null) : null;
+    // Ignore a stored main whose website is not the one on this campaign.
+    // Saving would otherwise copy that other site onto the live referral URL.
+    const main =
+      explicit && explicit.websiteUrl === c.websiteUrl ? explicit : null;
     setEditingCampaign(c);
     setForm({
       name: c.name,
       description: c.description ?? "",
-      websiteUrl: c.websiteUrl,
-      defaultReferralUrl: c.defaultReferralUrl ?? "",
+      websiteUrl: main?.websiteUrl ?? c.websiteUrl,
+      defaultReferralUrl: main?.defaultReferralUrl ?? c.defaultReferralUrl ?? "",
       commissionRate: c.commissionRate,
       secondaryRate: c.secondaryRate ?? 0,
       recurringRate: c.recurringRate ?? null,
@@ -80,6 +86,7 @@ export const Campaigns = () => {
       visibleToPromoters: c.visibleToPromoters,
       maxInvitesPerMonth: c.maxInvitesPerMonth,
       linkedCampaignId: c.linkedCampaignId ?? null,
+      mainCampaignId: main?.id ?? null,
     });
     setFormError("");
     setIsModalOpen(true);
@@ -90,8 +97,18 @@ export const Campaigns = () => {
       setFormError("Name is required");
       return;
     }
+    if (form.visibleToPromoters !== false && !form.mainCampaignId) {
+      setFormError(
+        "Select a main campaign. The public campaign uses that campaign's website.",
+      );
+      return;
+    }
     if (!form.websiteUrl.trim()) {
-      setFormError("Website URL is required");
+      setFormError(
+        form.visibleToPromoters !== false
+          ? "The main campaign has no website URL"
+          : "Website URL is required",
+      );
       return;
     }
     if (form.commissionRate < 0 || form.commissionRate > 100) {
@@ -112,19 +129,17 @@ export const Campaigns = () => {
         linkedCampaignId: form.visibleToPromoters
           ? null
           : (form.linkedCampaignId || null),
+        mainCampaignId: form.visibleToPromoters
+          ? form.mainCampaignId || null
+          : null,
       };
       if (editingCampaign) {
-        const updated = await modelsApi.updateCampaign(
-          editingCampaign.id,
-          payload,
-        );
-        setCampaigns((prev) =>
-          prev.map((c) => (c.id === updated.id ? updated : c)),
-        );
+        await modelsApi.updateCampaign(editingCampaign.id, payload);
       } else {
-        const created = await modelsApi.createCampaign(payload);
-        setCampaigns((prev) => [created, ...prev]);
+        await modelsApi.createCampaign(payload);
       }
+      const data = await modelsApi.getAllCampaigns();
+      setCampaigns(data);
       setIsModalOpen(false);
     } catch (err) {
       setFormError(
@@ -165,6 +180,13 @@ export const Campaigns = () => {
       setDeletingId(null);
     }
   };
+
+  const inheritsWebsite = form.visibleToPromoters !== false;
+  const mainCampaignOptions = campaigns.filter(
+    (c) => !c.visibleToPromoters && c.id !== editingCampaign?.id,
+  );
+  const selectedMain =
+    mainCampaignOptions.find((c) => c.id === form.mainCampaignId) ?? null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -211,9 +233,6 @@ export const Campaigns = () => {
                         {c.description}
                       </p>
                     )}
-                    <p className="text-tm-text-color10 text-sm break-all my-2">
-                      {c.websiteUrl}
-                    </p>
                   </div>
 
                   <div className="flex flex-wrap items-start lg:flex-row lg:items-center gap-3">
@@ -243,12 +262,16 @@ export const Campaigns = () => {
                       {c.visibleToPromoters ? "Public" : "Hidden"}
                     </span>
 
+                    <span className="inline-flex max-w-full items-center rounded-full border border-tm-primary-color09 bg-tm-primary-color12 px-3 py-1 text-xs font-bold text-tm-primary-color02 break-all">
+                      {c.websiteUrl}
+                    </span>
+
                     {/* Link status — only on hidden AM campaigns. Surfaces
                         misconfigured campaigns directly on the list. */}
                     {!c.visibleToPromoters && c.linkedCampaign && (
                       <span
                         title={`Linked to ${c.linkedCampaign.name}`}
-                        className="px-3 py-1.5 rounded-full text-xs font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-tm-text-color08 max-w-55 truncate"
+                        className="px-3 py-1.5 rounded-full text-xs font-bold border bg-[#1a1a1a] border-[rgba(255,255,255,0.1)] text-tm-text-color08"
                       >
                         Linked → {c.linkedCampaign.name}
                       </span>
@@ -417,15 +440,55 @@ export const Campaigns = () => {
                 />
               </Field>
 
+              {inheritsWebsite && (
+                <Field label="Main campaign">
+                  <select
+                    value={form.mainCampaignId ?? ""}
+                    onChange={(e) => {
+                      const id = e.target.value || null;
+                      const main = mainCampaignOptions.find((c) => c.id === id);
+                      setForm((f) => ({
+                        ...f,
+                        mainCampaignId: id,
+                        websiteUrl: main?.websiteUrl ?? "",
+                        defaultReferralUrl: main?.defaultReferralUrl ?? "",
+                      }));
+                    }}
+                    className={inputCls}
+                  >
+                    <option value="">— Select a main campaign —</option>
+                    {mainCampaignOptions.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                        {c.linkedCampaign ? ` → ${c.linkedCampaign.name}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-tm-text-color10 text-xs mt-1.5 leading-[1.4]">
+                    Choose a hidden campaign. This public campaign uses that
+                    campaign's website and referral URL.
+                    {selectedMain?.linkedCampaign &&
+                    selectedMain.linkedCampaign.id !== editingCampaign?.id
+                      ? ` Saving moves ${selectedMain.name} off ${selectedMain.linkedCampaign.name}.`
+                      : ""}
+                  </p>
+                </Field>
+              )}
+
               <Field label="Website URL">
                 <input
                   type="url"
                   value={form.websiteUrl}
+                  readOnly={inheritsWebsite}
                   onChange={(e) =>
                     setForm((f) => ({ ...f, websiteUrl: e.target.value }))
                   }
-                  placeholder="https://teaseme.live"
-                  className={inputCls}
+                  placeholder={
+                    inheritsWebsite
+                      ? "Comes from the main campaign"
+                      : "https://teaseme.live"
+                  }
+                  className={`${inputCls}${inheritsWebsite ? " opacity-70" : ""}`}
                 />
               </Field>
 
@@ -433,14 +496,19 @@ export const Campaigns = () => {
                 <input
                   type="url"
                   value={form.defaultReferralUrl ?? ""}
+                  readOnly={inheritsWebsite}
                   onChange={(e) =>
                     setForm((f) => ({
                       ...f,
                       defaultReferralUrl: e.target.value,
                     }))
                   }
-                  placeholder="https://teaseme.live/join"
-                  className={inputCls}
+                  placeholder={
+                    inheritsWebsite
+                      ? "Comes from the main campaign"
+                      : "https://teaseme.live/join"
+                  }
+                  className={`${inputCls}${inheritsWebsite ? " opacity-70" : ""}`}
                 />
               </Field>
 
@@ -547,11 +615,14 @@ export const Campaigns = () => {
                     setForm((f) => ({
                       ...f,
                       visibleToPromoters: v,
-                      ...(!v && { recurringRate: null }),
+                      ...(!v && { recurringRate: null, mainCampaignId: null }),
                       // Going public clears any stale link; going hidden
                       // leaves the existing one (or null) for the admin to
                       // pick below.
-                      ...(v && { linkedCampaignId: null }),
+                      ...(v && {
+                        linkedCampaignId: null,
+                        mainCampaignId: null,
+                      }),
                     }))
                   }
                 />
@@ -593,8 +664,9 @@ export const Campaigns = () => {
                   </select>
                   <p className="text-tm-text-color10 text-xs mt-1.5 leading-[1.4]">
                     Account managers enrolled in this hidden campaign will
-                    invite promoters into the selected public campaign.
-                    Leave as "None" only if no AMs use this campaign yet.
+                    invite promoters into the selected public campaign. That
+                    public campaign takes this campaign's website and referral
+                    URL. Leave as "None" only if no AMs use this campaign yet.
                   </p>
                 </Field>
               )}
