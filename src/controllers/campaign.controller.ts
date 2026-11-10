@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { PrismaClient, UserRole, UserType } from '@prisma/client';
+import { Prisma, PrismaClient, UserRole, UserType } from '@prisma/client';
 import { validationResult } from 'express-validator';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { isUserParticipantOnCampaign } from '../services/referral-membership.service';
@@ -53,15 +53,36 @@ const findHiddenMain = async (mainCampaignId: string) => {
   return main;
 };
 
-const copyWebsiteOntoPublic = async (
-  publicCampaignId: string,
-  websiteUrl: string,
-  defaultReferralUrl: string | null,
-  mainCampaignId: string,
-) => {
-  await prisma.campaign.update({
-    where: { id: publicCampaignId },
-    data: { websiteUrl, defaultReferralUrl, mainCampaignId },
+const clearStaleMainPointers = (
+  db: Prisma.TransactionClient | PrismaClient,
+  mainId: string,
+  keepPublicId?: string,
+) =>
+  db.campaign.updateMany({
+    where: {
+      mainCampaignId: mainId,
+      ...(keepPublicId ? { id: { not: keepPublicId } } : {}),
+    },
+    data: { mainCampaignId: null },
+  });
+
+/** Copy this hidden campaign's website onto publics that already name it as their main. */
+const syncWebsiteFromMain = async (mainId: string) => {
+  const main = await prisma.campaign.findUnique({
+    where: { id: mainId },
+    select: {
+      websiteUrl: true,
+      defaultReferralUrl: true,
+      visibleToPromoters: true,
+    },
+  });
+  if (!main || main.visibleToPromoters) return;
+  await prisma.campaign.updateMany({
+    where: { mainCampaignId: mainId, visibleToPromoters: true },
+    data: {
+      websiteUrl: main.websiteUrl,
+      defaultReferralUrl: main.defaultReferralUrl,
+    },
   });
 };
 
@@ -135,18 +156,10 @@ export const createCampaign = async (req: AuthRequest, res: Response) => {
       });
 
       if (isPublic && main) {
+        await clearStaleMainPointers(tx, main.id, created.id);
         await tx.campaign.update({
           where: { id: main.id },
           data: { linkedCampaignId: created.id },
-        });
-      } else if (!isPublic && created.linkedCampaignId) {
-        await tx.campaign.update({
-          where: { id: created.linkedCampaignId },
-          data: {
-            websiteUrl: created.websiteUrl,
-            defaultReferralUrl: created.defaultReferralUrl,
-            mainCampaignId: created.id,
-          },
         });
       }
 
@@ -504,10 +517,23 @@ export const updateCampaign = async (req: AuthRequest, res: Response) => {
       // managers can invite here. Other hidden campaigns that already
       // invite into this public campaign keep their link; linkedCampaignId
       // is their invite target, and the website source is mainCampaignId.
+      // Drop this main from any other public campaign so a later save of
+      // the old public cannot move those invites back.
+      await clearStaleMainPointers(prisma, requestedMainId, id);
       await prisma.campaign.update({
         where: { id: requestedMainId },
         data: { linkedCampaignId: id },
       });
+    }
+
+    // A hidden campaign that becomes public, or drops its invite target,
+    // is no longer the website source for the publics that named it.
+    if (
+      isDetailsSave &&
+      ((!existing.visibleToPromoters && nextVisible) ||
+        (!nextVisible && existing.linkedCampaignId && !nextLinkedId))
+    ) {
+      await clearStaleMainPointers(prisma, id);
     }
 
     // A campaign that is no longer public cannot stay the invite target
@@ -519,19 +545,10 @@ export const updateCampaign = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    if (!nextVisible && isDetailsSave && nextLinkedId && nextLinkedId !== id) {
-      const saved = await prisma.campaign.findUnique({
-        where: { id },
-        select: { websiteUrl: true, defaultReferralUrl: true },
-      });
-      if (saved) {
-        await copyWebsiteOntoPublic(
-          nextLinkedId,
-          saved.websiteUrl,
-          saved.defaultReferralUrl,
-          id,
-        );
-      }
+    // Invite links do not choose the website. Only a hidden campaign that
+    // a public campaign already names as its main can refresh that site.
+    if (!nextVisible && isDetailsSave) {
+      await syncWebsiteFromMain(id);
     }
 
     const campaign = await prisma.campaign.findUnique({
