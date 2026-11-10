@@ -408,8 +408,12 @@ export const getCampaignById = async (req: AuthRequest, res: Response) => {
     }
 
     if (user.role !== UserRole.ADMIN) {
-      const { linkedBy: _linkedBy, mainCampaign: _mainCampaign, ...visibleCampaign } = campaign;
-      return res.json({ campaign: visibleCampaign });
+      const {
+        linkedBy: _linkedBy,
+        mainCampaign: _mainCampaign,
+        mainCampaignId: _mainCampaignId,
+        ...visibleCampaign
+      } = campaign;
     }
 
     res.json({ campaign });
@@ -457,10 +461,11 @@ export const updateCampaign = async (req: AuthRequest, res: Response) => {
       mainCampaignId !== undefined ||
       visibleToPromoters !== undefined;
 
-    let resolvedWebsite: string | undefined = websiteUrl || undefined;
+    let resolvedWebsite: string | undefined = websiteUrl ?? undefined;
     let resolvedReferral: string | null | undefined =
       defaultReferralUrl !== undefined ? defaultReferralUrl || null : undefined;
-    const requestedMainId = mainCampaignId || null;
+    const requestedMainId =
+      mainCampaignId !== undefined ? mainCampaignId || null : existing.mainCampaignId;
 
     if (nextVisible && isDetailsSave) {
       if (!requestedMainId || requestedMainId === id) {
@@ -492,7 +497,7 @@ export const updateCampaign = async (req: AuthRequest, res: Response) => {
       data: {
         ...(name && { name }),
         ...(description !== undefined && { description }),
-        ...(resolvedWebsite && { websiteUrl: resolvedWebsite }),
+        ...(resolvedWebsite !== undefined && { websiteUrl: resolvedWebsite }),
         ...(resolvedReferral !== undefined && { defaultReferralUrl: resolvedReferral }),
         ...(commissionRate && { commissionRate: parseFloat(commissionRate) }),
         ...(secondaryRate !== undefined && { secondaryRate: secondaryRate ? parseFloat(secondaryRate) : null }),
