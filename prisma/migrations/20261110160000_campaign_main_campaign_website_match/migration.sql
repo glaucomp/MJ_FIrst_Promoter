@@ -13,16 +13,7 @@ FROM (
    AND h."visibleToPromoters" = false
    AND h.id <> p.id
   WHERE p."visibleToPromoters" = true
-    AND (
-      h."websiteUrl" = p."websiteUrl"
-      OR NOT EXISTS (
-        SELECT 1
-        FROM "campaigns" other
-        WHERE other."linkedCampaignId" = p.id
-          AND other."visibleToPromoters" = false
-          AND other.id <> h.id
-      )
-    )
+    AND h."websiteUrl" = p."websiteUrl"
   ORDER BY
     p.id,
     CASE
