@@ -33,10 +33,21 @@ FROM (
       THEN 1
       ELSE 2
     END,
+    -- Keep the main already stored when it matches as well as a newer invite.
+    CASE WHEN h.id = p."mainCampaignId" THEN 0 ELSE 1 END,
     h."updatedAt" DESC
 ) AS chosen
 WHERE public.id = chosen.public_id
-  AND public."mainCampaignId" IS DISTINCT FROM chosen.id;
+  AND public."mainCampaignId" IS DISTINCT FROM chosen.id
+  -- A hidden main that already matches this website is a real choice.
+  -- Do not replace it with another inviter that happens to match too.
+  AND NOT EXISTS (
+    SELECT 1
+    FROM "campaigns" current_main
+    WHERE current_main.id = public."mainCampaignId"
+      AND current_main."visibleToPromoters" = false
+      AND current_main."websiteUrl" = public."websiteUrl"
+  );
 
 -- Several hidden campaigns invite here and none share this website.
 -- Leave the source unset so the next edit cannot copy another site.
@@ -57,4 +68,11 @@ WHERE public."visibleToPromoters" = true
     WHERE h."linkedCampaignId" = public.id
       AND h."visibleToPromoters" = false
       AND h."websiteUrl" = public."websiteUrl"
+  )
+  AND NOT EXISTS (
+    SELECT 1
+    FROM "campaigns" current_main
+    WHERE current_main.id = public."mainCampaignId"
+      AND current_main."visibleToPromoters" = false
+      AND current_main."websiteUrl" = public."websiteUrl"
   );
