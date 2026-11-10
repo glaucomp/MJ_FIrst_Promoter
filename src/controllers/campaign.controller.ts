@@ -497,7 +497,7 @@ export const updateCampaign = async (req: AuthRequest, res: Response) => {
       data: {
         ...(name && { name }),
         ...(description !== undefined && { description }),
-        ...(resolvedWebsite && { websiteUrl: resolvedWebsite }),
+        ...(resolvedWebsite !== undefined && { websiteUrl: resolvedWebsite }),
         ...(resolvedReferral !== undefined && { defaultReferralUrl: resolvedReferral }),
         ...(commissionRate && { commissionRate: parseFloat(commissionRate) }),
         ...(secondaryRate !== undefined && { secondaryRate: secondaryRate ? parseFloat(secondaryRate) : null }),
