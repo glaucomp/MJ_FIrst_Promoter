@@ -194,6 +194,14 @@ export interface Campaign {
     name: string;
     visibleToPromoters: boolean;
   } | null;
+  /** Hidden main campaigns that link to this public campaign. The public
+   *  campaign's website and referral URL are copied from these. */
+  linkedBy?: {
+    id: string;
+    name: string;
+    websiteUrl: string;
+    defaultReferralUrl: string | null;
+  }[];
   createdAt: string;
   _count?: {
     referrals: number;
@@ -218,6 +226,8 @@ export interface CampaignInput {
    *  Current API behavior may still persist this value for visible
    *  campaigns, so omit it or send `null` unless you intend to link. */
   linkedCampaignId?: string | null;
+  /** Hidden campaign whose website a public campaign must use. */
+  mainCampaignId?: string | null;
 }
 
 export interface ReferralCommission {
