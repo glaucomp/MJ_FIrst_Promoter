@@ -23,7 +23,7 @@ const campaignReadInclude = {
       websiteUrl: true,
       defaultReferralUrl: true,
     },
-    orderBy: { createdAt: 'asc' as const },
+    orderBy: { updatedAt: 'desc' as const },
   },
   _count: {
     select: { referrals: true, commissions: true },
@@ -321,7 +321,7 @@ export const getCampaignById = async (req: AuthRequest, res: Response) => {
             websiteUrl: true,
             defaultReferralUrl: true,
           },
-          orderBy: { createdAt: 'asc' as const },
+          orderBy: { updatedAt: 'desc' as const },
         },
         referrals: {
           include: {

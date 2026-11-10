@@ -67,7 +67,17 @@ export const Campaigns = () => {
   };
 
   const openEdit = (c: Campaign) => {
-    const main = c.visibleToPromoters ? (c.linkedBy?.[0] ?? null) : null;
+    const mains = c.visibleToPromoters ? (c.linkedBy ?? []) : [];
+    // Prefer the main whose website is already on this campaign. linkedBy
+    // is newest-link first, so a tie stays with the main last saved.
+    const main =
+      mains.find(
+        (m) =>
+          m.websiteUrl === c.websiteUrl &&
+          (m.defaultReferralUrl ?? null) === (c.defaultReferralUrl ?? null),
+      ) ??
+      mains[0] ??
+      null;
     setEditingCampaign(c);
     setForm({
       name: c.name,
