@@ -519,10 +519,12 @@ export const updateCampaign = async (req: AuthRequest, res: Response) => {
       // is their invite target, and the website source is mainCampaignId.
       // Drop this main from any other public campaign so a later save of
       // the old public cannot move those invites back.
-      await clearStaleMainPointers(prisma, requestedMainId, id);
-      await prisma.campaign.update({
-        where: { id: requestedMainId },
-        data: { linkedCampaignId: id },
+      await prisma.$transaction(async (tx) => {
+        await clearStaleMainPointers(tx, requestedMainId, id);
+        await tx.campaign.update({
+          where: { id: requestedMainId },
+          data: { linkedCampaignId: id },
+        });
       });
     }
 
