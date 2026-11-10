@@ -471,6 +471,17 @@ export const updateCampaign = async (req: AuthRequest, res: Response) => {
     });
 
     if (nextVisible && requestedMainId && isDetailsSave) {
+      // A public campaign has one website source. Drop every other hidden
+      // campaign that still points here, or the next edit reloads the older
+      // main and copies that main's website back.
+      await prisma.campaign.updateMany({
+        where: {
+          linkedCampaignId: id,
+          id: { not: requestedMainId },
+          visibleToPromoters: false,
+        },
+        data: { linkedCampaignId: null },
+      });
       await prisma.campaign.update({
         where: { id: requestedMainId },
         data: { linkedCampaignId: id },
