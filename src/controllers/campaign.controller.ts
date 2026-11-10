@@ -414,6 +414,7 @@ export const getCampaignById = async (req: AuthRequest, res: Response) => {
         mainCampaignId: _mainCampaignId,
         ...visibleCampaign
       } = campaign;
+      return res.json({ campaign: visibleCampaign });
     }
 
     res.json({ campaign });
