@@ -528,12 +528,16 @@ export const updateCampaign = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // A hidden campaign that becomes public, or drops its invite target,
-    // is no longer the website source for the publics that named it.
+    // A hidden campaign that becomes public, or no longer invites into the
+    // public campaign that named it, is no longer that campaign's website
+    // source. Moving the invite onto a different campaign counts: a later
+    // save of the old public would otherwise point the invites back.
     if (
       isDetailsSave &&
       ((!existing.visibleToPromoters && nextVisible) ||
-        (!nextVisible && existing.linkedCampaignId && !nextLinkedId))
+        (!nextVisible &&
+          existing.linkedCampaignId &&
+          existing.linkedCampaignId !== nextLinkedId))
     ) {
       await clearStaleMainPointers(prisma, id);
     }

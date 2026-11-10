@@ -40,8 +40,9 @@ WHERE public.id = chosen.public_id
       AND current_main."websiteUrl" = public."websiteUrl"
   );
 
--- Several hidden campaigns invite here and none share this website.
--- Leave the source unset so the next edit cannot copy another site.
+-- Hidden campaigns invite here and none share this website.
+-- The first backfill still assigned a main when only one inviter existed.
+-- Clear that inferred source too, so a later edit cannot copy the other site.
 UPDATE "campaigns" AS public
 SET "mainCampaignId" = NULL
 WHERE public."visibleToPromoters" = true
@@ -52,7 +53,7 @@ WHERE public."visibleToPromoters" = true
     WHERE h."linkedCampaignId" = public.id
       AND h."visibleToPromoters" = false
       AND h.id <> public.id
-  ) > 1
+  ) >= 1
   AND NOT EXISTS (
     SELECT 1
     FROM "campaigns" h
