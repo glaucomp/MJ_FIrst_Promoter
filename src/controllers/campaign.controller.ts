@@ -408,8 +408,12 @@ export const getCampaignById = async (req: AuthRequest, res: Response) => {
     }
 
     if (user.role !== UserRole.ADMIN) {
-      const { linkedBy: _linkedBy, mainCampaign: _mainCampaign, ...visibleCampaign } = campaign;
-      return res.json({ campaign: visibleCampaign });
+      const {
+        linkedBy: _linkedBy,
+        mainCampaign: _mainCampaign,
+        mainCampaignId: _mainCampaignId,
+        ...visibleCampaign
+      } = campaign;
     }
 
     res.json({ campaign });
