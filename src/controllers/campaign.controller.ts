@@ -461,10 +461,11 @@ export const updateCampaign = async (req: AuthRequest, res: Response) => {
       mainCampaignId !== undefined ||
       visibleToPromoters !== undefined;
 
-    let resolvedWebsite: string | undefined = websiteUrl || undefined;
+    let resolvedWebsite: string | undefined = websiteUrl ?? undefined;
     let resolvedReferral: string | null | undefined =
       defaultReferralUrl !== undefined ? defaultReferralUrl || null : undefined;
-    const requestedMainId = mainCampaignId || null;
+    const requestedMainId =
+      mainCampaignId !== undefined ? mainCampaignId || null : existing.mainCampaignId;
 
     if (nextVisible && isDetailsSave) {
       if (!requestedMainId || requestedMainId === id) {
