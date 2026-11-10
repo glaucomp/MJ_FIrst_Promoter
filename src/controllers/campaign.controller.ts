@@ -25,6 +25,15 @@ const campaignReadInclude = {
     },
     orderBy: { updatedAt: 'desc' as const },
   },
+  mainCampaign: {
+    select: {
+      id: true,
+      name: true,
+      websiteUrl: true,
+      defaultReferralUrl: true,
+      visibleToPromoters: true,
+    },
+  },
   _count: {
     select: { referrals: true, commissions: true },
   },
@@ -48,10 +57,11 @@ const copyWebsiteOntoPublic = async (
   publicCampaignId: string,
   websiteUrl: string,
   defaultReferralUrl: string | null,
+  mainCampaignId: string,
 ) => {
   await prisma.campaign.update({
     where: { id: publicCampaignId },
-    data: { websiteUrl, defaultReferralUrl },
+    data: { websiteUrl, defaultReferralUrl, mainCampaignId },
   });
 };
 
@@ -102,42 +112,48 @@ export const createCampaign = async (req: AuthRequest, res: Response) => {
       resolvedReferral = main.defaultReferralUrl;
     }
 
-    const created = await prisma.campaign.create({
-      data: {
-        name,
-        description,
-        websiteUrl: resolvedWebsite,
-        defaultReferralUrl: resolvedReferral,
-        commissionRate: parseFloat(commissionRate),
-        secondaryRate: secondaryRate ? parseFloat(secondaryRate) : null,
-        recurringRate: recurringRate ? parseFloat(recurringRate) : null,
-        cookieLifeDays: cookieLifeDays ? parseInt(cookieLifeDays) : 60,
-        autoApprove: autoApprove !== undefined ? autoApprove : true,
-        visibleToPromoters: isPublic,
-        maxInvitesPerMonth: maxInvitesPerMonth && parseInt(maxInvitesPerMonth) > 0 ? parseInt(maxInvitesPerMonth) : null,
-        linkedCampaignId: isPublic ? null : (linkedCampaignId || null),
-        createdById: req.user!.id,
-        startDate: startDate ? new Date(startDate) : new Date(),
-        endDate: endDate ? new Date(endDate) : null
-      },
-    });
-
-    if (isPublic && main) {
-      await prisma.campaign.update({
-        where: { id: main.id },
-        data: { linkedCampaignId: created.id },
+    const campaign = await prisma.$transaction(async (tx) => {
+      const created = await tx.campaign.create({
+        data: {
+          name,
+          description,
+          websiteUrl: resolvedWebsite,
+          defaultReferralUrl: resolvedReferral,
+          commissionRate: parseFloat(commissionRate),
+          secondaryRate: secondaryRate ? parseFloat(secondaryRate) : null,
+          recurringRate: recurringRate ? parseFloat(recurringRate) : null,
+          cookieLifeDays: cookieLifeDays ? parseInt(cookieLifeDays) : 60,
+          autoApprove: autoApprove !== undefined ? autoApprove : true,
+          visibleToPromoters: isPublic,
+          maxInvitesPerMonth: maxInvitesPerMonth && parseInt(maxInvitesPerMonth) > 0 ? parseInt(maxInvitesPerMonth) : null,
+          linkedCampaignId: isPublic ? null : (linkedCampaignId || null),
+          mainCampaignId: isPublic && main ? main.id : null,
+          createdById: req.user!.id,
+          startDate: startDate ? new Date(startDate) : new Date(),
+          endDate: endDate ? new Date(endDate) : null
+        },
       });
-    } else if (!isPublic && created.linkedCampaignId) {
-      await copyWebsiteOntoPublic(
-        created.linkedCampaignId,
-        created.websiteUrl,
-        created.defaultReferralUrl,
-      );
-    }
 
-    const campaign = await prisma.campaign.findUnique({
-      where: { id: created.id },
-      include: campaignReadInclude,
+      if (isPublic && main) {
+        await tx.campaign.update({
+          where: { id: main.id },
+          data: { linkedCampaignId: created.id },
+        });
+      } else if (!isPublic && created.linkedCampaignId) {
+        await tx.campaign.update({
+          where: { id: created.linkedCampaignId },
+          data: {
+            websiteUrl: created.websiteUrl,
+            defaultReferralUrl: created.defaultReferralUrl,
+            mainCampaignId: created.id,
+          },
+        });
+      }
+
+      return tx.campaign.findUnique({
+        where: { id: created.id },
+        include: campaignReadInclude,
+      });
     });
 
     res.status(201).json({ campaign });
@@ -323,6 +339,15 @@ export const getCampaignById = async (req: AuthRequest, res: Response) => {
           },
           orderBy: { updatedAt: 'desc' as const },
         },
+        mainCampaign: {
+          select: {
+            id: true,
+            name: true,
+            websiteUrl: true,
+            defaultReferralUrl: true,
+            visibleToPromoters: true,
+          },
+        },
         referrals: {
           include: {
             referrer: {
@@ -370,7 +395,7 @@ export const getCampaignById = async (req: AuthRequest, res: Response) => {
     }
 
     if (user.role !== UserRole.ADMIN) {
-      const { linkedBy: _linkedBy, ...visibleCampaign } = campaign;
+      const { linkedBy: _linkedBy, mainCampaign: _mainCampaign, ...visibleCampaign } = campaign;
       return res.json({ campaign: visibleCampaign });
     }
 
@@ -465,23 +490,19 @@ export const updateCampaign = async (req: AuthRequest, res: Response) => {
         ...(linkedCampaignId !== undefined && {
           linkedCampaignId: nextVisible ? null : nextLinkedId,
         }),
+        ...(isDetailsSave && {
+          mainCampaignId: nextVisible && requestedMainId ? requestedMainId : null,
+        }),
         ...(isActive !== undefined && { isActive }),
         ...(endDate !== undefined && { endDate: endDate ? new Date(endDate) : null })
       },
     });
 
     if (nextVisible && requestedMainId && isDetailsSave) {
-      // A public campaign has one website source. Drop every other hidden
-      // campaign that still points here, or the next edit reloads the older
-      // main and copies that main's website back.
-      await prisma.campaign.updateMany({
-        where: {
-          linkedCampaignId: id,
-          id: { not: requestedMainId },
-          visibleToPromoters: false,
-        },
-        data: { linkedCampaignId: null },
-      });
+      // Point the chosen main at this public campaign so its account
+      // managers can invite here. Other hidden campaigns that already
+      // invite into this public campaign keep their link; linkedCampaignId
+      // is their invite target, and the website source is mainCampaignId.
       await prisma.campaign.update({
         where: { id: requestedMainId },
         data: { linkedCampaignId: id },
@@ -507,6 +528,7 @@ export const updateCampaign = async (req: AuthRequest, res: Response) => {
           nextLinkedId,
           saved.websiteUrl,
           saved.defaultReferralUrl,
+          id,
         );
       }
     }

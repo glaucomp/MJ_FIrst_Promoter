@@ -194,14 +194,22 @@ export interface Campaign {
     name: string;
     visibleToPromoters: boolean;
   } | null;
-  /** Hidden main campaigns that link to this public campaign. The public
-   *  campaign's website and referral URL are copied from these. */
+  /** Hidden main campaigns that link to this public campaign. */
   linkedBy?: {
     id: string;
     name: string;
     websiteUrl: string;
     defaultReferralUrl: string | null;
   }[];
+  /** Hidden campaign this public campaign copies its website from. */
+  mainCampaignId?: string | null;
+  mainCampaign?: {
+    id: string;
+    name: string;
+    websiteUrl: string;
+    defaultReferralUrl: string | null;
+    visibleToPromoters: boolean;
+  } | null;
   createdAt: string;
   _count?: {
     referrals: number;
