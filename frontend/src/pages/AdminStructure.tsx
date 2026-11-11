@@ -132,7 +132,7 @@ const buildNetworkTree = (manager: AdminStructureManager): NetworkTreeNode[] => 
   });
 
   // Expand T1 roots that have multiple campaign memberships into one node
-  // per referral so Simulate Sale hits the correct company.
+  // per campaign membership so Simulate Sale hits the correct company.
   const expandedRoots: NetworkTreeNode[] = [];
   const seenRootKeys = new Set<string>();
   for (const user of roots) {
