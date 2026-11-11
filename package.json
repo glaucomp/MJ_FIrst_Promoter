@@ -5,7 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "dev:backend": "nodemon --exec ts-node src/server.ts",
+    "dev:backend": "nodemon --ext ts,json --exec \"ts-node -r dotenv/config src/server.ts\"",
     "dev:frontend": "cd frontend && npm run dev",
     "build": "tsc && cd frontend && npm run build",
     "start": "node dist/server.js",
