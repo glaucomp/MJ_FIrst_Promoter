@@ -9,6 +9,12 @@ import { resolveAccountManagersFor } from '../services/ownership.service';
 import { createPasswordResetToken } from '../services/password-reset.service';
 import { emailService } from '../services/email.service';
 import { buildSetPasswordUrl } from '../utils/frontend-url';
+import {
+  enrollAmPromotersOnPublicCampaigns,
+  syncAmHiddenMemberships,
+  syncPromoterToAmLinkedCampaigns,
+  unenrollAmPromotersFromPublicCampaigns,
+} from '../services/referral-membership.service';
 
 const prisma = new PrismaClient();
 
@@ -354,13 +360,24 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const currentUser = req.user!;
-    const { firstName, lastName, email, password, userType, campaignId } = req.body as {
+    const {
+      firstName,
+      lastName,
+      email,
+      password,
+      userType,
+      campaignId,
+      campaignIds,
+    } = req.body as {
       firstName?: string;
       lastName?: string;
       email?: string;
       password?: string;
       userType?: string;
+      /** Legacy single-campaign replace. Ignored when `campaignIds` is sent. */
       campaignId?: string | null;
+      /** Sync the AM onto exactly these hidden membership campaigns. */
+      campaignIds?: string[];
     };
 
     // Users can only update their own profile unless they're admin
@@ -381,6 +398,10 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
       updateData.userType = userType;
     }
 
+    const hasCampaignIds = Array.isArray(campaignIds);
+    const touchesCampaignAssignment =
+      hasCampaignIds || campaignId !== undefined;
+
     // We need the current row whenever an admin is touching userType or the
     // hidden-membership campaign so we can:
     //   1. Validate the campaign assignment against the userType the row will
@@ -392,7 +413,7 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
     //      AM lookups for the user's new identity.
     const adminTouchesMembership =
       currentUser.role === UserRole.ADMIN &&
-      (campaignId !== undefined || userType !== undefined);
+      (touchesCampaignAssignment || userType !== undefined);
     const target = adminTouchesMembership
       ? await prisma.user.findUnique({
           where: { id },
@@ -409,49 +430,21 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
       ? ((updateData.userType as UserType | undefined) ?? target.userType)
       : undefined;
 
-    // Account-manager campaign reassignment.
-    //
-    // AM ↔ campaign membership is encoded as an ACTIVE Referral row whose
-    // `referredUser` is the AM and whose `campaign` is the hidden AM
-    // membership campaign. To "change" an AM's campaign we cancel the existing
-    // active hidden-campaign referral and create a fresh ACTIVE one pointing
-    // at the new campaign. We keep `referrerId` stable when possible so
-    // commission flow / provenance are preserved.
-    //
-    // Only admins can do this. We resolve the target campaign and validate it
-    // up front so we don't half-update on a bad request.
-    let resolvedAmCampaign:
-      | { id: string; name: string; linkedCampaignId: string | null }
-      | null = null;
-    if (campaignId !== undefined && currentUser.role === UserRole.ADMIN) {
-      // Use the effective post-update userType so a single request can
-      // promote a user to AM and set their campaign at the same time.
+    // Resolve the desired hidden-campaign set up front so bad ids 400 before
+    // we write. Prefer `campaignIds` (multi) over legacy `campaignId` (replace).
+    let desiredHiddenCampaignIds: string[] | null = null;
+    if (touchesCampaignAssignment && currentUser.role === UserRole.ADMIN) {
       if (nextUserType !== UserType.ACCOUNT_MANAGER) {
         return res.status(400).json({
           error: 'Only account managers can be assigned to a hidden membership campaign',
         });
       }
-      if (campaignId !== null) {
-        const campaign = await prisma.campaign.findUnique({
-          where: { id: campaignId },
-          select: {
-            id: true,
-            name: true,
-            isActive: true,
-            visibleToPromoters: true,
-            linkedCampaignId: true,
-          },
-        });
-        if (!campaign || !campaign.isActive || campaign.visibleToPromoters) {
-          return res.status(400).json({
-            error: 'Selected campaign is not a valid hidden Account Manager campaign',
-          });
-        }
-        resolvedAmCampaign = {
-          id: campaign.id,
-          name: campaign.name,
-          linkedCampaignId: campaign.linkedCampaignId,
-        };
+      if (hasCampaignIds) {
+        desiredHiddenCampaignIds = campaignIds!;
+      } else if (campaignId === null) {
+        desiredHiddenCampaignIds = [];
+      } else if (typeof campaignId === 'string') {
+        desiredHiddenCampaignIds = [campaignId];
       }
     }
 
@@ -487,55 +480,20 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
           // We do this regardless of whether `campaignId` was passed; the
           // userType change alone is enough to invalidate the membership.
           await cancelHiddenMembershipReferrals(id, tx);
-        } else if (isAm && campaignId !== undefined) {
-          // Find the AM's existing active hidden-campaign referral. We pull
-          // every ACTIVE referral they received and filter in JS because
-          // Prisma's relation filter doesn't compose well with `referredUserId`.
-          const activeReferrals = await tx.referral.findMany({
-            where: { referredUserId: id, status: 'ACTIVE' },
-            select: {
-              id: true,
-              campaignId: true,
-              referrerId: true,
-              campaign: { select: { isActive: true, visibleToPromoters: true } },
-            },
+        } else if (isAm && desiredHiddenCampaignIds !== null) {
+          const sync = await syncAmHiddenMemberships(tx, {
+            amUserId: id,
+            desiredCampaignIds: desiredHiddenCampaignIds,
+            referrerId: currentUser.id,
           });
-          const existing = activeReferrals.find(
-            (r) => r.campaign.isActive && !r.campaign.visibleToPromoters,
-          );
-
-          if (resolvedAmCampaign === null) {
-            // Caller cleared the campaign — cancel the active hidden referral.
-            if (existing) {
-              await tx.referral.update({
-                where: { id: existing.id },
-                data: { status: 'CANCELLED' },
-              });
-            }
-          } else if (!existing || existing.campaignId !== resolvedAmCampaign.id) {
-            // Cancel any stale hidden membership referral, then create a fresh
-            // ACTIVE one. Reuse the previous referrer when we have it so
-            // commission attribution stays put; otherwise fall back to the
-            // current admin caller.
-            if (existing) {
-              await tx.referral.update({
-                where: { id: existing.id },
-                data: { status: 'CANCELLED' },
-              });
-            }
-            const referrerId = existing?.referrerId ?? currentUser.id;
-            await tx.referral.create({
-              data: {
-                inviteCode: nanoid(10),
-                campaignId: resolvedAmCampaign.id,
-                referrerId,
-                referredUserId: id,
-                status: 'ACTIVE',
-                level: 1,
-                acceptedAt: new Date(),
-              },
-            });
-          }
+          await enrollAmPromotersOnPublicCampaigns(tx, {
+            amUserId: id,
+            publicCampaignIds: sync.addedLinkedPublicIds,
+          });
+          await unenrollAmPromotersFromPublicCampaigns(tx, {
+            amUserId: id,
+            publicCampaignIds: sync.removedLinkedPublicIds,
+          });
         }
       }
 
@@ -545,6 +503,13 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
     res.json({ user, message: 'User updated successfully' });
   } catch (error) {
     console.error('Update user error:', error);
+    const message = error instanceof Error ? error.message : '';
+    if (
+      message.includes('not a valid hidden Account Manager campaign') ||
+      message.includes('were not found')
+    ) {
+      return res.status(400).json({ error: message });
+    }
     res.status(500).json({ error: 'Failed to update user' });
   }
 };
@@ -601,18 +566,15 @@ export const assignAccountManager = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Resolve the new AM's hidden-membership campaign so we can also migrate
-    // the dragged user onto the AM's public `linkedCampaign`. Without this,
-    // assigning would only flip `User.accountManagerId` and leave the user's
-    // active Referral pointing at the *previous* AM's campaign — meaning the
-    // new AM would own the user on the Users page but the user would still
-    // appear under the old AM's "My Promoters" list and continue to accrue
-    // commissions on the old campaign tier.
+    // Resolve every public campaign linked from the AM's hidden memberships
+    // so the dragged user lands on all of them. Without this, assigning would
+    // only flip `User.accountManagerId` and leave referrals on the previous
+    // AM's campaigns.
     //
     // We only migrate when assigning. Unassignment (accountManagerId=null)
     // intentionally leaves Referrals alone so we don't orphan a user's
     // commission attribution as a side-effect of clearing the column.
-    let targetLinkedCampaignId: string | null = null;
+    let targetLinkedCampaignIds: string[] = [];
     if (accountManagerId) {
       const manager = await prisma.user.findUnique({
         where: { id: accountManagerId },
@@ -625,13 +587,7 @@ export const assignAccountManager = async (req: AuthRequest, res: Response) => {
         return res.status(400).json({ error: 'A user cannot be assigned to themselves' });
       }
 
-      // The AM's hidden membership campaign — created by an admin invite —
-      // carries `linkedCampaignId` pointing at the public campaign that AM
-      // recruits promoters under (same plumbing `createReferralInvite` uses
-      // when an AM sends a regular invite). We pick the most recently
-      // accepted ACTIVE membership in case an AM has been moved across
-      // campaigns over time.
-      const amMembership = await prisma.referral.findFirst({
+      const amMemberships = await prisma.referral.findMany({
         where: {
           referredUserId: accountManagerId,
           status: 'ACTIVE',
@@ -644,13 +600,14 @@ export const assignAccountManager = async (req: AuthRequest, res: Response) => {
         orderBy: { acceptedAt: 'desc' },
         select: { campaign: { select: { linkedCampaignId: true } } },
       });
-      targetLinkedCampaignId = amMembership?.campaign?.linkedCampaignId ?? null;
-      if (!targetLinkedCampaignId) {
-        // The AM has no usable hidden-membership campaign yet — most likely
-        // an admin promoted them to AM but never bound them to a campaign.
-        // We log a warning and continue with the bare `accountManagerId`
-        // update so the assignment isn't blocked entirely; the user will
-        // still need to be moved onto a campaign once the AM is configured.
+      targetLinkedCampaignIds = Array.from(
+        new Set(
+          amMemberships
+            .map((m) => m.campaign.linkedCampaignId)
+            .filter((cid): cid is string => Boolean(cid)),
+        ),
+      );
+      if (targetLinkedCampaignIds.length === 0) {
         console.warn('[assignAccountManager] AM has no linked public campaign; skipping referral migration', {
           accountManagerId,
           userId: id,
@@ -684,70 +641,11 @@ export const assignAccountManager = async (req: AuthRequest, res: Response) => {
         },
       });
 
-      if (accountManagerId && targetLinkedCampaignId) {
-        // Find the user's current "I am the invitee" referral. We treat the
-        // most recent ACTIVE one as authoritative and only migrate when it
-        // doesn't already point at the new AM's linkedCampaign — repeated
-        // drags onto the same AM are a no-op.
-        const current = await tx.referral.findFirst({
-          where: { referredUserId: id, status: 'ACTIVE' },
-          orderBy: { acceptedAt: 'desc' },
-          select: { id: true, campaignId: true, referrerId: true },
-        });
-
-        const alreadyOnTargetCampaign =
-          current &&
-          current.campaignId === targetLinkedCampaignId &&
-          current.referrerId === accountManagerId;
-
-        if (!alreadyOnTargetCampaign) {
-          // Cancel any stale active referrals so the user has at most one
-          // ACTIVE "I am the invitee" row at a time. We deliberately do NOT
-          // touch CANCELLED / PENDING referrals or the user's customer-
-          // tracking referrals (those have referredUserId=null), and we
-          // do NOT re-attribute past commissions — historical commission
-          // ownership stays with the old referral.
-          //
-          // Each row is updated individually so we can merge the
-          // `source: 'am-migration'` marker into its existing metadata without
-          // overwriting it. The marker lets the frontend distinguish these from
-          // explicit AM rejections (which also use CANCELLED) and suppress the
-          // misleading "Denied" chip for migrated rows.
-          const activeReferrals = await tx.referral.findMany({
-            where: { referredUserId: id, status: 'ACTIVE' },
-            select: { id: true, metadata: true },
-          });
-          for (const ref of activeReferrals) {
-            const existing =
-              typeof ref.metadata === 'object' && ref.metadata !== null
-                ? (ref.metadata as Record<string, unknown>)
-                : {};
-            await tx.referral.update({
-              where: { id: ref.id },
-              data: {
-                status: 'CANCELLED',
-                metadata: {
-                  ...existing,
-                  source: 'am-migration',
-                  migratedAt: new Date().toISOString(),
-                } as Prisma.InputJsonValue,
-              },
-            });
-          }
-
-          // Prefer adopting an orphan invite over creating a fresh row.
-          // An "orphan" here is the AM's own pending email-invite that was
-          // never accepted (`referredUserId = NULL`), keyed off
-          // `metadata.inviteeEmail`. Without this lookup, the "AM invited
-          // an email → admin manually created the user → dragged onto AM"
-          // flow leaves the original invite stranded with the same
-          // (referrerId, campaignId, email) tuple as the new manual-am-assign
-          // row, producing two cards on My Promoters for the same person.
-          //
-          // We constrain the lookup to the AM's own `targetLinkedCampaignId`
-          // so adoption only happens when the campaign matches; orphans on
-          // other campaigns are cancelled below to keep "at most one ACTIVE"
-          // invariant.
+      if (accountManagerId && targetLinkedCampaignIds.length > 0) {
+        // Prefer adopting orphan invites on each target campaign before
+        // creating fresh rows, so "AM invited email → admin created user →
+        // dragged onto AM" does not leave a stranded PENDING card.
+        for (const targetLinkedCampaignId of targetLinkedCampaignIds) {
           const orphanInvite = u.email
             ? await tx.referral.findFirst({
                 where: {
@@ -777,66 +675,50 @@ export const assignAccountManager = async (req: AuthRequest, res: Response) => {
                 metadata: {
                   ...orphanMeta,
                   source: 'am-assign-adopted',
-                  previousReferralId: current?.id ?? null,
                   adoptedAt: new Date().toISOString(),
-                } as Prisma.InputJsonValue,
-              },
-            });
-
-            // Sweep up any *other* orphan invites this AM has open for the
-            // same email on different campaigns. Without this, an AM who
-            // happened to have invited the same email on a stale public
-            // campaign would still leave a second card behind.
-            const otherOrphans = u.email
-              ? await tx.referral.findMany({
-                  where: {
-                    referrerId: accountManagerId,
-                    campaignId: { not: targetLinkedCampaignId },
-                    referredUserId: null,
-                    status: { in: ['PENDING', 'ACTIVE'] },
-                    metadata: { path: ['inviteeEmail'], equals: u.email },
-                  },
-                  select: { id: true, metadata: true },
-                })
-              : [];
-            for (const ref of otherOrphans) {
-              const existing =
-                typeof ref.metadata === 'object' && ref.metadata !== null
-                  ? (ref.metadata as Record<string, unknown>)
-                  : {};
-              await tx.referral.update({
-                where: { id: ref.id },
-                data: {
-                  status: 'CANCELLED',
-                  metadata: {
-                    ...existing,
-                    source: 'am-migration',
-                    migratedAt: new Date().toISOString(),
-                  } as Prisma.InputJsonValue,
-                },
-              });
-            }
-          } else {
-            await tx.referral.create({
-              data: {
-                referrerId: accountManagerId,
-                referredUserId: id,
-                campaignId: targetLinkedCampaignId,
-                // 10-char nanoid; collisions are astronomically unlikely
-                // and a P2002 here would just bubble out of the txn,
-                // rolling the user.update back too — exactly what we want.
-                inviteCode: nanoid(10),
-                status: 'ACTIVE',
-                acceptedAt: new Date(),
-                metadata: {
-                  source: 'manual-am-assign',
-                  previousReferralId: current?.id ?? null,
-                  assignedAt: new Date().toISOString(),
                 } as Prisma.InputJsonValue,
               },
             });
           }
         }
+
+        // Cancel orphan invites this AM still has open for the same email on
+        // campaigns outside the AM's current linked set.
+        if (u.email) {
+          const otherOrphans = await tx.referral.findMany({
+            where: {
+              referrerId: accountManagerId,
+              campaignId: { notIn: targetLinkedCampaignIds },
+              referredUserId: null,
+              status: { in: ['PENDING', 'ACTIVE'] },
+              metadata: { path: ['inviteeEmail'], equals: u.email },
+            },
+            select: { id: true, metadata: true },
+          });
+          for (const ref of otherOrphans) {
+            const existing =
+              typeof ref.metadata === 'object' && ref.metadata !== null
+                ? (ref.metadata as Record<string, unknown>)
+                : {};
+            await tx.referral.update({
+              where: { id: ref.id },
+              data: {
+                status: 'CANCELLED',
+                metadata: {
+                  ...existing,
+                  source: 'am-migration',
+                  migratedAt: new Date().toISOString(),
+                } as Prisma.InputJsonValue,
+              },
+            });
+          }
+        }
+
+        await syncPromoterToAmLinkedCampaigns(tx, {
+          promoterUserId: id,
+          amUserId: accountManagerId,
+          linkedPublicCampaignIds: targetLinkedCampaignIds,
+        });
       }
 
       return u;
@@ -1023,13 +905,15 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { email, firstName, lastName, userType, campaignId } = req.body as {
-      email?: string;
-      firstName?: string;
-      lastName?: string;
-      userType?: string;
-      campaignId?: string;
-    };
+    const { email, firstName, lastName, userType, campaignId, campaignIds } =
+      req.body as {
+        email?: string;
+        firstName?: string;
+        lastName?: string;
+        userType?: string;
+        campaignId?: string;
+        campaignIds?: string[];
+      };
 
     if (!email) {
       return res.status(400).json({ error: 'Email is required' });
@@ -1080,40 +964,82 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
     //   • `accountManagerId` — null here; assign via PATCH /api/users/:id/account-manager.
     const accountManagerId = null;
 
-    // For account managers created by admin: validate and look up the hidden
-    // membership campaign BEFORE creating the user so that an invalid
-    // `campaignId` returns 400 without leaving a "ghost" user row.
-    // The admin can pick the hidden membership campaign explicitly via
-    // `campaignId` on the request body; that's the new path and how the
-    // FE wires the "Account Manager → Campaign" picker on the create
-    // user modal. If they don't, we fall back to the historical
-    // auto-pick (first hidden campaign with a `linkedCampaignId`, then
-    // any hidden campaign) so older API callers keep working.
-    let adminCampaign = null as Awaited<ReturnType<typeof prisma.campaign.findFirst>>;
+    // For account managers created by admin: resolve the desired hidden
+    // membership campaign set BEFORE creating the user so that an invalid
+    // id returns 400 without leaving a "ghost" user row.
+    // Prefer `campaignIds` (multi-select). Fall back to legacy `campaignId`,
+    // then to the historical auto-pick so older API callers keep working.
+    let desiredHiddenCampaignIds: string[] = [];
     if (resolvedType === UserType.ACCOUNT_MANAGER) {
-      if (campaignId) {
-        adminCampaign = await prisma.campaign.findUnique({
-          where: { id: campaignId },
+      if (Array.isArray(campaignIds) && campaignIds.length > 0) {
+        desiredHiddenCampaignIds = Array.from(new Set(campaignIds.filter(Boolean)));
+      } else if (campaignId) {
+        desiredHiddenCampaignIds = [campaignId];
+      }
+
+      if (desiredHiddenCampaignIds.length > 0) {
+        const campaigns = await prisma.campaign.findMany({
+          where: { id: { in: desiredHiddenCampaignIds } },
+          select: {
+            id: true,
+            isActive: true,
+            visibleToPromoters: true,
+            linkedCampaignId: true,
+          },
         });
-        if (!adminCampaign || !adminCampaign.isActive || adminCampaign.visibleToPromoters) {
+        if (campaigns.length !== desiredHiddenCampaignIds.length) {
           return res.status(400).json({
-            error:
-              'Selected campaign is not a valid hidden Account Manager campaign',
+            error: 'One or more selected campaigns were not found',
           });
         }
+        for (const c of campaigns) {
+          if (!c.isActive || c.visibleToPromoters) {
+            return res.status(400).json({
+              error:
+                'Selected campaign is not a valid hidden Account Manager campaign',
+            });
+          }
+        }
+
+        // Self-heal unlinked membership campaigns when there is exactly one
+        // obvious public campaign (same behavior as the old single-create path).
+        const unlinked = campaigns.filter((c) => !c.linkedCampaignId);
+        if (unlinked.length > 0) {
+          const publicCampaigns = await prisma.campaign.findMany({
+            where: { isActive: true, visibleToPromoters: true },
+            select: { id: true },
+            take: 2,
+          });
+          if (publicCampaigns.length === 1) {
+            await prisma.campaign.updateMany({
+              where: {
+                id: { in: unlinked.map((c) => c.id) },
+                isActive: true,
+                visibleToPromoters: false,
+                linkedCampaignId: null,
+              },
+              data: { linkedCampaignId: publicCampaigns[0].id },
+            });
+          }
+        }
+      } else {
+        const fallback =
+          (await prisma.campaign.findFirst({
+            where: {
+              isActive: true,
+              visibleToPromoters: false,
+              linkedCampaignId: { not: null },
+            },
+            orderBy: { id: 'asc' },
+            select: { id: true },
+          })) ??
+          (await prisma.campaign.findFirst({
+            where: { isActive: true, visibleToPromoters: false },
+            orderBy: { id: 'asc' },
+            select: { id: true },
+          }));
+        if (fallback) desiredHiddenCampaignIds = [fallback.id];
       }
-      adminCampaign ??= await prisma.campaign.findFirst({
-        where: {
-          isActive: true,
-          visibleToPromoters: false,
-          linkedCampaignId: { not: null },
-        },
-        orderBy: { id: 'asc' },
-      });
-      adminCampaign ??= await prisma.campaign.findFirst({
-        where: { isActive: true, visibleToPromoters: false },
-        orderBy: { id: 'asc' },
-      });
     }
 
     const newUser = await prisma.user.create({
@@ -1142,49 +1068,17 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
       },
     });
 
-    // For account managers created by admin: automatically link them to the
-    // admin via a referral so commissions can flow. AMs are auto-approved to
-    // invite on every active campaign — the invite gate in
-    // referral.controller.ts gates hidden campaigns on userType only, so we
-    // don't need per-campaign referrals here.
-    if (resolvedType === UserType.ACCOUNT_MANAGER) {
-      if (adminCampaign && !adminCampaign.linkedCampaignId) {
-        const publicCampaigns = await prisma.campaign.findMany({
-          where: { isActive: true, visibleToPromoters: true },
-          select: { id: true },
-          take: 2,
-        });
-        if (publicCampaigns.length === 1) {
-          const updateResult = await prisma.campaign.updateMany({
-            where: {
-              id: adminCampaign.id,
-              isActive: true,
-              visibleToPromoters: false,
-              linkedCampaignId: null,
-            },
-            data: { linkedCampaignId: publicCampaigns[0].id },
-          });
-          if (updateResult.count === 1) {
-            adminCampaign = {
-              ...adminCampaign,
-              linkedCampaignId: publicCampaigns[0].id,
-            };
-          }
-        }
-      }
-      if (adminCampaign) {
-        await prisma.referral.create({
-          data: {
-            inviteCode: nanoid(10),
-            campaignId: adminCampaign.id,
-            referrerId: caller.id,
-            referredUserId: newUser.id,
-            status: 'ACTIVE',
-            level: 1,
-            acceptedAt: new Date(),
-          },
-        });
-      }
+    // For account managers created by admin: create one ACTIVE hidden
+    // membership referral per selected campaign.
+    if (
+      resolvedType === UserType.ACCOUNT_MANAGER &&
+      desiredHiddenCampaignIds.length > 0
+    ) {
+      await syncAmHiddenMemberships(prisma, {
+        amUserId: newUser.id,
+        desiredCampaignIds: desiredHiddenCampaignIds,
+        referrerId: caller.id,
+      });
     }
 
     // Send the password-setup invite. We intentionally don't fail the
@@ -1276,19 +1170,23 @@ export const getAccountManagers = async (_req: AuthRequest, res: Response) => {
     });
 
     const shaped = managers.map((m) => {
-      const membership = m.referralsReceived.find(
-        (r) => r.campaign.isActive && !r.campaign.visibleToPromoters,
-      );
+      const memberships = m.referralsReceived
+        .filter((r) => r.campaign.isActive && !r.campaign.visibleToPromoters)
+        .map((r) => ({
+          id: r.campaign.id,
+          name: r.campaign.name,
+          linkedCampaign: r.campaign.linkedCampaign,
+        }));
       const { referralsReceived: _drop, ...rest } = m;
       return {
         ...rest,
-        currentCampaign: membership
-          ? {
-              id: membership.campaign.id,
-              name: membership.campaign.name,
-              linkedCampaign: membership.campaign.linkedCampaign,
-            }
-          : null,
+        /** Every hidden membership campaign this AM is enrolled in. */
+        campaigns: memberships,
+        /**
+         * First membership — kept for older UI that still reads a single
+         * `currentCampaign`. Prefer `campaigns` for multi-company AMs.
+         */
+        currentCampaign: memberships[0] ?? null,
       };
     });
 

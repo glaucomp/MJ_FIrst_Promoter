@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { Prisma, PrismaClient } from "@prisma/client";
+import { nanoid } from "nanoid";
 
 /**
  * True if the user has an ACTIVE referral on this campaign, or is the invitee
@@ -109,13 +110,40 @@ export function pickCanonicalInviteeReferral<
 }
 
 /**
- * Collapse multiple list rows that share the same promoted user (`referredUserId`)
- * into one card. Pending invites (no invitee user yet) are never merged.
+ * Public program key for list dedupe. Hidden AM membership rows map through
+ * `linkedCampaignId` so a promoter's hidden + public rows for the same company
+ * collapse, while the same person on two companies stays as two cards.
+ */
+export function publicCampaignKeyForReferral(row: {
+  campaignId?: string | null;
+  campaign?: {
+    id?: string | null;
+    visibleToPromoters?: boolean | null;
+    linkedCampaignId?: string | null;
+  } | null;
+}): string {
+  const camp = row.campaign;
+  if (camp?.visibleToPromoters === false && camp.linkedCampaignId) {
+    return camp.linkedCampaignId;
+  }
+  return camp?.id ?? row.campaignId ?? "unknown";
+}
+
+/**
+ * Collapse multiple list rows that share the same promoted user on the same
+ * public program into one card. Pending invites (no invitee user yet) are
+ * never merged. The same promoter on two public campaigns stays as two cards.
  */
 export const dedupeReferralsByPromoter = <
   T extends {
     referredUserId?: string | null;
     referredUser?: { id: string } | null;
+    campaignId?: string | null;
+    campaign?: {
+      id?: string | null;
+      visibleToPromoters?: boolean | null;
+      linkedCampaignId?: string | null;
+    } | null;
     preUser?: { currentStep: number } | null;
     level: number;
   },
@@ -126,9 +154,10 @@ export const dedupeReferralsByPromoter = <
   for (const row of rows) {
     const promoterId = row.referredUser?.id ?? row.referredUserId ?? null;
     if (!promoterId) continue;
-    const existing = best.get(promoterId);
+    const key = `${promoterId}:${publicCampaignKeyForReferral(row)}`;
+    const existing = best.get(key);
     if (!existing || referralDisplayScore(row) > referralDisplayScore(existing)) {
-      best.set(promoterId, row);
+      best.set(key, row);
     }
   }
 
@@ -136,35 +165,46 @@ export const dedupeReferralsByPromoter = <
   return rows.filter((row) => {
     const promoterId = row.referredUser?.id ?? row.referredUserId ?? null;
     if (!promoterId) return true;
-    if (emitted.has(promoterId)) return false;
-    if (best.get(promoterId) !== row) return false;
-    emitted.add(promoterId);
+    const key = `${promoterId}:${publicCampaignKeyForReferral(row)}`;
+    if (emitted.has(key)) return false;
+    if (best.get(key) !== row) return false;
+    emitted.add(key);
     return true;
   });
 };
 
 /**
- * Cancel every other ACTIVE "I am the invitee" referral for this promoter,
- * keeping the canonical row (typically the TeaseMe email-invite that owns the
- * PreUser). Marks superseded rows with `source: am-migration` so they stay
- * out of the Models grid filters.
+ * Cancel every other ACTIVE "I am the invitee" referral for this promoter on
+ * the **same campaign** as the keeper, keeping the canonical row (typically
+ * the TeaseMe email-invite that owns the PreUser). Marks superseded rows with
+ * `source: am-migration` so they stay out of the Models grid filters.
  *
- * The keeper is chosen deterministically from all ACTIVE rows (highest score
- * per `referralDisplayScore`; lowest `id` breaks ties). This prevents a race
- * where two concurrent calls each cancel the other's referral and leave no
- * ACTIVE row — both callers converge on the same winner regardless of which
- * `keepReferralId` they originally supplied.
+ * Rows on other campaigns are left alone so a promoter can belong to two
+ * companies at once.
+ *
+ * The keeper is chosen deterministically from ACTIVE rows on that campaign
+ * (highest score per `referralDisplayScore`; lowest `id` breaks ties). This
+ * prevents a race where two concurrent calls each cancel the other's referral
+ * and leave no ACTIVE row — both callers converge on the same winner
+ * regardless of which `keepReferralId` they originally supplied.
  */
 export async function supersedeDuplicateInviteeReferrals(
   client: Prisma.TransactionClient | PrismaClient,
   args: { keepReferralId: string; promotedUserId: string },
 ): Promise<number> {
-  // Fetch ALL active rows for this promoter, including the proposed keeper, so
-  // the winner is chosen here rather than trusted from the caller.
+  const keeper = await client.referral.findUnique({
+    where: { id: args.keepReferralId },
+    select: { id: true, campaignId: true },
+  });
+  if (!keeper || !keeper.campaignId) return 0;
+
+  // Only ACTIVE rows on the keeper's campaign — membership on another company
+  // must not be cancelled as a "duplicate".
   const allActive = await client.referral.findMany({
     where: {
       referredUserId: args.promotedUserId,
       status: "ACTIVE",
+      campaignId: keeper.campaignId,
     },
     select: {
       id: true,
@@ -204,6 +244,7 @@ export async function supersedeDuplicateInviteeReferrals(
     console.info("[supersedeDuplicateInviteeReferrals] cancelled duplicates", {
       keepReferralId: winner.id,
       promotedUserId: args.promotedUserId,
+      campaignId: keeper.campaignId,
       superseded,
     });
   }
@@ -299,5 +340,313 @@ export async function ensureCustomerTrackingReferralForPromotedUser(
     // the same deterministic inviteCode, so the row exists and we're done.
     if ((err as Prisma.PrismaClientKnownRequestError)?.code === "P2002") return;
     throw err;
+  }
+}
+
+type DbClient = PrismaClient | Prisma.TransactionClient;
+
+export type HiddenMembershipCampaign = {
+  id: string;
+  name: string;
+  linkedCampaignId: string | null;
+};
+
+const markReferralAmMigration = async (
+  client: DbClient,
+  ref: { id: string; metadata: Prisma.JsonValue | null },
+  extra: Record<string, unknown> = {},
+): Promise<void> => {
+  const existing = readReferralMetadataRecord(ref.metadata);
+  await client.referral.update({
+    where: { id: ref.id },
+    data: {
+      status: "CANCELLED",
+      metadata: {
+        ...existing,
+        source: "am-migration",
+        migratedAt: new Date().toISOString(),
+        ...extra,
+      } as Prisma.InputJsonValue,
+    },
+  });
+};
+
+/**
+ * Sync an account manager's ACTIVE hidden membership referrals to exactly
+ * `desiredCampaignIds`. Creates missing rows, cancels unchecked ones, leaves
+ * the rest alone. Returns which public linked campaigns were added/removed so
+ * callers can enroll or unenroll promoters.
+ */
+export async function syncAmHiddenMemberships(
+  client: DbClient,
+  args: {
+    amUserId: string;
+    desiredCampaignIds: string[];
+    referrerId: string;
+  },
+): Promise<{
+  addedLinkedPublicIds: string[];
+  removedLinkedPublicIds: string[];
+  memberships: HiddenMembershipCampaign[];
+}> {
+  const desired = Array.from(new Set(args.desiredCampaignIds.filter(Boolean)));
+
+  const campaigns =
+    desired.length > 0
+      ? await client.campaign.findMany({
+          where: { id: { in: desired } },
+          select: {
+            id: true,
+            name: true,
+            isActive: true,
+            visibleToPromoters: true,
+            linkedCampaignId: true,
+          },
+        })
+      : [];
+
+  if (campaigns.length !== desired.length) {
+    throw new Error("One or more selected campaigns were not found");
+  }
+  for (const c of campaigns) {
+    if (!c.isActive || c.visibleToPromoters) {
+      throw new Error(
+        "Selected campaign is not a valid hidden Account Manager campaign",
+      );
+    }
+  }
+
+  const activeReferrals = await client.referral.findMany({
+    where: { referredUserId: args.amUserId, status: "ACTIVE" },
+    select: {
+      id: true,
+      campaignId: true,
+      referrerId: true,
+      metadata: true,
+      campaign: {
+        select: {
+          id: true,
+          name: true,
+          isActive: true,
+          visibleToPromoters: true,
+          linkedCampaignId: true,
+        },
+      },
+    },
+  });
+
+  const existingHidden = activeReferrals.filter(
+    (r) => r.campaign.isActive && !r.campaign.visibleToPromoters,
+  );
+  const existingByCampaignId = new Map(
+    existingHidden.map((r) => [r.campaignId, r]),
+  );
+  const desiredSet = new Set(desired);
+
+  const removedLinkedPublicIds: string[] = [];
+  for (const row of existingHidden) {
+    if (desiredSet.has(row.campaignId)) continue;
+    await markReferralAmMigration(client, row);
+    if (row.campaign.linkedCampaignId) {
+      removedLinkedPublicIds.push(row.campaign.linkedCampaignId);
+    }
+  }
+
+  const addedLinkedPublicIds: string[] = [];
+  for (const campaign of campaigns) {
+    if (existingByCampaignId.has(campaign.id)) continue;
+    const prior = existingHidden[0];
+    await client.referral.create({
+      data: {
+        inviteCode: nanoid(10),
+        campaignId: campaign.id,
+        referrerId: prior?.referrerId ?? args.referrerId,
+        referredUserId: args.amUserId,
+        status: "ACTIVE",
+        level: 1,
+        acceptedAt: new Date(),
+      },
+    });
+    if (campaign.linkedCampaignId) {
+      addedLinkedPublicIds.push(campaign.linkedCampaignId);
+    }
+  }
+
+  return {
+    addedLinkedPublicIds: Array.from(new Set(addedLinkedPublicIds)),
+    removedLinkedPublicIds: Array.from(new Set(removedLinkedPublicIds)),
+    memberships: campaigns.map((c) => ({
+      id: c.id,
+      name: c.name,
+      linkedCampaignId: c.linkedCampaignId,
+    })),
+  };
+}
+
+/** Create an ACTIVE invitee referral on a public campaign if one is missing. */
+export async function ensurePromoterInviteeOnPublicCampaign(
+  client: DbClient,
+  args: {
+    promoterUserId: string;
+    publicCampaignId: string;
+    referrerId: string;
+    source?: string;
+  },
+): Promise<boolean> {
+  const existing = await client.referral.findFirst({
+    where: {
+      referredUserId: args.promoterUserId,
+      campaignId: args.publicCampaignId,
+      status: "ACTIVE",
+    },
+    select: { id: true },
+  });
+  if (existing) return false;
+
+  await client.referral.create({
+    data: {
+      inviteCode: nanoid(10),
+      campaignId: args.publicCampaignId,
+      referrerId: args.referrerId,
+      referredUserId: args.promoterUserId,
+      status: "ACTIVE",
+      level: 1,
+      acceptedAt: new Date(),
+      metadata: {
+        source: args.source ?? "am-multi-campaign-enroll",
+        assignedAt: new Date().toISOString(),
+      } as Prisma.InputJsonValue,
+    },
+  });
+  return true;
+}
+
+/** Cancel ACTIVE invitee referrals for a promoter on a specific public campaign. */
+export async function cancelPromoterInviteeOnPublicCampaign(
+  client: DbClient,
+  args: { promoterUserId: string; publicCampaignId: string },
+): Promise<number> {
+  const rows = await client.referral.findMany({
+    where: {
+      referredUserId: args.promoterUserId,
+      campaignId: args.publicCampaignId,
+      status: "ACTIVE",
+    },
+    select: { id: true, metadata: true },
+  });
+  for (const row of rows) {
+    await markReferralAmMigration(client, row, {
+      reason: "am-campaign-removed",
+    });
+  }
+  return rows.length;
+}
+
+/**
+ * Enroll every promoter/team-manager owned by the AM onto the given public
+ * campaigns (skipping rows that already exist).
+ */
+export async function enrollAmPromotersOnPublicCampaigns(
+  client: DbClient,
+  args: {
+    amUserId: string;
+    publicCampaignIds: string[];
+  },
+): Promise<void> {
+  const publicIds = Array.from(new Set(args.publicCampaignIds.filter(Boolean)));
+  if (publicIds.length === 0) return;
+
+  const promoters = await client.user.findMany({
+    where: {
+      accountManagerId: args.amUserId,
+      isActive: true,
+      userType: { in: ["PROMOTER", "TEAM_MANAGER"] },
+    },
+    select: { id: true },
+  });
+
+  for (const promoter of promoters) {
+    for (const publicCampaignId of publicIds) {
+      await ensurePromoterInviteeOnPublicCampaign(client, {
+        promoterUserId: promoter.id,
+        publicCampaignId,
+        referrerId: args.amUserId,
+        source: "am-campaign-added",
+      });
+    }
+  }
+}
+
+/**
+ * Cancel promoters' ACTIVE invitee rows on public campaigns the AM left.
+ */
+export async function unenrollAmPromotersFromPublicCampaigns(
+  client: DbClient,
+  args: {
+    amUserId: string;
+    publicCampaignIds: string[];
+  },
+): Promise<void> {
+  const publicIds = Array.from(new Set(args.publicCampaignIds.filter(Boolean)));
+  if (publicIds.length === 0) return;
+
+  const promoters = await client.user.findMany({
+    where: {
+      accountManagerId: args.amUserId,
+      userType: { in: ["PROMOTER", "TEAM_MANAGER"] },
+    },
+    select: { id: true },
+  });
+
+  for (const promoter of promoters) {
+    for (const publicCampaignId of publicIds) {
+      await cancelPromoterInviteeOnPublicCampaign(client, {
+        promoterUserId: promoter.id,
+        publicCampaignId,
+      });
+    }
+  }
+}
+
+/**
+ * Sync a dragged promoter onto every linked public campaign of their new AM,
+ * and cancel ACTIVE invitee rows on campaigns that AM is not enrolled in.
+ */
+export async function syncPromoterToAmLinkedCampaigns(
+  client: DbClient,
+  args: {
+    promoterUserId: string;
+    amUserId: string;
+    linkedPublicCampaignIds: string[];
+  },
+): Promise<void> {
+  const targetIds = Array.from(
+    new Set(args.linkedPublicCampaignIds.filter(Boolean)),
+  );
+  const targetSet = new Set(targetIds);
+
+  const activeInvitee = await client.referral.findMany({
+    where: {
+      referredUserId: args.promoterUserId,
+      status: "ACTIVE",
+      campaign: { visibleToPromoters: true },
+    },
+    select: { id: true, campaignId: true, metadata: true },
+  });
+
+  for (const row of activeInvitee) {
+    if (targetSet.has(row.campaignId)) continue;
+    await markReferralAmMigration(client, row, {
+      reason: "am-assign-campaign-sync",
+    });
+  }
+
+  for (const publicCampaignId of targetIds) {
+    await ensurePromoterInviteeOnPublicCampaign(client, {
+      promoterUserId: args.promoterUserId,
+      publicCampaignId,
+      referrerId: args.amUserId,
+      source: "manual-am-assign",
+    });
   }
 }

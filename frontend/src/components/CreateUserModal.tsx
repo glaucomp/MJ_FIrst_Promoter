@@ -85,20 +85,28 @@ export const CreateUserModal = ({
   const [success, setSuccess] = useState<ApiUser | null>(null);
   const [inviteEmailSent, setInviteEmailSent] = useState(true);
 
-  // Account-manager-specific: which hidden AM membership campaign the new
-  // AM will be enrolled in. The campaign's `linkedCampaignId` is what
-  // surfaces in the AM's invite picker once they log in, so picking it
-  // here is what makes "if the AM invites, they have the campaign already"
-  // work end-to-end.
+  // Account-manager-specific: which hidden AM membership campaigns the new
+  // AM will be enrolled in. Each campaign's `linkedCampaignId` is what
+  // surfaces in the AM's invite picker once they log in.
   const [amCampaigns, setAmCampaigns] = useState<Campaign[]>([]);
-  const [campaignId, setCampaignId] = useState<string>("");
+  const [selectedCampaignIds, setSelectedCampaignIds] = useState<string[]>([]);
   const [campaignsLoading, setCampaignsLoading] = useState(false);
   const [campaignsError, setCampaignsError] = useState("");
 
   const isAccountManager = userType === "account_manager";
 
   useEffect(() => {
-    if (!isOpen || !isAccountManager || amCampaigns.length > 0) return;
+    if (!isOpen || !isAccountManager) return;
+
+    // Already loaded — just ensure at least one campaign is selected when
+    // the modal re-opens after a close that cleared the selection.
+    if (amCampaigns.length > 0) {
+      if (selectedCampaignIds.length === 0) {
+        setSelectedCampaignIds([amCampaigns[0].id]);
+      }
+      return;
+    }
+
     let cancelled = false;
     setCampaignsLoading(true);
     setCampaignsError("");
@@ -110,8 +118,8 @@ export const CreateUserModal = ({
           (c) => c.isActive && !c.visibleToPromoters,
         );
         setAmCampaigns(hidden);
-        if (hidden.length > 0 && !campaignId) {
-          setCampaignId(hidden[0].id);
+        if (hidden.length > 0) {
+          setSelectedCampaignIds([hidden[0].id]);
         }
       })
       .catch((err: unknown) => {
@@ -130,20 +138,26 @@ export const CreateUserModal = ({
     return () => {
       cancelled = true;
     };
-  }, [isOpen, isAccountManager, amCampaigns.length, campaignId]);
+  }, [isOpen, isAccountManager, amCampaigns, selectedCampaignIds.length]);
 
-  const selectedAmCampaign = useMemo(
-    () => amCampaigns.find((c) => c.id === campaignId) ?? null,
-    [amCampaigns, campaignId],
+  const selectedAmCampaigns = useMemo(
+    () => amCampaigns.filter((c) => selectedCampaignIds.includes(c.id)),
+    [amCampaigns, selectedCampaignIds],
   );
+
+  const toggleCampaign = (id: string) => {
+    setSelectedCampaignIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
 
   const handleSubmit = async () => {
     if (!email) {
       setError("Email is required");
       return;
     }
-    if (isAccountManager && !campaignId) {
-      setError("Please select a campaign for this account manager");
+    if (isAccountManager && selectedCampaignIds.length === 0) {
+      setError("Please select at least one campaign for this account manager");
       return;
     }
 
@@ -178,7 +192,9 @@ export const CreateUserModal = ({
           firstName,
           lastName,
           userType,
-          ...(isAccountManager && campaignId ? { campaignId } : {}),
+          ...(isAccountManager && selectedCampaignIds.length > 0
+            ? { campaignIds: selectedCampaignIds }
+            : {}),
         });
         user = result.user;
         emailSent = result.inviteEmailSent ?? true;
@@ -198,7 +214,7 @@ export const CreateUserModal = ({
     setLastName("");
     setEmail("");
     setUserType(types[0]);
-    setCampaignId("");
+    setSelectedCampaignIds([]);
     setError("");
     setSuccess(null);
     setInviteEmailSent(true);
@@ -262,7 +278,9 @@ export const CreateUserModal = ({
                     setEmail("");
                     setFirstName("");
                     setLastName("");
-                    setCampaignId("");
+                    setSelectedCampaignIds(
+                      amCampaigns.length > 0 ? [amCampaigns[0].id] : [],
+                    );
                     setInviteEmailSent(true);
                   }}
                   className="flex-1 bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] text-white text-sm font-bold hover:bg-[#252525] transition-all"
@@ -369,15 +387,18 @@ export const CreateUserModal = ({
                 </div>
               </div>
 
-              {/* Campaign picker — only for Account Managers. The chosen
-                  hidden AM campaign is what attaches the new AM to a public
-                  campaign via its `linkedCampaignId`, so they can invite
-                  promoters straight after activation. */}
+              {/* Campaign picker — only for Account Managers. Each chosen
+                  hidden AM campaign attaches the new AM to a public
+                  campaign via its `linkedCampaignId`. */}
               {isAccountManager && (
                 <div className="flex flex-col gap-[8px]">
-                  <label className="text-tm-text-color08 text-sm font-bold uppercase">
-                    Campaign
-                  </label>
+                  <span className="text-tm-text-color08 text-sm font-bold uppercase">
+                    Campaigns
+                  </span>
+                  <p className="text-tm-text-color08 text-xs leading-[1.4] -mt-1">
+                    Select every company this account manager should invite
+                    into.
+                  </p>
                   {campaignsLoading && (
                     <p className="text-tm-text-color08 text-sm">
                       Loading campaigns…
@@ -393,35 +414,52 @@ export const CreateUserModal = ({
                   )}
                   {!campaignsLoading && amCampaigns.length > 0 && (
                     <>
-                      <select
-                        value={campaignId}
-                        onChange={(e) => setCampaignId(e.target.value)}
-                        className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[14px] py-[11px] text-base text-white focus:outline-none focus:border-tm-primary-color04"
-                      >
-                        <option value="">— Select a campaign —</option>
-                        {amCampaigns.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
-                            {c.linkedCampaign
-                              ? ` → invites into ${c.linkedCampaign.name}`
-                              : " (not linked)"}
-                          </option>
-                        ))}
-                      </select>
-                      {selectedAmCampaign && !selectedAmCampaign.linkedCampaign && (
+                      <div className="flex flex-col gap-2 rounded-sm border border-[rgba(255,255,255,0.1)] bg-[#1a1a1a] p-3">
+                        {amCampaigns.map((c) => {
+                          const checked = selectedCampaignIds.includes(c.id);
+                          return (
+                            <label
+                              key={c.id}
+                              className="flex items-start gap-3 cursor-pointer rounded-sm px-2 py-2 hover:bg-white/[0.03]"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => toggleCampaign(c.id)}
+                                className="mt-1 accent-tm-primary-color04"
+                              />
+                              <span className="flex flex-col gap-0.5 min-w-0">
+                                <span className="text-sm text-white font-medium">
+                                  {c.name}
+                                </span>
+                                <span className="text-xs text-tm-text-color08">
+                                  {c.linkedCampaign
+                                    ? `Invites into ${c.linkedCampaign.name}`
+                                    : "Not linked to a public campaign"}
+                                </span>
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      {selectedAmCampaigns.some((c) => !c.linkedCampaign) && (
                         <p className="text-tm-warning-color02 text-xs leading-[1.4]">
-                          This campaign isn't linked to a public campaign
-                          yet, so the new AM won't see anything to invite
-                          into. Set the linked campaign on the Campaigns
-                          page first.
+                          At least one selected campaign isn't linked to a
+                          public campaign yet, so the new AM won't see
+                          anything to invite into for that company. Set the
+                          linked campaign on the Campaigns page first.
                         </p>
                       )}
-                      {selectedAmCampaign?.linkedCampaign && (
+                      {selectedAmCampaigns.some((c) => c.linkedCampaign) && (
                         <p className="text-tm-text-color08 text-xs leading-[1.4]">
                           The new AM will be able to invite promoters into{" "}
                           <span className="text-white font-medium">
-                            {selectedAmCampaign.linkedCampaign.name}
-                          </span>.
+                            {selectedAmCampaigns
+                              .map((c) => c.linkedCampaign?.name)
+                              .filter(Boolean)
+                              .join(", ")}
+                          </span>
+                          .
                         </p>
                       )}
                     </>
@@ -447,7 +485,7 @@ export const CreateUserModal = ({
                 disabled={
                   isLoading ||
                   !email ||
-                  (isAccountManager && !campaignId)
+                  (isAccountManager && selectedCampaignIds.length === 0)
                 }
                 className="btn-primary-cta rounded-sm px-[24px] py-[14px]  text-base font-bold leading-[1.4]  active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >

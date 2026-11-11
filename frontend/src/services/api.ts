@@ -271,6 +271,8 @@ export interface Referral {
     id?: string;
     name: string;
     commissionRate: number;
+    visibleToPromoters?: boolean;
+    linkedCampaignId?: string | null;
   };
   /** Present on getMyReferrals rows — who sent the invite (promoter or AM). */
   referrer?: {
@@ -443,6 +445,8 @@ export interface AdminStructureManager {
   lastName: string | null;
   amPercent: number | null;
   hiddenCampaign: { id: string; name: string } | null;
+  /** Every hidden membership campaign this AM is enrolled in. */
+  hiddenCampaigns?: { id: string; name: string }[];
   publicCampaign: {
     id: string;
     name: string;
@@ -450,6 +454,14 @@ export interface AdminStructureManager {
     secondaryRate: number | null;
     isActive: boolean;
   } | null;
+  /** Every public campaign linked from this AM's hidden memberships. */
+  publicCampaigns?: {
+    id: string;
+    name: string;
+    commissionRate: number;
+    secondaryRate: number | null;
+    isActive: boolean;
+  }[];
   promoterUsers: AdminStructurePromoterUser[];
   referrals: AdminStructureNode[];
   stats: {
@@ -789,9 +801,9 @@ export const modelsApi = {
   /**
    * Admin-only update for an existing user. Used by the admin Users page to
    * edit account managers (and any other user) — name, email, optional new
-   * password, optional userType change. For account managers, `campaignId`
-   * swaps the AM's hidden membership campaign (which the backend models as
-   * an ACTIVE referral row); pass `null` to clear it.
+   * password, optional userType change. For account managers, prefer
+   * `campaignIds` to sync the set of hidden membership campaigns; legacy
+   * `campaignId` still replaces with a single campaign (or `null` clears).
    */
   async updateUser(
     userId: string,
@@ -802,6 +814,7 @@ export const modelsApi = {
       password?: string;
       userType?: 'account_manager' | 'team_manager' | 'promoter' | 'chatter' | 'payer' | 'admin';
       campaignId?: string | null;
+      campaignIds?: string[];
     },
   ): Promise<ApiUser> {
     const body: Record<string, unknown> = {};
@@ -810,7 +823,8 @@ export const modelsApi = {
     if (input.email !== undefined) body.email = input.email;
     if (input.password) body.password = input.password;
     if (input.userType) body.userType = input.userType.toUpperCase();
-    if (input.campaignId !== undefined) body.campaignId = input.campaignId;
+    if (input.campaignIds !== undefined) body.campaignIds = input.campaignIds;
+    else if (input.campaignId !== undefined) body.campaignId = input.campaignId;
     const response = await apiFetch(`${API_URL}/users/${userId}`, {
       method: 'PUT',
       headers: getAuthHeaders(),
@@ -838,9 +852,10 @@ export const modelsApi = {
     firstName: string;
     lastName: string;
     userType: 'account_manager' | 'team_manager' | 'promoter' | 'payer';
-    /** Required when userType is 'account_manager'. The hidden AM campaign
-     *  the new account manager will be enrolled in. */
+    /** Legacy single hidden AM campaign. Prefer `campaignIds`. */
     campaignId?: string;
+    /** Hidden AM membership campaigns the new account manager will join. */
+    campaignIds?: string[];
   }): Promise<{ user: ApiUser; inviteEmailSent: boolean }> {
     const response = await apiFetch(`${API_URL}/users/create`, {
       method: 'POST',
@@ -1213,10 +1228,16 @@ export interface AccountManagerSummary {
     createdChatterGroups?: number;
   };
   /**
-   * The hidden Account Manager membership campaign this AM is currently
-   * enrolled in (encoded as the AM's ACTIVE referral whose campaign is
-   * `visibleToPromoters: false`). `null` when the AM has no active
-   * membership — usually a data anomaly worth flagging in the admin UI.
+   * Every hidden Account Manager membership campaign this AM is enrolled in.
+   */
+  campaigns?: Array<{
+    id: string;
+    name: string;
+    linkedCampaign: { id: string; name: string } | null;
+  }>;
+  /**
+   * First membership — kept for older UI. Prefer `campaigns` when an AM can
+   * belong to more than one company.
    */
   currentCampaign?: {
     id: string;
