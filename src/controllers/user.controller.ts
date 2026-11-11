@@ -505,8 +505,8 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
     console.error('Update user error:', error);
     const message = error instanceof Error ? error.message : '';
     if (
-      message.includes('not a valid hidden Account Manager campaign') ||
-      message.includes('were not found')
+      message === 'Selected campaign is not a valid hidden Account Manager campaign' ||
+      message === 'One or more selected campaigns were not found'
     ) {
       return res.status(400).json({ error: message });
     }
