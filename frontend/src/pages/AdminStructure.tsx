@@ -120,16 +120,44 @@ const buildNetworkTree = (manager: AdminStructureManager): NetworkTreeNode[] => 
     childrenByInviterId.set(inviterId!, siblings);
   }
 
+  // A branch is one company. Pick the referral on that campaign; never the
+  // user's first referral, which may belong to a different company.
   const toNode = (
     user: AdminStructurePromoterUser,
-    referral?: AdminStructureNode,
-  ): NetworkTreeNode => ({
-    user,
-    referral: referral ?? referralsByUserId.get(user.id)?.[0],
-    children: (childrenByInviterId.get(user.id) ?? []).map((child) =>
-      toNode(child),
-    ),
-  });
+    campaignId: string | null,
+    preferredReferralId?: string,
+  ): NetworkTreeNode => {
+    const refs = referralsByUserId.get(user.id) ?? [];
+    const referral = campaignId
+      ? refs.find((ref) => ref.campaign?.id === campaignId)
+      : preferredReferralId
+        ? refs.find((ref) => ref.id === preferredReferralId) ?? refs[0]
+        : refs[0];
+    const branchCampaignId = referral?.campaign?.id ?? campaignId;
+    const nodeUser: AdminStructurePromoterUser = referral
+      ? {
+          ...user,
+          referralId: referral.id,
+          referralStatus: referral.status,
+          referralCampaign: referral.campaign ?? null,
+        }
+      : campaignId
+        ? {
+            ...user,
+            referralId: null,
+            referralStatus: null,
+            referralCampaign: null,
+          }
+        : user;
+
+    return {
+      user: nodeUser,
+      referral,
+      children: (childrenByInviterId.get(user.id) ?? []).map((child) =>
+        toNode(child, branchCampaignId),
+      ),
+    };
+  };
 
   // Expand T1 roots that have multiple campaign memberships into one node
   // per campaign membership so Simulate Sale hits the correct company.
@@ -141,24 +169,14 @@ const buildNetworkTree = (manager: AdminStructureManager): NetworkTreeNode[] => 
       const key = `${user.id}:none`;
       if (seenRootKeys.has(key)) continue;
       seenRootKeys.add(key);
-      expandedRoots.push(toNode(user));
+      expandedRoots.push(toNode(user, null));
       continue;
     }
     for (const ref of refs) {
       const key = `${user.id}:${ref.campaign?.id ?? ref.id}`;
       if (seenRootKeys.has(key)) continue;
       seenRootKeys.add(key);
-      expandedRoots.push(
-        toNode(
-          {
-            ...user,
-            referralId: ref.id,
-            referralStatus: ref.status,
-            referralCampaign: ref.campaign ?? user.referralCampaign,
-          },
-          ref,
-        ),
-      );
+      expandedRoots.push(toNode(user, ref.campaign?.id ?? null, ref.id));
     }
   }
 
@@ -180,7 +198,7 @@ const buildNetworkTree = (manager: AdminStructureManager): NetworkTreeNode[] => 
         referralStatus: ref.status,
         referralCampaign: ref.campaign ?? null,
       };
-      expandedRoots.push(toNode(synthetic, ref));
+      expandedRoots.push(toNode(synthetic, ref.campaign?.id ?? null, ref.id));
     }
   }
 
@@ -430,7 +448,7 @@ const NetworkNodeEntry = ({
   const subLabel = [
     user.email,
     children.length > 0 ? `${children.length} referred` : null,
-    referral?.campaign?.name,
+    campaign?.name,
   ]
     .filter(Boolean)
     .join(' · ');

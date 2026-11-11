@@ -645,6 +645,8 @@ export const assignAccountManager = async (req: AuthRequest, res: Response) => {
         // Prefer adopting orphan invites on each target campaign before
         // creating fresh rows, so "AM invited email → admin created user →
         // dragged onto AM" does not leave a stranded PENDING card.
+        // syncPromoterToAmLinkedCampaigns collapses the extra ACTIVE row this
+        // can create and moves referrerId onto the new AM.
         for (const targetLinkedCampaignId of targetLinkedCampaignIds) {
           const orphanInvite = u.email
             ? await tx.referral.findFirst({
@@ -1001,10 +1003,13 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
           }
         }
 
-        // Self-heal unlinked membership campaigns when there is exactly one
-        // obvious public campaign (same behavior as the old single-create path).
+        // Self-heal only the historical single-campaign create: one unlinked
+        // hidden membership and exactly one public program. Stamping every
+        // selected unlinked hidden with that public id makes them all invite
+        // into the same company, and Campaigns then refuses to use the extras
+        // as Main for another public program.
         const unlinked = campaigns.filter((c) => !c.linkedCampaignId);
-        if (unlinked.length > 0) {
+        if (unlinked.length === 1) {
           const publicCampaigns = await prisma.campaign.findMany({
             where: { isActive: true, visibleToPromoters: true },
             select: { id: true },
@@ -1013,7 +1018,7 @@ export const createUserByAdmin = async (req: AuthRequest, res: Response) => {
           if (publicCampaigns.length === 1) {
             await prisma.campaign.updateMany({
               where: {
-                id: { in: unlinked.map((c) => c.id) },
+                id: unlinked[0].id,
                 isActive: true,
                 visibleToPromoters: false,
                 linkedCampaignId: null,
