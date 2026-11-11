@@ -2,6 +2,22 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { modelsApi, type Campaign, type CampaignInput } from "../services/api";
 
+/** Badge label: "https://teaseme.live" → "teaseme". Stored URL stays unchanged. */
+function websiteLabel(url: string): string {
+  const trimmed = url.trim();
+  if (!trimmed) return trimmed;
+
+  let host = trimmed.replace(/^[a-z][a-z0-9+.-]*:\/\//i, "");
+  host = host.split(/[/?#]/)[0] ?? host;
+  host = host.replace(/^www\./i, "");
+
+  const name = host
+    .replace(/\.(?:co|com|net|org|gov|ac|edu)\.[a-z]{2,}$/i, "")
+    .replace(/\.[a-z0-9-]+$/i, "");
+
+  return name || host || trimmed;
+}
+
 const EMPTY_FORM: CampaignInput = {
   name: "",
   description: "",
@@ -262,8 +278,11 @@ export const Campaigns = () => {
                       {c.visibleToPromoters ? "Public" : "Hidden"}
                     </span>
 
-                    <span className="inline-flex max-w-full items-center rounded-full border border-tm-primary-color09 bg-tm-primary-color12 px-3 py-1 text-xs font-bold text-tm-primary-color02 break-all">
-                      {c.websiteUrl}
+                    <span
+                      title={c.websiteUrl}
+                      className="inline-flex max-w-full items-center rounded-full border border-tm-primary-color09 bg-tm-primary-color12 px-3 py-1 text-xs font-bold text-tm-primary-color02 break-all"
+                    >
+                      {websiteLabel(c.websiteUrl)}
                     </span>
 
                     {/* Link status — only on hidden AM campaigns. Surfaces
