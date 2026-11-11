@@ -11,20 +11,9 @@ function websiteLabel(url: string): string {
   let host = trimmed.replace(/^[a-z][a-z0-9+.-]*:\/\//i, "");
   host = host.split(/[/?#]/)[0] ?? host;
 
-<<<<<<< Updated upstream
   // Drop any userinfo and port.
   host = (host.split("@").pop() ?? host).replace(/^www\./i, "");
   host = host.split(":")[0] ?? host;
-=======
-  const withoutCompound = host.replace(
-    /\.(?:co|com|net|org|gov|ac|edu)\.[a-z]{2,}$/i,
-    "",
-  );
-  const name =
-    withoutCompound === host
-      ? host.replace(/\.[a-z0-9-]+$/i, "")
-      : withoutCompound;
->>>>>>> Stashed changes
 
   // Keep IP/localhost as-is.
   if (/^(?:localhost|\d{1,3}(?:\.\d{1,3}){3})$/i.test(host)) return host;
