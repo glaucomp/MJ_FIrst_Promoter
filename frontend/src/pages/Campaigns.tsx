@@ -7,15 +7,28 @@ function websiteLabel(url: string): string {
   const trimmed = url.trim();
   if (!trimmed) return trimmed;
 
+  // Drop scheme/path/query/fragment.
   let host = trimmed.replace(/^[a-z][a-z0-9+.-]*:\/\//i, "");
   host = host.split(/[/?#]/)[0] ?? host;
-  host = host.replace(/^www\./i, "");
 
-  const name = host
-    .replace(/\.(?:co|com|net|org|gov|ac|edu)\.[a-z]{2,}$/i, "")
-    .replace(/\.[a-z0-9-]+$/i, "");
+  // Drop any userinfo and port.
+  host = (host.split("@").pop() ?? host).replace(/^www\./i, "");
+  host = host.split(":")[0] ?? host;
 
-  return name || host || trimmed;
+  // Keep IP/localhost as-is.
+  if (/^(?:localhost|\d{1,3}(?:\.\d{1,3}){3})$/i.test(host)) return host;
+
+  const parts = host.split(".").filter(Boolean);
+  if (parts.length <= 1) return host;
+
+  const tld = parts.at(-1)!.toLowerCase();
+  const sld = parts.at(-2)!.toLowerCase();
+  const isTwoPartTld =
+    ["co", "com", "net", "org", "gov", "ac", "edu"].includes(sld) &&
+    tld.length >= 2;
+
+  const domainIndex = isTwoPartTld ? parts.length - 3 : parts.length - 2;
+  return parts[domainIndex] ?? host;
 }
 
 const EMPTY_FORM: CampaignInput = {
