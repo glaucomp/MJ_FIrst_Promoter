@@ -132,6 +132,20 @@ export const Campaigns = () => {
       );
       return;
     }
+    // Creating a second public program must not steal an existing company's
+    // hidden→public invite link. Force a dedicated hidden campaign first.
+    if (form.visibleToPromoters !== false && form.mainCampaignId) {
+      const main = campaigns.find((c) => c.id === form.mainCampaignId);
+      if (
+        main?.linkedCampaign &&
+        main.linkedCampaign.id !== editingCampaign?.id
+      ) {
+        setFormError(
+          `"${main.name}" already invites into ${main.linkedCampaign.name}. Turn off Visible to Promoters, create a new hidden campaign for the new company, then use that as Main.`,
+        );
+        return;
+      }
+    }
     if (!form.websiteUrl.trim()) {
       setFormError(
         form.visibleToPromoters !== false
@@ -214,8 +228,24 @@ export const Campaigns = () => {
   const mainCampaignOptions = campaigns.filter(
     (c) => !c.visibleToPromoters && c.id !== editingCampaign?.id,
   );
+  // Hidden campaigns not already inviting into another public program —
+  // preferred for a second company so we don't steal the first company's link.
+  const unusedMainCampaignOptions = mainCampaignOptions.filter(
+    (c) =>
+      !c.linkedCampaign ||
+      c.linkedCampaign.id === editingCampaign?.id ||
+      c.id === form.mainCampaignId,
+  );
   const selectedMain =
     mainCampaignOptions.find((c) => c.id === form.mainCampaignId) ?? null;
+  const selectedMainAlreadyLinkedElsewhere =
+    !!selectedMain?.linkedCampaign &&
+    selectedMain.linkedCampaign.id !== editingCampaign?.id;
+  const needsNewHiddenForSecondCompany =
+    inheritsWebsite &&
+    !editingCampaign &&
+    unusedMainCampaignOptions.length === 0 &&
+    mainCampaignOptions.length > 0;
 
   return (
     <div className="flex flex-col gap-6">
@@ -474,6 +504,18 @@ export const Campaigns = () => {
 
               {inheritsWebsite && (
                 <Field label="Main campaign">
+                  {needsNewHiddenForSecondCompany && (
+                    <div className="mb-3 rounded-md border border-tm-warning-color09/40 bg-tm-warning-color12/30 px-3 py-2.5">
+                      <p className="text-tm-warning-color02 text-sm leading-[1.4]">
+                        Every hidden campaign is already linked to a public
+                        campaign. For a <span className="font-semibold">new company</span>, turn
+                        off <span className="font-semibold">Visible to Promoters</span> below,
+                        create a new hidden campaign with that company's website,
+                        then come back and create this public campaign with that
+                        hidden as Main.
+                      </p>
+                    </div>
+                  )}
                   <select
                     value={form.mainCampaignId ?? ""}
                     onChange={(e) => {
@@ -492,18 +534,28 @@ export const Campaigns = () => {
                     {mainCampaignOptions.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.name}
-                        {c.linkedCampaign ? ` → ${c.linkedCampaign.name}` : ""}
+                        {c.linkedCampaign
+                          ? ` → ${c.linkedCampaign.name}`
+                          : " (available)"}
                       </option>
                     ))}
                   </select>
                   <p className="text-tm-text-color10 text-xs mt-1.5 leading-[1.4]">
                     Choose a hidden campaign. This public campaign uses that
                     campaign's website and referral URL.
-                    {selectedMain?.linkedCampaign &&
-                    selectedMain.linkedCampaign.id !== editingCampaign?.id
-                      ? ` Saving moves ${selectedMain.name} off ${selectedMain.linkedCampaign.name}.`
-                      : ""}
                   </p>
+                  {selectedMainAlreadyLinkedElsewhere && (
+                    <p className="text-tm-danger-color05 text-xs mt-1.5 leading-[1.4]">
+                      Saving will move{" "}
+                      <span className="font-semibold">{selectedMain?.name}</span>{" "}
+                      off{" "}
+                      <span className="font-semibold">
+                        {selectedMain?.linkedCampaign?.name}
+                      </span>{" "}
+                      and break that company's invites. Create a new hidden
+                      campaign for the new company instead.
+                    </p>
+                  )}
                 </Field>
               )}
 
@@ -654,6 +706,17 @@ export const Campaigns = () => {
                       ...(v && {
                         linkedCampaignId: null,
                         mainCampaignId: null,
+                        websiteUrl: "",
+                        defaultReferralUrl: "",
+                      }),
+                      // Going hidden unlocks website fields for a new company.
+                      ...(!v && {
+                        websiteUrl:
+                          f.websiteUrl && !f.mainCampaignId ? f.websiteUrl : "",
+                        defaultReferralUrl:
+                          f.defaultReferralUrl && !f.mainCampaignId
+                            ? f.defaultReferralUrl
+                            : "",
                       }),
                     }))
                   }
@@ -664,6 +727,13 @@ export const Campaigns = () => {
                   onChange={(v) => setForm((f) => ({ ...f, autoApprove: v }))}
                 />
               </div>
+              {form.visibleToPromoters === false && !editingCampaign && (
+                <p className="text-tm-text-color10 text-xs leading-[1.4] -mt-2">
+                  Hidden = Account Manager membership for one company. Enter
+                  that company's website below, save, then create a Public
+                  campaign that uses this one as Main.
+                </p>
+              )}
 
               {/* Linked Public Campaign — only relevant for hidden (AM
                   membership) campaigns. The picked campaign is what new

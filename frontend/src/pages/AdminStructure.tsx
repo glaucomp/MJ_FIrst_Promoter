@@ -66,16 +66,25 @@ const buildNetworkTree = (manager: AdminStructureManager): NetworkTreeNode[] => 
   const users = manager.promoterUsers ?? [];
   if (users.length === 0) return [];
 
-  const referralByUserId = new Map<string, AdminStructureNode>();
+  // Index referrals by user+campaign so a promoter enrolled in two companies
+  // keeps a distinct node (and Simulate Sale uses the right campaignId).
+  const referralsByUserId = new Map<string, AdminStructureNode[]>();
+  const pushReferral = (userId: string, node: AdminStructureNode) => {
+    const list = referralsByUserId.get(userId) ?? [];
+    if (!list.some((r) => r.id === node.id)) list.push(node);
+    referralsByUserId.set(userId, list);
+  };
+
   for (const t1 of manager.referrals) {
-    if (t1.referredUser?.id) referralByUserId.set(t1.referredUser.id, t1);
+    if (t1.referredUser?.id) pushReferral(t1.referredUser.id, t1);
     for (const child of t1.children ?? []) {
       if (child.referredUser?.id) {
-        referralByUserId.set(child.referredUser.id, {
+        pushReferral(child.referredUser.id, {
           ...t1,
           id: child.id,
           level: child.level,
           status: child.status,
+          campaign: t1.campaign,
           referredUser: child.referredUser,
           referrer: child.referrer ?? t1.referredUser ?? t1.referrer,
         });
@@ -83,6 +92,7 @@ const buildNetworkTree = (manager: AdminStructureManager): NetworkTreeNode[] => 
     }
   }
 
+  const userById = new Map(users.map((u) => [u.id, u]));
   const userIds = new Set(users.map((u) => u.id));
   const childrenByInviterId = new Map<string, AdminStructurePromoterUser[]>();
   const roots: AdminStructurePromoterUser[] = [];
@@ -110,13 +120,89 @@ const buildNetworkTree = (manager: AdminStructureManager): NetworkTreeNode[] => 
     childrenByInviterId.set(inviterId!, siblings);
   }
 
-  const toNode = (user: AdminStructurePromoterUser): NetworkTreeNode => ({
-    user,
-    referral: referralByUserId.get(user.id),
-    children: (childrenByInviterId.get(user.id) ?? []).map(toNode),
-  });
+  // A branch is one company. Pick the referral on that campaign; never the
+  // user's first referral, which may belong to a different company.
+  const toNode = (
+    user: AdminStructurePromoterUser,
+    campaignId: string | null,
+    preferredReferralId?: string,
+  ): NetworkTreeNode => {
+    const refs = referralsByUserId.get(user.id) ?? [];
+    const referral = campaignId
+      ? refs.find((ref) => ref.campaign?.id === campaignId)
+      : preferredReferralId
+        ? refs.find((ref) => ref.id === preferredReferralId) ?? refs[0]
+        : refs[0];
+    const branchCampaignId = referral?.campaign?.id ?? campaignId;
+    const nodeUser: AdminStructurePromoterUser = referral
+      ? {
+          ...user,
+          referralId: referral.id,
+          referralStatus: referral.status,
+          referralCampaign: referral.campaign ?? null,
+        }
+      : campaignId
+        ? {
+            ...user,
+            referralId: null,
+            referralStatus: null,
+            referralCampaign: null,
+          }
+        : user;
 
-  return roots.map(toNode);
+    return {
+      user: nodeUser,
+      referral,
+      children: (childrenByInviterId.get(user.id) ?? []).map((child) =>
+        toNode(child, branchCampaignId),
+      ),
+    };
+  };
+
+  // Expand T1 roots that have multiple campaign memberships into one node
+  // per campaign membership so Simulate Sale hits the correct company.
+  const expandedRoots: NetworkTreeNode[] = [];
+  const seenRootKeys = new Set<string>();
+  for (const user of roots) {
+    const refs = referralsByUserId.get(user.id) ?? [];
+    if (refs.length === 0) {
+      const key = `${user.id}:none`;
+      if (seenRootKeys.has(key)) continue;
+      seenRootKeys.add(key);
+      expandedRoots.push(toNode(user, null));
+      continue;
+    }
+    for (const ref of refs) {
+      const key = `${user.id}:${ref.campaign?.id ?? ref.id}`;
+      if (seenRootKeys.has(key)) continue;
+      seenRootKeys.add(key);
+      expandedRoots.push(toNode(user, ref.campaign?.id ?? null, ref.id));
+    }
+  }
+
+  // Include any referred users that weren't in promoterUsers (edge cases).
+  for (const [userId, refs] of referralsByUserId) {
+    if (userById.has(userId)) continue;
+    for (const ref of refs) {
+      if (!ref.referredUser) continue;
+      const synthetic: AdminStructurePromoterUser = {
+        id: ref.referredUser.id,
+        email: ref.referredUser.email,
+        firstName: ref.referredUser.firstName,
+        lastName: ref.referredUser.lastName,
+        userType: ref.referredUser.userType ?? 'PROMOTER',
+        chatterGroup: ref.referredUser.chatterGroup ?? null,
+        invitedBy: ref.referrer ?? null,
+        tier: ref.level <= 1 ? 1 : 2,
+        referralId: ref.id,
+        referralStatus: ref.status,
+        referralCampaign: ref.campaign ?? null,
+      };
+      expandedRoots.push(toNode(synthetic, ref.campaign?.id ?? null, ref.id));
+    }
+  }
+
+  return expandedRoots;
 };
 
 const TierBadge = ({ tier }: { tier: number }) => (
@@ -362,7 +448,7 @@ const NetworkNodeEntry = ({
   const subLabel = [
     user.email,
     children.length > 0 ? `${children.length} referred` : null,
-    referral?.campaign?.name,
+    campaign?.name,
   ]
     .filter(Boolean)
     .join(' · ');
@@ -503,10 +589,14 @@ const NetworkTree = ({
         <div className="py-1">
           {roots.map((node) => (
             <NetworkNodeEntry
-              key={node.user.id}
+              key={`${node.user.id}:${node.referral?.id ?? node.user.referralId ?? 'none'}`}
               node={node}
               manager={manager}
-              campaignId={manager.publicCampaign?.id}
+              campaignId={
+                node.referral?.campaign?.id ??
+                node.user.referralCampaign?.id ??
+                manager.publicCampaign?.id
+              }
               onSimulate={onSimulate}
             />
           ))}
@@ -553,21 +643,19 @@ const ManagerSection = ({
           {manager.amPercent != null && (
             <PercentBadge label="AM" value={manager.amPercent} accent />
           )}
-          {manager.publicCampaign && (
-            <>
-              <PercentBadge
-                label="Primary"
-                value={manager.publicCampaign.commissionRate}
-              />
-              {manager.publicCampaign.secondaryRate != null &&
-                manager.publicCampaign.secondaryRate > 0 && (
-                  <PercentBadge
-                    label="Referral"
-                    value={manager.publicCampaign.secondaryRate}
-                  />
-                )}
-            </>
-          )}
+          {(manager.publicCampaigns?.length
+            ? manager.publicCampaigns
+            : manager.publicCampaign
+              ? [manager.publicCampaign]
+              : []
+          ).map((camp) => (
+            <span key={camp.id} className="flex flex-wrap gap-1.5">
+              <PercentBadge label="Primary" value={camp.commissionRate} />
+              {camp.secondaryRate != null && camp.secondaryRate > 0 && (
+                <PercentBadge label="Referral" value={camp.secondaryRate} />
+              )}
+            </span>
+          ))}
         </div>
         <div className="text-right shrink-0 pl-2">
           <p className="text-white text-sm font-medium">{manager.stats.t1Count} T1</p>
@@ -577,13 +665,38 @@ const ManagerSection = ({
 
       {open && (
         <div className="border-t border-white/5 px-4 pb-4 pt-3 flex flex-col gap-3">
-          {manager.publicCampaign ? (
-            <div className="rounded-md border border-[rgba(255,255,255,0.06)] px-3 py-2 text-sm text-tm-text-color08">
-              Campaign:{' '}
-              <span className="text-white">{manager.publicCampaign.name}</span>
-              {!manager.publicCampaign.isActive && (
-                <span className="ml-2 text-tm-danger-color05">(inactive)</span>
-              )}
+          {(manager.publicCampaigns?.length
+            ? manager.publicCampaigns
+            : manager.publicCampaign
+              ? [manager.publicCampaign]
+              : []
+          ).length > 0 ? (
+            <div className="rounded-md border border-[rgba(255,255,255,0.06)] px-3 py-2 text-sm text-tm-text-color08 flex flex-col gap-1">
+              <span>
+                Campaign
+                {(manager.publicCampaigns?.length ??
+                  (manager.publicCampaign ? 1 : 0)) > 1
+                  ? 's'
+                  : ''}
+                :
+              </span>
+              <ul className="flex flex-col gap-0.5">
+                {(manager.publicCampaigns?.length
+                  ? manager.publicCampaigns
+                  : manager.publicCampaign
+                    ? [manager.publicCampaign]
+                    : []
+                ).map((camp) => (
+                  <li key={camp.id}>
+                    <span className="text-white">{camp.name}</span>
+                    {!camp.isActive && (
+                      <span className="ml-2 text-tm-danger-color05">
+                        (inactive)
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
             </div>
           ) : (
             <div className="rounded-md bg-tm-danger-color12/40 border border-tm-danger-color09/30 px-3 py-2 text-sm text-tm-danger-color02">
@@ -627,7 +740,9 @@ export const AdminStructure = () => {
       return (
         name.includes(q) ||
         m.email.toLowerCase().includes(q) ||
-        (m.publicCampaign?.name.toLowerCase().includes(q) ?? false)
+        (m.publicCampaigns ?? (m.publicCampaign ? [m.publicCampaign] : [])).some(
+          (c) => c.name.toLowerCase().includes(q),
+        )
       );
     });
   }, [managers, search]);

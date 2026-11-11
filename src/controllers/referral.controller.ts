@@ -384,31 +384,48 @@ type DuplicateInviteeRepairRow = {
   referredUserId: string | null;
   status: string;
   level: number;
+  campaignId?: string | null;
+  campaign?: {
+    id?: string | null;
+    visibleToPromoters?: boolean | null;
+    linkedCampaignId?: string | null;
+  } | null;
   preUser: { currentStep: number } | null;
 };
 
-/** Repair existing production duplicates (same promoter, two ACTIVE rows). */
+/** Repair existing production duplicates (same promoter + same campaign). */
 const repairDuplicateInviteeReferrals = (
   userId: string,
   rows: DuplicateInviteeRepairRow[],
 ): void => {
   if (duplicateInviteeRepairByUser.has(userId)) return;
 
-  const byInvitee = new Map<string, DuplicateInviteeRepairRow[]>();
+  // Group by promoter + public campaign so two companies stay as two ACTIVE
+  // rows while true duplicates on one program still collapse.
+  const byInviteeCampaign = new Map<string, DuplicateInviteeRepairRow[]>();
   for (const row of rows) {
     if (row.status !== "ACTIVE" || !row.referredUserId) continue;
-    const group = byInvitee.get(row.referredUserId) ?? [];
+    const publicKey =
+      row.campaign?.visibleToPromoters === false && row.campaign.linkedCampaignId
+        ? row.campaign.linkedCampaignId
+        : row.campaign?.id ?? row.campaignId ?? "unknown";
+    const key = `${row.referredUserId}:${publicKey}`;
+    const group = byInviteeCampaign.get(key) ?? [];
     group.push(row);
-    byInvitee.set(row.referredUserId, group);
+    byInviteeCampaign.set(key, group);
   }
 
   const repairs: Array<{ keepReferralId: string; promotedUserId: string }> = [];
-  for (const [promotedUserId, group] of byInvitee) {
+  for (const group of byInviteeCampaign.values()) {
     if (group.length <= 1) continue;
     const winner = group.reduce((best, row) =>
       referralDisplayScore(row) > referralDisplayScore(best) ? row : best,
     );
-    repairs.push({ keepReferralId: winner.id, promotedUserId });
+    if (!winner.referredUserId) continue;
+    repairs.push({
+      keepReferralId: winner.id,
+      promotedUserId: winner.referredUserId,
+    });
   }
 
   if (repairs.length === 0) return;
@@ -2063,6 +2080,8 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
             websiteUrl: true,
             defaultReferralUrl: true,
             commissionRate: true,
+            visibleToPromoters: true,
+            linkedCampaignId: true,
           },
         },
         referrer: {
@@ -3401,11 +3420,30 @@ export const getAdminNetworkStructure = async (
     }
 
     const shaped = managers.map((m) => {
-      const membership = m.referralsReceived.find(
+      const membershipRows = m.referralsReceived.filter(
         (r) => r.campaign.isActive && !r.campaign.visibleToPromoters,
       );
-      const hiddenCampaign = membership?.campaign ?? null;
-      const publicCampaign = hiddenCampaign?.linkedCampaign ?? null;
+      const hiddenCampaigns = membershipRows.map((r) => r.campaign);
+      const publicCampaigns = Array.from(
+        new Map(
+          hiddenCampaigns
+            .map((c) => c.linkedCampaign)
+            .filter(
+              (
+                c,
+              ): c is {
+                id: string;
+                name: string;
+                commissionRate: number;
+                secondaryRate: number | null;
+                isActive: boolean;
+              } => Boolean(c),
+            )
+            .map((c) => [c.id, c]),
+        ).values(),
+      );
+      const hiddenCampaign = hiddenCampaigns[0] ?? null;
+      const publicCampaign = publicCampaigns[0] ?? null;
 
       const scopedIds = referralIdsByAm.get(m.id) ?? new Set<string>();
       const scopedReferrals = [...scopedIds]
@@ -3538,6 +3576,12 @@ export const getAdminNetworkStructure = async (
         ...managerRest,
         promoterUsers,
         amPercent: hiddenCampaign?.secondaryRate ?? null,
+        hiddenCampaigns: hiddenCampaigns.map((c) => ({
+          id: c.id,
+          name: c.name,
+        })),
+        publicCampaigns,
+        // First membership / linked public — kept for older UI readers.
         hiddenCampaign: hiddenCampaign
           ? { id: hiddenCampaign.id, name: hiddenCampaign.name }
           : null,

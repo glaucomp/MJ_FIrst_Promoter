@@ -184,13 +184,15 @@ export const createCampaign = async (req: AuthRequest, res: Response) => {
 // campaigns only — never the hidden membership campaign itself, and never
 // unrelated public campaigns.
 //
-// As a self-heal, if a membership campaign has no `linkedCampaignId` and
-// the system has exactly one obvious active public campaign, we back-fill
-// the link so AMs created before this guard existed (or via the admin UI
-// without an explicit link) immediately have somewhere to invite onto.
-// With zero or several public campaigns the choice is ambiguous and we
-// leave the link unset; the FE renders an empty-state pointing the admin
-// at the Campaigns page to configure the link explicitly.
+// As a self-heal, if the AM has exactly one membership campaign with no
+// `linkedCampaignId` and the system has exactly one obvious active public
+// campaign, we back-fill the link so AMs created before this guard existed
+// (or via the admin UI without an explicit link) immediately have somewhere
+// to invite onto. With zero or several public campaigns, or several unlinked
+// memberships, the choice is ambiguous and we leave the link unset — linking
+// every unlinked hidden to the only public program would block using the
+// extras as Main for another company. The FE renders an empty-state pointing
+// the admin at the Campaigns page to configure the link explicitly.
 const getAccountManagerVisibleCampaigns = async (amUserId: string) => {
   const amMemberships = await prisma.referral.findMany({
     where: {
@@ -262,7 +264,7 @@ const backfillUnlinkedMembershipCampaigns = async (
       ),
     ),
   );
-  if (unlinkedMembershipCampaignIds.length === 0) return;
+  if (unlinkedMembershipCampaignIds.length !== 1) return;
 
   const publicCampaigns = await prisma.campaign.findMany({
     where: { isActive: true, visibleToPromoters: true },

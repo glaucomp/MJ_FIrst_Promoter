@@ -1833,9 +1833,20 @@ const ReferralList = ({
   // manager AND a level-2 influencer-chain row from their onboarding invite).
   // Both carry the same `referredUserId`, so without collapsing them the same
   // promoter renders as two identical cards (each with its own "Manage
-  // Chatters" button). We keep one card per promoter, preferring the row that
+  // Chatters" button). We keep one card per promoter per public program —
+  // same person on two companies stays as two cards. Prefer the row that
   // best represents their state: real onboarding record (`preUser`) first,
   // then furthest onboarding step, then highest level, then most recent.
+const publicCampaignKey = (r: Referral): string => {
+  if (
+    r.campaign.visibleToPromoters === false &&
+    r.campaign.linkedCampaignId
+  ) {
+    return r.campaign.linkedCampaignId;
+  }
+  return r.campaign.id ?? r.campaign.name;
+};
+
 const dedupeByPromoter = (rows: Referral[]): Referral[] => {
   const compare = (a: Referral, b: Referral) => {
     const aHasPreUser = a.preUser ? 1 : 0;
@@ -1861,10 +1872,11 @@ const dedupeByPromoter = (rows: Referral[]): Referral[] => {
     // Pending/unaccepted invites have no promoter yet — never collapse them.
     const promoterId = r.referredUser?.id;
     if (!promoterId) continue;
+    const key = `${promoterId}:${publicCampaignKey(r)}`;
 
-    const existing = best.get(promoterId);
+    const existing = best.get(key);
     if (!existing || compare(r, existing) > 0) {
-      best.set(promoterId, r);
+      best.set(key, r);
     }
   }
 
@@ -1872,7 +1884,8 @@ const dedupeByPromoter = (rows: Referral[]): Referral[] => {
   return rows.filter((r) => {
     const promoterId = r.referredUser?.id;
     if (!promoterId) return true;
-    return best.get(promoterId)?.id === r.id;
+    const key = `${promoterId}:${publicCampaignKey(r)}`;
+    return best.get(key)?.id === r.id;
   });
 };
 
