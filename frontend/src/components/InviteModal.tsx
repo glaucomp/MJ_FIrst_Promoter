@@ -17,6 +17,7 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
   const [generatedUrl, setGeneratedUrl] = useState('');
   const [generatedCode, setGeneratedCode] = useState('');
   const [emailSent, setEmailSent] = useState<boolean | null>(null);
+  const [mailConfigured, setMailConfigured] = useState(false);
   const [sentToEmail, setSentToEmail] = useState('');
   const [sentFromEmail, setSentFromEmail] = useState('');
   const [quota, setQuota] = useState<{ used: number; remaining: number; unlimited: boolean } | null>(null);
@@ -88,6 +89,7 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
         setGeneratedUrl(result.inviteUrl);
         setGeneratedCode(result.inviteCode);
         setEmailSent(result.emailSent ?? null);
+        setMailConfigured(Boolean(result.mailConfigured));
         setSentToEmail(email.trim());
         setSentFromEmail(result.fromEmail ?? '');
         if (quota && !quota.unlimited) {
@@ -119,6 +121,7 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
     setGeneratedCode('');
     setEmail('');
     setEmailSent(null);
+    setMailConfigured(false);
     setSentToEmail('');
     setSentFromEmail('');
     setError('');
@@ -168,8 +171,8 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
                 </select>
                 {type === 'referral' && selectedCampaign && (
                   <p className="text-tm-text-color08 text-sm leading-[1.4]">
-                    {selectedCampaign.fromEmail
-                      ? <>Invites send from <span className="text-white font-medium">{selectedCampaign.fromEmail}</span>.</>
+                    {selectedCampaign.inviteFromEmail
+                      ? <>Invites send from <span className="text-white font-medium">{selectedCampaign.inviteFromEmail}</span>.</>
                       : 'This campaign has no mail login yet, so the link will be created without an email.'}
                   </p>
                 )}
@@ -245,7 +248,7 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
               {type === 'referral' && emailSent === false && (
                 <div className="bg-[#332200] border border-[#cc9900] rounded-sm px-[16px] py-[12px]">
                   <p className="text-[#ffcc33] text-sm leading-[1.4]">
-                    {sentFromEmail
+                    {mailConfigured
                       ? <>Email delivery failed. Share the link manually with <span className="font-medium">{sentToEmail}</span>.</>
                       : <>This campaign has no mail login, so no email was sent. Share the link manually with <span className="font-medium">{sentToEmail}</span>.</>}
                   </p>

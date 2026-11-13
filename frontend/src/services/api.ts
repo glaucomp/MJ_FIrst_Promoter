@@ -222,6 +222,8 @@ export interface Campaign {
   mailPasswordSet?: boolean;
   fromEmail?: string | null;
   fromName?: string | null;
+  /** Address invite email will actually use, after AWS and linked-campaign fallbacks. Null when nothing can send. */
+  inviteFromEmail?: string | null;
   createdAt: string;
   _count?: {
     referrals: number;
@@ -595,6 +597,7 @@ export const modelsApi = {
     inviteCode: string;
     referral: Referral;
     emailSent?: boolean;
+    mailConfigured?: boolean;
     fromEmail?: string | null;
   }> {
     const response = await apiFetch(`${API_URL}/referrals/create`, {
@@ -607,6 +610,7 @@ export const modelsApi = {
 
   async resendReferralInvite(referralId: string): Promise<{
     emailSent: boolean;
+    mailConfigured?: boolean;
     fromEmail?: string | null;
     inviteUrl: string;
     inviteeEmail: string;
