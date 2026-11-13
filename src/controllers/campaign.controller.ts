@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { Prisma, PrismaClient, UserRole, UserType } from '@prisma/client';
 import { validationResult } from 'express-validator';
 import { AuthRequest } from '../middleware/auth.middleware';
+import { resolveInviteFromEmail } from '../services/invite-mail.service';
 import { isUserParticipantOnCampaign } from '../services/referral-membership.service';
 
 const prisma = new PrismaClient();
@@ -449,7 +450,14 @@ export const getAllCampaigns = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    res.json({ campaigns });
+    const listed = await Promise.all(
+      campaigns.map(async (campaign) => ({
+        ...campaign,
+        inviteFromEmail: await resolveInviteFromEmail(campaign.id),
+      })),
+    );
+
+    res.json({ campaigns: listed });
   } catch (error) {
     console.error('Get campaigns error:', error);
     res.status(500).json({ error: 'Failed to fetch campaigns' });
