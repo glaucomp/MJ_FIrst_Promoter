@@ -559,13 +559,15 @@ const usableMail = (row: {
   fromName: string | null;
 } | null): CompanyMailLogin | null => {
   if (row?.mailProvider === "aws") {
+    const fromEmail = row.fromEmail?.trim() ?? "";
+    if (!fromEmail) return null;
     return {
       provider: "aws",
       host: "",
       port: 587,
       user: "",
       password: "",
-      fromEmail: row.fromEmail?.trim() || "",
+      fromEmail,
       fromName: row.fromName,
     };
   }
