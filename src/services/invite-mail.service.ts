@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 
 import {
   outboundFromAddress,
@@ -15,6 +15,42 @@ type MailRow = {
   mailPassword: string | null;
   fromEmail: string | null;
   fromName: string | null;
+};
+
+const mailLoginSelect = {
+  mailProvider: true,
+  mailHost: true,
+  mailPort: true,
+  mailUser: true,
+  mailPassword: true,
+  fromEmail: true,
+  fromName: true,
+} satisfies Prisma.CampaignSelect;
+
+/** Relations needed to fall back from a campaign to its main or a same-site hidden campaign. */
+export const inviteMailFallbackSelect = {
+  mainCampaign: { select: mailLoginSelect },
+  linkedBy: {
+    where: { visibleToPromoters: false },
+    select: {
+      ...mailLoginSelect,
+      websiteUrl: true,
+    },
+    orderBy: { updatedAt: "desc" as const },
+  },
+} satisfies Prisma.CampaignSelect;
+
+/** Mail columns plus fallbacks. Spread onto a campaign select that already has websiteUrl. */
+export const inviteMailCampaignSelect = {
+  websiteUrl: true,
+  ...mailLoginSelect,
+  ...inviteMailFallbackSelect,
+} satisfies Prisma.CampaignSelect;
+
+type InviteMailSource = MailRow & {
+  websiteUrl: string;
+  mainCampaign: MailRow | null;
+  linkedBy: Array<MailRow & { websiteUrl: string }>;
 };
 
 /**
@@ -49,46 +85,7 @@ export const usableMail = (row: MailRow | null): CompanyMailLogin | null => {
 };
 
 /** Own login, then the explicit main, then the newest same-site hidden campaign with a usable mailbox. */
-export const resolveInviteMail = async (campaignId: string): Promise<CompanyMailLogin | null> => {
-  const campaign = await prisma.campaign.findUnique({
-    where: { id: campaignId },
-    select: {
-      mailProvider: true,
-      mailHost: true,
-      mailPort: true,
-      mailUser: true,
-      mailPassword: true,
-      fromEmail: true,
-      fromName: true,
-      websiteUrl: true,
-      mainCampaign: {
-        select: {
-          mailProvider: true,
-          mailHost: true,
-          mailPort: true,
-          mailUser: true,
-          mailPassword: true,
-          fromEmail: true,
-          fromName: true,
-        },
-      },
-      linkedBy: {
-        where: { visibleToPromoters: false },
-        select: {
-          mailProvider: true,
-          mailHost: true,
-          mailPort: true,
-          mailUser: true,
-          mailPassword: true,
-          fromEmail: true,
-          fromName: true,
-          websiteUrl: true,
-        },
-        orderBy: { updatedAt: "desc" },
-      },
-    },
-  });
-  if (!campaign) return null;
+export const pickInviteMail = (campaign: InviteMailSource): CompanyMailLogin | null => {
   const own = usableMail(campaign);
   if (own) return own;
   const fromMain = usableMail(campaign.mainCampaign);
@@ -99,6 +96,15 @@ export const resolveInviteMail = async (campaignId: string): Promise<CompanyMail
     if (mail) return mail;
   }
   return null;
+};
+
+export const resolveInviteMail = async (campaignId: string): Promise<CompanyMailLogin | null> => {
+  const campaign = await prisma.campaign.findUnique({
+    where: { id: campaignId },
+    select: inviteMailCampaignSelect,
+  });
+  if (!campaign) return null;
+  return pickInviteMail(campaign);
 };
 
 /** From address the invite will actually use, or null when nothing can send. */

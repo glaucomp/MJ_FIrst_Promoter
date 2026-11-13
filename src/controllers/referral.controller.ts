@@ -6,7 +6,11 @@ import { timingSafeEqual } from "node:crypto";
 import { stepEmitter } from "../lib/step-emitter";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { emailService, outboundFromAddress } from "../services/email.service";
-import { resolveInviteMail } from "../services/invite-mail.service";
+import {
+  inviteMailCampaignSelect,
+  inviteMailFallbackSelect,
+  pickInviteMail,
+} from "../services/invite-mail.service";
 import { promotePreUserToUser, resolveOwnership } from "../services/pre-user-promote.service";
 import {
   dedupeReferralsByPromoter,
@@ -560,9 +564,10 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
     const { campaignId, email } = req.body;
     const user = req.user!;
 
-    // Verify campaign exists
+    // Mail relations come along so invite sending does not load this campaign again.
     const campaign = await prisma.campaign.findUnique({
       where: { id: campaignId },
+      include: inviteMailFallbackSelect,
     });
 
     if (!campaign) {
@@ -905,7 +910,7 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
       inviter.email;
 
     let emailSent = false;
-    const mail = await resolveInviteMail(referral.campaign.id);
+    const mail = pickInviteMail(campaign);
     if (mail) {
       try {
         emailSent = await emailService.sendReferralInviteEmail({
@@ -948,8 +953,8 @@ export const resendReferralInvite = async (req: AuthRequest, res: Response) => {
           select: {
             id: true,
             name: true,
-            websiteUrl: true,
             defaultReferralUrl: true,
+            ...inviteMailCampaignSelect,
           },
         },
         referrer: {
@@ -1064,7 +1069,7 @@ export const resendReferralInvite = async (req: AuthRequest, res: Response) => {
       referral.referrer.email;
 
     let emailSent = false;
-    const mail = await resolveInviteMail(referral.campaign.id);
+    const mail = pickInviteMail(referral.campaign);
     if (mail) {
       try {
         emailSent = await emailService.sendReferralInviteEmail({
