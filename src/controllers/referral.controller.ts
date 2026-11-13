@@ -5,7 +5,8 @@ import { nanoid } from "nanoid";
 import { timingSafeEqual } from "node:crypto";
 import { stepEmitter } from "../lib/step-emitter";
 import { AuthRequest } from "../middleware/auth.middleware";
-import { emailService, type CompanyMailLogin } from "../services/email.service";
+import { emailService, outboundFromAddress } from "../services/email.service";
+import { resolveInviteMail } from "../services/invite-mail.service";
 import { promotePreUserToUser, resolveOwnership } from "../services/pre-user-promote.service";
 import {
   dedupeReferralsByPromoter,
@@ -549,96 +550,6 @@ const buildInviteUrl = (
   return urlObj.toString();
 };
 
-const usableMail = (row: {
-  mailProvider: string | null;
-  mailHost: string | null;
-  mailPort: number | null;
-  mailUser: string | null;
-  mailPassword: string | null;
-  fromEmail: string | null;
-  fromName: string | null;
-} | null): CompanyMailLogin | null => {
-  if (row?.mailProvider === "aws") {
-    const fromEmail = row.fromEmail?.trim() ?? "";
-    if (!fromEmail) return null;
-    return {
-      provider: "aws",
-      host: "",
-      port: 587,
-      user: "",
-      password: "",
-      fromEmail,
-      fromName: row.fromName,
-    };
-  }
-  if (!row?.mailHost?.trim() || !row.mailUser?.trim() || !row.mailPassword || !row.fromEmail?.trim()) {
-    return null;
-  }
-  const port = row.mailPort && row.mailPort > 0 ? row.mailPort : 587;
-  return {
-    provider: "smtp",
-    host: row.mailHost.trim(),
-    port,
-    user: row.mailUser.trim(),
-    password: row.mailPassword,
-    fromEmail: row.fromEmail.trim(),
-    fromName: row.fromName,
-  };
-};
-
-/** Own login, then the explicit main, then the newest same-site hidden campaign with a usable mailbox. */
-const resolveInviteMail = async (campaignId: string): Promise<CompanyMailLogin | null> => {
-  const campaign = await prisma.campaign.findUnique({
-    where: { id: campaignId },
-    select: {
-      mailProvider: true,
-      mailHost: true,
-      mailPort: true,
-      mailUser: true,
-      mailPassword: true,
-      fromEmail: true,
-      fromName: true,
-      websiteUrl: true,
-      mainCampaign: {
-        select: {
-          mailProvider: true,
-          mailHost: true,
-          mailPort: true,
-          mailUser: true,
-          mailPassword: true,
-          fromEmail: true,
-          fromName: true,
-        },
-      },
-      linkedBy: {
-        where: { visibleToPromoters: false },
-        select: {
-          mailProvider: true,
-          mailHost: true,
-          mailPort: true,
-          mailUser: true,
-          mailPassword: true,
-          fromEmail: true,
-          fromName: true,
-          websiteUrl: true,
-        },
-        orderBy: { updatedAt: "desc" },
-      },
-    },
-  });
-  if (!campaign) return null;
-  const own = usableMail(campaign);
-  if (own) return own;
-  const fromMain = usableMail(campaign.mainCampaign);
-  if (fromMain) return fromMain;
-  for (const row of campaign.linkedBy) {
-    if (row.websiteUrl !== campaign.websiteUrl) continue;
-    const mail = usableMail(row);
-    if (mail) return mail;
-  }
-  return null;
-};
-
 export const createReferralInvite = async (req: AuthRequest, res: Response) => {
   try {
     const errors = validationResult(req);
@@ -1015,7 +926,8 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
       inviteUrl,
       inviteCode,
       emailSent,
-      fromEmail: mail?.fromEmail ?? null,
+      mailConfigured: Boolean(mail),
+      fromEmail: mail ? outboundFromAddress(mail) : null,
       message: "Referral invite created successfully",
     });
   } catch (error) {
@@ -1170,14 +1082,17 @@ export const resendReferralInvite = async (req: AuthRequest, res: Response) => {
 
     return res.json({
       emailSent,
-      fromEmail: mail?.fromEmail ?? null,
+      mailConfigured: Boolean(mail),
+      fromEmail: mail ? outboundFromAddress(mail) : null,
       inviteUrl,
       inviteeEmail,
       expiresAt: expiresAt.toISOString(),
       resendCount: nextMetadata.resendCount,
       message: emailSent
         ? "Invite email resent"
-        : "Invite updated but email delivery failed",
+        : mail
+          ? "Invite updated but email delivery failed"
+          : "Invite updated but no email was sent because this campaign has no mail login",
     });
   } catch (error) {
     console.error("Resend referral invite error:", error);

@@ -62,6 +62,15 @@ export interface CompanyMailLogin {
   fromName?: string | null;
 }
 
+/** Address recipients see. AWS with no From address uses the app SES sender. */
+export const outboundFromAddress = (
+  mail: Pick<CompanyMailLogin, "provider" | "fromEmail">,
+): string => {
+  const from = mail.fromEmail.trim();
+  if (mail.provider === "aws") return from || SES_SENDER;
+  return from;
+};
+
 interface ReferralInviteEmailData {
   inviteeEmail: string;
   inviterName: string;
@@ -391,9 +400,10 @@ This invite link is single-use. If you weren't expecting this email, you can saf
     bodyText: string,
   ): Promise<boolean> {
     if (mail.provider === "aws") {
-      const source = mail.fromEmail
-        ? formatMailbox(mail.fromEmail, mail.fromName)
-        : SES_SENDER;
+      const from = outboundFromAddress(mail);
+      const source = mail.fromEmail.trim()
+        ? formatMailbox(from, mail.fromName)
+        : from;
       return this.sendEmail(toEmail, subject, bodyHtml, bodyText, source);
     }
 
