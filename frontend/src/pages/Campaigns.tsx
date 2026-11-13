@@ -31,6 +31,29 @@ function websiteLabel(url: string): string {
   return parts[domainIndex] ?? host;
 }
 
+function siteHost(url: string): string {
+  const trimmed = url.trim();
+  if (!trimmed) return "";
+  try {
+    const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)
+      ? trimmed
+      : `https://${trimmed}`;
+    return new URL(withScheme).hostname.replace(/^www\./i, "").toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+/** From domain may be the website host, or a parent/subdomain of it. */
+function mailDomainMatches(websiteUrl: string, fromEmail: string | null | undefined): boolean {
+  const email = fromEmail?.trim() ?? "";
+  if (!email) return true;
+  const host = siteHost(websiteUrl);
+  const domain = email.split("@")[1]?.trim().toLowerCase() ?? "";
+  if (!host || !domain) return false;
+  return host === domain || host.endsWith(`.${domain}`) || domain.endsWith(`.${host}`);
+}
+
 const EMPTY_FORM: CampaignInput = {
   name: "",
   description: "",
@@ -45,6 +68,13 @@ const EMPTY_FORM: CampaignInput = {
   maxInvitesPerMonth: null,
   linkedCampaignId: null,
   mainCampaignId: null,
+  mailProvider: "smtp",
+  mailHost: "",
+  mailPort: 587,
+  mailUser: "",
+  mailPassword: "",
+  fromEmail: "",
+  fromName: "",
 };
 
 export const Campaigns = () => {
@@ -116,6 +146,13 @@ export const Campaigns = () => {
       maxInvitesPerMonth: c.maxInvitesPerMonth,
       linkedCampaignId: c.linkedCampaignId ?? null,
       mainCampaignId: main?.id ?? null,
+      mailProvider: c.mailProvider === "aws" ? "aws" : "smtp",
+      mailHost: c.mailHost ?? "",
+      mailPort: c.mailPort ?? 587,
+      mailUser: c.mailUser ?? "",
+      mailPassword: "",
+      fromEmail: main?.fromEmail ?? c.fromEmail ?? "",
+      fromName: main?.fromName ?? c.fromName ?? "",
     });
     setFormError("");
     setIsModalOpen(true);
@@ -328,6 +365,35 @@ export const Campaigns = () => {
                       {websiteLabel(c.websiteUrl)}
                     </span>
 
+                    {c.mailProvider === "aws" && (
+                      <span
+                        title="Invites send through the MJ Promoter AWS account"
+                        className="inline-flex max-w-full items-center rounded-full border border-tm-primary-color09 bg-tm-primary-color12 px-3 py-1 text-xs font-bold text-tm-primary-color02"
+                      >
+                        AWS
+                      </span>
+                    )}
+
+                    {c.mailProvider === "aws" && !c.fromEmail ? null : c.fromEmail && mailDomainMatches(c.websiteUrl, c.fromEmail) ? (
+                      <span
+                        title={`Invites send from ${c.fromEmail}`}
+                        className="inline-flex max-w-full items-center rounded-full border border-tm-primary-color09 bg-tm-primary-color12 px-3 py-1 text-xs font-bold text-tm-primary-color02 break-all"
+                      >
+                        {c.fromEmail}
+                      </span>
+                    ) : (
+                      <span
+                        title={
+                          c.fromEmail
+                            ? "This From address is a different domain from the campaign website, so invites can land in junk."
+                            : "Add a mail login on the hidden company campaign before invites can be emailed."
+                        }
+                        className="inline-flex max-w-full items-center rounded-full border border-tm-warning-color09 bg-tm-warning-color12 px-3 py-1 text-xs font-bold text-tm-warning-color02 break-all"
+                      >
+                        {c.fromEmail ? `${c.fromEmail} domain mismatch` : "No mailbox"}
+                      </span>
+                    )}
+
                     {/* Link status — only on hidden AM campaigns. Surfaces
                         misconfigured campaigns directly on the list. */}
                     {!c.visibleToPromoters && c.linkedCampaign && (
@@ -526,6 +592,9 @@ export const Campaigns = () => {
                         mainCampaignId: id,
                         websiteUrl: main?.websiteUrl ?? "",
                         defaultReferralUrl: main?.defaultReferralUrl ?? "",
+                        mailProvider: main?.mailProvider === "aws" ? "aws" : "smtp",
+                        fromEmail: main?.fromEmail ?? "",
+                        fromName: main?.fromName ?? "",
                       }));
                     }}
                     className={inputCls}
@@ -542,7 +611,7 @@ export const Campaigns = () => {
                   </select>
                   <p className="text-tm-text-color10 text-xs mt-1.5 leading-[1.4]">
                     Choose a hidden campaign. This public campaign uses that
-                    campaign's website and referral URL.
+                    campaign's website, referral URL, and mail login.
                   </p>
                   {selectedMainAlreadyLinkedElsewhere && (
                     <p className="text-tm-danger-color05 text-xs mt-1.5 leading-[1.4]">
@@ -595,6 +664,182 @@ export const Campaigns = () => {
                   className={`${inputCls}${inheritsWebsite ? " opacity-70" : ""}`}
                 />
               </Field>
+
+              {inheritsWebsite ? (
+                <Field label="From email">
+                  <input
+                    type="email"
+                    readOnly
+                    value={selectedMain?.fromEmail || form.fromEmail || ""}
+                    placeholder="Comes from the main campaign"
+                    className={`${inputCls} opacity-70`}
+                  />
+                  <p className="text-tm-text-color10 text-xs mt-1.5 leading-[1.4]">
+                    {selectedMain?.mailProvider === "aws"
+                      ? "Invites send through AWS"
+                      : "Invites send from the main campaign's mailbox"}
+                    {selectedMain?.fromName ? ` as ${selectedMain.fromName}` : ""}.
+                  </p>
+                  {(selectedMain?.fromEmail || form.fromEmail) &&
+                    !mailDomainMatches(
+                      form.websiteUrl,
+                      selectedMain?.fromEmail || form.fromEmail,
+                    ) && (
+                      <p className="text-tm-warning-color02 text-xs mt-1.5 leading-[1.4]">
+                        This From domain does not match the website, so invites
+                        can land in junk. Change the mail login on the hidden
+                        campaign.
+                      </p>
+                    )}
+                </Field>
+              ) : (
+                <>
+                  <Field label="Email service">
+                    <select
+                      value={form.mailProvider === "aws" ? "aws" : "smtp"}
+                      onChange={(e) =>
+                        setForm((f) => ({
+                          ...f,
+                          mailProvider: e.target.value === "aws" ? "aws" : "smtp",
+                        }))
+                      }
+                      className={inputCls}
+                    >
+                      <option value="aws">AWS email service</option>
+                      <option value="smtp">Own mailbox</option>
+                    </select>
+                  </Field>
+                  {form.mailProvider === "aws" ? (
+                    <>
+                      <div className="flex gap-3 flex-col lg:flex-row">
+                        <Field label="From email" className="flex-1">
+                          <input
+                            type="email"
+                            value={form.fromEmail ?? ""}
+                            onChange={(e) =>
+                              setForm((f) => ({ ...f, fromEmail: e.target.value }))
+                            }
+                            placeholder="teaseme@teaseme.live"
+                            className={inputCls}
+                          />
+                        </Field>
+                        <Field label="From name" className="flex-1">
+                          <input
+                            type="text"
+                            value={form.fromName ?? ""}
+                            onChange={(e) =>
+                              setForm((f) => ({ ...f, fromName: e.target.value }))
+                            }
+                            placeholder="TeaseMe"
+                            className={inputCls}
+                          />
+                        </Field>
+                      </div>
+                      <p className="text-tm-text-color10 text-xs leading-[1.4] -mt-2">
+                        Invites use the MJ Promoter AWS account. The From address
+                        must already be allowed in that account.
+                      </p>
+                    </>
+                  ) : (
+                  <>
+                  <div className="flex gap-3 flex-col lg:flex-row">
+                    <Field label="Mail host" className="flex-1">
+                      <input
+                        type="text"
+                        value={form.mailHost ?? ""}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, mailHost: e.target.value }))
+                        }
+                        placeholder="smtp.example.com"
+                        autoComplete="off"
+                        className={inputCls}
+                      />
+                    </Field>
+                    <Field label="Port" className="w-full lg:w-28">
+                      <input
+                        type="number"
+                        min={1}
+                        max={65535}
+                        value={form.mailPort ?? 587}
+                        onChange={(e) =>
+                          setForm((f) => ({
+                            ...f,
+                            mailPort: parseInt(e.target.value, 10) || 587,
+                          }))
+                        }
+                        className={inputCls}
+                      />
+                    </Field>
+                  </div>
+                  <div className="flex gap-3 flex-col lg:flex-row">
+                    <Field label="Mail username" className="flex-1">
+                      <input
+                        type="text"
+                        value={form.mailUser ?? ""}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, mailUser: e.target.value }))
+                        }
+                        placeholder="invites@example.com"
+                        autoComplete="off"
+                        className={inputCls}
+                      />
+                    </Field>
+                    <Field label="Mail password" className="flex-1">
+                      <input
+                        type="password"
+                        value={form.mailPassword ?? ""}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, mailPassword: e.target.value }))
+                        }
+                        placeholder={
+                          editingCampaign?.mailPasswordSet
+                            ? "Leave blank to keep the saved password"
+                            : "Mailbox password"
+                        }
+                        autoComplete="new-password"
+                        className={inputCls}
+                      />
+                    </Field>
+                  </div>
+                  <div className="flex gap-3 flex-col lg:flex-row">
+                    <Field label="From email" className="flex-1">
+                      <input
+                        type="email"
+                        value={form.fromEmail ?? ""}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, fromEmail: e.target.value }))
+                        }
+                        placeholder="invites@example.com"
+                        className={inputCls}
+                      />
+                    </Field>
+                    <Field label="From name" className="flex-1">
+                      <input
+                        type="text"
+                        value={form.fromName ?? ""}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, fromName: e.target.value }))
+                        }
+                        placeholder="Sugar Scratchie"
+                        className={inputCls}
+                      />
+                    </Field>
+                  </div>
+                  {form.fromEmail?.trim() &&
+                    !mailDomainMatches(form.websiteUrl, form.fromEmail) && (
+                      <p className="text-tm-warning-color02 text-xs leading-[1.4] -mt-2">
+                        The From domain does not match this website. Invites from
+                        a different domain can land in junk. Saving is still allowed.
+                      </p>
+                    )}
+                  <p className="text-tm-text-color10 text-xs leading-[1.4] -mt-2">
+                    Port 465 uses SSL. Any other port uses STARTTLS. The mailbox
+                    host must already allow this domain to send (SPF and DKIM).
+                  </p>
+                  </>
+                  )}
+                </>
+              )}
 
               {/* Rates row */}
               <div className="flex gap-3 flex-col lg:flex-row">

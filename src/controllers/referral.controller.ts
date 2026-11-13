@@ -5,7 +5,12 @@ import { nanoid } from "nanoid";
 import { timingSafeEqual } from "node:crypto";
 import { stepEmitter } from "../lib/step-emitter";
 import { AuthRequest } from "../middleware/auth.middleware";
-import { emailService } from "../services/email.service";
+import { emailService, outboundFromAddress } from "../services/email.service";
+import {
+  inviteMailCampaignSelect,
+  inviteMailFallbackSelect,
+  pickInviteMail,
+} from "../services/invite-mail.service";
 import { promotePreUserToUser, resolveOwnership } from "../services/pre-user-promote.service";
 import {
   dedupeReferralsByPromoter,
@@ -559,9 +564,10 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
     const { campaignId, email } = req.body;
     const user = req.user!;
 
-    // Verify campaign exists
+    // Mail relations come along so invite sending does not load this campaign again.
     const campaign = await prisma.campaign.findUnique({
       where: { id: campaignId },
+      include: inviteMailFallbackSelect,
     });
 
     if (!campaign) {
@@ -904,16 +910,20 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
       inviter.email;
 
     let emailSent = false;
-    try {
-      emailSent = await emailService.sendReferralInviteEmail({
-        inviteeEmail: email as string,
-        inviterName,
-        campaignName: referral.campaign.name,
-        acceptUrl: inviteUrl,
-      });
-    } catch (emailError) {
-      console.error("Referral invite email failed:", emailError);
-      emailSent = false;
+    const mail = pickInviteMail(campaign);
+    if (mail) {
+      try {
+        emailSent = await emailService.sendReferralInviteEmail({
+          inviteeEmail: email as string,
+          inviterName,
+          campaignName: referral.campaign.name,
+          acceptUrl: inviteUrl,
+          mail,
+        });
+      } catch (emailError) {
+        console.error("Referral invite email failed:", emailError);
+        emailSent = false;
+      }
     }
 
     res.status(201).json({
@@ -921,6 +931,8 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
       inviteUrl,
       inviteCode,
       emailSent,
+      mailConfigured: Boolean(mail),
+      fromEmail: mail ? outboundFromAddress(mail) : null,
       message: "Referral invite created successfully",
     });
   } catch (error) {
@@ -941,8 +953,8 @@ export const resendReferralInvite = async (req: AuthRequest, res: Response) => {
           select: {
             id: true,
             name: true,
-            websiteUrl: true,
             defaultReferralUrl: true,
+            ...inviteMailCampaignSelect,
           },
         },
         referrer: {
@@ -1057,27 +1069,35 @@ export const resendReferralInvite = async (req: AuthRequest, res: Response) => {
       referral.referrer.email;
 
     let emailSent = false;
-    try {
-      emailSent = await emailService.sendReferralInviteEmail({
-        inviteeEmail,
-        inviterName,
-        campaignName: referral.campaign.name,
-        acceptUrl: inviteUrl,
-      });
-    } catch (emailError) {
-      console.error("Referral invite resend failed:", emailError);
-      emailSent = false;
+    const mail = pickInviteMail(referral.campaign);
+    if (mail) {
+      try {
+        emailSent = await emailService.sendReferralInviteEmail({
+          inviteeEmail,
+          inviterName,
+          campaignName: referral.campaign.name,
+          acceptUrl: inviteUrl,
+          mail,
+        });
+      } catch (emailError) {
+        console.error("Referral invite resend failed:", emailError);
+        emailSent = false;
+      }
     }
 
     return res.json({
       emailSent,
+      mailConfigured: Boolean(mail),
+      fromEmail: mail ? outboundFromAddress(mail) : null,
       inviteUrl,
       inviteeEmail,
       expiresAt: expiresAt.toISOString(),
       resendCount: nextMetadata.resendCount,
       message: emailSent
         ? "Invite email resent"
-        : "Invite updated but email delivery failed",
+        : mail
+          ? "Invite updated but email delivery failed"
+          : "Invite updated but no email was sent because this campaign has no mail login",
     });
   } catch (error) {
     console.error("Resend referral invite error:", error);

@@ -201,7 +201,7 @@ export interface Campaign {
     websiteUrl: string;
     defaultReferralUrl: string | null;
   }[];
-  /** Hidden campaign this public campaign copies its website from. */
+  /** Hidden campaign this public campaign copies its website and mail login from. */
   mainCampaignId?: string | null;
   mainCampaign?: {
     id: string;
@@ -209,7 +209,21 @@ export interface Campaign {
     websiteUrl: string;
     defaultReferralUrl: string | null;
     visibleToPromoters: boolean;
+    fromEmail?: string | null;
+    fromName?: string | null;
+    mailProvider?: "aws" | "smtp" | null;
   } | null;
+  /** "aws" sends invites through this app's Amazon account. "smtp" uses the company mailbox. */
+  mailProvider?: "aws" | "smtp" | null;
+  mailHost?: string | null;
+  mailPort?: number | null;
+  mailUser?: string | null;
+  /** True when a mailbox password is stored. The password itself is never returned. */
+  mailPasswordSet?: boolean;
+  fromEmail?: string | null;
+  fromName?: string | null;
+  /** Address invite email will actually use, after AWS and linked-campaign fallbacks. Null when nothing can send. */
+  inviteFromEmail?: string | null;
   createdAt: string;
   _count?: {
     referrals: number;
@@ -236,6 +250,14 @@ export interface CampaignInput {
   linkedCampaignId?: string | null;
   /** Hidden campaign whose website a public campaign must use. */
   mainCampaignId?: string | null;
+  mailProvider?: "aws" | "smtp" | null;
+  mailHost?: string | null;
+  mailPort?: number | null;
+  mailUser?: string | null;
+  /** Blank on edit keeps the saved password. */
+  mailPassword?: string | null;
+  fromEmail?: string | null;
+  fromName?: string | null;
 }
 
 export interface ReferralCommission {
@@ -575,6 +597,8 @@ export const modelsApi = {
     inviteCode: string;
     referral: Referral;
     emailSent?: boolean;
+    mailConfigured?: boolean;
+    fromEmail?: string | null;
   }> {
     const response = await apiFetch(`${API_URL}/referrals/create`, {
       method: 'POST',
@@ -586,6 +610,8 @@ export const modelsApi = {
 
   async resendReferralInvite(referralId: string): Promise<{
     emailSent: boolean;
+    mailConfigured?: boolean;
+    fromEmail?: string | null;
     inviteUrl: string;
     inviteeEmail: string;
     expiresAt: string;

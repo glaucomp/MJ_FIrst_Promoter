@@ -17,7 +17,9 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
   const [generatedUrl, setGeneratedUrl] = useState('');
   const [generatedCode, setGeneratedCode] = useState('');
   const [emailSent, setEmailSent] = useState<boolean | null>(null);
+  const [mailConfigured, setMailConfigured] = useState(false);
   const [sentToEmail, setSentToEmail] = useState('');
+  const [sentFromEmail, setSentFromEmail] = useState('');
   const [quota, setQuota] = useState<{ used: number; remaining: number; unlimited: boolean } | null>(null);
 
   // Lightweight client-side check only. Server does strict validation via
@@ -87,7 +89,9 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
         setGeneratedUrl(result.inviteUrl);
         setGeneratedCode(result.inviteCode);
         setEmailSent(result.emailSent ?? null);
+        setMailConfigured(Boolean(result.mailConfigured));
         setSentToEmail(email.trim());
+        setSentFromEmail(result.fromEmail ?? '');
         if (quota && !quota.unlimited) {
           setQuota({ ...quota, used: quota.used + 1, remaining: quota.remaining - 1 });
         }
@@ -117,7 +121,9 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
     setGeneratedCode('');
     setEmail('');
     setEmailSent(null);
+    setMailConfigured(false);
     setSentToEmail('');
+    setSentFromEmail('');
     setError('');
     onClose();
   };
@@ -129,6 +135,7 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
   const title = type === 'referral'
     ? 'Invite New Promoter'
     : 'Create Tracking Link';
+  const selectedCampaign = campaigns.find((c) => c.id === selectedCampaignId);
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-[20px]">
@@ -153,7 +160,7 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
                 <select
                   value={selectedCampaignId}
                   onChange={(e) => setSelectedCampaignId(e.target.value)}
-                  disabled={campaigns.length === 0 || userRole === 'account_manager'}
+                  disabled={campaigns.length < 2}
                   className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px] text-base text-white focus:outline-none focus:border-tm-primary-color04 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {campaigns.map((campaign) => (
@@ -162,6 +169,13 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
                     </option>
                   ))}
                 </select>
+                {type === 'referral' && selectedCampaign && (
+                  <p className="text-tm-text-color08 text-sm leading-[1.4]">
+                    {selectedCampaign.inviteFromEmail
+                      ? <>Invites send from <span className="text-white font-medium">{selectedCampaign.inviteFromEmail}</span>.</>
+                      : 'This campaign has no mail login yet, so the link will be created without an email.'}
+                  </p>
+                )}
                 {campaigns.length === 0 && (
                   <p className="text-[#ffcc33] text-sm leading-[1.4] mt-[4px]">
                     {userRole === 'account_manager'
@@ -226,6 +240,7 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
                 <div className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-sm px-[16px] py-[12px]">
                   <p className="text-tm-text-color08 text-sm leading-[1.4]">
                     Invite email sent to <span className="text-white font-medium">{sentToEmail}</span>
+                    {sentFromEmail ? <> from <span className="text-white font-medium">{sentFromEmail}</span></> : null}
                   </p>
                 </div>
               )}
@@ -233,7 +248,9 @@ export const InviteModal = ({ isOpen, onClose, type, userRole }: InviteModalProp
               {type === 'referral' && emailSent === false && (
                 <div className="bg-[#332200] border border-[#cc9900] rounded-sm px-[16px] py-[12px]">
                   <p className="text-[#ffcc33] text-sm leading-[1.4]">
-                    Email delivery failed &mdash; share the link manually with <span className="font-medium">{sentToEmail}</span>.
+                    {mailConfigured
+                      ? <>Email delivery failed. Share the link manually with <span className="font-medium">{sentToEmail}</span>.</>
+                      : <>This campaign has no mail login, so no email was sent. Share the link manually with <span className="font-medium">{sentToEmail}</span>.</>}
                   </p>
                 </div>
               )}

@@ -1,7 +1,10 @@
+import { UserRole } from "@prisma/client";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
+import { stripMailSecrets } from "./lib/strip-mail-secrets";
+import { AuthRequest } from "./middleware/auth.middleware";
 import { getAppVersion } from "./lib/version";
 import apiV1Routes from "./routes/api.v1.routes";
 import apiV2Routes from "./routes/api.v2.routes";
@@ -73,6 +76,16 @@ app.use(cors({
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use((req, res, next) => {
+  const sendJson = res.json.bind(res);
+  res.json = (body) =>
+    sendJson(
+      stripMailSecrets(body, new WeakSet(), {
+        keepMailboxLogin: (req as AuthRequest).user?.role === UserRole.ADMIN,
+      }),
+    );
+  next();
+});
 
 // Health check
 app.get("/health", (req, res) => {

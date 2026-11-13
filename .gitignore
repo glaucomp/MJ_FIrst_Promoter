@@ -14,6 +14,7 @@ frontend/node_modules/
 dist/
 frontend/dist/
 frontend/build/
+*.tsbuildinfo
 
 # Logs
 logs/
