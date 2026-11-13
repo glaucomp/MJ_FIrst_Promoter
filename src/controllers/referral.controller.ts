@@ -584,7 +584,7 @@ const usableMail = (row: {
   };
 };
 
-/** Own login, then the hidden main, then a hidden campaign with the same website. */
+/** Own login, then the explicit main, then the newest same-site hidden campaign with a usable mailbox. */
 const resolveInviteMail = async (campaignId: string): Promise<CompanyMailLogin | null> => {
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },
@@ -629,8 +629,12 @@ const resolveInviteMail = async (campaignId: string): Promise<CompanyMailLogin |
   if (own) return own;
   const fromMain = usableMail(campaign.mainCampaign);
   if (fromMain) return fromMain;
-  const sameSite = campaign.linkedBy.find((row) => row.websiteUrl === campaign.websiteUrl);
-  return usableMail(sameSite ?? null);
+  for (const row of campaign.linkedBy) {
+    if (row.websiteUrl !== campaign.websiteUrl) continue;
+    const mail = usableMail(row);
+    if (mail) return mail;
+  }
+  return null;
 };
 
 export const createReferralInvite = async (req: AuthRequest, res: Response) => {
