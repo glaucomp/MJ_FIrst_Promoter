@@ -5,7 +5,7 @@ import { nanoid } from "nanoid";
 import { timingSafeEqual } from "node:crypto";
 import { stepEmitter } from "../lib/step-emitter";
 import { AuthRequest } from "../middleware/auth.middleware";
-import { emailService } from "../services/email.service";
+import { emailService, type CompanyMailLogin } from "../services/email.service";
 import { promotePreUserToUser, resolveOwnership } from "../services/pre-user-promote.service";
 import {
   dedupeReferralsByPromoter,
@@ -549,6 +549,90 @@ const buildInviteUrl = (
   return urlObj.toString();
 };
 
+const usableMail = (row: {
+  mailProvider: string | null;
+  mailHost: string | null;
+  mailPort: number | null;
+  mailUser: string | null;
+  mailPassword: string | null;
+  fromEmail: string | null;
+  fromName: string | null;
+} | null): CompanyMailLogin | null => {
+  if (row?.mailProvider === "aws") {
+    return {
+      provider: "aws",
+      host: "",
+      port: 587,
+      user: "",
+      password: "",
+      fromEmail: row.fromEmail?.trim() || "",
+      fromName: row.fromName,
+    };
+  }
+  if (!row?.mailHost?.trim() || !row.mailUser?.trim() || !row.mailPassword || !row.fromEmail?.trim()) {
+    return null;
+  }
+  const port = row.mailPort && row.mailPort > 0 ? row.mailPort : 587;
+  return {
+    provider: "smtp",
+    host: row.mailHost.trim(),
+    port,
+    user: row.mailUser.trim(),
+    password: row.mailPassword,
+    fromEmail: row.fromEmail.trim(),
+    fromName: row.fromName,
+  };
+};
+
+/** Own login, then the hidden main, then a hidden campaign with the same website. */
+const resolveInviteMail = async (campaignId: string): Promise<CompanyMailLogin | null> => {
+  const campaign = await prisma.campaign.findUnique({
+    where: { id: campaignId },
+    select: {
+      mailProvider: true,
+      mailHost: true,
+      mailPort: true,
+      mailUser: true,
+      mailPassword: true,
+      fromEmail: true,
+      fromName: true,
+      websiteUrl: true,
+      mainCampaign: {
+        select: {
+          mailProvider: true,
+          mailHost: true,
+          mailPort: true,
+          mailUser: true,
+          mailPassword: true,
+          fromEmail: true,
+          fromName: true,
+        },
+      },
+      linkedBy: {
+        where: { visibleToPromoters: false },
+        select: {
+          mailProvider: true,
+          mailHost: true,
+          mailPort: true,
+          mailUser: true,
+          mailPassword: true,
+          fromEmail: true,
+          fromName: true,
+          websiteUrl: true,
+        },
+        orderBy: { updatedAt: "desc" },
+      },
+    },
+  });
+  if (!campaign) return null;
+  const own = usableMail(campaign);
+  if (own) return own;
+  const fromMain = usableMail(campaign.mainCampaign);
+  if (fromMain) return fromMain;
+  const sameSite = campaign.linkedBy.find((row) => row.websiteUrl === campaign.websiteUrl);
+  return usableMail(sameSite ?? null);
+};
+
 export const createReferralInvite = async (req: AuthRequest, res: Response) => {
   try {
     const errors = validationResult(req);
@@ -904,16 +988,20 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
       inviter.email;
 
     let emailSent = false;
-    try {
-      emailSent = await emailService.sendReferralInviteEmail({
-        inviteeEmail: email as string,
-        inviterName,
-        campaignName: referral.campaign.name,
-        acceptUrl: inviteUrl,
-      });
-    } catch (emailError) {
-      console.error("Referral invite email failed:", emailError);
-      emailSent = false;
+    const mail = await resolveInviteMail(referral.campaign.id);
+    if (mail) {
+      try {
+        emailSent = await emailService.sendReferralInviteEmail({
+          inviteeEmail: email as string,
+          inviterName,
+          campaignName: referral.campaign.name,
+          acceptUrl: inviteUrl,
+          mail,
+        });
+      } catch (emailError) {
+        console.error("Referral invite email failed:", emailError);
+        emailSent = false;
+      }
     }
 
     res.status(201).json({
@@ -921,6 +1009,7 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
       inviteUrl,
       inviteCode,
       emailSent,
+      fromEmail: mail?.fromEmail ?? null,
       message: "Referral invite created successfully",
     });
   } catch (error) {
@@ -1057,20 +1146,25 @@ export const resendReferralInvite = async (req: AuthRequest, res: Response) => {
       referral.referrer.email;
 
     let emailSent = false;
-    try {
-      emailSent = await emailService.sendReferralInviteEmail({
-        inviteeEmail,
-        inviterName,
-        campaignName: referral.campaign.name,
-        acceptUrl: inviteUrl,
-      });
-    } catch (emailError) {
-      console.error("Referral invite resend failed:", emailError);
-      emailSent = false;
+    const mail = await resolveInviteMail(referral.campaign.id);
+    if (mail) {
+      try {
+        emailSent = await emailService.sendReferralInviteEmail({
+          inviteeEmail,
+          inviterName,
+          campaignName: referral.campaign.name,
+          acceptUrl: inviteUrl,
+          mail,
+        });
+      } catch (emailError) {
+        console.error("Referral invite resend failed:", emailError);
+        emailSent = false;
+      }
     }
 
     return res.json({
       emailSent,
+      fromEmail: mail?.fromEmail ?? null,
       inviteUrl,
       inviteeEmail,
       expiresAt: expiresAt.toISOString(),

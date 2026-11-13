@@ -32,6 +32,9 @@ const campaignReadInclude = {
       websiteUrl: true,
       defaultReferralUrl: true,
       visibleToPromoters: true,
+      fromEmail: true,
+      fromName: true,
+      mailProvider: true,
     },
   },
   _count: {
@@ -47,6 +50,13 @@ const findHiddenMain = async (mainCampaignId: string) => {
       visibleToPromoters: true,
       websiteUrl: true,
       defaultReferralUrl: true,
+      mailHost: true,
+      mailPort: true,
+      mailUser: true,
+      mailPassword: true,
+      fromEmail: true,
+      fromName: true,
+      mailProvider: true,
     },
   });
   if (!main || main.visibleToPromoters) return null;
@@ -74,6 +84,13 @@ const syncWebsiteFromMain = async (mainId: string) => {
       websiteUrl: true,
       defaultReferralUrl: true,
       visibleToPromoters: true,
+      mailHost: true,
+      mailPort: true,
+      mailUser: true,
+      mailPassword: true,
+      fromEmail: true,
+      fromName: true,
+      mailProvider: true,
     },
   });
   if (!main || main.visibleToPromoters) return;
@@ -82,9 +99,86 @@ const syncWebsiteFromMain = async (mainId: string) => {
     data: {
       websiteUrl: main.websiteUrl,
       defaultReferralUrl: main.defaultReferralUrl,
+      mailProvider: main.mailProvider,
+      mailHost: main.mailHost,
+      mailPort: main.mailPort,
+      mailUser: main.mailUser,
+      mailPassword: main.mailPassword,
+      fromEmail: main.fromEmail,
+      fromName: main.fromName,
     },
   });
 };
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+type MailLoginFields = {
+  mailProvider: "aws" | "smtp";
+  mailHost: string | null;
+  mailPort: number | null;
+  mailUser: string | null;
+  mailPassword?: string | null;
+  fromEmail: string | null;
+  fromName: string | null;
+};
+
+/** Read the mail login from a hidden-campaign save. A blank password keeps the stored one. */
+const readMailLogin = (
+  body: Record<string, unknown>,
+  keepBlankPassword: boolean,
+): { error?: string; mail: MailLoginFields } => {
+  const text = (value: unknown) => {
+    if (typeof value !== "string") return null;
+    const trimmed = value.trim();
+    return trimmed || null;
+  };
+
+  const mailProvider = body.mailProvider === "aws" ? "aws" : "smtp";
+  const mailHost = text(body.mailHost);
+  const mailUser = text(body.mailUser);
+  const fromEmail = text(body.fromEmail);
+  const fromName = text(body.fromName);
+
+  let mailPort = 587;
+  const rawPort = body.mailPort;
+  if (rawPort !== undefined && rawPort !== null && rawPort !== "") {
+    const parsed = Number.parseInt(String(rawPort), 10);
+    if (!Number.isFinite(parsed) || parsed < 1 || parsed > 65535) {
+      return { error: "Mail port must be between 1 and 65535", mail: { mailProvider, mailHost, mailPort: null, mailUser, fromEmail, fromName } };
+    }
+    mailPort = parsed;
+  }
+
+  if (fromEmail && !EMAIL_RE.test(fromEmail)) {
+    return { error: "From email must be a valid email address", mail: { mailProvider, mailHost, mailPort, mailUser, fromEmail, fromName } };
+  }
+  if (mailHost && /\s/.test(mailHost)) {
+    return { error: "Mail host cannot contain spaces", mail: { mailProvider, mailHost, mailPort, mailUser, fromEmail, fromName } };
+  }
+
+  const rawPassword = body.mailPassword;
+  let mailPassword: string | null | undefined;
+  if (typeof rawPassword === "string" && rawPassword.length > 0) {
+    mailPassword = rawPassword;
+  } else if (keepBlankPassword) {
+    mailPassword = undefined;
+  } else {
+    mailPassword = null;
+  }
+
+  return {
+    mail: { mailProvider, mailHost, mailPort, mailUser, mailPassword, fromEmail, fromName },
+  };
+};
+
+const mailTouched = (body: Record<string, unknown>) =>
+  body.mailProvider !== undefined ||
+  body.mailHost !== undefined ||
+  body.mailPort !== undefined ||
+  body.mailUser !== undefined ||
+  body.mailPassword !== undefined ||
+  body.fromEmail !== undefined ||
+  body.fromName !== undefined;
 
 export const createCampaign = async (req: AuthRequest, res: Response) => {
   try {
@@ -116,6 +210,15 @@ export const createCampaign = async (req: AuthRequest, res: Response) => {
     let resolvedWebsite = websiteUrl;
     let resolvedReferral: string | null = defaultReferralUrl || null;
     let main: Awaited<ReturnType<typeof findHiddenMain>> = null;
+    let mail: MailLoginFields = {
+      mailProvider: "smtp",
+      mailHost: null,
+      mailPort: 587,
+      mailUser: null,
+      mailPassword: null,
+      fromEmail: null,
+      fromName: null,
+    };
 
     if (isPublic) {
       if (!mainId) {
@@ -131,6 +234,21 @@ export const createCampaign = async (req: AuthRequest, res: Response) => {
       }
       resolvedWebsite = main.websiteUrl;
       resolvedReferral = main.defaultReferralUrl;
+      mail = {
+        mailProvider: main.mailProvider === "aws" ? "aws" : "smtp",
+        mailHost: main.mailHost,
+        mailPort: main.mailPort,
+        mailUser: main.mailUser,
+        mailPassword: main.mailPassword,
+        fromEmail: main.fromEmail,
+        fromName: main.fromName,
+      };
+    } else {
+      const parsed = readMailLogin(req.body as Record<string, unknown>, false);
+      if (parsed.error) {
+        return res.status(400).json({ error: parsed.error });
+      }
+      mail = parsed.mail;
     }
 
     const campaign = await prisma.$transaction(async (tx) => {
@@ -149,6 +267,13 @@ export const createCampaign = async (req: AuthRequest, res: Response) => {
           maxInvitesPerMonth: maxInvitesPerMonth && parseInt(maxInvitesPerMonth) > 0 ? parseInt(maxInvitesPerMonth) : null,
           linkedCampaignId: isPublic ? null : (linkedCampaignId || null),
           mainCampaignId: isPublic && main ? main.id : null,
+          mailProvider: mail.mailProvider,
+          mailHost: mail.mailHost,
+          mailPort: mail.mailPort,
+          mailUser: mail.mailUser,
+          mailPassword: mail.mailPassword ?? null,
+          fromEmail: mail.fromEmail,
+          fromName: mail.fromName,
           createdById: req.user!.id,
           startDate: startDate ? new Date(startDate) : new Date(),
           endDate: endDate ? new Date(endDate) : null
@@ -469,6 +594,9 @@ export const updateCampaign = async (req: AuthRequest, res: Response) => {
       defaultReferralUrl !== undefined ? defaultReferralUrl || null : undefined;
     const requestedMainId =
       mainCampaignId !== undefined ? mainCampaignId || null : existing.mainCampaignId;
+    const body = req.body as Record<string, unknown>;
+    const mailWasSent = mailTouched(body);
+    let resolvedMail: MailLoginFields | undefined;
 
     if (nextVisible && isDetailsSave) {
       if (!requestedMainId || requestedMainId === id) {
@@ -484,6 +612,21 @@ export const updateCampaign = async (req: AuthRequest, res: Response) => {
       }
       resolvedWebsite = main.websiteUrl;
       resolvedReferral = main.defaultReferralUrl;
+      resolvedMail = {
+        mailProvider: main.mailProvider === "aws" ? "aws" : "smtp",
+        mailHost: main.mailHost,
+        mailPort: main.mailPort,
+        mailUser: main.mailUser,
+        mailPassword: main.mailPassword,
+        fromEmail: main.fromEmail,
+        fromName: main.fromName,
+      };
+    } else if (!nextVisible && mailWasSent) {
+      const parsed = readMailLogin(body, true);
+      if (parsed.error) {
+        return res.status(400).json({ error: parsed.error });
+      }
+      resolvedMail = parsed.mail;
     }
 
     const nextLinkedId =
@@ -514,6 +657,17 @@ export const updateCampaign = async (req: AuthRequest, res: Response) => {
         }),
         ...(isDetailsSave && {
           mainCampaignId: nextVisible && requestedMainId ? requestedMainId : null,
+        }),
+        ...(resolvedMail && {
+          mailProvider: resolvedMail.mailProvider,
+          mailHost: resolvedMail.mailHost,
+          mailPort: resolvedMail.mailPort,
+          mailUser: resolvedMail.mailUser,
+          ...(resolvedMail.mailPassword !== undefined && {
+            mailPassword: resolvedMail.mailPassword,
+          }),
+          fromEmail: resolvedMail.fromEmail,
+          fromName: resolvedMail.fromName,
         }),
         ...(isActive !== undefined && { isActive }),
         ...(endDate !== undefined && { endDate: endDate ? new Date(endDate) : null })
@@ -561,7 +715,7 @@ export const updateCampaign = async (req: AuthRequest, res: Response) => {
 
     // Invite links do not choose the website. Only a hidden campaign that
     // a public campaign already names as its main can refresh that site.
-    if (!nextVisible && isDetailsSave) {
+    if (!nextVisible && (isDetailsSave || mailWasSent)) {
       await syncWebsiteFromMain(id);
     }
 

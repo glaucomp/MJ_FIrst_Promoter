@@ -196,6 +196,16 @@ model Campaign {
   // This is the website source. It is not inferred from linkedBy order.
   mainCampaignId    String?
 
+  // Promoter invites. "aws" uses this app's Amazon SES account.
+  // "smtp" uses the mailbox below. Copied from the hidden company campaign.
+  mailProvider      String   @default("smtp")
+  mailHost          String?
+  mailPort          Int?     @default(587)
+  mailUser          String?
+  mailPassword      String?
+  fromEmail         String?
+  fromName          String?
+
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 

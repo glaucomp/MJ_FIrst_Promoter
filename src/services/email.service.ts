@@ -1,4 +1,5 @@
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
+import nodemailer from "nodemailer";
 
 import { PUBLIC_EMAIL_BUCKET_URL } from "./s3.service";
 
@@ -51,12 +52,32 @@ interface PasswordResetEmailData {
   expiresAt: Date;
 }
 
+export interface CompanyMailLogin {
+  provider: "aws" | "smtp";
+  host: string;
+  port: number;
+  user: string;
+  password: string;
+  fromEmail: string;
+  fromName?: string | null;
+}
+
 interface ReferralInviteEmailData {
   inviteeEmail: string;
   inviterName: string;
   campaignName: string;
   acceptUrl: string;
+  mail: CompanyMailLogin;
 }
+
+/** "Name <email>" when the name is plain ASCII. Otherwise the bare address. */
+const formatMailbox = (email: string, name?: string | null) => {
+  const trimmed = name?.trim() ?? "";
+  if (!trimmed || /[^\x20-\x7E]/.test(trimmed) || /[<>"]/.test(trimmed)) {
+    return email;
+  }
+  return `${trimmed} <${email}>`;
+};
 
 const escapeHtml = (value: string) =>
   value
@@ -331,7 +352,7 @@ This link expires in ${expiryText}. If you didn't request a reset, you can ignor
   async sendReferralInviteEmail(
     data: ReferralInviteEmailData,
   ): Promise<boolean> {
-    const { inviteeEmail, inviterName, campaignName, acceptUrl } = data;
+    const { inviteeEmail, inviterName, campaignName, acceptUrl, mail } = data;
     const safeInviter = inviterName?.trim() || "A promoter";
 
     const subject = `${safeInviter} invited you to join ${campaignName}`;
@@ -353,7 +374,47 @@ ${acceptUrl}
 
 This invite link is single-use. If you weren't expecting this email, you can safely ignore it.`;
 
-    return this.sendEmail(inviteeEmail, subject, bodyHtml, bodyText);
+    return this.sendCompanyMail(mail, inviteeEmail, subject, bodyHtml, bodyText);
+  }
+
+  private async sendCompanyMail(
+    mail: CompanyMailLogin,
+    toEmail: string,
+    subject: string,
+    bodyHtml: string,
+    bodyText: string,
+  ): Promise<boolean> {
+    if (mail.provider === "aws") {
+      const source = mail.fromEmail
+        ? formatMailbox(mail.fromEmail, mail.fromName)
+        : SES_SENDER;
+      return this.sendEmail(toEmail, subject, bodyHtml, bodyText, source);
+    }
+
+    const port = mail.port === 465 ? 465 : mail.port || 587;
+    try {
+      const transport = nodemailer.createTransport({
+        host: mail.host,
+        port,
+        secure: port === 465,
+        auth: {
+          user: mail.user,
+          pass: mail.password,
+        },
+      });
+      const response = await transport.sendMail({
+        from: formatMailbox(mail.fromEmail, mail.fromName),
+        to: toEmail,
+        subject,
+        html: bodyHtml,
+        text: bodyText,
+      });
+      console.log(`✅ Invite email sent to ${toEmail}: ${response.messageId}`);
+      return true;
+    } catch (error: any) {
+      console.error(`❌ Failed to send invite email to ${toEmail}:`, error.message);
+      return false;
+    }
   }
 
   private renderActionTemplate({
@@ -428,10 +489,11 @@ This invite link is single-use. If you weren't expecting this email, you can saf
     subject: string,
     bodyHtml: string,
     bodyText: string,
+    source: string = SES_SENDER,
   ): Promise<boolean> {
     try {
       const command = new SendEmailCommand({
-        Source: SES_SENDER,
+        Source: source,
         Destination: {
           ToAddresses: [toEmail],
         },
