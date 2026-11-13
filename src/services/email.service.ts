@@ -70,13 +70,19 @@ interface ReferralInviteEmailData {
   mail: CompanyMailLogin;
 }
 
-/** "Name <email>" when the name is plain ASCII. Otherwise the bare address. */
+/**
+ * RFC 5322 mailbox. The display name is always quoted so commas and other
+ * specials (for example "Acme, Inc.") stay inside one address. Backslash
+ * and double-quote are escaped. Non-ASCII names are omitted and the bare
+ * address is used, because SES Source must stay 7-bit ASCII.
+ */
 const formatMailbox = (email: string, name?: string | null) => {
   const trimmed = name?.trim() ?? "";
-  if (!trimmed || /[^\x20-\x7E]/.test(trimmed) || /[<>"]/.test(trimmed)) {
+  if (!trimmed || /[^\x20-\x7E]/.test(trimmed)) {
     return email;
   }
-  return `${trimmed} <${email}>`;
+  const escaped = trimmed.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  return `"${escaped}" <${email}>`;
 };
 
 const escapeHtml = (value: string) =>
