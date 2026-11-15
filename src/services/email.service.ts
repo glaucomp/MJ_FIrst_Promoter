@@ -33,8 +33,15 @@ interface WelcomeEmailData {
   // a `data:image/png;base64,…` URL produced by
   // `composeWelcomeHeaderDataUrl` containing the promoter's profile
   // photo composited onto the heart-background banner. Null/undefined
-  // falls back to the static verify-header banner.
+  // falls back to the static verify-header banner (unless skipHeaderBanner).
   headerImageOverrideUrl?: string | null;
+  // When set, send via the campaign mailbox (same path as invite emails)
+  // instead of the global SES_SENDER (teaseme@teaseme.live).
+  mail?: CompanyMailLogin | null;
+  // Product label in subject / body. Defaults to MJ First Promoter Program.
+  productName?: string | null;
+  // Skip the TeaseMe-branded header artwork (Sugar Scratchie welcome).
+  skipHeaderBanner?: boolean;
 }
 
 interface SetPasswordEmailData {
@@ -147,32 +154,40 @@ export class EmailService {
    * Retained for one release in case any legacy caller still imports it.
    */
   async sendPromoterWelcomeEmail(data: WelcomeEmailData): Promise<boolean> {
-    const { email, username, password, firstName, ref_id, loginUrl } = data;
+    const { email, username, password, firstName, loginUrl } = data;
     const headerOverride = data.headerImageOverrideUrl?.trim() || "";
     const name = firstName || username;
     const currentYear = new Date().getFullYear();
+    const productName =
+      data.productName?.trim() || "MJ First Promoter Program";
+    const headerAlt = data.skipHeaderBanner
+      ? productName
+      : data.productName?.trim() || "TeaseMe";
 
-    const subject = "🎉 Welcome to MJ First Promoter Program!";
+    const subject = `🥳 Welcome to ${productName}!`;
 
     // Branded header banner. When the caller provides a per-promoter
     // composite (e.g. a data URL from composeWelcomeHeaderDataUrl), use
     // that; otherwise fall back to the static verify-header artwork from
-    // the public S3 bucket. Either way the markup is identical — only the
-    // image src changes.
+    // the public S3 bucket. Sugar Scratchie skips the TeaseMe artwork.
     const [, HEADER_HEIGHT_PX] = EMAIL_HEADER_SIZE;
     const headerImageUrl = headerOverride || EMAIL_VERIFY_HEADER_URL;
-
-    const headerHtml = `
+    const bannerHtml = data.skipHeaderBanner
+      ? ""
+      : `
           <tr>
             <td align="center" style="background:#0f1012;padding:0;">
               <img
                 src="${headerImageUrl}"
-                alt="TeaseMe"
+                alt="${escapeHtml(headerAlt)}"
                 height="${HEADER_HEIGHT_PX}"
                 style="width:100%;max-width:540px;height:${HEADER_HEIGHT_PX}px;display:block;border-top-left-radius:16px;border-top-right-radius:16px;object-fit:cover;"
               />
             </td>
-          </tr>
+          </tr>`;
+
+    const headerHtml = `
+          ${bannerHtml}
           <tr>
             <td align="center" style="padding:28px 40px 0 40px;">
               <img src="${LOGO_PUBLIC_URL}" alt="MJ Promo" style="height:48px;display:block;margin:0 auto;" />
@@ -180,7 +195,7 @@ export class EmailService {
                 Welcome ${escapeHtml(name)}!
               </h1>
               <p style="font-size:15px;color:#c7c7c7;margin:0;">
-                Your promoter account is ready
+                Your ${escapeHtml(productName)} account is ready
               </p>
             </td>
           </tr>`;
@@ -190,7 +205,7 @@ export class EmailService {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Welcome to MJ First Promoter</title>
+    <title>Welcome to ${escapeHtml(productName)}</title>
 </head>
 <body style="background:#0f1012;padding:0;margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0f1012;padding:40px 0;">
@@ -206,7 +221,7 @@ export class EmailService {
                 Hi ${escapeHtml(name)},
               </p>
               <p style="font-size:15px;line-height:1.6;color:#c7c7c7;margin:0 0 24px 0;">
-                Your promoter account has been successfully created. You can now start referring customers and earning commissions.
+                Your ${escapeHtml(productName)} promoter account has been successfully created. You can now start referring customers and earning commissions.
               </p>
             </td>
           </tr>
@@ -268,7 +283,7 @@ export class EmailService {
 
           <tr>
             <td align="center" style="background:#0f1012;padding:16px;">
-              <p style="font-size:11px;color:#555555;margin:0;">© ${currentYear} MJPromoter. All rights reserved.</p>
+              <p style="font-size:11px;color:#555555;margin:0;">© ${currentYear} ${escapeHtml(productName)}. All rights reserved.</p>
             </td>
           </tr>
         </table>
@@ -282,7 +297,7 @@ export class EmailService {
     const bodyText = `
 Welcome ${name}!
 
-Your promoter account has been successfully created.
+Your ${productName} promoter account has been successfully created.
 
 Your Login Credentials:
 - Username: ${username}
@@ -299,9 +314,18 @@ Next Steps:
 3. Generate tracking links for campaigns
 4. Start referring customers and earning commissions!
 
-© ${currentYear} MJ First Promoter Platform
+© ${currentYear} ${productName}
     `.trim();
 
+    if (data.mail) {
+      return this.sendCompanyMail(
+        data.mail,
+        email,
+        subject,
+        bodyHtml,
+        bodyText,
+      );
+    }
     return this.sendEmail(email, subject, bodyHtml, bodyText);
   }
 
