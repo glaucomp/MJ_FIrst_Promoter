@@ -1540,13 +1540,20 @@ export const orderReferralLandingPage = async (
               -STEP_HISTORY_MAX,
             )
           : history;
+      // The Sugar webhook can land while this request is in flight and is
+      // the only writer of assetLink when the HTTP body omits it. Writing
+      // the pre-request snapshot (usually null) would erase that URL, and
+      // a live row is no longer polled. Leave the column alone unless this
+      // response actually carries a link.
       updateData = {
         currentStep: nextStep,
         status: chooseForwardStatus(
           referral.preUser.status,
           sugarUpstream.status ?? "order_lp",
         ),
-        assetLink: sugarUpstream.assetLink ?? referral.preUser.assetLink,
+        ...(sugarUpstream.assetLink
+          ? { assetLink: sugarUpstream.assetLink }
+          : {}),
         lastCheckedAt: now,
         stepHistory: nextHistory as unknown as Prisma.InputJsonValue,
       };

@@ -324,6 +324,7 @@ Next Steps:
         subject,
         bodyHtml,
         bodyText,
+        "Welcome email",
       );
     }
     return this.sendEmail(email, subject, bodyHtml, bodyText);
@@ -413,7 +414,14 @@ ${acceptUrl}
 
 This invite link is single-use. If you weren't expecting this email, you can safely ignore it.`;
 
-    return this.sendCompanyMail(mail, inviteeEmail, subject, bodyHtml, bodyText);
+    return this.sendCompanyMail(
+      mail,
+      inviteeEmail,
+      subject,
+      bodyHtml,
+      bodyText,
+      "Invite email",
+    );
   }
 
   private async sendCompanyMail(
@@ -422,13 +430,14 @@ This invite link is single-use. If you weren't expecting this email, you can saf
     subject: string,
     bodyHtml: string,
     bodyText: string,
+    label: string,
   ): Promise<boolean> {
     if (mail.provider === "aws") {
       const from = outboundFromAddress(mail);
       const source = mail.fromEmail.trim()
         ? formatMailbox(from, mail.fromName)
         : from;
-      return this.sendEmail(toEmail, subject, bodyHtml, bodyText, source);
+      return this.sendEmail(toEmail, subject, bodyHtml, bodyText, source, label);
     }
 
     const port = mail.port === 465 ? 465 : mail.port || 587;
@@ -449,10 +458,10 @@ This invite link is single-use. If you weren't expecting this email, you can saf
         html: bodyHtml,
         text: bodyText,
       });
-      console.log(`✅ Invite email sent to ${toEmail}: ${response.messageId}`);
+      console.log(`✅ ${label} sent to ${toEmail}: ${response.messageId}`);
       return true;
     } catch (error: any) {
-      console.error(`❌ Failed to send invite email to ${toEmail}:`, error.message);
+      console.error(`❌ Failed to send ${label.toLowerCase()} to ${toEmail}:`, error.message);
       return false;
     }
   }
@@ -530,6 +539,7 @@ This invite link is single-use. If you weren't expecting this email, you can saf
     bodyHtml: string,
     bodyText: string,
     source: string = SES_SENDER,
+    label = "Email",
   ): Promise<boolean> {
     try {
       const command = new SendEmailCommand({
@@ -556,10 +566,13 @@ This invite link is single-use. If you weren't expecting this email, you can saf
       });
 
       const response = await sesClient.send(command);
-      console.log(`✅ Email sent to ${toEmail}: ${response.MessageId}`);
+      console.log(`✅ ${label} sent to ${toEmail}: ${response.MessageId}`);
       return true;
     } catch (error: any) {
-      console.error(`❌ Failed to send email to ${toEmail}:`, error.message);
+      console.error(
+        `❌ Failed to send ${label.toLowerCase()} to ${toEmail}:`,
+        error.message,
+      );
       return false;
     }
   }
