@@ -5,7 +5,12 @@ import bcrypt from "bcryptjs";
 
 import { getFrontendUrl } from "../utils/frontend-url";
 import { composeWelcomeHeaderImageUrl } from "./email-compose.service";
-import { emailService } from "./email.service";
+import {
+  emailService,
+  type CompanyMailLogin,
+} from "./email.service";
+import { pickInviteMail, inviteMailCampaignSelect } from "./invite-mail.service";
+import { isSugarScratchCampaign } from "./sugar.service";
 import {
   fetchTeasemePreUserStatus,
   syncUserFromTeaseMe,
@@ -859,10 +864,17 @@ export const promotePreUserToUser = async (
   // image composition fails (for example if sharp throws), in which case
   // the email falls back to the static verify-header banner as a graceful
   // degradation rather than a user-visible failure.
-  const headerImageOverrideUrl = await composeWelcomeHeaderImageUrl({
-    photoKey: photoKeyForCompose ?? "",
-    identifier: user.id,
-  });
+  const welcomeCampaign = await resolveWelcomeCampaign(prisma, preUser.referralId);
+  const sugarWelcome = isSugarScratchCampaign(welcomeCampaign?.name);
+  // TeaseMe gets the composed influencer banner; Sugar Scratchie uses the
+  // campaign From mailbox and skips TeaseMe artwork so the email isn't
+  // branded as teaseme@teaseme.live / Tease Me.
+  const headerImageOverrideUrl = sugarWelcome
+    ? null
+    : await composeWelcomeHeaderImageUrl({
+        photoKey: photoKeyForCompose ?? "",
+        identifier: user.id,
+      });
 
   const emailSent = await sendWelcomeEmailSafe({
     email: user.email,
@@ -874,6 +886,9 @@ export const promotePreUserToUser = async (
     headerImageOverrideUrl,
     userId: user.id,
     preUserId: preUser.id,
+    mail: welcomeCampaign?.mail ?? null,
+    productName: sugarWelcome ? "Sugar Scratchie" : null,
+    skipHeaderBanner: sugarWelcome,
   });
 
   if (emailSent) {
@@ -923,11 +938,38 @@ interface WelcomeEmailContext {
   // Optional override for the welcome-email banner — a public HTTPS URL
   // produced by `composeWelcomeHeaderImageUrl` pointing to the composed
   // PNG in S3 (promoter photo through the influencer_header_background
-  // alpha hole). Null falls back to the static verify-header banner.
+  // alpha hole). Null falls back to the static verify-header banner
+  // unless skipHeaderBanner is set.
   headerImageOverrideUrl: string | null;
   userId: string;
   preUserId: string;
+  mail?: CompanyMailLogin | null;
+  productName?: string | null;
+  skipHeaderBanner?: boolean;
 }
+
+const resolveWelcomeCampaign = async (
+  prisma: PrismaClient,
+  referralId: string | null,
+): Promise<{ name: string | null; mail: CompanyMailLogin | null } | null> => {
+  if (!referralId) return null;
+  const referral = await prisma.referral.findUnique({
+    where: { id: referralId },
+    select: {
+      campaign: {
+        select: {
+          name: true,
+          ...inviteMailCampaignSelect,
+        },
+      },
+    },
+  });
+  if (!referral?.campaign) return null;
+  return {
+    name: referral.campaign.name,
+    mail: pickInviteMail(referral.campaign),
+  };
+};
 
 /**
  * Best-effort welcome-email dispatch. Sends `sendPromoterWelcomeEmail` with
@@ -951,6 +993,9 @@ const sendWelcomeEmailSafe = async (
       ref_id: ctx.refId,
       loginUrl,
       headerImageOverrideUrl: ctx.headerImageOverrideUrl,
+      mail: ctx.mail,
+      productName: ctx.productName,
+      skipHeaderBanner: ctx.skipHeaderBanner,
     });
   } catch (err) {
     console.error("[promote-pre-user] welcome email threw", {

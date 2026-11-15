@@ -1378,6 +1378,9 @@ const normalizePreUserLifecycleStatus = (
 ): string | null => {
   if (!status) return null;
   if (status === "approved") return "building";
+  // Sugar confirm (email/name) shares the Order LP chip. Without this,
+  // the card only leaves Waiting once currentStep >= 1.
+  if (status === "confirmed") return "order_lp";
   return status;
 };
 
@@ -1410,16 +1413,23 @@ const deriveChipState = (r: Referral): ChipState => {
   // removed, so exact survey_step thresholds are now only a fallback.
   if (preLifecycle === "live") return "lp_live";
   if (preLifecycle === "building") return "building";
-  if (preLifecycle === "order_lp") return "order_lp";
   const step = r.preUser?.currentStep ?? 0;
-  // Onboarding 3/3 → Order LP chip (separate from published step 5 / live).
-  if (step >= ONBOARDING_STEPS.length) return "order_lp";
+  const sugarCampaign = isSugarScratchCampaign(r.campaign?.name);
+  // Sugar publishes at step 2. Status can still read order_lp, the same
+  // chip step 1 already shows, so step 2 has to move the card to LP Live.
+  if (sugarCampaign && step >= 2) return "lp_live";
+  if (preLifecycle === "order_lp") return "order_lp";
+  // Sugar Scratchie: confirm email/name (step 1) unlocks Order Landing Page.
+  if (sugarCampaign && step >= 1) return "order_lp";
+  const stepCount = onboardingStepsForCampaign(r.campaign?.name).length;
+  // TeaseMe onboarding complete → Order LP chip (separate from published step 5 / live).
+  if (step >= stepCount) return "order_lp";
   // Legacy section-index upstream (step = active section, not completions).
   if (SURVEY_STEP_MODE === "section-index") {
     const assetLink = normalizeLandingPageAssetLink(r.preUser?.assetLink ?? null);
-    if (step >= ONBOARDING_STEPS.length && assetLink) return "order_lp";
-    if (step > ONBOARDING_STEPS.length + 1) return "building";
-    if (step >= ONBOARDING_STEPS.length + 1) return "order_lp";
+    if (step >= stepCount && assetLink) return "order_lp";
+    if (step > stepCount + 1) return "building";
+    if (step >= stepCount + 1) return "order_lp";
   }
   return "waiting";
 };
@@ -1579,13 +1589,28 @@ const OnboardingIconPill = ({
   );
 };
 
-// Three TeaseMe onboarding milestones (see docs/TEASEME_STEP_PROGRESS.md).
+// TeaseMe onboarding milestones (see docs/TEASEME_STEP_PROGRESS.md).
 // Social handles live on step 01 (register), not a fourth MJ Promoter step.
-const ONBOARDING_STEPS: { idx: number; label: string; hint?: string }[] = [
-  { idx: 1, label: "Email & Name", hint: "Includes social links" },
-  { idx: 2, label: "Photo & Voice" },
-  { idx: 3, label: "Assets" },
+const TEASEME_ONBOARDING_STEPS: { idx: number; label: string; hint?: string }[] =
+  [
+    { idx: 1, label: "Email & Name", hint: "Includes social links" },
+    { idx: 2, label: "Photo & Voice" },
+    { idx: 3, label: "Assets" },
+  ];
+
+// Sugar Scratchie funnel: confirm email/name, then AM orders the landing page.
+const SUGAR_ONBOARDING_STEPS: { idx: number; label: string; hint?: string }[] = [
+  { idx: 1, label: "Email & Name" },
+  { idx: 2, label: "Make landing page" },
 ];
+
+const isSugarScratchCampaign = (name?: string | null): boolean =>
+  (name || "").toLowerCase().includes("sugar scratch");
+
+const onboardingStepsForCampaign = (campaignName?: string | null) =>
+  isSugarScratchCampaign(campaignName)
+    ? SUGAR_ONBOARDING_STEPS
+    : TEASEME_ONBOARDING_STEPS;
 
 // `completion` (default): survey_step = count of finished milestones (0–3).
 // `section-index` (legacy): survey_step = active section (completions = step − 1).
@@ -1618,25 +1643,35 @@ const getCompletedOnboardingSteps = (
   currentStep: number,
   assetLink?: string | null,
   lifecycleStatus?: string | null,
+  stepCount = TEASEME_ONBOARDING_STEPS.length,
+  sugarCampaign = false,
 ) => {
   const lifecycle = normalizePreUserLifecycleStatus(lifecycleStatus);
-  if (
-    lifecycle === "building" ||
-    lifecycle === "live" ||
-    lifecycle === "order_lp" ||
-    currentStep > ONBOARDING_STEPS.length
-  ) {
-    return ONBOARDING_STEPS.length;
+  // Sugar: building/live complete both steps. Do not treat order_lp-style
+  // chips as all-done — step 1 still shows Make landing page open.
+  if (lifecycle === "building" || lifecycle === "live") {
+    return stepCount;
+  }
+  if (!sugarCampaign && lifecycle === "order_lp") {
+    return stepCount;
+  }
+  // Confirmed is the Order LP window even when the step webhook has not
+  // advanced currentStep yet, so Email & Name is already done.
+  if (sugarCampaign && lifecycle === "order_lp") {
+    return Math.max(1, Math.min(Math.max(currentStep, 0), stepCount));
+  }
+  if (currentStep > stepCount) {
+    return stepCount;
   }
   if (SURVEY_STEP_MODE === "completion") {
-    return Math.max(0, Math.min(currentStep, ONBOARDING_STEPS.length));
+    return Math.max(0, Math.min(currentStep, stepCount));
   }
   // Legacy: active-section index; asset_link was wrongly used as 3/3 proxy.
   const normalizedAssetLink = normalizeLandingPageAssetLink(assetLink);
-  if (currentStep >= ONBOARDING_STEPS.length && normalizedAssetLink) {
-    return ONBOARDING_STEPS.length;
+  if (currentStep >= stepCount && normalizedAssetLink) {
+    return stepCount;
   }
-  return Math.max(0, Math.min(currentStep - 1, ONBOARDING_STEPS.length));
+  return Math.max(0, Math.min(currentStep - 1, stepCount));
 };
 
 const OnboardingChecklist = ({
@@ -1644,16 +1679,26 @@ const OnboardingChecklist = ({
   assetLink,
   lifecycleStatus,
   dimmed,
+  steps,
+  sugarCampaign,
 }: {
   step: number;
   assetLink?: string | null;
   lifecycleStatus?: string | null;
   dimmed?: boolean;
+  steps: { idx: number; label: string; hint?: string }[];
+  sugarCampaign?: boolean;
 }) => (
   <ul className={`flex flex-col gap-2 text-base ${dimmed ? "opacity-60" : ""}`}>
-    {ONBOARDING_STEPS.map(({ idx, label, hint }) => {
+    {steps.map(({ idx, label, hint }) => {
       const done =
-        getCompletedOnboardingSteps(step, assetLink, lifecycleStatus) >= idx;
+        getCompletedOnboardingSteps(
+          step,
+          assetLink,
+          lifecycleStatus,
+          steps.length,
+          sugarCampaign,
+        ) >= idx;
       return (
         <li
           key={idx}
@@ -2294,10 +2339,16 @@ const dedupeByPromoter = (rows: Referral[]): Referral[] => {
           const step = referral.preUser?.currentStep ?? 0;
           const assetLink = referral.preUser?.assetLink ?? null;
           const lifecycleStatus = referral.preUser?.status ?? null;
+          const sugarCampaign = isSugarScratchCampaign(referral.campaign?.name);
+          const onboardingSteps = onboardingStepsForCampaign(
+            referral.campaign?.name,
+          );
           const completedOnboardingSteps = getCompletedOnboardingSteps(
             step,
             assetLink,
             lifecycleStatus,
+            onboardingSteps.length,
+            sugarCampaign,
           );
           const normalizedAssetLink = normalizeLandingPageAssetLink(assetLink);
           const canCopyAssetLink = !!normalizedAssetLink;
@@ -2393,7 +2444,7 @@ const dedupeByPromoter = (rows: Referral[]): Referral[] => {
                   <div className="flex items-center gap-2">
                     <span className="text-sm  text-tm-text-color09">
                       {completedOnboardingSteps}/
-                      {ONBOARDING_STEPS.length}
+                      {onboardingSteps.length}
                     </span>
                     {/* Opens the in-flight onboarding session
                         (preUser.surveyLink) in a new tab. On lp_live the
@@ -2433,6 +2484,8 @@ const dedupeByPromoter = (rows: Referral[]): Referral[] => {
                     assetLink={assetLink}
                     lifecycleStatus={lifecycleStatus}
                     dimmed={chipState === "expired"}
+                    steps={onboardingSteps}
+                    sugarCampaign={sugarCampaign}
                   />
                 </div>
                 {/* Copy landing-page (asset) link — writes preUser.assetLink

@@ -22,6 +22,10 @@ import {
 import { getPresignedUrl } from "../services/s3.service";
 import { resolveAccountManagersFor } from "../services/ownership.service";
 import {
+  isSugarScratchCampaign,
+  orderSugarLandingPage,
+} from "../services/sugar.service";
+import {
   approvePreInfluencer,
   denyPreInfluencer,
   fetchTeasemePreUserStatus,
@@ -56,6 +60,9 @@ const TEASEME_POLL_CONCURRENCY = 5;
 // once it's on disk, only an equally-or-more advanced status can replace it.
 const STATUS_RANK: Record<string, number> = {
   pending: 0,
+  // Sugar Scratchie confirm (email/name) — same chip window as order_lp.
+  // Persisted as order_lp so the card does not depend on currentStep.
+  confirmed: 1,
   order_lp: 1,
   // TeaseMe returns `approved` immediately after /approve — same lifecycle
   // position as our mirrored `building` state.
@@ -63,6 +70,11 @@ const STATUS_RANK: Record<string, number> = {
   building: 2,
   live: 3,
 };
+
+// Collapse aliases onto the status the card renders. `confirmed` is the
+// Sugar confirm webhook; it shares the Order LP window with `order_lp`.
+const canonicalizePreUserStatus = (status: string): string =>
+  status === "confirmed" ? "order_lp" : status;
 
 // Terminal survey_step when the LP is fully published upstream (stop polling,
 // auto-accept referral, welcome-email eligibility). This is NOT the same as
@@ -96,11 +108,14 @@ const chooseForwardStatus = (
   current: string,
   upstream: string | null | undefined,
 ): string => {
-  if (!upstream) return current;
-  if (upstream === current) return current;
+  if (!upstream) return canonicalizePreUserStatus(current);
+  const nextUpstream = canonicalizePreUserStatus(upstream);
+  if (nextUpstream === current || upstream === current) {
+    return canonicalizePreUserStatus(current);
+  }
   const cur = STATUS_RANK[current] ?? Number.POSITIVE_INFINITY;
   const ups = STATUS_RANK[upstream] ?? Number.POSITIVE_INFINITY;
-  return ups >= cur ? upstream : current;
+  return canonicalizePreUserStatus(ups >= cur ? upstream : current);
 };
 
 const isPreUserPublished = (
@@ -1216,6 +1231,9 @@ const loadReferralForAction = async (
   const referral = await prisma.referral.findUnique({
     where: { id },
     include: {
+      campaign: {
+        select: { id: true, name: true },
+      },
       preUser: {
         select: {
           id: true,
@@ -1498,68 +1516,103 @@ export const orderReferralLandingPage = async (
 
     // The "Order Landing Page" click is a thin orchestration around the
     // upstream contract:
-    //   1. POST /approve — flips the pre-influencer to approved upstream
-    //      and kicks off the LP build. If this fails (network / non-2xx /
-    //      timeout) we surface a 502 so the UI can show an error toast —
-    //      there is no local fallback because the chip is now driven
-    //      entirely by upstream's `survey_step`.
-    //   2. POST /step-progress — re-poll right after to learn the new
-    //      status (typically `building` / `approved`). Persist whatever
-    //      upstream tells us; the chip prefers mirrored `status`, with
-    //      `currentStep` as a fallback only.
-    //   3. If the post-approve poll lags (still returns null), we just
-    //      bump lastCheckedAt and let the periodic poller catch up. We
-    //      still return success because /approve itself succeeded.
-    const upstream = await approvePreInfluencer({
-      inviteCode: referral.inviteCode,
-      email: referral.preUser.email,
-    });
-    if (!upstream) {
-      console.warn("[order-landing-page] upstream approve failed", {
-        referralId: referral.id,
+    //   Sugar Scratchie campaigns → POST Sugar /order-landing-page (step 2).
+    //   TeaseMe campaigns → POST /approve, then re-poll /step-progress.
+    const sugarCampaign = isSugarScratchCampaign(referral.campaign?.name);
+    const now = new Date();
+    let updateData: Prisma.PreUserUpdateInput = { lastCheckedAt: now };
+
+    if (sugarCampaign) {
+      // Sugar publishes the player /join LP URL on this call (status live)
+      // and also notifies via webhook. Persist live locally when the body
+      // omits status: the card is already on the Order LP chip from step 1,
+      // so writing order_lp would leave the CTA in place and block welcome
+      // email, polling stop, and auto-accept until the webhook arrives.
+      const sugarUpstream = await orderSugarLandingPage({
         inviteCode: referral.inviteCode,
         email: referral.preUser.email,
       });
-      return res.status(502).json({
-        error:
-          "TeaseMe couldn't start the landing-page build right now. Please try again in a moment.",
-      });
-    }
-
-    const status = await fetchTeasemePreUserStatus({
-      email: referral.preUser.email,
-      inviteCode: referral.inviteCode ?? undefined,
-    });
-    const now = new Date();
-
-    // Default update: just bump lastCheckedAt so the periodic poller
-    // re-tries soon. Used when the immediate post-approve poll lagged.
-    let updateData: Prisma.PreUserUpdateInput = { lastCheckedAt: now };
-
-    if (status) {
+      if (!sugarUpstream) {
+        console.warn("[order-landing-page] sugar order-lp failed", {
+          referralId: referral.id,
+          inviteCode: referral.inviteCode,
+          email: referral.preUser.email,
+        });
+        return res.status(502).json({
+          error:
+            "Sugar Scratchie couldn't start the landing-page build right now. Please try again in a moment.",
+        });
+      }
       const history = readStepHistory(referral.preUser.stepHistory);
+      const nextStep = Math.max(referral.preUser.currentStep, 2);
       const nextHistory =
-        status.step > referral.preUser.currentStep
-          ? [...history, { step: status.step, at: now.toISOString() }].slice(
+        nextStep > referral.preUser.currentStep
+          ? [...history, { step: nextStep, at: now.toISOString() }].slice(
               -STEP_HISTORY_MAX,
             )
           : history;
-
+      // The Sugar webhook can land while this request is in flight and is
+      // the only writer of assetLink when the HTTP body omits it. Writing
+      // the pre-request snapshot (usually null) would erase that URL, and
+      // a live row is no longer polled. Leave the column alone unless this
+      // response actually carries a link.
       updateData = {
-        // Never go backwards — if upstream's poll lags and reports a
-        // lower step than we already have, keep the higher one. The
-        // rank-based chooseForwardStatus() does the same for the status
-        // string field.
-        currentStep: Math.max(referral.preUser.currentStep, status.step),
-        status: chooseForwardStatus(referral.preUser.status, status.status),
-        teasemeUserId: status.teasemeUserId ?? referral.preUser.teasemeUserId,
-        // Don't null out a previously-known link if a later poll omits
-        // it — surveyLink populates first, then assetLink later.
-        surveyLink: status.surveyLink ?? referral.preUser.surveyLink,
-        assetLink: status.assetLink ?? referral.preUser.assetLink,
+        currentStep: nextStep,
+        status: chooseForwardStatus(
+          referral.preUser.status,
+          sugarUpstream.status ?? "live",
+        ),
+        ...(sugarUpstream.assetLink
+          ? { assetLink: sugarUpstream.assetLink }
+          : {}),
         lastCheckedAt: now,
         stepHistory: nextHistory as unknown as Prisma.InputJsonValue,
       };
+    } else {
+      const upstream = await approvePreInfluencer({
+        inviteCode: referral.inviteCode,
+        email: referral.preUser.email,
+      });
+      if (!upstream) {
+        console.warn("[order-landing-page] upstream approve failed", {
+          referralId: referral.id,
+          inviteCode: referral.inviteCode,
+          email: referral.preUser.email,
+        });
+        return res.status(502).json({
+          error:
+            "TeaseMe couldn't start the landing-page build right now. Please try again in a moment.",
+        });
+      }
+      const status = await fetchTeasemePreUserStatus({
+        email: referral.preUser.email,
+        inviteCode: referral.inviteCode ?? undefined,
+      });
+      if (status) {
+        const history = readStepHistory(referral.preUser.stepHistory);
+        const nextHistory =
+          status.step > referral.preUser.currentStep
+            ? [...history, { step: status.step, at: now.toISOString() }].slice(
+                -STEP_HISTORY_MAX,
+              )
+            : history;
+
+        updateData = {
+          // Never go backwards — if upstream's poll lags and reports a
+          // lower step than we already have, keep the higher one. The
+          // rank-based chooseForwardStatus() does the same for the status
+          // string field.
+          currentStep: Math.max(referral.preUser.currentStep, status.step),
+          status: chooseForwardStatus(referral.preUser.status, status.status),
+          teasemeUserId: status.teasemeUserId ?? referral.preUser.teasemeUserId,
+          // Don't null out a previously-known link if a later poll omits
+          // it — surveyLink populates first, then assetLink later.
+          surveyLink: status.surveyLink ?? referral.preUser.surveyLink,
+          assetLink: status.assetLink ?? referral.preUser.assetLink,
+          lastCheckedAt: now,
+          stepHistory: nextHistory as unknown as Prisma.InputJsonValue,
+        };
+      }
     }
 
     const updatedPreUser = await prisma.preUser.update({
@@ -2833,11 +2886,13 @@ export const receiveTeasemeStepWebhook = async (
       );
     }
 
+    const nextStatus = status ? canonicalizePreUserStatus(status) : undefined;
+
     await prisma.preUser.update({
       where: { id: preUser.id },
       data: {
         currentStep,
-        ...(status ? { status } : {}),
+        ...(nextStatus ? { status: nextStatus } : {}),
         ...(typeof assetLink === "string" && assetLink ? { assetLink } : {}),
         ...(typeof surveyLink === "string" && surveyLink ? { surveyLink } : {}),
         lastCheckedAt: null,
@@ -2848,17 +2903,18 @@ export const receiveTeasemeStepWebhook = async (
       preUserId: preUser.id,
       email,
       currentStep,
-      status,
+      status: nextStatus ?? status,
       assetLink: assetLink ?? null,
       surveyLink: surveyLink ?? null,
       referralId: resolvedReferralId,
     });
 
+    const emittedStatus = nextStatus ?? preUser.status;
     if (resolvedReferralId) {
       stepEmitter.emit(`step:${resolvedReferralId}`, {
         currentStep,
-        status: status ?? preUser.status,
-        done: isPreUserPublished(currentStep, status ?? preUser.status),
+        status: emittedStatus,
+        done: isPreUserPublished(currentStep, emittedStatus),
       });
     }
 
@@ -2870,7 +2926,7 @@ export const receiveTeasemeStepWebhook = async (
     // before the welcome email was sent), accept the parent referral and
     // auto-create the default ChatterGroup without waiting for the AM to click
     // "Send Welcome Email".
-    if (isPreUserPublished(currentStep, status ?? preUser.status)) {
+    if (isPreUserPublished(currentStep, emittedStatus)) {
       void (async () => {
         try {
           const promotedUser = await prisma.user.findUnique({
