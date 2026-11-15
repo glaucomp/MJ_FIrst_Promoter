@@ -1544,7 +1544,7 @@ export const orderReferralLandingPage = async (
         currentStep: nextStep,
         status: chooseForwardStatus(
           referral.preUser.status,
-          sugarUpstream.status || "live",
+          sugarUpstream.status ?? "order_lp",
         ),
         assetLink: sugarUpstream.assetLink ?? referral.preUser.assetLink,
         lastCheckedAt: now,
