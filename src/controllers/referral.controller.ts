@@ -61,6 +61,7 @@ const TEASEME_POLL_CONCURRENCY = 5;
 const STATUS_RANK: Record<string, number> = {
   pending: 0,
   // Sugar Scratchie confirm (email/name) — same chip window as order_lp.
+  // Persisted as order_lp so the card does not depend on currentStep.
   confirmed: 1,
   order_lp: 1,
   // TeaseMe returns `approved` immediately after /approve — same lifecycle
@@ -69,6 +70,11 @@ const STATUS_RANK: Record<string, number> = {
   building: 2,
   live: 3,
 };
+
+// Collapse aliases onto the status the card renders. `confirmed` is the
+// Sugar confirm webhook; it shares the Order LP window with `order_lp`.
+const canonicalizePreUserStatus = (status: string): string =>
+  status === "confirmed" ? "order_lp" : status;
 
 // Terminal survey_step when the LP is fully published upstream (stop polling,
 // auto-accept referral, welcome-email eligibility). This is NOT the same as
@@ -102,11 +108,14 @@ const chooseForwardStatus = (
   current: string,
   upstream: string | null | undefined,
 ): string => {
-  if (!upstream) return current;
-  if (upstream === current) return current;
+  if (!upstream) return canonicalizePreUserStatus(current);
+  const nextUpstream = canonicalizePreUserStatus(upstream);
+  if (nextUpstream === current || upstream === current) {
+    return canonicalizePreUserStatus(current);
+  }
   const cur = STATUS_RANK[current] ?? Number.POSITIVE_INFINITY;
   const ups = STATUS_RANK[upstream] ?? Number.POSITIVE_INFINITY;
-  return ups >= cur ? upstream : current;
+  return canonicalizePreUserStatus(ups >= cur ? upstream : current);
 };
 
 const isPreUserPublished = (
@@ -1514,9 +1523,11 @@ export const orderReferralLandingPage = async (
     let updateData: Prisma.PreUserUpdateInput = { lastCheckedAt: now };
 
     if (sugarCampaign) {
-      // Sugar publishes the player /join LP URL immediately and notifies via
-      // webhook; also advance locally so the chip flips even if the webhook
-      // is delayed or misconfigured.
+      // Sugar publishes the player /join LP URL on this call (status live)
+      // and also notifies via webhook. Persist live locally when the body
+      // omits status: the card is already on the Order LP chip from step 1,
+      // so writing order_lp would leave the CTA in place and block welcome
+      // email, polling stop, and auto-accept until the webhook arrives.
       const sugarUpstream = await orderSugarLandingPage({
         inviteCode: referral.inviteCode,
         email: referral.preUser.email,
@@ -1549,7 +1560,7 @@ export const orderReferralLandingPage = async (
         currentStep: nextStep,
         status: chooseForwardStatus(
           referral.preUser.status,
-          sugarUpstream.status ?? "order_lp",
+          sugarUpstream.status ?? "live",
         ),
         ...(sugarUpstream.assetLink
           ? { assetLink: sugarUpstream.assetLink }
@@ -2875,11 +2886,13 @@ export const receiveTeasemeStepWebhook = async (
       );
     }
 
+    const nextStatus = status ? canonicalizePreUserStatus(status) : undefined;
+
     await prisma.preUser.update({
       where: { id: preUser.id },
       data: {
         currentStep,
-        ...(status ? { status } : {}),
+        ...(nextStatus ? { status: nextStatus } : {}),
         ...(typeof assetLink === "string" && assetLink ? { assetLink } : {}),
         ...(typeof surveyLink === "string" && surveyLink ? { surveyLink } : {}),
         lastCheckedAt: null,
@@ -2890,17 +2903,18 @@ export const receiveTeasemeStepWebhook = async (
       preUserId: preUser.id,
       email,
       currentStep,
-      status,
+      status: nextStatus ?? status,
       assetLink: assetLink ?? null,
       surveyLink: surveyLink ?? null,
       referralId: resolvedReferralId,
     });
 
+    const emittedStatus = nextStatus ?? preUser.status;
     if (resolvedReferralId) {
       stepEmitter.emit(`step:${resolvedReferralId}`, {
         currentStep,
-        status: status ?? preUser.status,
-        done: isPreUserPublished(currentStep, status ?? preUser.status),
+        status: emittedStatus,
+        done: isPreUserPublished(currentStep, emittedStatus),
       });
     }
 
@@ -2912,7 +2926,7 @@ export const receiveTeasemeStepWebhook = async (
     // before the welcome email was sent), accept the parent referral and
     // auto-create the default ChatterGroup without waiting for the AM to click
     // "Send Welcome Email".
-    if (isPreUserPublished(currentStep, status ?? preUser.status)) {
+    if (isPreUserPublished(currentStep, emittedStatus)) {
       void (async () => {
         try {
           const promotedUser = await prisma.user.findUnique({

@@ -1378,6 +1378,9 @@ const normalizePreUserLifecycleStatus = (
 ): string | null => {
   if (!status) return null;
   if (status === "approved") return "building";
+  // Sugar confirm (email/name) shares the Order LP chip. Without this,
+  // the card only leaves Waiting once currentStep >= 1.
+  if (status === "confirmed") return "order_lp";
   return status;
 };
 
@@ -1410,9 +1413,12 @@ const deriveChipState = (r: Referral): ChipState => {
   // removed, so exact survey_step thresholds are now only a fallback.
   if (preLifecycle === "live") return "lp_live";
   if (preLifecycle === "building") return "building";
-  if (preLifecycle === "order_lp") return "order_lp";
   const step = r.preUser?.currentStep ?? 0;
   const sugarCampaign = isSugarScratchCampaign(r.campaign?.name);
+  // Sugar publishes at step 2. Status can still read order_lp, the same
+  // chip step 1 already shows, so step 2 has to move the card to LP Live.
+  if (sugarCampaign && step >= 2) return "lp_live";
+  if (preLifecycle === "order_lp") return "order_lp";
   // Sugar Scratchie: confirm email/name (step 1) unlocks Order Landing Page.
   if (sugarCampaign && step >= 1) return "order_lp";
   const stepCount = onboardingStepsForCampaign(r.campaign?.name).length;
@@ -1648,6 +1654,11 @@ const getCompletedOnboardingSteps = (
   }
   if (!sugarCampaign && lifecycle === "order_lp") {
     return stepCount;
+  }
+  // Confirmed is the Order LP window even when the step webhook has not
+  // advanced currentStep yet, so Email & Name is already done.
+  if (sugarCampaign && lifecycle === "order_lp") {
+    return Math.max(1, Math.min(Math.max(currentStep, 0), stepCount));
   }
   if (currentStep > stepCount) {
     return stepCount;
