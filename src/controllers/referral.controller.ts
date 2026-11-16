@@ -1508,7 +1508,7 @@ const sugarPackageStillOpen = (preUser: {
 }): boolean =>
   preUser.status !== "live" &&
   preUser.status !== "building" &&
-  preUser.currentStep < PUBLISHED_SURVEY_STEP;
+  preUser.currentStep < 3;
 
 export const getReferralPackageWorkspace = async (
   req: AuthRequest,
