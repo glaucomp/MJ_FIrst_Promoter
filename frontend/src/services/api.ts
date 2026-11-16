@@ -687,6 +687,70 @@ export const modelsApi = {
     return handleResponse(response, 'Failed to reassign referral');
   },
 
+  async getReferralPackageWorkspace(referralId: string): Promise<{
+    success: true;
+    modelId: string;
+    packsUrl: string;
+    packageReady: boolean;
+    surveyStep: number;
+  }> {
+    const response = await apiFetch(
+      `${API_URL}/referrals/${referralId}/package-workspace`,
+      {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      },
+    );
+    return handleResponse(response, 'Failed to open package workspace');
+  },
+  // Apply surveyStep only when it is an integer >= 1 and lower than the card.
+  // A reported step of 2 is a finished Make package and must not be rewritten
+  // to 1. This read never raises currentStep.
+
+  async makeReferralPackage(referralId: string): Promise<{
+    success: true;
+    preUser: {
+      id: string;
+      currentStep: number;
+      status: string;
+      lastCheckedAt: string | null;
+      teasemeUserId: string | null;
+      surveyLink: string | null;
+      assetLink: string | null;
+    };
+  }> {
+    const response = await apiFetch(
+      `${API_URL}/referrals/${referralId}/make-package`,
+      {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      },
+    );
+    if (response.status === 401) {
+      throw new Error('SESSION_EXPIRED');
+    }
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      const err = new Error(
+        body.error || body.message || 'Failed to make package',
+      ) as Error & {
+        preUser?: {
+          currentStep: number;
+          status: string;
+          lastCheckedAt: string | null;
+          teasemeUserId: string | null;
+          surveyLink: string | null;
+          assetLink: string | null;
+        };
+      };
+      if (body.preUser && typeof body.preUser === 'object') {
+        err.preUser = body.preUser;
+      }
+      throw err;
+    }
+    return response.json();
+  },
+
   async orderReferralLandingPage(referralId: string): Promise<{
     success: true;
     preUser: {
@@ -712,7 +776,31 @@ export const modelsApi = {
         headers: getAuthHeaders(),
       },
     );
-    return handleResponse(response, 'Failed to order landing page');
+    if (response.status === 401) {
+      throw new Error('SESSION_EXPIRED');
+    }
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      const err = new Error(
+        body.error || body.message || 'Failed to order landing page',
+      ) as Error & {
+        status?: number;
+        preUser?: {
+          currentStep: number;
+          status: string;
+          lastCheckedAt: string | null;
+          teasemeUserId: string | null;
+          surveyLink: string | null;
+          assetLink: string | null;
+        };
+      };
+      err.status = response.status;
+      if (body.preUser && typeof body.preUser === 'object') {
+        err.preUser = body.preUser;
+      }
+      throw err;
+    }
+    return response.json();
   },
 
   async assignReferralChatters(

@@ -19,15 +19,63 @@ const getSugarOrderLandingPageUrl = (): string =>
     `${getSugarApiBaseUrl()}/api/promoter/pre-influencers/order-landing-page`
   ).replace(/\/$/, "");
 
+const getSugarMakePackageUrl = (): string =>
+  (
+    process.env.SUGAR_MAKE_PACKAGE_URL ||
+    `${getSugarApiBaseUrl()}/api/promoter/pre-influencers/make-package`
+  ).replace(/\/$/, "");
+
+const getSugarPackageWorkspaceUrl = (): string =>
+  (
+    process.env.SUGAR_PACKAGE_WORKSPACE_URL ||
+    `${getSugarApiBaseUrl()}/api/promoter/pre-influencers/package-workspace`
+  ).replace(/\/$/, "");
+
+const getSugarOperatorPublicUrl = (): string =>
+  (
+    process.env.SUGAR_OPERATOR_PUBLIC_URL ||
+    process.env.SUGAR_OPERATOR_URL ||
+    "https://localhost:5080"
+  ).replace(/\/$/, "");
+
 const getSugarInternalToken = (): string =>
   (process.env.SUGAR_INTERNAL_TOKEN || "").trim();
 
 const SUGAR_APPROVE_TIMEOUT_MS = 30_000;
 
+export interface SugarPackageWorkspace {
+  ok: boolean;
+  modelId: string;
+  packsUrl: string;
+  packageReady: boolean;
+  // Null when upstream omits survey_step or sends a non-milestone. Callers
+  // must not treat that as step 0 — doing so rewinds a confirmed invite.
+  surveyStep: number | null;
+  error?: string | null;
+  statusCode?: number;
+}
+
+/** Milestone count 0–3. Missing or non-numeric stays null (never coerced to 0). */
+const readSurveyStep = (raw: Record<string, unknown>): number | null => {
+  const value = raw.survey_step;
+  const step =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && value.trim()
+        ? Number(value)
+        : NaN;
+  if (!Number.isInteger(step) || step < 0 || step > 3) return null;
+  return step;
+};
+
 export interface SugarActionResult {
   ok: boolean;
   status?: string | null;
   assetLink?: string | null;
+  surveyStep?: number | null;
+  modelId?: string | null;
+  error?: string | null;
+  statusCode?: number;
   raw?: unknown;
 }
 
@@ -36,7 +84,176 @@ export const isSugarScratchCampaign = (name?: string | null): boolean =>
   (name || "").toLowerCase().includes("sugar scratch");
 
 /**
- * Ask Sugar Scratchie to publish the player /join freeplay LP (step 2) and
+ * Resolve the operator packs page for this invite (no step advance).
+ * Used to iframe / open Create with n8n before Order LP.
+ */
+export const getSugarPackageWorkspace = async (params: {
+  inviteCode: string;
+  email: string;
+}): Promise<SugarPackageWorkspace | null> => {
+  if (!params.inviteCode || !params.email) {
+    throw new Error("getSugarPackageWorkspace requires inviteCode and email");
+  }
+  const token = getSugarInternalToken();
+  if (!token) {
+    console.warn("[sugar.package-workspace] SUGAR_INTERNAL_TOKEN unset");
+    return null;
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(getSugarPackageWorkspaceUrl(), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "X-Internal-Token": token,
+      },
+      body: JSON.stringify({
+        invite_code: params.inviteCode,
+        invitee_email: params.email,
+      }),
+      signal: AbortSignal.timeout(SUGAR_APPROVE_TIMEOUT_MS),
+    });
+  } catch (err) {
+    console.error("[sugar.package-workspace] request failed", {
+      err: err instanceof Error ? err.message : String(err),
+    });
+    return null;
+  }
+
+  let parsed: unknown = null;
+  try {
+    parsed = await res.json();
+  } catch {
+    parsed = null;
+  }
+  const raw =
+    parsed && typeof parsed === "object"
+      ? (parsed as Record<string, unknown>)
+      : {};
+  const detail =
+    typeof raw.detail === "string" && raw.detail.trim()
+      ? raw.detail.trim()
+      : null;
+
+  if (!res.ok || raw.ok === false) {
+    return {
+      ok: false,
+      modelId: "",
+      packsUrl: "",
+      packageReady: false,
+      surveyStep: null,
+      error: detail,
+      statusCode: res.status,
+    };
+  }
+
+  const modelId =
+    typeof raw.model_id === "string" && raw.model_id ? raw.model_id : "";
+  const packsPath =
+    typeof raw.packs_path === "string" && raw.packs_path
+      ? raw.packs_path
+      : modelId
+        ? `/dashboard/packs?model=${encodeURIComponent(modelId)}&embed=1`
+        : "";
+  const packsUrl = packsPath
+    ? `${getSugarOperatorPublicUrl()}${packsPath.startsWith("/") ? "" : "/"}${packsPath}`
+    : "";
+
+  return {
+    ok: true,
+    modelId,
+    packsUrl,
+    packageReady: raw.package_ready === true,
+    surveyStep: readSurveyStep(raw),
+  };
+};
+
+/**
+ * Ask Sugar Scratchie to complete Make package / n8n (survey step 2) and
+ * notify this app's teaseme-step webhook.
+ */
+export const makeSugarPackage = async (params: {
+  inviteCode: string;
+  email: string;
+}): Promise<SugarActionResult | null> => {
+  if (!params.inviteCode) {
+    throw new Error("makeSugarPackage requires inviteCode");
+  }
+  if (!params.email) {
+    throw new Error("makeSugarPackage requires email");
+  }
+  const token = getSugarInternalToken();
+  if (!token) {
+    console.warn("[sugar.make-package] SUGAR_INTERNAL_TOKEN unset");
+    return null;
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(getSugarMakePackageUrl(), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "X-Internal-Token": token,
+      },
+      body: JSON.stringify({
+        invite_code: params.inviteCode,
+        invitee_email: params.email,
+      }),
+      signal: AbortSignal.timeout(SUGAR_APPROVE_TIMEOUT_MS),
+    });
+  } catch (err) {
+    console.error("[sugar.make-package] request failed", {
+      err: err instanceof Error ? err.message : String(err),
+    });
+    return null;
+  }
+
+  let parsed: unknown = null;
+  try {
+    parsed = await res.json();
+  } catch {
+    parsed = null;
+  }
+
+  const raw =
+    parsed && typeof parsed === "object"
+      ? (parsed as Record<string, unknown>)
+      : {};
+  const detail =
+    typeof raw.detail === "string" && raw.detail.trim()
+      ? raw.detail.trim()
+      : null;
+
+  if (!res.ok) {
+    console.warn("[sugar.make-package] upstream non-2xx", {
+      status: res.status,
+      body: parsed,
+    });
+    return {
+      ok: false,
+      error: detail,
+      statusCode: res.status,
+      raw: parsed,
+    };
+  }
+
+  if (raw.ok === false) {
+    return { ok: false, error: detail, statusCode: res.status, raw: parsed };
+  }
+  const statusStr =
+    typeof raw.status === "string" && raw.status ? raw.status : null;
+  const surveyStep = readSurveyStep(raw);
+  const modelId =
+    typeof raw.model_id === "string" && raw.model_id ? raw.model_id : null;
+  return { ok: true, status: statusStr, surveyStep, modelId, raw: parsed };
+};
+
+/**
+ * Ask Sugar Scratchie to publish the player /join freeplay LP (step 3) and
  * notify this app's teaseme-step webhook with assetLink.
  */
 export const orderSugarLandingPage = async (params: {
@@ -90,19 +307,31 @@ export const orderSugarLandingPage = async (params: {
     parsed = null;
   }
 
+  const raw =
+    parsed && typeof parsed === "object"
+      ? (parsed as Record<string, unknown>)
+      : {};
+  const detail =
+    typeof raw.detail === "string" && raw.detail.trim()
+      ? raw.detail.trim()
+      : null;
+
   if (!res.ok) {
     console.warn("[sugar.order-lp] upstream non-2xx", {
       status: res.status,
       body: parsed,
     });
-    return null;
+    return {
+      ok: false,
+      error: detail,
+      statusCode: res.status,
+      raw: parsed,
+    };
   }
 
-  const raw =
-    parsed && typeof parsed === "object"
-      ? (parsed as Record<string, unknown>)
-      : {};
-  if (raw.ok === false) return null;
+  if (raw.ok === false) {
+    return { ok: false, error: detail, statusCode: res.status, raw: parsed };
+  }
   const statusStr =
     typeof raw.status === "string" && raw.status ? raw.status : null;
   const assetLink =

@@ -22,7 +22,9 @@ import {
 import { getPresignedUrl } from "../services/s3.service";
 import { resolveAccountManagersFor } from "../services/ownership.service";
 import {
+  getSugarPackageWorkspace,
   isSugarScratchCampaign,
+  makeSugarPackage,
   orderSugarLandingPage,
 } from "../services/sugar.service";
 import {
@@ -1463,6 +1465,320 @@ export const reassignReferralInvite = async (
   }
 };
 
+const ACTION_PRE_USER_SELECT = {
+  id: true,
+  currentStep: true,
+  status: true,
+  lastCheckedAt: true,
+  teasemeUserId: true,
+  surveyLink: true,
+  assetLink: true,
+} as const;
+
+const sugarPackageStillOpen = (preUser: {
+  currentStep: number;
+  status: string;
+}): boolean =>
+  preUser.status !== "live" &&
+  preUser.status !== "building" &&
+  preUser.currentStep < 3;
+
+type PackageStepStamp = {
+  id: string;
+  currentStep: number;
+  status: string;
+  updatedAt: Date;
+};
+
+const readPackageStepStamp = (preUserId: string) =>
+  prisma.preUser.findUnique({
+    where: { id: preUserId },
+    select: {
+      id: true,
+      currentStep: true,
+      status: true,
+      updatedAt: true,
+    },
+  });
+
+const readCurrentStep = async (
+  preUserId: string,
+  fallback: number,
+): Promise<number> => {
+  const fresh = await prisma.preUser.findUnique({
+    where: { id: preUserId },
+    select: { currentStep: true },
+  });
+  return fresh?.currentStep ?? fallback;
+};
+
+// A missing pack rolls step 2 back to 1 only when Sugar's survey_step is
+// missing or still below 2. A reported step of 2 is left for the caller to
+// decide: a failed claim is not permission to publish. Pass null for
+// upstreamStep once a fresh read has confirmed the pack file is still
+// absent. The write matches the row stamp, so a make-package that commits
+// during the Sugar call is not overwritten.
+const claimMissingPackageStep = async (
+  stamp: PackageStepStamp,
+  upstreamStep: number | null,
+): Promise<{ rewound: boolean; currentStep: number }> => {
+  const sugarAgreesMissing = upstreamStep == null || upstreamStep < 2;
+  if (
+    !sugarAgreesMissing ||
+    !sugarPackageStillOpen(stamp) ||
+    stamp.currentStep < 2
+  ) {
+    return {
+      rewound: false,
+      currentStep: await readCurrentStep(stamp.id, stamp.currentStep),
+    };
+  }
+  const claimed = await prisma.preUser.updateMany({
+    where: {
+      id: stamp.id,
+      currentStep: stamp.currentStep,
+      status: stamp.status,
+      updatedAt: stamp.updatedAt,
+    },
+    data: {
+      currentStep: 1,
+      lastCheckedAt: new Date(),
+    },
+  });
+  if (claimed.count !== 1) {
+    return {
+      rewound: false,
+      currentStep: await readCurrentStep(stamp.id, stamp.currentStep),
+    };
+  }
+  return { rewound: true, currentStep: 1 };
+};
+
+export const getReferralPackageWorkspace = async (
+  req: AuthRequest,
+  res: Response,
+) => {
+  try {
+    const { id } = req.params;
+    const user = req.user!;
+
+    const loaded = await loadReferralForAction(id, user);
+    if (loaded.error) {
+      return res
+        .status(loaded.error.code)
+        .json({ error: loaded.error.message });
+    }
+    const { referral } = loaded;
+
+    if (
+      user.role !== UserRole.ADMIN &&
+      user.userType !== UserType.ACCOUNT_MANAGER
+    ) {
+      return res.status(403).json({
+        error:
+          "Access denied: only account managers or admins can open the package workspace",
+      });
+    }
+
+    if (!isSugarScratchCampaign(referral.campaign?.name)) {
+      return res.status(400).json({
+        error: "Package workspace is only available for Sugar Scratchie campaigns.",
+      });
+    }
+
+    if (!referral.preUser) {
+      return res.status(400).json({
+        error:
+          "This invite has no pre-influencer attached yet — the user hasn't confirmed email and name.",
+      });
+    }
+
+    const packageStamp = await readPackageStepStamp(referral.preUser.id);
+    const workspace = await getSugarPackageWorkspace({
+      inviteCode: referral.inviteCode,
+      email: referral.preUser.email,
+    });
+    if (!workspace?.ok) {
+      return res.status(workspace?.statusCode === 400 ? 400 : 502).json({
+        error:
+          workspace?.error ||
+          "Sugar Scratchie couldn't open the packs workspace right now.",
+      });
+    }
+
+    // Mirror a missing pack down to 1 only when Sugar's survey_step agrees
+    // it is still below 2 and make-package has not saved the row since the
+    // stamp above. Otherwise keep the step make-package just wrote.
+    const surveyStep =
+      packageStamp && !workspace.packageReady
+        ? (await claimMissingPackageStep(packageStamp, workspace.surveyStep))
+            .currentStep
+        : packageStamp
+          ? await readCurrentStep(
+              packageStamp.id,
+              packageStamp.currentStep,
+            )
+          : referral.preUser.currentStep;
+
+    return res.json({
+      success: true,
+      modelId: workspace.modelId,
+      packsUrl: workspace.packsUrl,
+      packageReady: workspace.packageReady,
+      surveyStep,
+    });
+  } catch (error) {
+    console.error("Package workspace error:", error);
+    return res.status(500).json({ error: "Failed to open package workspace" });
+  }
+};
+
+export const makeReferralPackage = async (
+  req: AuthRequest,
+  res: Response,
+) => {
+  try {
+    const { id } = req.params;
+    const user = req.user!;
+
+    const loaded = await loadReferralForAction(id, user);
+    if (loaded.error) {
+      return res
+        .status(loaded.error.code)
+        .json({ error: loaded.error.message });
+    }
+    const { referral } = loaded;
+
+    if (
+      user.role !== UserRole.ADMIN &&
+      user.userType !== UserType.ACCOUNT_MANAGER
+    ) {
+      return res.status(403).json({
+        error:
+          "Access denied: only account managers or admins can make the package",
+      });
+    }
+
+    if (!isSugarScratchCampaign(referral.campaign?.name)) {
+      return res.status(400).json({
+        error: "Make package is only available for Sugar Scratchie campaigns.",
+      });
+    }
+
+    const isExpired = computeIsExpired(
+      referral.status,
+      referral.createdAt,
+      readReferralMetadata(referral.metadata),
+    );
+    if (referral.status === "CANCELLED" || isExpired) {
+      return res.status(400).json({
+        error: "A package can only be made for active or pending referrals",
+      });
+    }
+
+    if (!referral.preUser) {
+      return res.status(400).json({
+        error:
+          "This invite has no pre-influencer attached yet — the user hasn't confirmed email and name.",
+      });
+    }
+
+    if ((referral.preUser.currentStep ?? 0) < 1) {
+      return res.status(400).json({
+        error: "Confirm email and name before making the package.",
+      });
+    }
+
+    const sugarUpstream = await makeSugarPackage({
+      inviteCode: referral.inviteCode,
+      email: referral.preUser.email,
+    });
+    if (!sugarUpstream || !sugarUpstream.ok) {
+      console.warn("[make-package] sugar make-package failed", {
+        referralId: referral.id,
+        inviteCode: referral.inviteCode,
+        email: referral.preUser.email,
+        statusCode: sugarUpstream?.statusCode,
+        error: sugarUpstream?.error,
+      });
+      // Pack missing: Sugar rolls survey_step back to 1 via webhook. Mirror
+      // that locally so the checklist stops showing Make package as done.
+      if (sugarUpstream?.statusCode === 409) {
+        const now = new Date();
+        const rolled =
+          referral.preUser.currentStep >= 2 ? 1 : referral.preUser.currentStep;
+        const updatedPreUser = await prisma.preUser.update({
+          where: { id: referral.preUser.id },
+          data: {
+            currentStep: rolled,
+            lastCheckedAt: now,
+          },
+          select: {
+            id: true,
+            currentStep: true,
+            status: true,
+            lastCheckedAt: true,
+            teasemeUserId: true,
+            surveyLink: true,
+            assetLink: true,
+          },
+        });
+        return res.status(409).json({
+          error:
+            sugarUpstream.error ||
+            "Pack video not ready yet. Run foil n8n in the operator app first.",
+          preUser: updatedPreUser,
+        });
+      }
+      return res.status(502).json({
+        error:
+          "Sugar Scratchie couldn't mark the package ready right now. Please try again in a moment.",
+      });
+    }
+
+    const now = new Date();
+    const history = readStepHistory(referral.preUser.stepHistory);
+    const nextStep = Math.max(
+      referral.preUser.currentStep,
+      sugarUpstream.surveyStep ?? 2,
+      2,
+    );
+    const nextHistory =
+      nextStep > referral.preUser.currentStep
+        ? [...history, { step: nextStep, at: now.toISOString() }].slice(
+            -STEP_HISTORY_MAX,
+          )
+        : history;
+
+    const updatedPreUser = await prisma.preUser.update({
+      where: { id: referral.preUser.id },
+      data: {
+        currentStep: nextStep,
+        status: chooseForwardStatus(
+          referral.preUser.status,
+          sugarUpstream.status ?? referral.preUser.status,
+        ),
+        lastCheckedAt: now,
+        stepHistory: nextHistory as unknown as Prisma.InputJsonValue,
+      },
+      select: {
+        id: true,
+        currentStep: true,
+        status: true,
+        lastCheckedAt: true,
+        teasemeUserId: true,
+        surveyLink: true,
+        assetLink: true,
+      },
+    });
+
+    return res.json({ success: true, preUser: updatedPreUser });
+  } catch (error) {
+    console.error("Make package error:", error);
+    return res.status(500).json({ error: "Failed to make package" });
+  }
+};
+
 export const orderReferralLandingPage = async (
   req: AuthRequest,
   res: Response,
@@ -1516,7 +1832,7 @@ export const orderReferralLandingPage = async (
 
     // The "Order Landing Page" click is a thin orchestration around the
     // upstream contract:
-    //   Sugar Scratchie campaigns → POST Sugar /order-landing-page (step 2).
+    //   Sugar Scratchie campaigns → POST Sugar /order-landing-page (step 3).
     //   TeaseMe campaigns → POST /approve, then re-poll /step-progress.
     const sugarCampaign = isSugarScratchCampaign(referral.campaign?.name);
     const now = new Date();
@@ -1524,27 +1840,132 @@ export const orderReferralLandingPage = async (
 
     if (sugarCampaign) {
       // Sugar publishes the player /join LP URL on this call (status live)
-      // and also notifies via webhook. Persist live locally when the body
-      // omits status: the card is already on the Order LP chip from step 1,
-      // so writing order_lp would leave the CTA in place and block welcome
-      // email, polling stop, and auto-accept until the webhook arrives.
+      // after n8n package step 2. Persist live locally when the body omits
+      // status so welcome email / polling stop / auto-accept do not wait
+      // solely on the webhook.
+      const packageStillOpen = sugarPackageStillOpen(referral.preUser);
+      if (packageStillOpen && referral.preUser.currentStep < 2) {
+        return res.status(400).json({
+          error: "Make the n8n package before ordering a landing page.",
+        });
+      }
+
+      // Stamp the row before the Sugar call. A lost stamp (the card repair
+      // bumps updatedAt, or survey_step is still >= 2) is not permission to
+      // publish: order only if a newer read shows the pack is actually ready.
+      // Otherwise rewind and return the row, including a step a concurrent
+      // repair already moved to 1.
+      const packNotReadyMessage =
+        "Pack video not ready yet. Finish Make package before ordering the landing page.";
+      let packageStamp: PackageStepStamp | null = null;
+      if (packageStillOpen && referral.preUser.currentStep >= 2) {
+        packageStamp = await readPackageStepStamp(referral.preUser.id);
+        const workspace = packageStamp
+          ? await getSugarPackageWorkspace({
+              inviteCode: referral.inviteCode,
+              email: referral.preUser.email,
+            })
+          : null;
+        if (
+          packageStamp &&
+          workspace?.ok === true &&
+          !workspace.packageReady
+        ) {
+          const claimed = await claimMissingPackageStep(
+            packageStamp,
+            workspace.surveyStep,
+          );
+          let packMissing = claimed.rewound || claimed.currentStep < 2;
+          if (!packMissing) {
+            const fresh = await readPackageStepStamp(referral.preUser.id);
+            if (fresh && fresh.currentStep < 2) {
+              packMissing = true;
+            } else if (
+              fresh &&
+              sugarPackageStillOpen(fresh) &&
+              fresh.currentStep >= 2
+            ) {
+              const again = await getSugarPackageWorkspace({
+                inviteCode: referral.inviteCode,
+                email: referral.preUser.email,
+              });
+              // A failed follow-up read is not proof the pack is missing.
+              // A row that is already live or past step 2 is published below.
+              if (again?.ok === true && !again.packageReady) {
+                const stamp = await readPackageStepStamp(referral.preUser.id);
+                if (stamp && stamp.currentStep < 2) {
+                  packMissing = true;
+                } else if (
+                  stamp &&
+                  sugarPackageStillOpen(stamp) &&
+                  stamp.currentStep >= 2
+                ) {
+                  await claimMissingPackageStep(stamp, null);
+                  packMissing = true;
+                }
+              }
+            }
+          }
+          if (packMissing) {
+            const updatedPreUser = await prisma.preUser.findUnique({
+              where: { id: referral.preUser.id },
+              select: ACTION_PRE_USER_SELECT,
+            });
+            return res.status(409).json({
+              error: packNotReadyMessage,
+              preUser: updatedPreUser,
+            });
+          }
+        }
+      }
+
       const sugarUpstream = await orderSugarLandingPage({
         inviteCode: referral.inviteCode,
         email: referral.preUser.email,
       });
-      if (!sugarUpstream) {
+      if (!sugarUpstream?.ok) {
         console.warn("[order-landing-page] sugar order-lp failed", {
           referralId: referral.id,
           inviteCode: referral.inviteCode,
           email: referral.preUser.email,
+          statusCode: sugarUpstream?.statusCode,
+          error: sugarUpstream?.error,
         });
-        return res.status(502).json({
+        if (packageStillOpen && sugarUpstream?.statusCode === 409) {
+          const claimed = packageStamp
+            ? await claimMissingPackageStep(packageStamp, null)
+            : {
+                rewound: false,
+                currentStep: referral.preUser.currentStep,
+              };
+          if (!claimed.rewound && claimed.currentStep >= 2) {
+            const fresh = await readPackageStepStamp(referral.preUser.id);
+            if (
+              fresh &&
+              sugarPackageStillOpen(fresh) &&
+              fresh.currentStep >= 2
+            ) {
+              await claimMissingPackageStep(fresh, null);
+            }
+          }
+          const updatedPreUser = await prisma.preUser.findUnique({
+            where: { id: referral.preUser.id },
+            select: ACTION_PRE_USER_SELECT,
+          });
+          return res.status(409).json({
+            error: sugarUpstream.error || packNotReadyMessage,
+            preUser: updatedPreUser,
+          });
+        }
+        const statusCode = sugarUpstream?.statusCode === 400 ? 400 : 502;
+        return res.status(statusCode).json({
           error:
+            sugarUpstream?.error ||
             "Sugar Scratchie couldn't start the landing-page build right now. Please try again in a moment.",
         });
       }
       const history = readStepHistory(referral.preUser.stepHistory);
-      const nextStep = Math.max(referral.preUser.currentStep, 2);
+      const nextStep = Math.max(referral.preUser.currentStep, 3);
       const nextHistory =
         nextStep > referral.preUser.currentStep
           ? [...history, { step: nextStep, at: now.toISOString() }].slice(
