@@ -48,10 +48,25 @@ export interface SugarPackageWorkspace {
   modelId: string;
   packsUrl: string;
   packageReady: boolean;
-  surveyStep: number;
+  // Null when upstream omits survey_step or sends a non-milestone. Callers
+  // must not treat that as step 0 — doing so rewinds a confirmed invite.
+  surveyStep: number | null;
   error?: string | null;
   statusCode?: number;
 }
+
+/** Milestone count 0–3. Missing or non-numeric stays null (never coerced to 0). */
+const readSurveyStep = (raw: Record<string, unknown>): number | null => {
+  const value = raw.survey_step;
+  const step =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && value.trim()
+        ? Number(value)
+        : NaN;
+  if (!Number.isInteger(step) || step < 0 || step > 3) return null;
+  return step;
+};
 
 export interface SugarActionResult {
   ok: boolean;
@@ -128,7 +143,7 @@ export const getSugarPackageWorkspace = async (params: {
       modelId: "",
       packsUrl: "",
       packageReady: false,
-      surveyStep: 0,
+      surveyStep: null,
       error: detail,
       statusCode: res.status,
     };
@@ -151,7 +166,7 @@ export const getSugarPackageWorkspace = async (params: {
     modelId,
     packsUrl,
     packageReady: raw.package_ready === true,
-    surveyStep: typeof raw.survey_step === "number" ? raw.survey_step : 0,
+    surveyStep: readSurveyStep(raw),
   };
 };
 
@@ -231,8 +246,7 @@ export const makeSugarPackage = async (params: {
   }
   const statusStr =
     typeof raw.status === "string" && raw.status ? raw.status : null;
-  const surveyStep =
-    typeof raw.survey_step === "number" ? raw.survey_step : null;
+  const surveyStep = readSurveyStep(raw);
   const modelId =
     typeof raw.model_id === "string" && raw.model_id ? raw.model_id : null;
   return { ok: true, status: statusStr, surveyStep, modelId, raw: parsed };
@@ -293,19 +307,31 @@ export const orderSugarLandingPage = async (params: {
     parsed = null;
   }
 
+  const raw =
+    parsed && typeof parsed === "object"
+      ? (parsed as Record<string, unknown>)
+      : {};
+  const detail =
+    typeof raw.detail === "string" && raw.detail.trim()
+      ? raw.detail.trim()
+      : null;
+
   if (!res.ok) {
     console.warn("[sugar.order-lp] upstream non-2xx", {
       status: res.status,
       body: parsed,
     });
-    return null;
+    return {
+      ok: false,
+      error: detail,
+      statusCode: res.status,
+      raw: parsed,
+    };
   }
 
-  const raw =
-    parsed && typeof parsed === "object"
-      ? (parsed as Record<string, unknown>)
-      : {};
-  if (raw.ok === false) return null;
+  if (raw.ok === false) {
+    return { ok: false, error: detail, statusCode: res.status, raw: parsed };
+  }
   const statusStr =
     typeof raw.status === "string" && raw.status ? raw.status : null;
   const assetLink =
