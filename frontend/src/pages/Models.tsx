@@ -2577,11 +2577,16 @@ const dedupeByPromoter = (rows: Referral[]): Referral[] => {
         step < 3 &&
         lifecycle !== "live" &&
         lifecycle !== "building";
-      if (rolled && rolled.currentStep < 2) {
+      const snapshotAdvanced =
+        !!rolled &&
+        (rolled.currentStep >= 3 ||
+          rolled.status === "live" ||
+          rolled.status === "building");
+      if (snapshotAdvanced || (rolled && rolled.currentStep < 2)) {
         applyPreUserSnapshot(referral.id, rolled);
       } else if (status === 409 && sugarPackStillOpen) {
-        // 409 with no row, or a row still on step 2, means the pack is
-        // missing. Leave the chip on Waiting so Make package is visible.
+        // No snapshot, or one still on the open step-2 card: the pack is
+        // missing. A live or step-3 snapshot was applied above.
         applySurveyStep(referral.id, 1);
       } else if (rolled) {
         applyPreUserSnapshot(referral.id, rolled);

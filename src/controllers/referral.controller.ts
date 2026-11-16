@@ -1878,20 +1878,31 @@ export const orderReferralLandingPage = async (
           let packMissing = claimed.rewound || claimed.currentStep < 2;
           if (!packMissing) {
             const fresh = await readPackageStepStamp(referral.preUser.id);
-            if (
-              !fresh ||
-              !sugarPackageStillOpen(fresh) ||
-              fresh.currentStep < 2
-            ) {
+            if (fresh && fresh.currentStep < 2) {
               packMissing = true;
-            } else {
+            } else if (
+              fresh &&
+              sugarPackageStillOpen(fresh) &&
+              fresh.currentStep >= 2
+            ) {
               const again = await getSugarPackageWorkspace({
                 inviteCode: referral.inviteCode,
                 email: referral.preUser.email,
               });
-              if (!(again?.ok === true && again.packageReady)) {
-                await claimMissingPackageStep(fresh, null);
-                packMissing = true;
+              // A failed follow-up read is not proof the pack is missing.
+              // A row that is already live or past step 2 is published below.
+              if (again?.ok === true && !again.packageReady) {
+                const stamp = await readPackageStepStamp(referral.preUser.id);
+                if (stamp && stamp.currentStep < 2) {
+                  packMissing = true;
+                } else if (
+                  stamp &&
+                  sugarPackageStillOpen(stamp) &&
+                  stamp.currentStep >= 2
+                ) {
+                  await claimMissingPackageStep(stamp, null);
+                  packMissing = true;
+                }
               }
             }
           }
