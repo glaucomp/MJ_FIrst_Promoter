@@ -2562,7 +2562,28 @@ const dedupeByPromoter = (rows: Referral[]): Referral[] => {
               assetLink: string | null;
             })
           : null;
-      if (rolled) {
+      const status =
+        err &&
+        typeof err === "object" &&
+        "status" in err &&
+        typeof err.status === "number"
+          ? err.status
+          : null;
+      const step = referral.preUser?.currentStep ?? 0;
+      const lifecycle = referral.preUser?.status;
+      const sugarPackStillOpen =
+        isSugarScratchCampaign(referral.campaign?.name) &&
+        step >= 2 &&
+        step < 3 &&
+        lifecycle !== "live" &&
+        lifecycle !== "building";
+      if (rolled && rolled.currentStep < 2) {
+        applyPreUserSnapshot(referral.id, rolled);
+      } else if (status === 409 && sugarPackStillOpen) {
+        // 409 with no row, or a row still on step 2, means the pack is
+        // missing. Leave the chip on Waiting so Make package is visible.
+        applySurveyStep(referral.id, 1);
+      } else if (rolled) {
         applyPreUserSnapshot(referral.id, rolled);
       }
       showToast(

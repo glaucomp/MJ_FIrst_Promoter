@@ -784,6 +784,7 @@ export const modelsApi = {
       const err = new Error(
         body.error || body.message || 'Failed to order landing page',
       ) as Error & {
+        status?: number;
         preUser?: {
           currentStep: number;
           status: string;
@@ -793,6 +794,7 @@ export const modelsApi = {
           assetLink: string | null;
         };
       };
+      err.status = response.status;
       if (body.preUser && typeof body.preUser === 'object') {
         err.preUser = body.preUser;
       }
