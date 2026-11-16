@@ -76,7 +76,21 @@ router.post(
   referralController.reassignReferralInvite,
 );
 
-// Request TeaseMe to start building the landing page for this invite.
+// Sugar Scratchie: operator packs URL for Create with n8n (no step advance).
+router.post(
+  "/:id/package-workspace",
+  authenticate,
+  referralController.getReferralPackageWorkspace,
+);
+
+// Sugar Scratchie: complete Make package / n8n (onboarding step 2).
+router.post(
+  "/:id/make-package",
+  authenticate,
+  referralController.makeReferralPackage,
+);
+
+// Request TeaseMe / Sugar to start building the landing page for this invite.
 router.post(
   "/:id/order-landing-page",
   authenticate,

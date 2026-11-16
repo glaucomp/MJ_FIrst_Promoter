@@ -687,6 +687,69 @@ export const modelsApi = {
     return handleResponse(response, 'Failed to reassign referral');
   },
 
+  async getReferralPackageWorkspace(referralId: string): Promise<{
+    success: true;
+    modelId: string;
+    packsUrl: string;
+    packageReady: boolean;
+    surveyStep: number;
+  }> {
+    const response = await apiFetch(
+      `${API_URL}/referrals/${referralId}/package-workspace`,
+      {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      },
+    );
+    return handleResponse(response, 'Failed to open package workspace');
+  },
+  // note: callers should apply surveyStep to local card state when it drops
+  // after a false step-2 repair (no pack on disk).
+
+  async makeReferralPackage(referralId: string): Promise<{
+    success: true;
+    preUser: {
+      id: string;
+      currentStep: number;
+      status: string;
+      lastCheckedAt: string | null;
+      teasemeUserId: string | null;
+      surveyLink: string | null;
+      assetLink: string | null;
+    };
+  }> {
+    const response = await apiFetch(
+      `${API_URL}/referrals/${referralId}/make-package`,
+      {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      },
+    );
+    if (response.status === 401) {
+      throw new Error('SESSION_EXPIRED');
+    }
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      const err = new Error(
+        body.error || body.message || 'Failed to make package',
+      ) as Error & {
+        preUser?: {
+          currentStep: number;
+          status: string;
+          lastCheckedAt: string | null;
+          teasemeUserId: string | null;
+          surveyLink: string | null;
+          assetLink: string | null;
+        };
+      };
+      if (body.preUser && typeof body.preUser === 'object') {
+        err.preUser = body.preUser;
+      }
+      throw err;
+    }
+    return response.json();
+  },
+
   async orderReferralLandingPage(referralId: string): Promise<{
     success: true;
     preUser: {

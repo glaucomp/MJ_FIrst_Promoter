@@ -1561,8 +1561,8 @@ const normalizePreUserLifecycleStatus = (
 ): string | null => {
   if (!status) return null;
   if (status === "approved") return "building";
-  // Sugar confirm (email/name) shares the Order LP chip. Without this,
-  // the card only leaves Waiting once currentStep >= 1.
+  // Sugar confirm still maps here for checklist math; Sugar chip state
+  // keys off currentStep (1 waiting → 2 order_lp → 3 live) instead.
   if (status === "confirmed") return "order_lp";
   return status;
 };
@@ -1598,12 +1598,15 @@ const deriveChipState = (r: Referral): ChipState => {
   if (preLifecycle === "building") return "building";
   const step = r.preUser?.currentStep ?? 0;
   const sugarCampaign = isSugarScratchCampaign(r.campaign?.name);
-  // Sugar publishes at step 2. Status can still read order_lp, the same
-  // chip step 1 already shows, so step 2 has to move the card to LP Live.
-  if (sugarCampaign && step >= 2) return "lp_live";
+  // Sugar 3-step: 1 Email → 2 n8n package → 3 Order LP / live.
+  // Do not map `confirmed` (normalize → order_lp) to Order LP until step 2.
+  if (sugarCampaign) {
+    if (step >= 3) return "lp_live";
+    if (step >= 2) return "order_lp";
+    if (step >= 1) return "waiting";
+    return "waiting";
+  }
   if (preLifecycle === "order_lp") return "order_lp";
-  // Sugar Scratchie: confirm email/name (step 1) unlocks Order Landing Page.
-  if (sugarCampaign && step >= 1) return "order_lp";
   const stepCount = onboardingStepsForCampaign(r.campaign?.name).length;
   // TeaseMe onboarding complete → Order LP chip (separate from published step 5 / live).
   if (step >= stepCount) return "order_lp";
@@ -1781,10 +1784,12 @@ const TEASEME_ONBOARDING_STEPS: { idx: number; label: string; hint?: string }[] 
     { idx: 3, label: "Assets" },
   ];
 
-// Sugar Scratchie funnel: confirm email/name, then AM orders the landing page.
+// Sugar Scratchie funnel (same teaseme-step completion count as TeaseMe):
+// Email & Name → Make package (n8n) → Make landing page (Order LP).
 const SUGAR_ONBOARDING_STEPS: { idx: number; label: string; hint?: string }[] = [
   { idx: 1, label: "Email & Name" },
-  { idx: 2, label: "Make landing page" },
+  { idx: 2, label: "Make package", hint: "n8n" },
+  { idx: 3, label: "Make landing page" },
 ];
 
 const isSugarScratchCampaign = (name?: string | null): boolean =>
@@ -1830,16 +1835,16 @@ const getCompletedOnboardingSteps = (
   sugarCampaign = false,
 ) => {
   const lifecycle = normalizePreUserLifecycleStatus(lifecycleStatus);
-  // Sugar: building/live complete both steps. Do not treat order_lp-style
-  // chips as all-done — step 1 still shows Make landing page open.
+  // Sugar: building/live complete all three steps. Do not treat order_lp /
+  // confirmed as all-done — Make package (2) and Make landing page (3) stay open.
   if (lifecycle === "building" || lifecycle === "live") {
     return stepCount;
   }
   if (!sugarCampaign && lifecycle === "order_lp") {
     return stepCount;
   }
-  // Confirmed is the Order LP window even when the step webhook has not
-  // advanced currentStep yet, so Email & Name is already done.
+  // Sugar confirmed maps to order_lp lifecycle, but step may still be 1
+  // (email only) or 2 (package ready, Order LP open).
   if (sugarCampaign && lifecycle === "order_lp") {
     return Math.max(1, Math.min(Math.max(currentStep, 0), stepCount));
   }
@@ -2035,6 +2040,11 @@ const ReferralList = ({
 
   // Reassign modal state.
   const [reassignFor, setReassignFor] = useState<Referral | null>(null);
+  const [packageFor, setPackageFor] = useState<{
+    referral: Referral;
+    packsUrl: string;
+    modelId: string;
+  } | null>(null);
 
   // Expired and Denied are separate filter pills: expired is a passive
   // lifecycle event (invite window lapsed), denied is an explicit AM
@@ -2307,6 +2317,131 @@ const dedupeByPromoter = (rows: Referral[]): Referral[] => {
     }
   };
 
+  const applyPreUserSnapshot = (
+    referralId: string,
+    preUser: {
+      currentStep: number;
+      status: string;
+      lastCheckedAt: string | null;
+      teasemeUserId: string | null;
+      surveyLink: string | null;
+      assetLink: string | null;
+    },
+  ) => {
+    setReferrals?.((prev) =>
+      prev.map((r) =>
+        r.id === referralId
+          ? {
+              ...r,
+              preUser: {
+                ...(r.preUser ?? {
+                  currentStep: 0,
+                  status: null,
+                  lastCheckedAt: null,
+                  teasemeUserId: null,
+                  surveyLink: null,
+                  assetLink: null,
+                  welcomeEmailSentAt: null,
+                }),
+                currentStep: preUser.currentStep,
+                status: preUser.status,
+                lastCheckedAt: preUser.lastCheckedAt,
+                teasemeUserId: preUser.teasemeUserId,
+                surveyLink: preUser.surveyLink,
+                assetLink: preUser.assetLink,
+              },
+            }
+          : r,
+      ),
+    );
+  };
+
+  const handleOpenPackageWorkspace = async (referral: Referral) => {
+    setBusyId(referral.id);
+    try {
+      const workspace = await modelsApi.getReferralPackageWorkspace(referral.id);
+      // Sugar repairs false step-2 (no pack) back to 1 — mirror on the card.
+      if (
+        referral.preUser &&
+        workspace.surveyStep !== referral.preUser.currentStep
+      ) {
+        applyPreUserSnapshot(referral.id, {
+          currentStep: workspace.surveyStep,
+          status: referral.preUser.status ?? "confirmed",
+          lastCheckedAt: referral.preUser.lastCheckedAt,
+          teasemeUserId: referral.preUser.teasemeUserId,
+          surveyLink: referral.preUser.surveyLink,
+          assetLink: referral.preUser.assetLink,
+        });
+      }
+      // Prefer a real tab: operator cookies often fail inside a cross-site iframe.
+      let packsUrlNewTab = workspace.packsUrl;
+      try {
+        const url = new URL(workspace.packsUrl);
+        url.searchParams.delete("embed");
+        packsUrlNewTab = url.toString();
+      } catch {
+        /* keep packsUrl */
+      }
+      window.open(packsUrlNewTab, "_blank", "noopener,noreferrer");
+      setPackageFor({
+        referral,
+        packsUrl: workspace.packsUrl,
+        modelId: workspace.modelId,
+      });
+      if (workspace.packageReady) {
+        showToast("success", "Pack already on the model");
+      } else {
+        showToast(
+          "success",
+          "Opened packs — sign in with token dev-dashboard if asked",
+        );
+      }
+    } catch (err) {
+      showToast(
+        "error",
+        err instanceof Error ? err.message : "Failed to open package workspace",
+      );
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleMarkPackageDone = async (referral: Referral) => {
+    setBusyId(referral.id);
+    try {
+      const result = await modelsApi.makeReferralPackage(referral.id);
+      applyPreUserSnapshot(referral.id, result.preUser);
+      setPackageFor(null);
+      showToast("success", "Make package done — Order LP unlocked");
+    } catch (err) {
+      const rolled =
+        err &&
+        typeof err === "object" &&
+        "preUser" in err &&
+        err.preUser &&
+        typeof err.preUser === "object"
+          ? (err.preUser as {
+              currentStep: number;
+              status: string;
+              lastCheckedAt: string | null;
+              teasemeUserId: string | null;
+              surveyLink: string | null;
+              assetLink: string | null;
+            })
+          : null;
+      if (rolled) {
+        applyPreUserSnapshot(referral.id, rolled);
+      }
+      showToast(
+        "error",
+        err instanceof Error ? err.message : "Failed to make package",
+      );
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const handleOrderLandingPage = async (referral: Referral) => {
     setBusyId(referral.id);
     try {
@@ -2315,32 +2450,7 @@ const dedupeByPromoter = (rows: Referral[]): Referral[] => {
       // (currentStep, status, links). Spread it directly — chip state now
       // prefers the mirrored lifecycle status and uses currentStep only as a
       // fallback, so no optimistic forcing of "building" is needed here.
-      setReferrals?.((prev) =>
-        prev.map((r) =>
-          r.id === referral.id
-            ? {
-                ...r,
-                preUser: {
-                  ...(r.preUser ?? {
-                    currentStep: 0,
-                    status: null,
-                    lastCheckedAt: null,
-                    teasemeUserId: null,
-                    surveyLink: null,
-                    assetLink: null,
-                    welcomeEmailSentAt: null,
-                  }),
-                  currentStep: result.preUser.currentStep,
-                  status: result.preUser.status,
-                  lastCheckedAt: result.preUser.lastCheckedAt,
-                  teasemeUserId: result.preUser.teasemeUserId,
-                  surveyLink: result.preUser.surveyLink,
-                  assetLink: result.preUser.assetLink,
-                },
-              }
-            : r,
-        ),
-      );
+      applyPreUserSnapshot(referral.id, result.preUser);
       showToast("success", "Landing page build requested");
     } catch (err) {
       showToast(
@@ -2642,7 +2752,7 @@ const dedupeByPromoter = (rows: Referral[]): Referral[] => {
               <div className="relative px-4 py-3">
                 <div
                   className={`flex items-center justify-between mb-2 ${
-                    isLive ? "opacity-20" : ""
+                    isLive && !sugarCampaign ? "opacity-20" : ""
                   }`}
                 >
                   <div className="flex items-center gap-2">
@@ -2693,7 +2803,7 @@ const dedupeByPromoter = (rows: Referral[]): Referral[] => {
                     </OnboardingIconPill>
                   </div>
                 </div>
-                <div className={isLive ? "opacity-20" : ""}>
+                <div className={isLive && !sugarCampaign ? "opacity-20" : ""}>
                   <OnboardingChecklist
                     step={step}
                     assetLink={assetLink}
@@ -2769,12 +2879,14 @@ const dedupeByPromoter = (rows: Referral[]): Referral[] => {
                 state={chipState}
                 referral={referral}
                 busy={isBusy}
+                sugarCampaign={sugarCampaign}
                 canOrderLandingPage={canOrderLandingPage}
                 canAssignChatters={isAccountManagerViewer || isAdmin}
                 isAdmin={isAdmin}
                 onDelete={handleDelete}
                 onDeny={handleDeny}
                 onReassign={(r) => setReassignFor(r)}
+                onMakePackage={handleOpenPackageWorkspace}
                 onOrderLandingPage={handleOrderLandingPage}
                 onAssignChatters={handleAssignChatters}
                 onSendWelcomeEmail={handleSendWelcomeEmail}
@@ -2795,6 +2907,17 @@ const dedupeByPromoter = (rows: Referral[]): Referral[] => {
           onSubmit={handleReassignSubmit}
         />
       )}
+
+      {packageFor && (
+        <MakePackageModal
+          referral={packageFor.referral}
+          packsUrl={packageFor.packsUrl}
+          modelId={packageFor.modelId}
+          busy={busyId === packageFor.referral.id}
+          onClose={() => setPackageFor(null)}
+          onComplete={() => void handleMarkPackageDone(packageFor.referral)}
+        />
+      )}
     </div>
   );
 };
@@ -2805,6 +2928,7 @@ const dedupeByPromoter = (rows: Referral[]): Referral[] => {
 //   expired  → message + Delete (dead invite, cleanup only)
 //   denied   → message + Delete (dead invite, cleanup only)
 //   waiting  → [Deny][ReAssign]  +  disabled "Order Landing Page"
+//              (Sugar after email: green "Make package" instead)
 //   order_lp → full-width green "Order Landing Page"
 //   building → no CTA, grayed "Building landing page…" placeholder
 //   lp_live  → secondary "Send/Resend Welcome Email" + pink "Assign Chatters"
@@ -2813,6 +2937,7 @@ type CardActionsProps = {
   state: ChipState;
   referral: Referral;
   busy: boolean;
+  sugarCampaign?: boolean;
   /** Only admins and account managers may trigger upstream LP approval. */
   canOrderLandingPage?: boolean;
   /** Only admins and account managers may assign chatter groups. */
@@ -2825,6 +2950,7 @@ type CardActionsProps = {
   onDelete: (r: Referral) => void;
   onDeny: (r: Referral) => void;
   onReassign: (r: Referral) => void;
+  onMakePackage: (r: Referral) => void;
   onOrderLandingPage: (r: Referral) => void;
   onAssignChatters: (r: Referral) => void;
   onSendWelcomeEmail: (r: Referral) => void;
@@ -2937,12 +3063,14 @@ const CardActions = ({
   state,
   referral,
   busy,
+  sugarCampaign = false,
   canOrderLandingPage = false,
   canAssignChatters = false,
   isAdmin = false,
   onDelete,
   onDeny,
   onReassign,
+  onMakePackage,
   onOrderLandingPage,
   onAssignChatters,
   onSendWelcomeEmail,
@@ -2988,6 +3116,10 @@ const CardActions = ({
   }
 
   if (state === "waiting") {
+    const step = referral.preUser?.currentStep ?? 0;
+    // Sugar step 1 done → AM runs n8n / Make package before Order LP.
+    const showMakePackage =
+      sugarCampaign && step >= 1 && step < 2 && canOrderLandingPage;
     return (
       <div className="flex flex-col gap-2">
         <div className="grid grid-cols-2 items-center gap-2">
@@ -3008,15 +3140,23 @@ const CardActions = ({
             </span>
           </SecondaryButton>
         </div>
-        {/* Disabled while we wait for the invitee to finish onboarding.
-            Tooltip explains why so it doesn't look like a dead button. */}
-        <button
-          disabled
-          title="Waiting for the promoter to finish onboarding before a landing page can be ordered."
-          className="w-full rounded-full px-4 py-3 text-base font-medium border border-tm-success-color05 text-tm-success-color05 opacity-40 cursor-not-allowed"
-        >
-          Order Landing Page
-        </button>
+        {showMakePackage ? (
+          <GreenCta onClick={() => onMakePackage(referral)} disabled={busy}>
+            {busy ? "Running…" : "Make package"}
+          </GreenCta>
+        ) : (
+          <button
+            disabled
+            title={
+              sugarCampaign && step >= 1 && !canOrderLandingPage
+                ? "Your account manager will make the package next."
+                : "Waiting for the promoter to finish onboarding before a landing page can be ordered."
+            }
+            className="w-full rounded-full px-4 py-3 text-base font-medium border border-tm-success-color05 text-tm-success-color05 opacity-40 cursor-not-allowed"
+          >
+            {sugarCampaign && step >= 1 ? "Make package" : "Order Landing Page"}
+          </button>
+        )}
         {/* Reassign is already in the row above, so the admin footer only
             needs the Delete override here. */}
         {adminOverride({ showReassign: false })}
@@ -3122,6 +3262,177 @@ const CardActions = ({
         </p>
       )}
       {adminOverride({ showReassign: true })}
+    </div>
+  );
+};
+
+// ── Make package modal (operator packs iframe + new-tab fallback) ─────────
+
+const MakePackageModal = ({
+  referral,
+  packsUrl,
+  modelId,
+  busy,
+  onClose,
+  onComplete,
+}: {
+  referral: Referral;
+  packsUrl: string;
+  modelId: string;
+  busy: boolean;
+  onClose: () => void;
+  onComplete: () => void;
+}) => {
+  const [checking, setChecking] = useState(false);
+  const [packReady, setPackReady] = useState(false);
+  const completingRef = useRef(false);
+
+  const invitee =
+    referral.referredUser?.email ??
+    referral.metadata?.inviteeEmail ??
+    modelId;
+
+  const packsUrlNewTab = (() => {
+    try {
+      const url = new URL(packsUrl);
+      url.searchParams.delete("embed");
+      return url.toString();
+    } catch {
+      return packsUrl;
+    }
+  })();
+
+  const tryComplete = useCallback(async () => {
+    if (completingRef.current) return;
+    completingRef.current = true;
+    try {
+      onComplete();
+    } finally {
+      // Parent clears the modal on success; allow retry on error.
+      window.setTimeout(() => {
+        completingRef.current = false;
+      }, 1500);
+    }
+  }, [onComplete]);
+
+  const refreshReady = useCallback(async () => {
+    setChecking(true);
+    try {
+      const workspace = await modelsApi.getReferralPackageWorkspace(referral.id);
+      setPackReady(workspace.packageReady);
+      if (workspace.packageReady) {
+        await tryComplete();
+      }
+      return workspace.packageReady;
+    } catch {
+      return false;
+    } finally {
+      setChecking(false);
+    }
+  }, [referral.id, tryComplete]);
+
+  useEffect(() => {
+    void refreshReady();
+    const timer = window.setInterval(() => {
+      void refreshReady();
+    }, 4000);
+    return () => window.clearInterval(timer);
+  }, [refreshReady]);
+
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      const data = event.data;
+      if (!data || typeof data !== "object") return;
+      if ((data as { type?: string }).type !== "sugar-pack-saved") return;
+      if ((data as { modelId?: string }).modelId !== modelId) return;
+      setPackReady(true);
+      void tryComplete();
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [modelId, tryComplete]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-3 py-4"
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-[#1a1a1a] border border-[rgba(255,255,255,0.1)] rounded-lg w-full max-w-5xl h-[min(90vh,880px)] p-4 flex flex-col gap-3"
+      >
+        <div className="flex items-start justify-between gap-3 shrink-0">
+          <div className="min-w-0">
+            <h3 className="text-white text-base font-bold">Make package</h3>
+            <p className="text-tm-text-color08 text-sm truncate">
+              {invitee} · {modelId}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="text-tm-text-color08 hover:text-white text-lg leading-none px-2"
+          >
+            &#x2715;
+          </button>
+        </div>
+
+        <p className="text-tm-text-color08 text-sm shrink-0">
+          A packs tab should have opened. If it asks for a token, enter{" "}
+          <span className="text-white font-mono">dev-dashboard</span> (not a
+          password). Then use <span className="text-white">Create with n8n</span>{" "}
+          or Upload video. This step completes only after the pack video is
+          saved.
+        </p>
+
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <a
+            href={packsUrlNewTab}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-bold bg-linear-to-b from-tm-success-color05 to-[#00aa3c] text-black"
+          >
+            Open packs again
+          </a>
+          <button
+            type="button"
+            onClick={() => void refreshReady()}
+            disabled={busy || checking}
+            className="inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-bold bg-[#252525] border border-[rgba(255,255,255,0.14)] text-white disabled:opacity-50"
+          >
+            {checking ? "Checking…" : "Check pack"}
+          </button>
+          {packReady ? (
+            <button
+              type="button"
+              onClick={() => void tryComplete()}
+              disabled={busy}
+              className="inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-bold bg-linear-to-b from-tm-success-color05 to-[#00aa3c] text-black disabled:opacity-50"
+            >
+              {busy ? "Saving…" : "Complete step 2"}
+            </button>
+          ) : (
+            <span className="text-tm-text-color08 text-sm">
+              Waiting for pack video…
+            </span>
+          )}
+        </div>
+
+        <div className="relative flex-1 min-h-0 rounded-md overflow-hidden border border-[rgba(255,255,255,0.08)] bg-[#121212] flex items-center justify-center p-6">
+          <div className="text-center max-w-md flex flex-col gap-3">
+            <p className="text-white text-sm font-medium">
+              Operator packs open in a new tab
+            </p>
+            <p className="text-tm-text-color08 text-sm">
+              Login token:{" "}
+              <span className="text-white font-mono">dev-dashboard</span>
+              <br />
+              Then Create with n8n / upload, come back here, and press Check
+              pack.
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

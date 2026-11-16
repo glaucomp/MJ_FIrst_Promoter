@@ -22,7 +22,9 @@ import {
 import { getPresignedUrl } from "../services/s3.service";
 import { resolveAccountManagersFor } from "../services/ownership.service";
 import {
+  getSugarPackageWorkspace,
   isSugarScratchCampaign,
+  makeSugarPackage,
   orderSugarLandingPage,
 } from "../services/sugar.service";
 import {
@@ -1463,6 +1465,233 @@ export const reassignReferralInvite = async (
   }
 };
 
+export const getReferralPackageWorkspace = async (
+  req: AuthRequest,
+  res: Response,
+) => {
+  try {
+    const { id } = req.params;
+    const user = req.user!;
+
+    const loaded = await loadReferralForAction(id, user);
+    if (loaded.error) {
+      return res
+        .status(loaded.error.code)
+        .json({ error: loaded.error.message });
+    }
+    const { referral } = loaded;
+
+    if (
+      user.role !== UserRole.ADMIN &&
+      user.userType !== UserType.ACCOUNT_MANAGER
+    ) {
+      return res.status(403).json({
+        error:
+          "Access denied: only account managers or admins can open the package workspace",
+      });
+    }
+
+    if (!isSugarScratchCampaign(referral.campaign?.name)) {
+      return res.status(400).json({
+        error: "Package workspace is only available for Sugar Scratchie campaigns.",
+      });
+    }
+
+    if (!referral.preUser) {
+      return res.status(400).json({
+        error:
+          "This invite has no pre-influencer attached yet — the user hasn't confirmed email and name.",
+      });
+    }
+
+    const workspace = await getSugarPackageWorkspace({
+      inviteCode: referral.inviteCode,
+      email: referral.preUser.email,
+    });
+    if (!workspace?.ok) {
+      return res.status(workspace?.statusCode === 400 ? 400 : 502).json({
+        error:
+          workspace?.error ||
+          "Sugar Scratchie couldn't open the packs workspace right now.",
+      });
+    }
+
+    // Sugar may repair a false step-2 (no pack yet). Mirror that locally.
+    let surveyStep = workspace.surveyStep;
+    if (
+      typeof surveyStep === "number" &&
+      surveyStep !== referral.preUser.currentStep
+    ) {
+      const updated = await prisma.preUser.update({
+        where: { id: referral.preUser.id },
+        data: {
+          currentStep: surveyStep,
+          lastCheckedAt: new Date(),
+        },
+        select: { currentStep: true },
+      });
+      surveyStep = updated.currentStep;
+    }
+
+    return res.json({
+      success: true,
+      modelId: workspace.modelId,
+      packsUrl: workspace.packsUrl,
+      packageReady: workspace.packageReady,
+      surveyStep,
+    });
+  } catch (error) {
+    console.error("Package workspace error:", error);
+    return res.status(500).json({ error: "Failed to open package workspace" });
+  }
+};
+
+export const makeReferralPackage = async (
+  req: AuthRequest,
+  res: Response,
+) => {
+  try {
+    const { id } = req.params;
+    const user = req.user!;
+
+    const loaded = await loadReferralForAction(id, user);
+    if (loaded.error) {
+      return res
+        .status(loaded.error.code)
+        .json({ error: loaded.error.message });
+    }
+    const { referral } = loaded;
+
+    if (
+      user.role !== UserRole.ADMIN &&
+      user.userType !== UserType.ACCOUNT_MANAGER
+    ) {
+      return res.status(403).json({
+        error:
+          "Access denied: only account managers or admins can make the package",
+      });
+    }
+
+    if (!isSugarScratchCampaign(referral.campaign?.name)) {
+      return res.status(400).json({
+        error: "Make package is only available for Sugar Scratchie campaigns.",
+      });
+    }
+
+    const isExpired = computeIsExpired(
+      referral.status,
+      referral.createdAt,
+      readReferralMetadata(referral.metadata),
+    );
+    if (referral.status === "CANCELLED" || isExpired) {
+      return res.status(400).json({
+        error: "A package can only be made for active or pending referrals",
+      });
+    }
+
+    if (!referral.preUser) {
+      return res.status(400).json({
+        error:
+          "This invite has no pre-influencer attached yet — the user hasn't confirmed email and name.",
+      });
+    }
+
+    if ((referral.preUser.currentStep ?? 0) < 1) {
+      return res.status(400).json({
+        error: "Confirm email and name before making the package.",
+      });
+    }
+
+    const sugarUpstream = await makeSugarPackage({
+      inviteCode: referral.inviteCode,
+      email: referral.preUser.email,
+    });
+    if (!sugarUpstream || !sugarUpstream.ok) {
+      console.warn("[make-package] sugar make-package failed", {
+        referralId: referral.id,
+        inviteCode: referral.inviteCode,
+        email: referral.preUser.email,
+        statusCode: sugarUpstream?.statusCode,
+        error: sugarUpstream?.error,
+      });
+      // Pack missing: Sugar rolls survey_step back to 1 via webhook. Mirror
+      // that locally so the checklist stops showing Make package as done.
+      if (sugarUpstream?.statusCode === 409) {
+        const now = new Date();
+        const rolled =
+          referral.preUser.currentStep >= 2 ? 1 : referral.preUser.currentStep;
+        const updatedPreUser = await prisma.preUser.update({
+          where: { id: referral.preUser.id },
+          data: {
+            currentStep: rolled,
+            lastCheckedAt: now,
+          },
+          select: {
+            id: true,
+            currentStep: true,
+            status: true,
+            lastCheckedAt: true,
+            teasemeUserId: true,
+            surveyLink: true,
+            assetLink: true,
+          },
+        });
+        return res.status(409).json({
+          error:
+            sugarUpstream.error ||
+            "Pack video not ready yet. Run foil n8n in the operator app first.",
+          preUser: updatedPreUser,
+        });
+      }
+      return res.status(502).json({
+        error:
+          "Sugar Scratchie couldn't mark the package ready right now. Please try again in a moment.",
+      });
+    }
+
+    const now = new Date();
+    const history = readStepHistory(referral.preUser.stepHistory);
+    const nextStep = Math.max(
+      referral.preUser.currentStep,
+      sugarUpstream.surveyStep ?? 2,
+      2,
+    );
+    const nextHistory =
+      nextStep > referral.preUser.currentStep
+        ? [...history, { step: nextStep, at: now.toISOString() }].slice(
+            -STEP_HISTORY_MAX,
+          )
+        : history;
+
+    const updatedPreUser = await prisma.preUser.update({
+      where: { id: referral.preUser.id },
+      data: {
+        currentStep: nextStep,
+        status: chooseForwardStatus(
+          referral.preUser.status,
+          sugarUpstream.status ?? referral.preUser.status,
+        ),
+        lastCheckedAt: now,
+        stepHistory: nextHistory as unknown as Prisma.InputJsonValue,
+      },
+      select: {
+        id: true,
+        currentStep: true,
+        status: true,
+        lastCheckedAt: true,
+        teasemeUserId: true,
+        surveyLink: true,
+        assetLink: true,
+      },
+    });
+
+    return res.json({ success: true, preUser: updatedPreUser });
+  } catch (error) {
+    console.error("Make package error:", error);
+    return res.status(500).json({ error: "Failed to make package" });
+  }
+};
+
 export const orderReferralLandingPage = async (
   req: AuthRequest,
   res: Response,
@@ -1516,7 +1745,7 @@ export const orderReferralLandingPage = async (
 
     // The "Order Landing Page" click is a thin orchestration around the
     // upstream contract:
-    //   Sugar Scratchie campaigns → POST Sugar /order-landing-page (step 2).
+    //   Sugar Scratchie campaigns → POST Sugar /order-landing-page (step 3).
     //   TeaseMe campaigns → POST /approve, then re-poll /step-progress.
     const sugarCampaign = isSugarScratchCampaign(referral.campaign?.name);
     const now = new Date();
@@ -1524,10 +1753,9 @@ export const orderReferralLandingPage = async (
 
     if (sugarCampaign) {
       // Sugar publishes the player /join LP URL on this call (status live)
-      // and also notifies via webhook. Persist live locally when the body
-      // omits status: the card is already on the Order LP chip from step 1,
-      // so writing order_lp would leave the CTA in place and block welcome
-      // email, polling stop, and auto-accept until the webhook arrives.
+      // after n8n package step 2. Persist live locally when the body omits
+      // status so welcome email / polling stop / auto-accept do not wait
+      // solely on the webhook.
       const sugarUpstream = await orderSugarLandingPage({
         inviteCode: referral.inviteCode,
         email: referral.preUser.email,
@@ -1544,7 +1772,7 @@ export const orderReferralLandingPage = async (
         });
       }
       const history = readStepHistory(referral.preUser.stepHistory);
-      const nextStep = Math.max(referral.preUser.currentStep, 2);
+      const nextStep = Math.max(referral.preUser.currentStep, 3);
       const nextHistory =
         nextStep > referral.preUser.currentStep
           ? [...history, { step: nextStep, at: now.toISOString() }].slice(
