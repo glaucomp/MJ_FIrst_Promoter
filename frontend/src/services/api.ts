@@ -703,9 +703,9 @@ export const modelsApi = {
     );
     return handleResponse(response, 'Failed to open package workspace');
   },
-  // Callers should apply surveyStep when it is an integer >= 1 and lower than
-  // the card. The server never rewrites currentStep from a missing field, so
-  // a dropped step is a real Sugar repair (false step 2 with no pack).
+  // Apply surveyStep only when it is an integer >= 1 and lower than the card.
+  // This read never raises currentStep. A missing pack is repaired to step 1
+  // even when Sugar still reports survey_step 2.
 
   async makeReferralPackage(referralId: string): Promise<{
     success: true;

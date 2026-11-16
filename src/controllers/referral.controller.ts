@@ -1475,8 +1475,12 @@ const ACTION_PRE_USER_SELECT = {
   assetLink: true,
 } as const;
 
-// Only an explicit milestone 1–3 may overwrite currentStep. A missing
-// survey_step used to arrive as 0 and rewind a confirmed invite.
+// Only an explicit milestone 1–3 may overwrite currentStep, and only
+// downward. A workspace read that still reports a higher step (Sugar
+// survey_step 2 with no pack, after a 409 rollback) must not be written
+// back — that reopens Order LP and hides Make package. A missing
+// survey_step stays null and must not arrive as 0, which used to rewind
+// a confirmed invite.
 const mirrorExplicitSurveyStep = async (
   preUserId: string,
   currentStep: number,
@@ -1487,7 +1491,7 @@ const mirrorExplicitSurveyStep = async (
     !Number.isInteger(surveyStep) ||
     surveyStep < 1 ||
     surveyStep > 3 ||
-    surveyStep === currentStep
+    surveyStep >= currentStep
   ) {
     return currentStep;
   }
@@ -1561,13 +1565,20 @@ export const getReferralPackageWorkspace = async (
       });
     }
 
-    // Sugar may repair a false step-2 (no pack yet). Mirror that locally.
-    // An omitted survey_step stays null upstream and must not become 0 here.
-    const surveyStep = await mirrorExplicitSurveyStep(
-      referral.preUser.id,
-      referral.preUser.currentStep,
-      workspace.surveyStep,
-    );
+    // Sugar can still report survey_step 2 when the pack file is missing.
+    // That is the false step this read repairs: roll the open card back to
+    // 1. A higher milestone is never copied onto a step that was just
+    // rolled back, and an omitted survey_step must not become 0.
+    const surveyStep =
+      sugarPackageStillOpen(referral.preUser) &&
+      !workspace.packageReady &&
+      referral.preUser.currentStep >= 2
+        ? await mirrorExplicitSurveyStep(
+            referral.preUser.id,
+            referral.preUser.currentStep,
+            1,
+          )
+        : referral.preUser.currentStep;
 
     return res.json({
       success: true,
@@ -1799,26 +1810,19 @@ export const orderReferralLandingPage = async (
         });
       }
 
-      // A false step-2 webhook leaves the card on Order LP with no pack.
-      // Workspace repairs Sugar's survey_step to 1; mirror that and refuse
-      // instead of publishing step 3.
+      // A false step-2 leaves the card on Order LP with no pack. Sugar can
+      // still report survey_step 2 in that case, so packageReady is the
+      // check. Roll back to 1 and refuse instead of publishing step 3.
       if (packageStillOpen && referral.preUser.currentStep >= 2) {
         const workspace = await getSugarPackageWorkspace({
           inviteCode: referral.inviteCode,
           email: referral.preUser.email,
         });
-        const upstreamStep = workspace?.ok ? workspace.surveyStep : null;
-        const packMissing =
-          workspace?.ok === true &&
-          !workspace.packageReady &&
-          (upstreamStep == null || upstreamStep < 2);
-        if (packMissing) {
-          const repaired =
-            upstreamStep != null && upstreamStep >= 1 ? upstreamStep : 1;
+        if (workspace?.ok === true && !workspace.packageReady) {
           const updatedPreUser = await prisma.preUser.update({
             where: { id: referral.preUser.id },
             data: {
-              currentStep: repaired,
+              currentStep: 1,
               lastCheckedAt: now,
             },
             select: ACTION_PRE_USER_SELECT,

@@ -2048,7 +2048,10 @@ const ReferralList = ({
     packsUrl: string;
     modelId: string;
   } | null>(null);
-  const packageChecksRef = useRef(new Set<string>());
+  // id → step confirmed to have a pack, or a read still in flight.
+  // Dropped when the card leaves step 2, when the pack is missing, and on
+  // error, so a later teaseme-step webhook is checked again.
+  const packageChecksRef = useRef(new Map<string, number | "inflight">());
 
   const applySurveyStep = useCallback(
     (referralId: string, surveyStep: number) => {
@@ -2058,10 +2061,16 @@ const ReferralList = ({
       setReferrals?.((prev) => {
         let changed = false;
         const next = prev.map((r) => {
+          // Workspace polls must not raise a step, and must not rewind a
+          // card that has already reached Make landing page. A 409 rollback
+          // to 1 is undone if a later read still reports Sugar step 2.
           if (
             r.id !== referralId ||
             !r.preUser ||
-            r.preUser.currentStep === surveyStep
+            surveyStep >= r.preUser.currentStep ||
+            r.preUser.currentStep >= 3 ||
+            r.preUser.status === "live" ||
+            r.preUser.status === "building"
           ) {
             return r;
           }
@@ -2077,43 +2086,49 @@ const ReferralList = ({
     [setReferrals],
   );
 
-  // False step-2 webhooks show Order LP and hide Make package. One workspace
-  // read per card lets Sugar roll the step back to 1 when the pack is missing.
+  // False step-2 webhooks show Order LP and hide Make package. A workspace
+  // read rolls the card to 1 when the pack file is missing, including when
+  // Sugar still reports survey_step 2.
   useEffect(() => {
     if (!canOrderLandingPage || !setReferrals) return;
     for (const referral of referrals) {
       const step = referral.preUser?.currentStep ?? 0;
       const status = referral.preUser?.status;
-      if (
-        referral.isExpired ||
-        referral.status === "CANCELLED" ||
-        !isSugarScratchCampaign(referral.campaign?.name) ||
-        !referral.preUser ||
-        step < 2 ||
-        step >= 3 ||
-        status === "live" ||
-        status === "building" ||
-        packageChecksRef.current.has(referral.id)
-      ) {
+      const inRepairWindow =
+        !referral.isExpired &&
+        referral.status !== "CANCELLED" &&
+        isSugarScratchCampaign(referral.campaign?.name) &&
+        referral.preUser != null &&
+        step >= 2 &&
+        step < 3 &&
+        status !== "live" &&
+        status !== "building";
+      if (!inRepairWindow) {
+        const mark = packageChecksRef.current.get(referral.id);
+        if (step < 2 && mark !== "inflight") {
+          packageChecksRef.current.delete(referral.id);
+        }
         continue;
       }
-      packageChecksRef.current.add(referral.id);
+      const mark = packageChecksRef.current.get(referral.id);
+      if (mark === "inflight" || mark === step) continue;
+      packageChecksRef.current.set(referral.id, "inflight");
       const referralId = referral.id;
+      const checkedStep = step;
       void modelsApi
         .getReferralPackageWorkspace(referralId)
         .then((workspace) => {
-          if (
-            workspace.packageReady ||
-            !Number.isInteger(workspace.surveyStep) ||
-            workspace.surveyStep < 1 ||
-            workspace.surveyStep >= 2
-          ) {
+          if (workspace.packageReady) {
+            packageChecksRef.current.set(referralId, checkedStep);
             return;
           }
-          applySurveyStep(referralId, workspace.surveyStep);
+          packageChecksRef.current.delete(referralId);
+          applySurveyStep(referralId, 1);
         })
         .catch(() => {
-          // Leave the id checked so a down upstream doesn't retry every render.
+          // Retry on the next card update. Keeping the mark here would
+          // skip a later webhook that writes step 2 again.
+          packageChecksRef.current.delete(referralId);
         });
     }
   }, [referrals, canOrderLandingPage, setReferrals, applySurveyStep]);
@@ -2432,10 +2447,14 @@ const dedupeByPromoter = (rows: Referral[]): Referral[] => {
     setBusyId(referral.id);
     try {
       const workspace = await modelsApi.getReferralPackageWorkspace(referral.id);
-      // Sugar repairs false step-2 (no pack) back to 1 — mirror on the card.
-      // Ignore a missing step; the server keeps the previous milestone.
-      if (referral.preUser && workspace.surveyStep >= 1) {
-        applySurveyStep(referral.id, workspace.surveyStep);
+      // No pack: roll a false step 2 back to 1 even if Sugar still reports 2.
+      // A higher survey_step must not be copied onto the card.
+      if (
+        referral.preUser &&
+        !workspace.packageReady &&
+        referral.preUser.currentStep >= 2
+      ) {
+        applySurveyStep(referral.id, 1);
       }
       // Prefer a real tab: operator cookies often fail inside a cross-site iframe.
       let packsUrlNewTab = workspace.packsUrl;
@@ -3406,8 +3425,10 @@ const MakePackageModal = ({
     setChecking(true);
     try {
       const workspace = await modelsApi.getReferralPackageWorkspace(referral.id);
-      if (workspace.surveyStep >= 1) {
-        onSurveyStepRef.current(workspace.surveyStep);
+      // The 4s poll used to copy Sugar step 2 back onto a card just rolled
+      // to 1. Only a missing pack may move the step, and only down to 1.
+      if (!workspace.packageReady) {
+        onSurveyStepRef.current(1);
       }
       setPackReady(workspace.packageReady);
       if (workspace.packageReady) {
