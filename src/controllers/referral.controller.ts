@@ -1465,6 +1465,51 @@ export const reassignReferralInvite = async (
   }
 };
 
+const ACTION_PRE_USER_SELECT = {
+  id: true,
+  currentStep: true,
+  status: true,
+  lastCheckedAt: true,
+  teasemeUserId: true,
+  surveyLink: true,
+  assetLink: true,
+} as const;
+
+// Only an explicit milestone 1–3 may overwrite currentStep. A missing
+// survey_step used to arrive as 0 and rewind a confirmed invite.
+const mirrorExplicitSurveyStep = async (
+  preUserId: string,
+  currentStep: number,
+  surveyStep: number | null,
+): Promise<number> => {
+  if (
+    surveyStep == null ||
+    !Number.isInteger(surveyStep) ||
+    surveyStep < 1 ||
+    surveyStep > 3 ||
+    surveyStep === currentStep
+  ) {
+    return currentStep;
+  }
+  const updated = await prisma.preUser.update({
+    where: { id: preUserId },
+    data: {
+      currentStep: surveyStep,
+      lastCheckedAt: new Date(),
+    },
+    select: { currentStep: true },
+  });
+  return updated.currentStep;
+};
+
+const sugarPackageStillOpen = (preUser: {
+  currentStep: number;
+  status: string;
+}): boolean =>
+  preUser.status !== "live" &&
+  preUser.status !== "building" &&
+  preUser.currentStep < PUBLISHED_SURVEY_STEP;
+
 export const getReferralPackageWorkspace = async (
   req: AuthRequest,
   res: Response,
@@ -1517,21 +1562,12 @@ export const getReferralPackageWorkspace = async (
     }
 
     // Sugar may repair a false step-2 (no pack yet). Mirror that locally.
-    let surveyStep = workspace.surveyStep;
-    if (
-      typeof surveyStep === "number" &&
-      surveyStep !== referral.preUser.currentStep
-    ) {
-      const updated = await prisma.preUser.update({
-        where: { id: referral.preUser.id },
-        data: {
-          currentStep: surveyStep,
-          lastCheckedAt: new Date(),
-        },
-        select: { currentStep: true },
-      });
-      surveyStep = updated.currentStep;
-    }
+    // An omitted survey_step stays null upstream and must not become 0 here.
+    const surveyStep = await mirrorExplicitSurveyStep(
+      referral.preUser.id,
+      referral.preUser.currentStep,
+      workspace.surveyStep,
+    );
 
     return res.json({
       success: true,
