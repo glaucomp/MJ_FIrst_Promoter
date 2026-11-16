@@ -1792,18 +1792,81 @@ export const orderReferralLandingPage = async (
       // after n8n package step 2. Persist live locally when the body omits
       // status so welcome email / polling stop / auto-accept do not wait
       // solely on the webhook.
+      const packageStillOpen = sugarPackageStillOpen(referral.preUser);
+      if (packageStillOpen && referral.preUser.currentStep < 2) {
+        return res.status(400).json({
+          error: "Make the n8n package before ordering a landing page.",
+        });
+      }
+
+      // A false step-2 webhook leaves the card on Order LP with no pack.
+      // Workspace repairs Sugar's survey_step to 1; mirror that and refuse
+      // instead of publishing step 3.
+      if (packageStillOpen && referral.preUser.currentStep >= 2) {
+        const workspace = await getSugarPackageWorkspace({
+          inviteCode: referral.inviteCode,
+          email: referral.preUser.email,
+        });
+        const upstreamStep = workspace?.ok ? workspace.surveyStep : null;
+        const packMissing =
+          workspace?.ok === true &&
+          !workspace.packageReady &&
+          (upstreamStep == null || upstreamStep < 2);
+        if (packMissing) {
+          const repaired =
+            upstreamStep != null && upstreamStep >= 1 ? upstreamStep : 1;
+          const updatedPreUser = await prisma.preUser.update({
+            where: { id: referral.preUser.id },
+            data: {
+              currentStep: repaired,
+              lastCheckedAt: now,
+            },
+            select: ACTION_PRE_USER_SELECT,
+          });
+          return res.status(409).json({
+            error:
+              "Pack video not ready yet. Finish Make package before ordering the landing page.",
+            preUser: updatedPreUser,
+          });
+        }
+      }
+
       const sugarUpstream = await orderSugarLandingPage({
         inviteCode: referral.inviteCode,
         email: referral.preUser.email,
       });
-      if (!sugarUpstream) {
+      if (!sugarUpstream?.ok) {
         console.warn("[order-landing-page] sugar order-lp failed", {
           referralId: referral.id,
           inviteCode: referral.inviteCode,
           email: referral.preUser.email,
+          statusCode: sugarUpstream?.statusCode,
+          error: sugarUpstream?.error,
         });
-        return res.status(502).json({
+        if (
+          packageStillOpen &&
+          sugarUpstream?.statusCode === 409 &&
+          referral.preUser.currentStep >= 2
+        ) {
+          const updatedPreUser = await prisma.preUser.update({
+            where: { id: referral.preUser.id },
+            data: {
+              currentStep: 1,
+              lastCheckedAt: now,
+            },
+            select: ACTION_PRE_USER_SELECT,
+          });
+          return res.status(409).json({
+            error:
+              sugarUpstream.error ||
+              "Pack video not ready yet. Finish Make package before ordering the landing page.",
+            preUser: updatedPreUser,
+          });
+        }
+        const statusCode = sugarUpstream?.statusCode === 400 ? 400 : 502;
+        return res.status(statusCode).json({
           error:
+            sugarUpstream?.error ||
             "Sugar Scratchie couldn't start the landing-page build right now. Please try again in a moment.",
         });
       }
