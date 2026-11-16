@@ -45,6 +45,69 @@ const USER_TYPE_OPTIONS: { value: string; label: string }[] = [
   { value: "PAYER", label: "Payer" },
 ];
 
+const FILTER_SELECT_STYLE = {
+  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239e9e9e' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
+  backgroundRepeat: "no-repeat",
+  backgroundPosition: "right 8px center",
+} as const;
+
+function UserCampaignChips({
+  campaigns,
+}: {
+  campaigns?: { id: string; name: string }[];
+}) {
+  if (!campaigns?.length) {
+    return (
+      <span className="px-3 py-1 rounded-full text-sm border border-[rgba(255,255,255,0.08)] text-[#777]">
+        No campaign
+      </span>
+    );
+  }
+  return (
+    <>
+      {campaigns.map((c) => (
+        <span
+          key={c.id}
+          className="px-3 py-1 rounded-full text-sm font-bold border bg-[#1a1a1a] border-tm-primary-color04 text-white"
+        >
+          {c.name}
+        </span>
+      ))}
+    </>
+  );
+}
+
+function UserReferralLine({ user }: { user: ApiUser }) {
+  const referred = user.referred ?? [];
+  if (referred.length > 0) {
+    const names = referred.map((r) => r.name).join(", ");
+    const campaigns = [...new Set(referred.map((r) => r.campaignName))].join(", ");
+    return (
+      <p className="text-sm text-white">
+        Promoter+ because they referred {names}
+        <span className="text-tm-text-color08"> · {campaigns}</span>
+      </p>
+    );
+  }
+  if (user.referredBy) {
+    return (
+      <p className="text-sm text-white">
+        Referred by {user.referredBy.name}
+        <span className="text-tm-text-color08"> · {user.referredBy.campaignName}</span>
+      </p>
+    );
+  }
+  return null;
+}
+
+function managerPublicCampaigns(manager: AccountManagerSummary | null | undefined) {
+  const byId = new Map<string, string>();
+  for (const c of manager?.campaigns ?? []) {
+    if (c.linkedCampaign) byId.set(c.linkedCampaign.id, c.linkedCampaign.name);
+  }
+  return [...byId.entries()].map(([id, name]) => ({ id, name }));
+}
+
 const SessionExpiredBanner = ({ onLogout }: { onLogout: () => void }) => (
   <div className="bg-tm-danger-color12 border border-tm-danger-color09 rounded-lg p-4 flex flex-col gap-3">
     <p className="text-tm-danger-color05 text-sm font-bold">Session expired</p>
@@ -98,6 +161,7 @@ export const Models = () => {
     AccountManagerSummary[]
   >([]);
   const [selectedUserType, setSelectedUserType] = useState<string>("");
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string>("");
   const [search, setSearch] = useState<string>("");
   const [collapsedSections, setCollapsedSections] = useState<
     Record<string, boolean>
@@ -218,23 +282,46 @@ export const Models = () => {
       });
   }, [isAdmin]);
 
-  // Users that match the text search (shared by admin Users view and AM Users view).
+  const campaignFilterOptions = useMemo(() => {
+    const byId = new Map<string, string>();
+    for (const am of accountManagers) {
+      for (const c of managerPublicCampaigns(am)) byId.set(c.id, c.name);
+    }
+    for (const u of allUsers) {
+      for (const c of u.campaigns ?? []) byId.set(c.id, c.name);
+    }
+    return [...byId.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [accountManagers, allUsers]);
+
+  // Users that match the text search and campaign filter (admin and AM views).
   const visibleAdminUsers = useMemo(() => {
     if (!showUsersView) return allUsers;
     const q = search.trim().toLowerCase();
-    if (!q) return allUsers;
     return allUsers.filter((u) => {
+      if (
+        selectedCampaignId &&
+        !(u.campaigns ?? []).some((c) => c.id === selectedCampaignId)
+      ) {
+        return false;
+      }
+      if (!q) return true;
       const name = `${u.firstName ?? ""} ${u.lastName ?? ""}`.toLowerCase();
       const owner = u.accountManager
         ? formatManagerName(u.accountManager).toLowerCase()
         : "";
+      const campaignNames = (u.campaigns ?? [])
+        .map((c) => c.name.toLowerCase())
+        .join(" ");
       return (
         name.includes(q) ||
         u.email.toLowerCase().includes(q) ||
-        owner.includes(q)
+        owner.includes(q) ||
+        campaignNames.includes(q)
       );
     });
-  }, [allUsers, showUsersView, search]);
+  }, [allUsers, showUsersView, search, selectedCampaignId]);
 
   // Account manager /models: group the flat list under headings by userType
   // (team manager, promoter, chatter, etc.) while preserving search + type filter.
@@ -324,6 +411,7 @@ export const Models = () => {
     const sections: {
       key: string;
       manager: AccountManagerSummary | null;
+      campaignName: string | null;
       users: ApiUser[];
       variant: "manager" | "needs" | "payers";
     }[] = [];
@@ -332,36 +420,72 @@ export const Models = () => {
       sections.push({
         key: NEEDS_ASSIGNMENT_KEY,
         manager: null,
+        campaignName: null,
         users: needsAssignment,
         variant: "needs",
       });
     }
 
     for (const am of accountManagers) {
-      sections.push({
-        key: am.id,
-        manager: am,
-        users: byManager.get(am.id) ?? [],
-        variant: "manager",
-      });
+      const users = byManager.get(am.id) ?? [];
+      const campaigns = managerPublicCampaigns(am).filter(
+        (c) => !selectedCampaignId || c.id === selectedCampaignId,
+      );
+      // One block per company this manager runs. Kelly and Juliana sit under
+      // TeaseMe only, so Sugar is its own block and does not list them.
+      if (campaigns.length === 0) {
+        if (selectedCampaignId) continue;
+        sections.push({
+          key: am.id,
+          manager: am,
+          campaignName: null,
+          users,
+          variant: "manager",
+        });
+        continue;
+      }
+      const placed = new Set<string>();
+      for (const campaign of campaigns) {
+        const onCampaign = users.filter((u) =>
+          (u.campaigns ?? []).some((c) => c.id === campaign.id),
+        );
+        for (const u of onCampaign) placed.add(u.id);
+        sections.push({
+          key: `${am.id}:${campaign.id}`,
+          manager: am,
+          campaignName: campaign.name,
+          users: onCampaign,
+          variant: "manager",
+        });
+      }
+      const unplaced = users.filter((u) => !placed.has(u.id));
+      if (unplaced.length > 0 && !selectedCampaignId) {
+        sections.push({
+          key: `${am.id}:none`,
+          manager: am,
+          campaignName: "No campaign",
+          users: unplaced,
+          variant: "manager",
+        });
+      }
     }
 
     if (payers.length > 0) {
       sections.push({
         key: PAYERS_KEY,
         manager: null,
+        campaignName: null,
         users: payers,
         variant: "payers",
       });
     }
 
     return sections;
-  }, [accountManagers, isAdmin, knownAmIds, visibleAdminUsers]);
+  }, [accountManagers, isAdmin, knownAmIds, selectedCampaignId, visibleAdminUsers]);
 
-  const totalVisibleUsers = adminSections.reduce(
-    (sum, s) => sum + s.users.length,
-    0,
-  );
+  const totalVisibleUsers = new Set(
+    adminSections.flatMap((s) => s.users.map((u) => u.id)),
+  ).size;
   const needsAssignmentCount =
     adminSections.find((s) => s.key === NEEDS_ASSIGNMENT_KEY)?.users.length ??
     0;
@@ -521,7 +645,9 @@ export const Models = () => {
   // ── ADMIN ─────────────────────────────────────────────────────────────────
   if (user?.baseRole === "admin") {
     const activeFilterCount =
-      (selectedUserType ? 1 : 0) + (search.trim() ? 1 : 0);
+      (selectedUserType ? 1 : 0) +
+      (selectedCampaignId ? 1 : 0) +
+      (search.trim() ? 1 : 0);
 
     return (
       <div className="flex flex-col gap-6">
@@ -589,11 +715,35 @@ export const Models = () => {
             </select>
           </div>
 
+          <div className="flex flex-col gap-2 min-w-40">
+            <label
+              htmlFor="admin-users-campaign"
+              className="text-tm-text-color08 text-sm font-bold uppercase "
+            >
+              Campaign
+            </label>
+            <select
+              id="admin-users-campaign"
+              value={selectedCampaignId}
+              onChange={(e) => setSelectedCampaignId(e.target.value)}
+              className="bg-[#1c1c1e] border border-[rgba(255,255,255,0.1)] rounded-lg px-4 py-4 text-white text-base focus:outline-none focus:border--tm-primary-color04 appearance-none cursor-pointer "
+              style={FILTER_SELECT_STYLE}
+            >
+              <option value="">All campaigns</option>
+              {campaignFilterOptions.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {activeFilterCount > 0 && (
             <button
               type="button"
               onClick={() => {
                 setSelectedUserType("");
+                setSelectedCampaignId("");
                 setSearch("");
               }}
               className="text-tm-text-color08 hover:text-white text-sm underline self-start lg:self-center "
@@ -641,7 +791,11 @@ export const Models = () => {
             else if (isPayers)
               headerSubtitle =
                 "Back-office users — no account manager required";
-            else headerSubtitle = section.manager?.email ?? "";
+            else {
+              headerSubtitle = [section.campaignName, section.manager?.email]
+                .filter(Boolean)
+                .join(" · ");
+            }
             const isCollapsed = !!collapsedSections[section.key];
             const sectionTotal = section.users.reduce(
               (sum, u) => sum + (u.stats?.totalEarnings ?? 0),
@@ -897,7 +1051,8 @@ export const Models = () => {
                                 <p className="text-tm-text-color08 text-sm">
                                   {apiUser.email}
                                 </p>
-                                <div className="flex items-center gap-2 w-full">
+                                <UserReferralLine user={apiUser} />
+                                <div className="flex items-center gap-2 w-full flex-wrap">
                                   <span
                                     className={`px-3 py-1 rounded-full text-sm font-bold border ${
                                       apiUser.isActive
@@ -1012,7 +1167,9 @@ export const Models = () => {
   // Same card UI as admin Users, but flat (no AM sections, no drag-drop).
   if (isAccountManager && isUsersRoute) {
     const activeFilterCount =
-      (selectedUserType ? 1 : 0) + (search.trim() ? 1 : 0);
+      (selectedUserType ? 1 : 0) +
+      (selectedCampaignId ? 1 : 0) +
+      (search.trim() ? 1 : 0);
 
     return (
       <div className="flex flex-col gap-6">
@@ -1080,11 +1237,35 @@ export const Models = () => {
             </select>
           </div>
 
+          <div className="flex flex-col gap-2 min-w-40">
+            <label
+              htmlFor="am-users-campaign"
+              className="text-tm-text-color08 text-sm font-bold uppercase "
+            >
+              Campaign
+            </label>
+            <select
+              id="am-users-campaign"
+              value={selectedCampaignId}
+              onChange={(e) => setSelectedCampaignId(e.target.value)}
+              className="bg-[#1c1c1e] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-3 text-white text-sm focus:outline-none focus:border--tm-primary-color04 appearance-none cursor-pointer pr-7"
+              style={FILTER_SELECT_STYLE}
+            >
+              <option value="">All campaigns</option>
+              {campaignFilterOptions.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {activeFilterCount > 0 && (
             <button
               type="button"
               onClick={() => {
                 setSelectedUserType("");
+                setSelectedCampaignId("");
                 setSearch("");
               }}
               className="text-tm-text-color08 hover:text-white text-sm underline self-start lg:self-end lg:mb-3"
@@ -1136,7 +1317,8 @@ export const Models = () => {
                           <p className="text-tm-text-color08 text-sm">
                             {apiUser.email}
                           </p>
-                          <div className="flex items-center gap-2 w-full">
+                          <UserReferralLine user={apiUser} />
+                          <div className="flex items-center gap-2 w-full flex-wrap">
                             <span
                               className={`px-3 py-1 rounded-full text-sm font-bold border ${
                                 apiUser.isActive
@@ -1154,6 +1336,7 @@ export const Models = () => {
                                     ?.toLowerCase()
                                     .replace("_", " ")}
                             </span>
+                            <UserCampaignChips campaigns={apiUser.campaigns} />
                           </div>
                         </div>
 
@@ -1968,6 +2151,30 @@ const dedupeByPromoter = (rows: Referral[]): Referral[] => {
     }
   }, [referrals, filter]);
 
+  const campaignSections = useMemo(() => {
+    const groups = new Map<
+      string,
+      { key: string; name: string; referrals: Referral[] }
+    >();
+    for (const referral of visibleReferrals) {
+      const key = publicCampaignKey(referral);
+      const existing = groups.get(key);
+      if (existing) {
+        existing.referrals.push(referral);
+        if (referral.campaign.visibleToPromoters !== false) {
+          existing.name = referral.campaign.name;
+        }
+        continue;
+      }
+      groups.set(key, {
+        key,
+        name: referral.campaign.name,
+        referrals: [referral],
+      });
+    }
+    return [...groups.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [visibleReferrals]);
+
   const showToast = (kind: "success" | "error", text: string) => {
     setToast({ kind, text });
     window.setTimeout(() => setToast(null), 3000);
@@ -2298,8 +2505,19 @@ const dedupeByPromoter = (rows: Referral[]): Referral[] => {
         </div>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-2 grid-cols-1">
-        {visibleReferrals.map((referral) => {
+      <div className="flex flex-col gap-8">
+        {campaignSections.map((section) => (
+          <section key={section.key} className="flex flex-col gap-3">
+            <div className="flex items-baseline justify-between gap-3 border-b border-[rgba(255,255,255,0.08)] pb-3">
+              <h2 className="text-lg font-semibold text-white">
+                {section.name}
+              </h2>
+              <span className="text-base text-tm-text-color07 tabular-nums">
+                {section.referrals.length}
+              </span>
+            </div>
+            <div className="grid gap-4 lg:grid-cols-2 grid-cols-1">
+              {section.referrals.map((referral) => {
           const chipState = deriveChipState(referral);
           // The Onboarding "Open" icon always points at the in-flight survey
           // session (preUser.surveyLink) regardless of chip state — even on
@@ -2411,9 +2629,6 @@ const dedupeByPromoter = (rows: Referral[]): Referral[] => {
                     ) : null}
                   </div>
                 )}
-                <p className="text-tm-text-color09 text-sm truncate">
-                  {referral.campaign.name}
-                </p>
                 <p className="text-tm-text-color01 text-base font-medium truncate">
                   {referral.referredUser
                     ? displayName
@@ -2566,7 +2781,10 @@ const dedupeByPromoter = (rows: Referral[]): Referral[] => {
               />
             </div>
           );
-        })}
+              })}
+            </div>
+          </section>
+        ))}
       </div>
 
       {reassignFor && (

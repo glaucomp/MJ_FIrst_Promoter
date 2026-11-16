@@ -254,6 +254,251 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
       commissionStatsByUser.set(g.userId, prev);
     }
 
+    // Public campaigns this person is actually on. Bulk rows written when an
+    // account manager is assigned to a company (`am-campaign-added` and the
+    // same family) copy every company onto every promoter. Those are the
+    // manager's campaigns, already shown on the manager header, not a
+    // connection this user made. A user campaign is an invite of their own,
+    // or a commission / tracking link on that company.
+    type PublicCampaignRef = { id: string; name: string };
+    const BULK_ENROLL_SOURCES = new Set([
+      'am-campaign-added',
+      'am-multi-campaign-enroll',
+      'manual-am-assign',
+    ]);
+    const pushCampaign = (
+      bucket: Map<string, PublicCampaignRef[]>,
+      key: string,
+      campaign: PublicCampaignRef,
+    ) => {
+      const list = bucket.get(key) ?? [];
+      if (!list.some((c) => c.id === campaign.id)) list.push(campaign);
+      bucket.set(key, list);
+    };
+    const referralSource = (metadata: Prisma.JsonValue | null): string | null => {
+      if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return null;
+      const source = (metadata as Record<string, unknown>).source;
+      return typeof source === 'string' ? source : null;
+    };
+    const asPublicCampaign = (campaign: {
+      id: string;
+      name: string;
+      isActive: boolean;
+      visibleToPromoters: boolean;
+      linkedCampaign?: {
+        id: string;
+        name: string;
+        isActive: boolean;
+        visibleToPromoters: boolean;
+      } | null;
+    }): PublicCampaignRef | null => {
+      if (campaign.visibleToPromoters && campaign.isActive) {
+        return { id: campaign.id, name: campaign.name };
+      }
+      const linked = campaign.linkedCampaign;
+      if (linked?.isActive && linked.visibleToPromoters) {
+        return { id: linked.id, name: linked.name };
+      }
+      return null;
+    };
+
+    const campaignsByUser = new Map<string, PublicCampaignRef[]>();
+    const bulkCampaignsByUser = new Map<string, PublicCampaignRef[]>();
+    if (visibleIds.length) {
+      const inviteeRows = await prisma.referral.findMany({
+        where: {
+          referredUserId: { in: visibleIds },
+          status: 'ACTIVE',
+          campaign: { isActive: true },
+        },
+        select: {
+          referredUserId: true,
+          metadata: true,
+          campaign: {
+            select: {
+              id: true,
+              name: true,
+              isActive: true,
+              visibleToPromoters: true,
+              linkedCampaign: {
+                select: {
+                  id: true,
+                  name: true,
+                  isActive: true,
+                  visibleToPromoters: true,
+                },
+              },
+            },
+          },
+        },
+      });
+      for (const row of inviteeRows) {
+        if (!row.referredUserId) continue;
+        const campaign = asPublicCampaign(row.campaign);
+        if (!campaign) continue;
+        if (BULK_ENROLL_SOURCES.has(referralSource(row.metadata) ?? '')) {
+          pushCampaign(bulkCampaignsByUser, row.referredUserId, campaign);
+          continue;
+        }
+        pushCampaign(campaignsByUser, row.referredUserId, campaign);
+      }
+
+      const [commissionRows, trackingRows] = await Promise.all([
+        prisma.commission.findMany({
+          where: { userId: { in: visibleIds }, campaignId: { not: null } },
+          select: {
+            userId: true,
+            campaign: {
+              select: {
+                id: true,
+                name: true,
+                isActive: true,
+                visibleToPromoters: true,
+                linkedCampaign: {
+                  select: {
+                    id: true,
+                    name: true,
+                    isActive: true,
+                    visibleToPromoters: true,
+                  },
+                },
+              },
+            },
+          },
+        }),
+        prisma.trackingLink.findMany({
+          where: { userId: { in: visibleIds } },
+          select: {
+            userId: true,
+            campaign: {
+              select: {
+                id: true,
+                name: true,
+                isActive: true,
+                visibleToPromoters: true,
+                linkedCampaign: {
+                  select: {
+                    id: true,
+                    name: true,
+                    isActive: true,
+                    visibleToPromoters: true,
+                  },
+                },
+              },
+            },
+          },
+        }),
+      ]);
+      for (const row of commissionRows) {
+        if (!row.campaign) continue;
+        const campaign = asPublicCampaign(row.campaign);
+        if (!campaign) continue;
+        pushCampaign(campaignsByUser, row.userId, campaign);
+      }
+      for (const row of trackingRows) {
+        const campaign = asPublicCampaign(row.campaign);
+        if (!campaign) continue;
+        pushCampaign(campaignsByUser, row.userId, campaign);
+      }
+    }
+
+    const campaignsFor = (userId: string): PublicCampaignRef[] => {
+      const list = campaignsByUser.get(userId) ?? [];
+      return [...list].sort((a, b) => a.name.localeCompare(b.name));
+    };
+
+    // Who referred whom, and on which public campaign. This is why a user is
+    // Promoter+ (they referred another promoter) versus a plain promoter.
+    // Bulk copies of the account manager's companies are not a referral.
+    type TeamLink = {
+      userId: string;
+      name: string;
+      campaignId: string;
+      campaignName: string;
+    };
+    const personName = (person: {
+      firstName: string | null;
+      lastName: string | null;
+      email: string;
+    }) => {
+      const name = [person.firstName, person.lastName].filter(Boolean).join(' ').trim();
+      return name || person.email;
+    };
+    const referredByByUser = new Map<string, TeamLink>();
+    const referredByUser = new Map<string, TeamLink[]>();
+    if (visibleIds.length) {
+      const edges = await prisma.referral.findMany({
+        where: {
+          status: 'ACTIVE',
+          referredUserId: { not: null },
+          OR: [
+            { referredUserId: { in: visibleIds } },
+            { referrerId: { in: visibleIds } },
+          ],
+        },
+        select: {
+          referrerId: true,
+          referredUserId: true,
+          metadata: true,
+          referrer: {
+            select: { id: true, firstName: true, lastName: true, email: true, userType: true },
+          },
+          referredUser: {
+            select: { id: true, firstName: true, lastName: true, email: true, userType: true },
+          },
+          campaign: {
+            select: {
+              id: true,
+              name: true,
+              isActive: true,
+              visibleToPromoters: true,
+              linkedCampaign: {
+                select: {
+                  id: true,
+                  name: true,
+                  isActive: true,
+                  visibleToPromoters: true,
+                },
+              },
+            },
+          },
+        },
+      });
+      for (const edge of edges) {
+        if (!edge.referredUser || BULK_ENROLL_SOURCES.has(referralSource(edge.metadata) ?? '')) {
+          continue;
+        }
+        // Account-manager membership is not "this promoter referred that promoter".
+        if (
+          edge.referrer.userType === UserType.ADMIN ||
+          edge.referredUser.userType === UserType.ACCOUNT_MANAGER
+        ) {
+          continue;
+        }
+        const campaign = asPublicCampaign(edge.campaign);
+        if (!campaign) continue;
+        const link: TeamLink = {
+          userId: edge.referredUser.id,
+          name: personName(edge.referredUser),
+          campaignId: campaign.id,
+          campaignName: campaign.name,
+        };
+        const downline = referredByUser.get(edge.referrerId) ?? [];
+        if (!downline.some((item) => item.userId === link.userId && item.campaignId === link.campaignId)) {
+          downline.push(link);
+          referredByUser.set(edge.referrerId, downline);
+        }
+        if (visibleIds.includes(edge.referredUser.id)) {
+          referredByByUser.set(edge.referredUser.id, {
+            userId: edge.referrer.id,
+            name: personName(edge.referrer),
+            campaignId: campaign.id,
+            campaignName: campaign.name,
+          });
+        }
+      }
+    }
+
     const scoped = visibleUsers.map((user) => {
       const referralStats = referralStatsByUser.get(user.id) ?? { total: 0, active: 0 };
       const commissionStats = commissionStatsByUser.get(user.id) ?? { total: 0, pending: 0 };
@@ -261,9 +506,41 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
       const amId = amIdByUserId.get(user.id) ?? null;
       const accountManager = amId ? amRecordById.get(amId) ?? null : null;
 
+      // A promoter with no invite or earnings of their own still belongs to
+      // the company their Promoter+ works. That is TeaseMe for Kelly, via
+      // Juliana. It is not every company copied onto the account manager,
+      // so Sugar stays off her card.
+      let campaigns = campaignsFor(user.id);
+      if (
+        campaigns.length === 0 &&
+        amId &&
+        user.userType === UserType.PROMOTER
+      ) {
+        const bulkIds = new Set(
+          (bulkCampaignsByUser.get(user.id) ?? []).map((c) => c.id),
+        );
+        const inherited = new Map<string, PublicCampaignRef>();
+        for (const leader of visibleUsers) {
+          if (leader.userType !== UserType.TEAM_MANAGER) continue;
+          if ((amIdByUserId.get(leader.id) ?? null) !== amId) continue;
+          for (const campaign of campaignsByUser.get(leader.id) ?? []) {
+            if (bulkIds.size > 0 && !bulkIds.has(campaign.id)) continue;
+            inherited.set(campaign.id, campaign);
+          }
+        }
+        campaigns = [...inherited.values()].sort((a, b) =>
+          a.name.localeCompare(b.name),
+        );
+      }
+
       return {
         ...user,
         accountManager,
+        campaigns,
+        referredBy: referredByByUser.get(user.id) ?? null,
+        referred: (referredByUser.get(user.id) ?? []).sort((a, b) =>
+          a.name.localeCompare(b.name),
+        ),
         stats: {
           totalReferrals: referralStats.total,
           activeReferrals: referralStats.active,
