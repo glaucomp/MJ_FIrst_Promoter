@@ -704,8 +704,8 @@ export const modelsApi = {
     return handleResponse(response, 'Failed to open package workspace');
   },
   // Apply surveyStep only when it is an integer >= 1 and lower than the card.
-  // This read never raises currentStep. A missing pack is repaired to step 1
-  // even when Sugar still reports survey_step 2.
+  // A reported step of 2 is a finished Make package and must not be rewritten
+  // to 1. This read never raises currentStep.
 
   async makeReferralPackage(referralId: string): Promise<{
     success: true;

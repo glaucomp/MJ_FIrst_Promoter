@@ -1475,37 +1475,6 @@ const ACTION_PRE_USER_SELECT = {
   assetLink: true,
 } as const;
 
-// Only an explicit milestone 1–3 may overwrite currentStep, and only
-// downward. A workspace read that still reports a higher step (Sugar
-// survey_step 2 with no pack, after a 409 rollback) must not be written
-// back — that reopens Order LP and hides Make package. A missing
-// survey_step stays null and must not arrive as 0, which used to rewind
-// a confirmed invite.
-const mirrorExplicitSurveyStep = async (
-  preUserId: string,
-  currentStep: number,
-  surveyStep: number | null,
-): Promise<number> => {
-  if (
-    surveyStep == null ||
-    !Number.isInteger(surveyStep) ||
-    surveyStep < 1 ||
-    surveyStep > 3 ||
-    surveyStep >= currentStep
-  ) {
-    return currentStep;
-  }
-  const updated = await prisma.preUser.update({
-    where: { id: preUserId },
-    data: {
-      currentStep: surveyStep,
-      lastCheckedAt: new Date(),
-    },
-    select: { currentStep: true },
-  });
-  return updated.currentStep;
-};
-
 const sugarPackageStillOpen = (preUser: {
   currentStep: number;
   status: string;
@@ -1513,6 +1482,76 @@ const sugarPackageStillOpen = (preUser: {
   preUser.status !== "live" &&
   preUser.status !== "building" &&
   preUser.currentStep < 3;
+
+type PackageStepStamp = {
+  id: string;
+  currentStep: number;
+  status: string;
+  updatedAt: Date;
+};
+
+const readPackageStepStamp = (preUserId: string) =>
+  prisma.preUser.findUnique({
+    where: { id: preUserId },
+    select: {
+      id: true,
+      currentStep: true,
+      status: true,
+      updatedAt: true,
+    },
+  });
+
+const readCurrentStep = async (
+  preUserId: string,
+  fallback: number,
+): Promise<number> => {
+  const fresh = await prisma.preUser.findUnique({
+    where: { id: preUserId },
+    select: { currentStep: true },
+  });
+  return fresh?.currentStep ?? fallback;
+};
+
+// A missing pack rolls step 2 back to 1 only when Sugar's survey_step is
+// missing or still below 2. A reported step of 2 is a real Make package
+// result and must be left in place. The write also matches the row stamp
+// from before the Sugar call, so a make-package that commits during that
+// call is not overwritten by the stale "not ready" response.
+const claimMissingPackageStep = async (
+  stamp: PackageStepStamp,
+  upstreamStep: number | null,
+): Promise<{ rewound: boolean; currentStep: number }> => {
+  const sugarAgreesMissing = upstreamStep == null || upstreamStep < 2;
+  if (
+    !sugarAgreesMissing ||
+    !sugarPackageStillOpen(stamp) ||
+    stamp.currentStep < 2
+  ) {
+    return {
+      rewound: false,
+      currentStep: await readCurrentStep(stamp.id, stamp.currentStep),
+    };
+  }
+  const claimed = await prisma.preUser.updateMany({
+    where: {
+      id: stamp.id,
+      currentStep: stamp.currentStep,
+      status: stamp.status,
+      updatedAt: stamp.updatedAt,
+    },
+    data: {
+      currentStep: 1,
+      lastCheckedAt: new Date(),
+    },
+  });
+  if (claimed.count !== 1) {
+    return {
+      rewound: false,
+      currentStep: await readCurrentStep(stamp.id, stamp.currentStep),
+    };
+  }
+  return { rewound: true, currentStep: 1 };
+};
 
 export const getReferralPackageWorkspace = async (
   req: AuthRequest,
@@ -1553,6 +1592,7 @@ export const getReferralPackageWorkspace = async (
       });
     }
 
+    const packageStamp = await readPackageStepStamp(referral.preUser.id);
     const workspace = await getSugarPackageWorkspace({
       inviteCode: referral.inviteCode,
       email: referral.preUser.email,
@@ -1565,20 +1605,19 @@ export const getReferralPackageWorkspace = async (
       });
     }
 
-    // Sugar can still report survey_step 2 when the pack file is missing.
-    // That is the false step this read repairs: roll the open card back to
-    // 1. A higher milestone is never copied onto a step that was just
-    // rolled back, and an omitted survey_step must not become 0.
+    // Mirror a missing pack down to 1 only when Sugar's survey_step agrees
+    // it is still below 2 and make-package has not saved the row since the
+    // stamp above. Otherwise keep the step make-package just wrote.
     const surveyStep =
-      sugarPackageStillOpen(referral.preUser) &&
-      !workspace.packageReady &&
-      referral.preUser.currentStep >= 2
-        ? await mirrorExplicitSurveyStep(
-            referral.preUser.id,
-            referral.preUser.currentStep,
-            1,
-          )
-        : referral.preUser.currentStep;
+      packageStamp && !workspace.packageReady
+        ? (await claimMissingPackageStep(packageStamp, workspace.surveyStep))
+            .currentStep
+        : packageStamp
+          ? await readCurrentStep(
+              packageStamp.id,
+              packageStamp.currentStep,
+            )
+          : referral.preUser.currentStep;
 
     return res.json({
       success: true,
@@ -1810,28 +1849,37 @@ export const orderReferralLandingPage = async (
         });
       }
 
-      // A false step-2 leaves the card on Order LP with no pack. Sugar can
-      // still report survey_step 2 in that case, so packageReady is the
-      // check. Roll back to 1 and refuse instead of publishing step 3.
+      // Stamp the row before the Sugar call. A make-package that commits
+      // while this is in flight changes updatedAt, and the claim below
+      // then leaves that step 2 in place. survey_step >= 2 is the same
+      // signal: Sugar already counts the package milestone as done.
+      let packageStamp: PackageStepStamp | null = null;
       if (packageStillOpen && referral.preUser.currentStep >= 2) {
+        packageStamp = await readPackageStepStamp(referral.preUser.id);
         const workspace = await getSugarPackageWorkspace({
           inviteCode: referral.inviteCode,
           email: referral.preUser.email,
         });
-        if (workspace?.ok === true && !workspace.packageReady) {
-          const updatedPreUser = await prisma.preUser.update({
-            where: { id: referral.preUser.id },
-            data: {
-              currentStep: 1,
-              lastCheckedAt: now,
-            },
-            select: ACTION_PRE_USER_SELECT,
-          });
-          return res.status(409).json({
-            error:
-              "Pack video not ready yet. Finish Make package before ordering the landing page.",
-            preUser: updatedPreUser,
-          });
+        if (
+          packageStamp &&
+          workspace?.ok === true &&
+          !workspace.packageReady
+        ) {
+          const claimed = await claimMissingPackageStep(
+            packageStamp,
+            workspace.surveyStep,
+          );
+          if (claimed.rewound) {
+            const updatedPreUser = await prisma.preUser.findUnique({
+              where: { id: referral.preUser.id },
+              select: ACTION_PRE_USER_SELECT,
+            });
+            return res.status(409).json({
+              error:
+                "Pack video not ready yet. Finish Make package before ordering the landing page.",
+              preUser: updatedPreUser,
+            });
+          }
         }
       }
 
@@ -1847,24 +1895,24 @@ export const orderReferralLandingPage = async (
           statusCode: sugarUpstream?.statusCode,
           error: sugarUpstream?.error,
         });
-        if (
-          packageStillOpen &&
-          sugarUpstream?.statusCode === 409 &&
-          referral.preUser.currentStep >= 2
-        ) {
-          const updatedPreUser = await prisma.preUser.update({
-            where: { id: referral.preUser.id },
-            data: {
-              currentStep: 1,
-              lastCheckedAt: now,
-            },
-            select: ACTION_PRE_USER_SELECT,
-          });
+        if (packageStillOpen && sugarUpstream?.statusCode === 409 && packageStamp) {
+          const claimed = await claimMissingPackageStep(packageStamp, null);
+          if (claimed.rewound) {
+            const updatedPreUser = await prisma.preUser.findUnique({
+              where: { id: referral.preUser.id },
+              select: ACTION_PRE_USER_SELECT,
+            });
+            return res.status(409).json({
+              error:
+                sugarUpstream.error ||
+                "Pack video not ready yet. Finish Make package before ordering the landing page.",
+              preUser: updatedPreUser,
+            });
+          }
           return res.status(409).json({
             error:
               sugarUpstream.error ||
               "Pack video not ready yet. Finish Make package before ordering the landing page.",
-            preUser: updatedPreUser,
           });
         }
         const statusCode = sugarUpstream?.statusCode === 400 ? 400 : 502;

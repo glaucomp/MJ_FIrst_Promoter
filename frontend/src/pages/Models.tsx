@@ -2087,8 +2087,8 @@ const ReferralList = ({
   );
 
   // False step-2 webhooks show Order LP and hide Make package. A workspace
-  // read rolls the card to 1 when the pack file is missing, including when
-  // Sugar still reports survey_step 2.
+  // read rolls the card down only when Sugar's survey_step is still below 2.
+  // A step of 2 is a Make package that finished and is left in place.
   useEffect(() => {
     if (!canOrderLandingPage || !setReferrals) return;
     for (const referral of referrals) {
@@ -2123,7 +2123,16 @@ const ReferralList = ({
             return;
           }
           packageChecksRef.current.delete(referralId);
-          applySurveyStep(referralId, 1);
+          // Sugar step >= 2 means Make package finished. Applying 1 here
+          // would undo that completion if this read started earlier.
+          if (
+            Number.isInteger(workspace.surveyStep) &&
+            workspace.surveyStep >= 1 &&
+            workspace.surveyStep < 2 &&
+            workspace.surveyStep < checkedStep
+          ) {
+            applySurveyStep(referralId, workspace.surveyStep);
+          }
         })
         .catch(() => {
           // Retry on the next card update. Keeping the mark here would
@@ -2447,14 +2456,17 @@ const dedupeByPromoter = (rows: Referral[]): Referral[] => {
     setBusyId(referral.id);
     try {
       const workspace = await modelsApi.getReferralPackageWorkspace(referral.id);
-      // No pack: roll a false step 2 back to 1 even if Sugar still reports 2.
-      // A higher survey_step must not be copied onto the card.
+      // Only a Sugar step still below 2 can move the card down. Step 2 is a
+      // finished Make package, including one that landed while this read
+      // was in flight.
       if (
         referral.preUser &&
-        !workspace.packageReady &&
-        referral.preUser.currentStep >= 2
+        Number.isInteger(workspace.surveyStep) &&
+        workspace.surveyStep >= 1 &&
+        workspace.surveyStep < 2 &&
+        workspace.surveyStep < referral.preUser.currentStep
       ) {
-        applySurveyStep(referral.id, 1);
+        applySurveyStep(referral.id, workspace.surveyStep);
       }
       // Prefer a real tab: operator cookies often fail inside a cross-site iframe.
       let packsUrlNewTab = workspace.packsUrl;
@@ -3389,6 +3401,7 @@ const MakePackageModal = ({
   const [checking, setChecking] = useState(false);
   const [packReady, setPackReady] = useState(false);
   const completingRef = useRef(false);
+  const pollActiveRef = useRef(true);
   const onSurveyStepRef = useRef(onSurveyStep);
   onSurveyStepRef.current = onSurveyStep;
 
@@ -3421,15 +3434,24 @@ const MakePackageModal = ({
 
   const refreshReady = useCallback(async () => {
     // The 4s poll must not start another completion while make-package is in flight.
-    if (completingRef.current) return false;
+    if (completingRef.current || !pollActiveRef.current) return false;
     setChecking(true);
     try {
       const workspace = await modelsApi.getReferralPackageWorkspace(referral.id);
-      // The 4s poll used to copy Sugar step 2 back onto a card just rolled
-      // to 1. Only a missing pack may move the step, and only down to 1.
-      if (!workspace.packageReady) {
-        onSurveyStepRef.current(1);
+      // This poll may outlive the modal. A step Sugar still reports as >= 2
+      // is a Make package that finished after the request started; do not
+      // write 1 back onto that card.
+      if (
+        pollActiveRef.current &&
+        !completingRef.current &&
+        !workspace.packageReady &&
+        Number.isInteger(workspace.surveyStep) &&
+        workspace.surveyStep >= 1 &&
+        workspace.surveyStep < 2
+      ) {
+        onSurveyStepRef.current(workspace.surveyStep);
       }
+      if (!pollActiveRef.current) return workspace.packageReady;
       setPackReady(workspace.packageReady);
       if (workspace.packageReady) {
         await tryComplete();
@@ -3438,17 +3460,21 @@ const MakePackageModal = ({
     } catch {
       return false;
     } finally {
-      setChecking(false);
+      if (pollActiveRef.current) setChecking(false);
     }
   }, [referral.id, tryComplete]);
 
   useEffect(() => {
+    pollActiveRef.current = true;
     void refreshReady();
     const timer = window.setInterval(() => {
-      if (completingRef.current) return;
+      if (completingRef.current || !pollActiveRef.current) return;
       void refreshReady();
     }, 4000);
-    return () => window.clearInterval(timer);
+    return () => {
+      pollActiveRef.current = false;
+      window.clearInterval(timer);
+    };
   }, [refreshReady]);
 
   useEffect(() => {
