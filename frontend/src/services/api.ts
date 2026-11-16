@@ -703,8 +703,9 @@ export const modelsApi = {
     );
     return handleResponse(response, 'Failed to open package workspace');
   },
-  // note: callers should apply surveyStep to local card state when it drops
-  // after a false step-2 repair (no pack on disk).
+  // Callers should apply surveyStep when it is an integer >= 1 and lower than
+  // the card. The server never rewrites currentStep from a missing field, so
+  // a dropped step is a real Sugar repair (false step 2 with no pack).
 
   async makeReferralPackage(referralId: string): Promise<{
     success: true;
@@ -775,7 +776,29 @@ export const modelsApi = {
         headers: getAuthHeaders(),
       },
     );
-    return handleResponse(response, 'Failed to order landing page');
+    if (response.status === 401) {
+      throw new Error('SESSION_EXPIRED');
+    }
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      const err = new Error(
+        body.error || body.message || 'Failed to order landing page',
+      ) as Error & {
+        preUser?: {
+          currentStep: number;
+          status: string;
+          lastCheckedAt: string | null;
+          teasemeUserId: string | null;
+          surveyLink: string | null;
+          assetLink: string | null;
+        };
+      };
+      if (body.preUser && typeof body.preUser === 'object') {
+        err.preUser = body.preUser;
+      }
+      throw err;
+    }
+    return response.json();
   },
 
   async assignReferralChatters(

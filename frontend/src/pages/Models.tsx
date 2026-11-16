@@ -1600,6 +1600,9 @@ const deriveChipState = (r: Referral): ChipState => {
   const sugarCampaign = isSugarScratchCampaign(r.campaign?.name);
   // Sugar 3-step: 1 Email → 2 n8n package → 3 Order LP / live.
   // Do not map `confirmed` (normalize → order_lp) to Order LP until step 2.
+  // Step 2 is trusted only after the package-workspace repair: a false
+  // step-2 webhook is written back to 1, which keeps this chip on waiting
+  // so Make package stays available.
   if (sugarCampaign) {
     if (step >= 3) return "lp_live";
     if (step >= 2) return "order_lp";
@@ -2045,6 +2048,75 @@ const ReferralList = ({
     packsUrl: string;
     modelId: string;
   } | null>(null);
+  const packageChecksRef = useRef(new Set<string>());
+
+  const applySurveyStep = useCallback(
+    (referralId: string, surveyStep: number) => {
+      if (!Number.isInteger(surveyStep) || surveyStep < 1 || surveyStep > 3) {
+        return;
+      }
+      setReferrals?.((prev) => {
+        let changed = false;
+        const next = prev.map((r) => {
+          if (
+            r.id !== referralId ||
+            !r.preUser ||
+            r.preUser.currentStep === surveyStep
+          ) {
+            return r;
+          }
+          changed = true;
+          return {
+            ...r,
+            preUser: { ...r.preUser, currentStep: surveyStep },
+          };
+        });
+        return changed ? next : prev;
+      });
+    },
+    [setReferrals],
+  );
+
+  // False step-2 webhooks show Order LP and hide Make package. One workspace
+  // read per card lets Sugar roll the step back to 1 when the pack is missing.
+  useEffect(() => {
+    if (!canOrderLandingPage || !setReferrals) return;
+    for (const referral of referrals) {
+      const step = referral.preUser?.currentStep ?? 0;
+      const status = referral.preUser?.status;
+      if (
+        referral.isExpired ||
+        referral.status === "CANCELLED" ||
+        !isSugarScratchCampaign(referral.campaign?.name) ||
+        !referral.preUser ||
+        step < 2 ||
+        step >= 3 ||
+        status === "live" ||
+        status === "building" ||
+        packageChecksRef.current.has(referral.id)
+      ) {
+        continue;
+      }
+      packageChecksRef.current.add(referral.id);
+      const referralId = referral.id;
+      void modelsApi
+        .getReferralPackageWorkspace(referralId)
+        .then((workspace) => {
+          if (
+            workspace.packageReady ||
+            !Number.isInteger(workspace.surveyStep) ||
+            workspace.surveyStep < 1 ||
+            workspace.surveyStep >= 2
+          ) {
+            return;
+          }
+          applySurveyStep(referralId, workspace.surveyStep);
+        })
+        .catch(() => {
+          // Leave the id checked so a down upstream doesn't retry every render.
+        });
+    }
+  }, [referrals, canOrderLandingPage, setReferrals, applySurveyStep]);
 
   // Expired and Denied are separate filter pills: expired is a passive
   // lifecycle event (invite window lapsed), denied is an explicit AM
@@ -2361,18 +2433,9 @@ const dedupeByPromoter = (rows: Referral[]): Referral[] => {
     try {
       const workspace = await modelsApi.getReferralPackageWorkspace(referral.id);
       // Sugar repairs false step-2 (no pack) back to 1 — mirror on the card.
-      if (
-        referral.preUser &&
-        workspace.surveyStep !== referral.preUser.currentStep
-      ) {
-        applyPreUserSnapshot(referral.id, {
-          currentStep: workspace.surveyStep,
-          status: referral.preUser.status ?? "confirmed",
-          lastCheckedAt: referral.preUser.lastCheckedAt,
-          teasemeUserId: referral.preUser.teasemeUserId,
-          surveyLink: referral.preUser.surveyLink,
-          assetLink: referral.preUser.assetLink,
-        });
+      // Ignore a missing step; the server keeps the previous milestone.
+      if (referral.preUser && workspace.surveyStep >= 1) {
+        applySurveyStep(referral.id, workspace.surveyStep);
       }
       // Prefer a real tab: operator cookies often fail inside a cross-site iframe.
       let packsUrlNewTab = workspace.packsUrl;
@@ -2453,6 +2516,24 @@ const dedupeByPromoter = (rows: Referral[]): Referral[] => {
       applyPreUserSnapshot(referral.id, result.preUser);
       showToast("success", "Landing page build requested");
     } catch (err) {
+      const rolled =
+        err &&
+        typeof err === "object" &&
+        "preUser" in err &&
+        err.preUser &&
+        typeof err.preUser === "object"
+          ? (err.preUser as {
+              currentStep: number;
+              status: string;
+              lastCheckedAt: string | null;
+              teasemeUserId: string | null;
+              surveyLink: string | null;
+              assetLink: string | null;
+            })
+          : null;
+      if (rolled) {
+        applyPreUserSnapshot(referral.id, rolled);
+      }
       showToast(
         "error",
         err instanceof Error ? err.message : "Failed to order landing page",
@@ -2916,6 +2997,7 @@ const dedupeByPromoter = (rows: Referral[]): Referral[] => {
           busy={busyId === packageFor.referral.id}
           onClose={() => setPackageFor(null)}
           onComplete={() => handleMarkPackageDone(packageFor.referral)}
+          onSurveyStep={(step) => applySurveyStep(packageFor.referral.id, step)}
         />
       )}
     </div>
@@ -3275,6 +3357,7 @@ const MakePackageModal = ({
   busy,
   onClose,
   onComplete,
+  onSurveyStep,
 }: {
   referral: Referral;
   packsUrl: string;
@@ -3282,10 +3365,13 @@ const MakePackageModal = ({
   busy: boolean;
   onClose: () => void;
   onComplete: () => void | Promise<void>;
+  onSurveyStep: (surveyStep: number) => void;
 }) => {
   const [checking, setChecking] = useState(false);
   const [packReady, setPackReady] = useState(false);
   const completingRef = useRef(false);
+  const onSurveyStepRef = useRef(onSurveyStep);
+  onSurveyStepRef.current = onSurveyStep;
 
   const invitee =
     referral.referredUser?.email ??
@@ -3320,6 +3406,9 @@ const MakePackageModal = ({
     setChecking(true);
     try {
       const workspace = await modelsApi.getReferralPackageWorkspace(referral.id);
+      if (workspace.surveyStep >= 1) {
+        onSurveyStepRef.current(workspace.surveyStep);
+      }
       setPackReady(workspace.packageReady);
       if (workspace.packageReady) {
         await tryComplete();
