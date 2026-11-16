@@ -2915,7 +2915,7 @@ const dedupeByPromoter = (rows: Referral[]): Referral[] => {
           modelId={packageFor.modelId}
           busy={busyId === packageFor.referral.id}
           onClose={() => setPackageFor(null)}
-          onComplete={() => void handleMarkPackageDone(packageFor.referral)}
+          onComplete={() => handleMarkPackageDone(packageFor.referral)}
         />
       )}
     </div>
@@ -3281,7 +3281,7 @@ const MakePackageModal = ({
   modelId: string;
   busy: boolean;
   onClose: () => void;
-  onComplete: () => void;
+  onComplete: () => void | Promise<void>;
 }) => {
   const [checking, setChecking] = useState(false);
   const [packReady, setPackReady] = useState(false);
@@ -3306,16 +3306,17 @@ const MakePackageModal = ({
     if (completingRef.current) return;
     completingRef.current = true;
     try {
-      onComplete();
+      await onComplete();
     } finally {
-      // Parent clears the modal on success; allow retry on error.
-      window.setTimeout(() => {
-        completingRef.current = false;
-      }, 1500);
+      // Parent unmounts the modal on success. Keep the lock until the
+      // request settles so the 4s poll cannot start a second make-package.
+      completingRef.current = false;
     }
   }, [onComplete]);
 
   const refreshReady = useCallback(async () => {
+    // The 4s poll must not start another completion while make-package is in flight.
+    if (completingRef.current) return false;
     setChecking(true);
     try {
       const workspace = await modelsApi.getReferralPackageWorkspace(referral.id);
@@ -3334,6 +3335,7 @@ const MakePackageModal = ({
   useEffect(() => {
     void refreshReady();
     const timer = window.setInterval(() => {
+      if (completingRef.current) return;
       void refreshReady();
     }, 4000);
     return () => window.clearInterval(timer);
