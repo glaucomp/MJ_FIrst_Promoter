@@ -524,6 +524,26 @@ export interface ApiUser {
     lastName: string | null;
     userType?: string;
   } | null;
+  /**
+   * Public campaigns this user is actually on: their own invite, or a
+   * commission / tracking link. Bulk copies of the account manager's
+   * companies are not included.
+   */
+  campaigns?: { id: string; name: string }[];
+  /** Promoter who referred this user, and the campaign of that referral. */
+  referredBy?: {
+    userId: string;
+    name: string;
+    campaignId: string;
+    campaignName: string;
+  } | null;
+  /** People this user referred. This is what makes them Promoter+. */
+  referred?: {
+    userId: string;
+    name: string;
+    campaignId: string;
+    campaignName: string;
+  }[];
   stats?: {
     totalReferrals: number;
     activeReferrals: number;

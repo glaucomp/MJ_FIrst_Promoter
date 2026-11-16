@@ -2,6 +2,8 @@ import { createHash } from "node:crypto";
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { nanoid } from "nanoid";
 
+import { isSugarScratchCampaign } from "./sugar.service";
+
 /**
  * True if the user has an ACTIVE referral on this campaign, or is the invitee
  * on a hidden AM membership campaign whose `linkedCampaignId` points here.
@@ -574,6 +576,27 @@ const pickTeamUpline = (
 };
 
 /**
+ * Drop Sugar Scratchie public campaigns from a bulk-enroll id list.
+ * Those cards must come from a real invite + confirm, not AM campaign sync.
+ */
+async function excludeSugarScratchPublicCampaignIds(
+  client: DbClient,
+  publicCampaignIds: string[],
+): Promise<string[]> {
+  if (publicCampaignIds.length === 0) return [];
+  const campaigns = await client.campaign.findMany({
+    where: { id: { in: publicCampaignIds } },
+    select: { id: true, name: true },
+  });
+  const sugarIds = new Set(
+    campaigns
+      .filter((campaign) => isSugarScratchCampaign(campaign.name))
+      .map((campaign) => campaign.id),
+  );
+  return publicCampaignIds.filter((id) => !sugarIds.has(id));
+}
+
+/**
  * Enroll every promoter/team-manager owned by the AM onto the given public
  * campaigns (skipping rows that already exist).
  *
@@ -581,6 +604,9 @@ const pickTeamUpline = (
  * the AM at level 1. A T2 stays referred by the inviting promoter at level 2,
  * so a later sale on this campaign pays referral commission to that promoter
  * rather than the AM's direct rate.
+ *
+ * Sugar Scratchie public campaigns are skipped: promoters join that funnel
+ * only through an invite accept, not by copying the AM's TeaseMe roster.
  */
 export async function enrollAmPromotersOnPublicCampaigns(
   client: DbClient,
@@ -589,7 +615,10 @@ export async function enrollAmPromotersOnPublicCampaigns(
     publicCampaignIds: string[];
   },
 ): Promise<void> {
-  const publicIds = Array.from(new Set(args.publicCampaignIds.filter(Boolean)));
+  const publicIds = await excludeSugarScratchPublicCampaignIds(
+    client,
+    Array.from(new Set(args.publicCampaignIds.filter(Boolean))),
+  );
   if (publicIds.length === 0) return;
 
   const promoters = await client.user.findMany({
@@ -799,6 +828,9 @@ const retargetPromoterTrackingParent = async (
  * Promoters and commissions on the previous AM. Duplicate ACTIVE invitee
  * rows on that campaign (an adopted orphan plus the old membership) collapse
  * to one canonical row first.
+ *
+ * Missing Sugar Scratchie rows are not created here. A real Sugar invite
+ * that already exists is left alone (and can still move to the new AM).
  */
 export async function syncPromoterToAmLinkedCampaigns(
   client: DbClient,
@@ -812,6 +844,9 @@ export async function syncPromoterToAmLinkedCampaigns(
     new Set(args.linkedPublicCampaignIds.filter(Boolean)),
   );
   const targetSet = new Set(targetIds);
+  const enrollableIds = new Set(
+    await excludeSugarScratchPublicCampaignIds(client, targetIds),
+  );
 
   const am = await client.user.findUnique({
     where: { id: args.amUserId },
@@ -870,12 +905,15 @@ export async function syncPromoterToAmLinkedCampaigns(
     }
 
     if (!survivor) {
-      await ensurePromoterInviteeOnPublicCampaign(client, {
-        promoterUserId: args.promoterUserId,
-        publicCampaignId,
-        referrerId: args.amUserId,
-        source: "manual-am-assign",
-      });
+      // Do not invent a Sugar Scratchie card for TeaseMe roster members.
+      if (enrollableIds.has(publicCampaignId)) {
+        await ensurePromoterInviteeOnPublicCampaign(client, {
+          promoterUserId: args.promoterUserId,
+          publicCampaignId,
+          referrerId: args.amUserId,
+          source: "manual-am-assign",
+        });
+      }
     } else if (survivor.referrerId !== args.amUserId) {
       const existing = readReferralMetadataRecord(survivor.metadata);
       await client.referral.update({
