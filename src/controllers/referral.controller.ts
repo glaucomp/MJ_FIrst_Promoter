@@ -25,6 +25,7 @@ import {
   getSugarPackageWorkspace,
   isSugarScratchCampaign,
   makeSugarPackage,
+  normalizeCampaignLandingUrl,
   orderSugarLandingPage,
 } from "../services/sugar.service";
 import {
@@ -569,6 +570,38 @@ const buildInviteUrl = (
     urlObj.searchParams.set("accountManagerEmail", params.accountManagerEmail);
   }
   return urlObj.toString();
+};
+
+/**
+ * Published player /join links must live on the campaign website (or its
+ * default referral URL). Sugar may have stored a local player origin; swap
+ * the host and keep model / freeplay / card. Query parameters already on the
+ * campaign URL stay, and the asset link's parameters are added on top.
+ */
+const landingPageOnCampaignUrl = (
+  assetLink: string | null | undefined,
+  campaign: { websiteUrl?: string | null; defaultReferralUrl?: string | null },
+): string | null => {
+  if (!assetLink) return assetLink ?? null;
+  const baseRaw = (campaign.defaultReferralUrl || campaign.websiteUrl || "").trim();
+  if (!baseRaw) return assetLink;
+  try {
+    const asset = new URL(assetLink);
+    const assetPath = asset.pathname.replace(/\/+$/, "") || "/";
+    if (assetPath !== "/join") return assetLink;
+    const normalized = normalizeCampaignLandingUrl(baseRaw);
+    if (!normalized) return assetLink;
+    const campaignUrl = new URL(normalized);
+    if (campaignUrl.protocol !== "http:" && campaignUrl.protocol !== "https:") {
+      return assetLink;
+    }
+    asset.searchParams.forEach((value, key) => {
+      campaignUrl.searchParams.set(key, value);
+    });
+    return campaignUrl.toString();
+  } catch {
+    return assetLink;
+  }
 };
 
 export const createReferralInvite = async (req: AuthRequest, res: Response) => {
@@ -1234,7 +1267,12 @@ const loadReferralForAction = async (
     where: { id },
     include: {
       campaign: {
-        select: { id: true, name: true },
+        select: {
+          id: true,
+          name: true,
+          websiteUrl: true,
+          defaultReferralUrl: true,
+        },
       },
       preUser: {
         select: {
@@ -1919,9 +1957,13 @@ export const orderReferralLandingPage = async (
         }
       }
 
+      const campaignUrl = normalizeCampaignLandingUrl(
+        referral.campaign.defaultReferralUrl || referral.campaign.websiteUrl,
+      );
       const sugarUpstream = await orderSugarLandingPage({
         inviteCode: referral.inviteCode,
         email: referral.preUser.email,
+        ...(campaignUrl ? { campaignUrl } : {}),
       });
       if (!sugarUpstream?.ok) {
         console.warn("[order-landing-page] sugar order-lp failed", {
@@ -2792,6 +2834,15 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
         metadata,
         isExpired,
         inviteUrl,
+        preUser: ref.preUser
+          ? {
+              ...ref.preUser,
+              assetLink: landingPageOnCampaignUrl(
+                ref.preUser.assetLink,
+                ref.campaign,
+              ),
+            }
+          : ref.preUser,
         referredUser: hydrateReferredUser(ref.referredUser),
         childReferrals: ref.childReferrals.map((cr) => ({
           ...cr,

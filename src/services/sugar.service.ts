@@ -31,6 +31,27 @@ const getSugarPackageWorkspaceUrl = (): string =>
     `${getSugarApiBaseUrl()}/api/promoter/pre-influencers/package-workspace`
   ).replace(/\/$/, "");
 
+/**
+ * Campaign landing-page base. A homepage (`https://host` or `https://host/`)
+ * publishes on `/join`, matching the link copied in the promoter UI. An
+ * existing path and query string are kept.
+ */
+export const normalizeCampaignLandingUrl = (
+  raw: string | null | undefined,
+): string | null => {
+  const trimmed = (raw || "").trim();
+  if (!trimmed) return null;
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return trimmed;
+    const path = url.pathname.replace(/\/+$/, "");
+    url.pathname = path && path !== "/" ? path : "/join";
+    return url.toString();
+  } catch {
+    return trimmed;
+  }
+};
+
 const getSugarOperatorPublicUrl = (): string =>
   (
     process.env.SUGAR_OPERATOR_PUBLIC_URL ||
@@ -261,6 +282,8 @@ export const orderSugarLandingPage = async (params: {
   email: string;
   model?: string;
   card?: string;
+  /** Campaign website or default referral URL. A bare origin is published at /join. */
+  campaignUrl?: string;
 }): Promise<SugarActionResult | null> => {
   if (!params.inviteCode) {
     throw new Error("orderSugarLandingPage requires inviteCode");
@@ -280,6 +303,8 @@ export const orderSugarLandingPage = async (params: {
   };
   if (params.model?.trim()) payload.model = params.model.trim();
   if (params.card?.trim()) payload.card = params.card.trim();
+  const campaignUrl = normalizeCampaignLandingUrl(params.campaignUrl);
+  if (campaignUrl) payload.campaign_url = campaignUrl;
 
   let res: Response;
   try {

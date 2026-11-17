@@ -1810,6 +1810,34 @@ const SURVEY_STEP_MODE =
     ? "section-index"
     : "completion";
 
+/** Player /join links are published on the campaign website, not the local player.
+ *  Query parameters on the campaign URL are kept; asset params are added on top. */
+const landingPageOnCampaignUrl = (
+  assetLink: string | null,
+  campaign?: { websiteUrl?: string; defaultReferralUrl?: string | null } | null,
+) => {
+  if (!assetLink) return null;
+  const baseRaw = (campaign?.defaultReferralUrl || campaign?.websiteUrl || "").trim();
+  if (!baseRaw) return assetLink;
+  try {
+    const asset = new URL(assetLink);
+    const assetPath = asset.pathname.replace(/\/+$/, "") || "/";
+    if (assetPath !== "/join") return assetLink;
+    const campaignUrl = new URL(baseRaw);
+    if (campaignUrl.protocol !== "http:" && campaignUrl.protocol !== "https:") {
+      return assetLink;
+    }
+    const campaignPath = campaignUrl.pathname.replace(/\/+$/, "");
+    campaignUrl.pathname = campaignPath && campaignPath !== "/" ? campaignPath : "/join";
+    asset.searchParams.forEach((value, key) => {
+      campaignUrl.searchParams.set(key, value);
+    });
+    return campaignUrl.toString();
+  } catch {
+    return assetLink;
+  }
+};
+
 const normalizeLandingPageAssetLink = (assetLink?: string | null) => {
   const normalized = assetLink?.replace(/^"|"$/g, "").trim() || null;
   if (!normalized) return null;
@@ -2816,7 +2844,10 @@ const dedupeByPromoter = (rows: Referral[]): Referral[] => {
             onboardingSteps.length,
             sugarCampaign,
           );
-          const normalizedAssetLink = normalizeLandingPageAssetLink(assetLink);
+          const normalizedAssetLink = landingPageOnCampaignUrl(
+            normalizeLandingPageAssetLink(assetLink),
+            referral.campaign,
+          );
           const canCopyAssetLink = !!normalizedAssetLink;
           const assetLinkTooltip = canCopyAssetLink
             ? "Copy landing page link"
