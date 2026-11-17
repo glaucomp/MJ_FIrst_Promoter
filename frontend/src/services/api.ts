@@ -292,6 +292,8 @@ export interface Referral {
   campaign: {
     id?: string;
     name: string;
+    websiteUrl?: string;
+    defaultReferralUrl?: string | null;
     commissionRate: number;
     visibleToPromoters?: boolean;
     linkedCampaignId?: string | null;

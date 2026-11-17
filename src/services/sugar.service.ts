@@ -261,6 +261,8 @@ export const orderSugarLandingPage = async (params: {
   email: string;
   model?: string;
   card?: string;
+  /** Campaign website or default referral URL. Sugar publishes /join on this host. */
+  campaignUrl?: string;
 }): Promise<SugarActionResult | null> => {
   if (!params.inviteCode) {
     throw new Error("orderSugarLandingPage requires inviteCode");
@@ -280,6 +282,7 @@ export const orderSugarLandingPage = async (params: {
   };
   if (params.model?.trim()) payload.model = params.model.trim();
   if (params.card?.trim()) payload.card = params.card.trim();
+  if (params.campaignUrl?.trim()) payload.campaign_url = params.campaignUrl.trim();
 
   let res: Response;
   try {
