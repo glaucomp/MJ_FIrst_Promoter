@@ -25,6 +25,7 @@ import {
   getSugarPackageWorkspace,
   isSugarScratchCampaign,
   makeSugarPackage,
+  normalizeCampaignLandingUrl,
   orderSugarLandingPage,
 } from "../services/sugar.service";
 import {
@@ -574,7 +575,8 @@ const buildInviteUrl = (
 /**
  * Published player /join links must live on the campaign website (or its
  * default referral URL). Sugar may have stored a local player origin; swap
- * the host and keep model / freeplay / card.
+ * the host and keep model / freeplay / card. Query parameters already on the
+ * campaign URL stay, and the asset link's parameters are added on top.
  */
 const landingPageOnCampaignUrl = (
   assetLink: string | null | undefined,
@@ -587,21 +589,16 @@ const landingPageOnCampaignUrl = (
     const asset = new URL(assetLink);
     const assetPath = asset.pathname.replace(/\/+$/, "") || "/";
     if (assetPath !== "/join") return assetLink;
-    const campaignUrl = new URL(baseRaw);
+    const normalized = normalizeCampaignLandingUrl(baseRaw);
+    if (!normalized) return assetLink;
+    const campaignUrl = new URL(normalized);
     if (campaignUrl.protocol !== "http:" && campaignUrl.protocol !== "https:") {
       return assetLink;
     }
-    const campaignPath =
-      campaignUrl.pathname && campaignUrl.pathname !== "/"
-        ? campaignUrl.pathname.replace(/\/+$/, "")
-        : "/join";
-    const next = new URL(
-      `${campaignUrl.origin}${campaignPath.startsWith("/") ? campaignPath : `/${campaignPath}`}`,
-    );
     asset.searchParams.forEach((value, key) => {
-      next.searchParams.set(key, value);
+      campaignUrl.searchParams.set(key, value);
     });
-    return next.toString();
+    return campaignUrl.toString();
   } catch {
     return assetLink;
   }
@@ -1960,8 +1957,9 @@ export const orderReferralLandingPage = async (
         }
       }
 
-      const campaignUrl =
-        referral.campaign.defaultReferralUrl || referral.campaign.websiteUrl;
+      const campaignUrl = normalizeCampaignLandingUrl(
+        referral.campaign.defaultReferralUrl || referral.campaign.websiteUrl,
+      );
       const sugarUpstream = await orderSugarLandingPage({
         inviteCode: referral.inviteCode,
         email: referral.preUser.email,

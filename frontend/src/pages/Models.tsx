@@ -1810,7 +1810,8 @@ const SURVEY_STEP_MODE =
     ? "section-index"
     : "completion";
 
-/** Player /join links are published on the campaign website, not the local player. */
+/** Player /join links are published on the campaign website, not the local player.
+ *  Query parameters on the campaign URL are kept; asset params are added on top. */
 const landingPageOnCampaignUrl = (
   assetLink: string | null,
   campaign?: { websiteUrl?: string; defaultReferralUrl?: string | null } | null,
@@ -1826,17 +1827,12 @@ const landingPageOnCampaignUrl = (
     if (campaignUrl.protocol !== "http:" && campaignUrl.protocol !== "https:") {
       return assetLink;
     }
-    const campaignPath =
-      campaignUrl.pathname && campaignUrl.pathname !== "/"
-        ? campaignUrl.pathname.replace(/\/+$/, "")
-        : "/join";
-    const next = new URL(
-      `${campaignUrl.origin}${campaignPath.startsWith("/") ? campaignPath : `/${campaignPath}`}`,
-    );
+    const campaignPath = campaignUrl.pathname.replace(/\/+$/, "");
+    campaignUrl.pathname = campaignPath && campaignPath !== "/" ? campaignPath : "/join";
     asset.searchParams.forEach((value, key) => {
-      next.searchParams.set(key, value);
+      campaignUrl.searchParams.set(key, value);
     });
-    return next.toString();
+    return campaignUrl.toString();
   } catch {
     return assetLink;
   }
