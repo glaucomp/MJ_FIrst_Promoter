@@ -168,45 +168,121 @@ export type OnboardingPatch = Partial<{
   stepHistory: Prisma.JsonValue | null;
   lastCheckedAt: Date | null;
   welcomeEmailSentAt: Date | null;
+  /**
+   * Allow currentStep to decrease (Sugar pack-not-ready 2→1). Ignored once
+   * the snapshot is already live/published so a stale writer cannot unwind LP.
+   */
+  allowStepRewind: boolean;
 }>;
 
 const ONBOARDING_PATCH_MAX_RETRIES = 5;
+
+const PUBLISHED_SURVEY_STEP = (() => {
+  const raw = Number(
+    process.env.TEASEME_PUBLISHED_SURVEY_STEP ??
+      process.env.MJ_PROMOTER_PUBLISHED_SURVEY_STEP,
+  );
+  return Number.isFinite(raw) && raw >= 0 ? Math.trunc(raw) : 5;
+})();
+
+const STATUS_RANK: Record<string, number> = {
+  pending: 0,
+  confirmed: 1,
+  order_lp: 1,
+  approved: 2,
+  building: 2,
+  live: 3,
+};
+
+const canonicalizeOnboardingStatus = (status: string): string =>
+  status === "confirmed" ? "order_lp" : status;
+
+/** Forward-only status merge — never downgrade on concurrent retry. */
+export const chooseForwardOnboardingStatus = (
+  current: string,
+  upstream: string | null | undefined,
+): string => {
+  if (!upstream) return canonicalizeOnboardingStatus(current);
+  const nextUpstream = canonicalizeOnboardingStatus(upstream);
+  if (nextUpstream === current || upstream === current) {
+    return canonicalizeOnboardingStatus(current);
+  }
+  const cur = STATUS_RANK[current] ?? Number.POSITIVE_INFINITY;
+  const ups = STATUS_RANK[upstream] ?? Number.POSITIVE_INFINITY;
+  return canonicalizeOnboardingStatus(ups >= cur ? upstream : current);
+};
+
+const isPublishedSnapshot = (snap: OnboardingSnapshot): boolean =>
+  snap.status === "live" || snap.currentStep >= PUBLISHED_SURVEY_STEP;
 
 const referralOnboardingLockSelect = {
   ...referralOnboardingSelect,
   updatedAt: true,
 } as const;
 
-/** Apply a patch onto the latest snapshot. Patch fields win; omitted fields keep. */
+/**
+ * Merge a patch onto the latest snapshot.
+ * On optimistic retry the patch may be stale — step/status only move forward
+ * (unless allowStepRewind before published), and links/email are never cleared.
+ */
 export const mergeOnboardingPatch = (
   snap: OnboardingSnapshot,
   patch: OnboardingPatch,
   metadataEmail: string | null,
-): OnboardingSnapshot => ({
-  // Never drop a known invitee email on a product refresh that omits it.
-  email:
-    patch.email !== undefined
-      ? preserveEmail(patch.email)
-      : snap.email || metadataEmail || null,
-  currentStep:
-    typeof patch.currentStep === "number" ? patch.currentStep : snap.currentStep,
-  status: typeof patch.status === "string" ? patch.status : snap.status,
-  surveyLink:
-    patch.surveyLink !== undefined ? patch.surveyLink : snap.surveyLink,
-  assetLink: patch.assetLink !== undefined ? patch.assetLink : snap.assetLink,
-  teasemeUserId:
-    patch.teasemeUserId !== undefined
-      ? patch.teasemeUserId
-      : snap.teasemeUserId,
-  stepHistory:
-    patch.stepHistory !== undefined ? patch.stepHistory : snap.stepHistory,
-});
+): OnboardingSnapshot => {
+  let currentStep = snap.currentStep;
+  if (typeof patch.currentStep === "number") {
+    const canRewind =
+      patch.allowStepRewind === true && !isPublishedSnapshot(snap);
+    currentStep = canRewind
+      ? patch.currentStep
+      : Math.max(snap.currentStep, patch.currentStep);
+  }
+
+  const status =
+    patch.status !== undefined
+      ? chooseForwardOnboardingStatus(snap.status, patch.status)
+      : snap.status;
+
+  const preferLink = (
+    patched: string | null | undefined,
+    existing: string | null,
+  ): string | null => {
+    if (patched === undefined) return existing;
+    // Never null out a link a concurrent writer just stored.
+    return patched || existing;
+  };
+
+  const stepAdvancedOrRewound =
+    typeof patch.currentStep === "number" &&
+    (currentStep !== snap.currentStep || patch.allowStepRewind === true);
+
+  return {
+    email:
+      patch.email !== undefined
+        ? preserveEmail(patch.email) || snap.email || metadataEmail || null
+        : snap.email || metadataEmail || null,
+    currentStep,
+    status,
+    surveyLink: preferLink(patch.surveyLink, snap.surveyLink),
+    assetLink: preferLink(patch.assetLink, snap.assetLink),
+    teasemeUserId:
+      patch.teasemeUserId !== undefined
+        ? patch.teasemeUserId || snap.teasemeUserId
+        : snap.teasemeUserId,
+    stepHistory:
+      patch.stepHistory !== undefined && stepAdvancedOrRewound
+        ? patch.stepHistory
+        : patch.stepHistory !== undefined && currentStep >= snap.currentStep
+          ? patch.stepHistory
+          : snap.stepHistory,
+  };
+};
 
 /**
  * Merge a product refresh into Referral.onboarding (+ optional welcome stamp).
- * Uses optimistic locking on `updatedAt` and re-merges on conflict so two
- * concurrent writers (e.g. Sugar webhook assetLink + order-LP step bump)
- * cannot replace the whole JSON and discard each other's fields.
+ * Optimistic lock on `updatedAt`; each retry re-merges onto the freshest row
+ * with forward-only semantics so a slow poll cannot unwind a newer webhook.
  */
 export const patchReferralOnboarding = async (
   prisma: PrismaClient,

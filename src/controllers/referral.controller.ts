@@ -1693,7 +1693,12 @@ export const makeReferralPackage = async (
         const updatedPreUser = await patchReferralOnboarding(
           prisma,
           referral.preUser.id,
-          { currentStep: rolled, lastCheckedAt: now },
+          {
+            currentStep: rolled,
+            lastCheckedAt: now,
+            // Pack-not-ready may roll step 2 → 1 before LP live.
+            allowStepRewind: rolled < referral.preUser.currentStep,
+          },
         );
         return res.status(409).json({
           error:
@@ -3320,6 +3325,9 @@ export const receiveTeasemeStepWebhook = async (
       // Sugar is webhook-driven only — keep lastCheckedAt so we do not
       // schedule a TeaseMe poll. TeaseMe still wants a fresh poll.
       lastCheckedAt: sugarCampaign ? preUser.lastCheckedAt : null,
+      // Pack-not-ready rewinds before publish; never rewind after live.
+      allowStepRewind:
+        !alreadyPublished && appliedStep < preUser.currentStep,
     });
 
     console.info("[teaseme-webhook] step updated", {
