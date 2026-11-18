@@ -901,7 +901,9 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
       await tx.referral.update({
         where: { id: created.id },
         data: {
-          onboarding: onboardingToJson(seedOnboardingSnapshot(seedInviteUrl)),
+          onboarding: onboardingToJson(
+            seedOnboardingSnapshot(seedInviteUrl, email as string),
+          ),
           onboardingCheckedAt: null,
         },
       });
@@ -1056,6 +1058,7 @@ export const resendReferralInvite = async (req: AuthRequest, res: Response) => {
         onboardingCheckedAt: null,
         onboarding: onboardingToJson({
           ...snap,
+          email: snap.email || inviteeEmail || null,
           surveyLink: snap.surveyLink ?? inviteUrl,
         }),
       },

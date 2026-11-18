@@ -246,8 +246,9 @@ model Referral {
 
   // Last known product onboarding snapshot (TeaseMe or Sugar Scratch).
   // Products own pre-user state; this is a read cache for promoter cards /
-  // webhooks only. Shape: { currentStep, status, surveyLink, assetLink,
-  // teasemeUserId, stepHistory }. Cleared when the invitee becomes a User.
+  // webhooks only. Shape: { email, currentStep, status, surveyLink, assetLink,
+  // teasemeUserId, stepHistory }. `email` is durable for legacy invites that
+  // never stored metadata.inviteeEmail. Cleared when the invitee becomes a User.
   onboarding          Json?
   onboardingCheckedAt DateTime?
 

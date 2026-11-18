@@ -14,6 +14,7 @@ SET
   "onboarding" = COALESCE(
     r."onboarding",
     jsonb_build_object(
+      'email', to_jsonb(lower(p."email")),
       'currentStep', p."currentStep",
       'status', p."status",
       'surveyLink', to_jsonb(p."surveyLink"),
@@ -21,7 +22,18 @@ SET
       'teasemeUserId', to_jsonb(p."teasemeUserId"),
       'stepHistory', COALESCE(p."stepHistory", 'null'::jsonb)
     )
-  )
+  ),
+  -- Durable invitee email for legacy rows that never stored metadata.inviteeEmail.
+  "metadata" = CASE
+    WHEN COALESCE(r."metadata"->>'inviteeEmail', '') = '' AND p."email" IS NOT NULL
+      THEN jsonb_set(
+        COALESCE(r."metadata", '{}'::jsonb),
+        '{inviteeEmail}',
+        to_jsonb(lower(p."email")),
+        true
+      )
+    ELSE r."metadata"
+  END
 FROM "pre_users" AS p
 WHERE p."referralId" = r."id";
 
@@ -33,6 +45,7 @@ SET
   "onboarding" = COALESCE(
     r."onboarding",
     jsonb_build_object(
+      'email', to_jsonb(lower(p."email")),
       'currentStep', p."currentStep",
       'status', p."status",
       'surveyLink', to_jsonb(p."surveyLink"),
@@ -40,7 +53,17 @@ SET
       'teasemeUserId', to_jsonb(p."teasemeUserId"),
       'stepHistory', COALESCE(p."stepHistory", 'null'::jsonb)
     )
-  )
+  ),
+  "metadata" = CASE
+    WHEN COALESCE(r."metadata"->>'inviteeEmail', '') = '' AND p."email" IS NOT NULL
+      THEN jsonb_set(
+        COALESCE(r."metadata", '{}'::jsonb),
+        '{inviteeEmail}',
+        to_jsonb(lower(p."email")),
+        true
+      )
+    ELSE r."metadata"
+  END
 FROM "pre_users" AS p
 WHERE p."referralId" IS NULL
   AND p."inviteCode" IS NOT NULL
