@@ -1,7 +1,7 @@
 /**
  * Cancel ACTIVE Sugar Scratchie referrals that were invented by AM campaign
  * sync (am-campaign-added / am-multi-campaign-enroll / manual-am-assign) and
- * never started onboarding (no preUser, or currentStep still 0).
+ * never started onboarding (no onboarding cache, or currentStep still 0).
  *
  * Real Sugar applicants (confirm email/name → step >= 1) are left alone.
  * TeaseMe campaign rows are left alone.
@@ -13,6 +13,10 @@
 
 import "dotenv/config";
 import { Prisma, PrismaClient } from "@prisma/client";
+import {
+  inviteeEmailFromMetadata,
+  readOnboardingSnapshot,
+} from "../src/services/onboarding-snapshot.service";
 
 const prisma = new PrismaClient();
 
@@ -53,7 +57,7 @@ async function main() {
       referredUser: {
         select: { id: true, email: true, firstName: true, lastName: true },
       },
-      preUser: { select: { id: true, email: true, currentStep: true, status: true } },
+      onboarding: true,
     },
     orderBy: { createdAt: "asc" },
   });
@@ -62,7 +66,7 @@ async function main() {
     if (!isSugarScratchCampaign(row.campaign.name)) return false;
     const source = referralSource(row.metadata);
     if (!source || !BULK_SOURCES.has(source)) return false;
-    const step = row.preUser?.currentStep ?? 0;
+    const step = readOnboardingSnapshot(row.onboarding).currentStep;
     return step < 1;
   });
 
@@ -83,9 +87,10 @@ async function main() {
       .filter(Boolean)
       .join(" ")
       .trim();
-    const label = name || row.referredUser?.email || row.preUser?.email || "(unknown)";
+    const inviteeEmail = inviteeEmailFromMetadata(row.metadata);
+    const label = name || row.referredUser?.email || inviteeEmail || "(unknown)";
     console.log(
-      `- ${label} | email=${row.referredUser?.email ?? "—"} | invite=${row.inviteCode} | source=${referralSource(row.metadata)} | step=${row.preUser?.currentStep ?? 0} | campaign=${row.campaign.name}`,
+      `- ${label} | email=${row.referredUser?.email ?? "—"} | invite=${row.inviteCode} | source=${referralSource(row.metadata)} | step=${readOnboardingSnapshot(row.onboarding).currentStep} | campaign=${row.campaign.name}`,
     );
   }
 
