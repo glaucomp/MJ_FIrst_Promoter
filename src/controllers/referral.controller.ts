@@ -13,7 +13,6 @@ import {
 } from "../services/invite-mail.service";
 import { promotePreUserToUser, resolveOwnership } from "../services/pre-user-promote.service";
 import {
-  clearReferralOnboarding,
   inviteeEmailFromMetadata,
   onboardingToJson,
   patchReferralOnboarding,

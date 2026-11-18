@@ -348,31 +348,21 @@ export interface Referral {
   // The campaign tracking URL with all 4 referral query params appended.
   // Null for accepted rows or legacy rows missing inviteeEmail.
   inviteUrl?: string | null;
-  // TeaseMe onboarding snapshot for pending invites. Null once the invitee
-  // has registered on our side (the backend deletes the PreUser row then),
-  // and null for legacy rows that pre-date the lifecycle tracker.
+  // Product onboarding snapshot (TeaseMe / Sugar Scratch), cached on the
+  // Referral. Null once the invitee is a User and the cache is cleared, or
+  // for legacy rows with no product state. Field name kept for API compat.
   preUser?: {
     currentStep: number;
-    // Lifecycle label mirrored from TeaseMe's /step-progress response.
-    // Drives the 5-state chip on the My Promoters card. Expected values:
-    // "pending" | "order_lp" | "building" | "live" — but stored as an open
-    // string so upstream additions don't break the type.
+    // Lifecycle label from the product. Drives the chip on My Promoters.
+    // Expected: "pending" | "order_lp" | "building" | "live" (open string).
     status: string | null;
     lastCheckedAt: string | null;
     teasemeUserId: string | null;
-    // In-flight onboarding session URL, mirrored from TeaseMe's
-    // /step-progress response. Used by the top "Open" pill on the Models
-    // card while chip = waiting/order_lp/building. Null until upstream
-    // populates.
+    // In-flight onboarding session URL from the product.
     surveyLink: string | null;
-    // Live landing-page URL, mirrored from TeaseMe's /step-progress
-    // response. Used for copy/open once the LP is built — not required for
-    // 3/3 milestone completion (see docs/TEASEME_STEP_PROGRESS.md).
+    // Live landing-page URL from the product once the LP is built.
     assetLink: string | null;
-    // Mirrored survey_step: completed milestone count 0–3 when upstream uses
-    // the TeaseMe 3-step funnel (register → photo/voice → assets/terms).
-    // ISO timestamp the welcome email was last delivered to the invitee
-    // (after the AM clicked "Send Welcome Email" on the LP Live card).
+    // ISO timestamp the welcome email was last delivered (Referral stamp).
     // Drives the Send/Resend button label. Null = never sent.
     welcomeEmailSentAt: string | null;
   } | null;
