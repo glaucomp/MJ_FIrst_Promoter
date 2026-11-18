@@ -13,7 +13,7 @@ import {
 } from "../services/invite-mail.service";
 import { promotePreUserToUser, resolveOwnership } from "../services/pre-user-promote.service";
 import {
-  inviteeEmailFromMetadata,
+  findReferralIdByInviteeEmail,
   onboardingToJson,
   patchReferralOnboarding,
   readOnboardingSnapshot,
@@ -337,14 +337,25 @@ const backfillPendingPublishedReferrals = (
 
   void (async () => {
     try {
+      const inviteEmails = pendingPublished
+        .map((ref) => ref.preUser.email)
+        .filter(Boolean);
       const existingUsers = await prisma.user.findMany({
-        where: { email: { in: pendingPublished.map((ref) => ref.preUser.email) } },
+        where: {
+          OR: inviteEmails.map((email) => ({
+            email: { equals: email, mode: "insensitive" as const },
+          })),
+        },
         select: { id: true, email: true },
       });
-      const userIdByEmail = new Map(existingUsers.map((row) => [row.email, row.id]));
+      const userIdByEmail = new Map(
+        existingUsers.map((row) => [row.email.trim().toLowerCase(), row.id]),
+      );
 
       for (const ref of pendingPublished) {
-        const existingUserId = userIdByEmail.get(ref.preUser.email);
+        const existingUserId = userIdByEmail.get(
+          ref.preUser.email.trim().toLowerCase(),
+        );
         if (!existingUserId) continue;
 
         try {
@@ -3178,11 +3189,11 @@ export const checkInviteQuota = async (req: AuthRequest, res: Response) => {
 /**
  * POST /api/webhooks/teaseme-step
  *
- * Called by the TeaseMe app whenever a pre-influencer's step changes.
- * Validates the shared secret, updates the PreUser row in DB, then fires
- * the in-memory stepEmitter so any open SSE stream for that referral
- * receives the update immediately. No JWT auth — the secret header is the
- * sole authentication mechanism for this endpoint.
+ * Called by TeaseMe / Sugar whenever product onboarding step changes.
+ * Validates the shared secret, patches Referral.onboarding while the invite
+ * is still PENDING, then fires stepEmitter for open SSE streams. Settled
+ * invites (ACTIVE / referredUser set) skip the write so late events cannot
+ * restore a cache cleared by /register. No JWT — webhook secret only.
  */
 export const receiveTeasemeStepWebhook = async (
   req: Request,
@@ -3226,44 +3237,31 @@ export const receiveTeasemeStepWebhook = async (
 
   try {
     // Prefer inviteCode so an upstream email edit mid-flow does not attach
-    // the step update to the wrong invite. Fall back to invitee email in
-    // Referral.metadata for legacy rows.
-    const referralRow =
-      (inviteCode
+    // the step update to the wrong invite. Fall back to a case-insensitive
+    // metadata/onboarding email match (no take:5 / equals casing traps).
+    const referralWebhookSelect = {
+      ...referralOnboardingSelect,
+      status: true,
+      referredUserId: true,
+      campaign: { select: { name: true } },
+    } as const;
+
+    let referralRow = inviteCode
+      ? await prisma.referral.findUnique({
+          where: { inviteCode },
+          select: referralWebhookSelect,
+        })
+      : null;
+
+    if (!referralRow && email) {
+      const byEmailId = await findReferralIdByInviteeEmail(prisma, email);
+      referralRow = byEmailId
         ? await prisma.referral.findUnique({
-            where: { inviteCode },
-            select: {
-              ...referralOnboardingSelect,
-              campaign: { select: { name: true } },
-            },
+            where: { id: byEmailId },
+            select: referralWebhookSelect,
           })
-        : null) ??
-      (email
-        ? (
-            await prisma.referral.findMany({
-              where: {
-                OR: [
-                  { metadata: { path: ["inviteeEmail"], equals: email } },
-                  {
-                    metadata: {
-                      path: ["inviteeEmail"],
-                      equals: email.toLowerCase(),
-                    },
-                  },
-                ],
-              },
-              select: {
-                ...referralOnboardingSelect,
-                campaign: { select: { name: true } },
-              },
-              take: 5,
-              orderBy: { createdAt: "desc" },
-            })
-          ).find(
-            (row) =>
-              inviteeEmailFromMetadata(row.metadata) === email.toLowerCase(),
-          ) ?? null
-        : null);
+        : null;
+    }
 
     if (!referralRow) {
       console.warn("[teaseme-webhook] no Referral found", { email, inviteCode });
@@ -3284,6 +3282,21 @@ export const receiveTeasemeStepWebhook = async (
           dbReferralId: resolvedReferralId,
         },
       );
+    }
+
+    // Invite already accepted (or cancelled): /register clears onboarding and
+    // the Referral/User pair is source of truth. Do not rewrite the cache —
+    // that used to be a no-op when PreUser was deleted; restoring a pending
+    // snapshot makes My Promoters show Waiting on an ACTIVE invite.
+    if (referralRow.status !== "PENDING" || referralRow.referredUserId) {
+      console.info("[teaseme-webhook] skipping onboarding write; invite settled", {
+        referralId: resolvedReferralId,
+        status: referralRow.status,
+        referredUserId: referralRow.referredUserId,
+        email,
+        inviteCode,
+      });
+      return res.status(200).json({ ok: true, matched: true, skipped: "settled" });
     }
 
     const alreadyPublished = isPreUserPublished(
@@ -3341,8 +3354,10 @@ export const receiveTeasemeStepWebhook = async (
     if (isPreUserPublished(appliedStep, emittedStatus)) {
       void (async () => {
         try {
-          const promotedUser = await prisma.user.findUnique({
-            where: { email: preUser.email },
+          const promotedUser = await prisma.user.findFirst({
+            where: {
+              email: { equals: preUser.email, mode: "insensitive" },
+            },
             select: {
               id: true,
               firstName: true,

@@ -5,7 +5,11 @@ import {
   UserRole,
   UserType,
 } from "@prisma/client";
-import { clearReferralOnboarding } from "../services/onboarding-snapshot.service";
+import {
+  clearReferralOnboarding,
+  emailsEqual,
+  inviteeEmailFromMetadata,
+} from "../services/onboarding-snapshot.service";
 import bcrypt from "bcryptjs";
 import { Response } from "express";
 import { validationResult } from "express-validator";
@@ -201,17 +205,7 @@ export const register = async (req: AuthRequest, res: Response) => {
         select: { id: true, metadata: true },
       });
       for (const row of otherPending) {
-        const meta =
-          row.metadata &&
-          typeof row.metadata === "object" &&
-          !Array.isArray(row.metadata)
-            ? (row.metadata as Record<string, unknown>)
-            : {};
-        const invitee =
-          typeof meta.inviteeEmail === "string"
-            ? meta.inviteeEmail.trim().toLowerCase()
-            : "";
-        if (invitee === user.email) {
+        if (emailsEqual(inviteeEmailFromMetadata(row.metadata), user.email)) {
           await clearReferralOnboarding(prisma, row.id);
         }
       }

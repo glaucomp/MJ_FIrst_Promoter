@@ -49,10 +49,21 @@ const DEFAULT_SNAPSHOT: OnboardingSnapshot = {
   stepHistory: null,
 };
 
-const normalizeEmail = (raw: unknown): string | null => {
+/** Trim + validate only — keep invite/product casing for upstream lookups. */
+const preserveEmail = (raw: unknown): string | null => {
   if (typeof raw !== "string") return null;
-  const email = raw.trim().toLowerCase();
+  const email = raw.trim();
   return email.includes("@") ? email : null;
+};
+
+/** Case-insensitive equality for matching invites to User / webhook bodies. */
+export const emailsEqual = (
+  a: string | null | undefined,
+  b: string | null | undefined,
+): boolean => {
+  const left = typeof a === "string" ? a.trim().toLowerCase() : "";
+  const right = typeof b === "string" ? b.trim().toLowerCase() : "";
+  return left.length > 0 && left === right;
 };
 
 export const readReferralMetadataRecord = (
@@ -62,11 +73,11 @@ export const readReferralMetadataRecord = (
   return raw as Record<string, unknown>;
 };
 
+/** Original invitee email from metadata (casing preserved). Empty if missing. */
 export const inviteeEmailFromMetadata = (
   metadata: Prisma.JsonValue | null | undefined,
 ): string => {
-  const email = readReferralMetadataRecord(metadata).inviteeEmail;
-  return typeof email === "string" ? email.trim().toLowerCase() : "";
+  return preserveEmail(readReferralMetadataRecord(metadata).inviteeEmail) ?? "";
 };
 
 export const readOnboardingSnapshot = (
@@ -81,7 +92,7 @@ export const readOnboardingSnapshot = (
       ? Math.trunc(o.currentStep)
       : 0;
   return {
-    email: normalizeEmail(o.email),
+    email: preserveEmail(o.email),
     currentStep: Math.max(0, step),
     status: typeof o.status === "string" && o.status ? o.status : "pending",
     surveyLink: typeof o.surveyLink === "string" ? o.surveyLink : null,
@@ -100,7 +111,7 @@ export const seedOnboardingSnapshot = (
   email?: string | null,
 ): OnboardingSnapshot => ({
   ...DEFAULT_SNAPSHOT,
-  email: normalizeEmail(email),
+  email: preserveEmail(email),
   surveyLink,
 });
 
@@ -108,8 +119,9 @@ export const toOnboardingView = (
   referral: ReferralOnboardingFields,
 ): OnboardingView => {
   const snap = readOnboardingSnapshot(referral.onboarding);
-  // Prefer the durable onboarding.email (migrated from pre_users / seeded on
-  // invite). Fall back to metadata.inviteeEmail for rows that only have it there.
+  // Prefer durable onboarding.email (migrated from pre_users / seeded on
+  // invite), preserving original casing for Sugar/TeaseMe + User lookups.
+  // Fall back to metadata.inviteeEmail when the snapshot has no email.
   const email =
     snap.email || inviteeEmailFromMetadata(referral.metadata) || "";
   return {
@@ -174,7 +186,7 @@ export const mergeOnboardingPatch = (
   // Never drop a known invitee email on a product refresh that omits it.
   email:
     patch.email !== undefined
-      ? normalizeEmail(patch.email)
+      ? preserveEmail(patch.email)
       : snap.email || metadataEmail || null,
   currentStep:
     typeof patch.currentStep === "number" ? patch.currentStep : snap.currentStep,
@@ -254,4 +266,34 @@ export const clearReferralOnboarding = async (
       onboardingCheckedAt: null,
     },
   });
+};
+
+/**
+ * Case-insensitive invitee lookup for webhooks that omit inviteCode.
+ * Matches metadata.inviteeEmail or onboarding.email. Prefers open PENDING
+ * invites (no referred user), then newest createdAt.
+ */
+export const findReferralIdByInviteeEmail = async (
+  prisma: PrismaClient,
+  email: string,
+): Promise<string | null> => {
+  const needle = preserveEmail(email);
+  if (!needle) return null;
+
+  const rows = await prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+    SELECT r.id
+    FROM referrals r
+    WHERE (
+      LOWER(TRIM(COALESCE(r.metadata->>'inviteeEmail', ''))) = LOWER(TRIM(${needle}))
+      OR LOWER(TRIM(COALESCE(r.onboarding->>'email', ''))) = LOWER(TRIM(${needle}))
+    )
+    ORDER BY
+      CASE
+        WHEN r.status = 'PENDING' AND r."referredUserId" IS NULL THEN 0
+        ELSE 1
+      END ASC,
+      r."createdAt" DESC
+    LIMIT 1
+  `);
+  return rows[0]?.id ?? null;
 };
