@@ -413,7 +413,7 @@ export const trackSale = async (req: ApiKeyRequest, res: Response) => {
               id: true,
               campaignId: true,
               level: true,
-              preUser: { select: { currentStep: true } },
+              onboarding: true,
               campaign: {
                 select: {
                   visibleToPromoters: true,

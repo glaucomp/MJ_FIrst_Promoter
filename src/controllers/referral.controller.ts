@@ -13,6 +13,17 @@ import {
 } from "../services/invite-mail.service";
 import { promotePreUserToUser, resolveOwnership } from "../services/pre-user-promote.service";
 import {
+  clearReferralOnboarding,
+  inviteeEmailFromMetadata,
+  onboardingToJson,
+  patchReferralOnboarding,
+  readOnboardingSnapshot,
+  referralOnboardingSelect,
+  seedOnboardingSnapshot,
+  toOnboardingView,
+  type OnboardingView,
+} from "../services/onboarding-snapshot.service";
+import {
   dedupeReferralsByPromoter,
   findMembershipReferralForPublicCampaign,
   isUserParticipantOnCampaign,
@@ -146,28 +157,32 @@ const readStepHistory = (
   );
 };
 
-type PreUserRow = {
-  id: string;
-  email: string;
-  // FK back to the originating Referral. Required for the 4→5 promotion
-  // hook to inherit the referrer (so the new User lands under the right
-  // account manager instead of in "Needs assignment").
-  referralId: string | null;
-  inviteCode: string | null;
-  currentStep: number;
-  status: string;
-  lastCheckedAt: Date | null;
-  stepHistory: Prisma.JsonValue | null;
-  teasemeUserId: string | null;
-  surveyLink: string | null;
-  assetLink: string | null;
-  // Stamped by promotePreUserToUser when the welcome email is delivered.
-  // Threaded into the promotion call so the helper can short-circuit on
-  // already-emailed rows (anti-double-email guarantee).
-  welcomeEmailSentAt: Date | null;
-};
+/** Product onboarding snapshot view (formerly PreUser row). */
+type PreUserRow = OnboardingView;
 
-type ReferralRowWithPreUser = { preUser: PreUserRow | null };
+const attachOnboardingView = <T extends {
+  id: string;
+  inviteCode: string;
+  welcomeEmailSentAt: Date | null;
+  onboarding: Prisma.JsonValue | null;
+  onboardingCheckedAt: Date | null;
+  metadata?: Prisma.JsonValue | null;
+}>(
+  row: T,
+): T & { preUser: PreUserRow | null } => ({
+  ...row,
+  preUser:
+    row.onboarding != null || row.welcomeEmailSentAt != null
+      ? toOnboardingView(row)
+      : null,
+});
+
+type ReferralRowWithPreUser = {
+  preUser: PreUserRow | null;
+  // Present on getMyReferrals rows. Sugar Scratchie campaigns never poll
+  // TeaseMe — the two products share only MJ Promoter, not each other.
+  campaign?: { name?: string | null } | null;
+};
 
 type PendingPublishedReferralBackfillRow = {
   id: string;
@@ -196,6 +211,9 @@ const refreshPreUserSteps = async (
   const staleRows = rows.filter((row) => {
     const pre = row.preUser;
     if (!pre) return false;
+    // Sugar Scratchie pushes steps via teaseme-step webhooks only. Polling
+    // TeaseMe for those rows can overwrite Sugar assetLink / step state.
+    if (isSugarScratchCampaign(row.campaign?.name)) return false;
     // Published/live is the terminal upstream state — once we've recorded it
     // locally there is nothing left to learn from /step-progress.
     // Welcome-email delivery is an operator action driven by the "Send Welcome
@@ -224,25 +242,10 @@ const refreshPreUserSteps = async (
           });
           const nextCheckedAt = new Date();
           if (!status) {
-            // Upstream miss / error — just bump lastCheckedAt so we don't
+            // Upstream miss / error — just bump onboardingCheckedAt so we don't
             // spin on the same row every list render.
-            const updated = await prisma.preUser.update({
-              where: { id: pre.id },
-              data: { lastCheckedAt: nextCheckedAt },
-              select: {
-                id: true,
-                email: true,
-                referralId: true,
-                inviteCode: true,
-                currentStep: true,
-                status: true,
-                lastCheckedAt: true,
-                stepHistory: true,
-                teasemeUserId: true,
-                surveyLink: true,
-                assetLink: true,
-                welcomeEmailSentAt: true,
-              },
+            const updated = await patchReferralOnboarding(prisma, pre.id, {
+              lastCheckedAt: nextCheckedAt,
             });
             row.preUser = updated;
             continue;
@@ -257,48 +260,24 @@ const refreshPreUserSteps = async (
                 ].slice(-STEP_HISTORY_MAX)
               : history;
 
-          const updated = await prisma.preUser.update({
-            where: { id: pre.id },
-            data: {
-              // Always advance monotonically so a stale upstream poll can
-              // never flip a card backward in the UI. `orderReferralLandingPage`
-              // applies the same rule.
-              currentStep: Math.max(pre.currentStep, status.step),
-              // Mirror TeaseMe's lifecycle string into our own column so the
-              // list endpoint can emit it without a second upstream call.
-              // chooseForwardStatus() guards against stale `/step-progress`
-              // responses that would otherwise downgrade a row we just
-              // promoted via `/approve` (e.g. building -> pending).
-              status: chooseForwardStatus(pre.status, status.status),
-              teasemeUserId: status.teasemeUserId ?? pre.teasemeUserId,
-              // Never null out a previously-known link just because a later
-              // poll omits it — TeaseMe populates surveyLink first, then
-              // assetLink later in the lifecycle.
-              // Also guard against TeaseMe accidentally echoing back an
-              // invite-URL-shaped string (contains inviteCode=) — treat
-              // those as null so the seed / previous session URL is kept.
-              surveyLink:
-                (status.surveyLink && !status.surveyLink.includes("inviteCode=")
-                  ? status.surveyLink
-                  : null) ?? pre.surveyLink,
-              assetLink: status.assetLink ?? pre.assetLink,
-              lastCheckedAt: nextCheckedAt,
-              stepHistory: nextHistory as unknown as Prisma.InputJsonValue,
-            },
-            select: {
-              id: true,
-              email: true,
-              referralId: true,
-              inviteCode: true,
-              currentStep: true,
-              status: true,
-              lastCheckedAt: true,
-              stepHistory: true,
-              teasemeUserId: true,
-              surveyLink: true,
-              assetLink: true,
-              welcomeEmailSentAt: true,
-            },
+          const updated = await patchReferralOnboarding(prisma, pre.id, {
+            // Always advance monotonically so a stale upstream poll can
+            // never flip a card backward in the UI. `orderReferralLandingPage`
+            // applies the same rule.
+            currentStep: Math.max(pre.currentStep, status.step),
+            // Cache TeaseMe's lifecycle string so the list endpoint can emit
+            // it without a second upstream call. chooseForwardStatus() guards
+            // against stale `/step-progress` responses that would otherwise
+            // downgrade a row we just promoted via `/approve`.
+            status: chooseForwardStatus(pre.status, status.status),
+            teasemeUserId: status.teasemeUserId ?? pre.teasemeUserId,
+            surveyLink:
+              (status.surveyLink && !status.surveyLink.includes("inviteCode=")
+                ? status.surveyLink
+                : null) ?? pre.surveyLink,
+            assetLink: status.assetLink ?? pre.assetLink,
+            lastCheckedAt: nextCheckedAt,
+            stepHistory: nextHistory as unknown as Prisma.JsonValue,
           });
           row.preUser = updated;
 
@@ -309,11 +288,10 @@ const refreshPreUserSteps = async (
           const surveyLinkChanged = updated.surveyLink !== pre.surveyLink;
           const statusChanged = updated.status !== pre.status;
           if (
-            (stepChanged ||
-              assetLinkChanged ||
-              surveyLinkChanged ||
-              statusChanged) &&
-            updated.referralId
+            stepChanged ||
+            assetLinkChanged ||
+            surveyLinkChanged ||
+            statusChanged
           ) {
             stepEmitter.emit(`step:${updated.referralId}`, {
               currentStep: updated.currentStep,
@@ -413,6 +391,7 @@ type DuplicateInviteeRepairRow = {
     visibleToPromoters?: boolean | null;
     linkedCampaignId?: string | null;
   } | null;
+  onboarding?: Prisma.JsonValue | null;
   preUser: { currentStep: number } | null;
 };
 
@@ -873,14 +852,9 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
     // deletes it. Keeping both writes in one transaction guarantees we never
     // have a pending invite without its lifecycle row.
     //
-    // We also seed `preUser.surveyLink` with the freshly-built invite URL
-    // so the "Open onboarding session" pill on the My Promoters card is
-    // clickable from the moment the invite is sent — instead of being
-    // dead until TeaseMe's /step-progress returns its own session URL.
-    // refreshPreUserSteps / orderReferralLandingPage both write
-    // `surveyLink: status.surveyLink ?? pre.surveyLink`, so our seed is
-    // preserved until upstream supplies a real one and is then overwritten
-    // forward-only.
+    // Seed Referral.onboarding.surveyLink with the invite URL so the
+    // "Open onboarding session" pill is clickable immediately. Product
+    // refreshes overwrite forward-only.
     const referral = await prisma.$transaction(async (tx) => {
       const created = await tx.referral.create({
         data: {
@@ -914,14 +888,9 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
         },
       });
 
-      // Build the invite URL inside the transaction so we can seed
-      // surveyLink immediately. This makes the "Open onboarding" button
-      // on the My Promoters card clickable from the first render instead
-      // of staying disabled until TeaseMe's /step-progress returns its
-      // own session URL. refreshPreUserSteps writes
-      // `surveyLink: status.surveyLink ?? pre.surveyLink` so this seed
-      // is preserved until TeaseMe supplies a real session URL and is
-      // then overwritten forward-only.
+      // Seed product onboarding cache with the invite URL so "Open onboarding"
+      // works before TeaseMe/Sugar returns a session URL. Products own the
+      // real pre-user; this is Referral read-cache only.
       const seedInviteUrl = buildInviteUrl(created.campaign, {
         refCode,
         inviteCode,
@@ -930,13 +899,11 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
         accountManagerEmail,
       });
 
-      await tx.preUser.create({
+      await tx.referral.update({
+        where: { id: created.id },
         data: {
-          email: email as string,
-          referralId: created.id,
-          inviteCode,
-          currentStep: 0,
-          surveyLink: seedInviteUrl,
+          onboarding: onboardingToJson(seedOnboardingSnapshot(seedInviteUrl)),
+          onboardingCheckedAt: null,
         },
       });
 
@@ -1080,33 +1047,18 @@ export const resendReferralInvite = async (req: AuthRequest, res: Response) => {
       data: { metadata: nextMetadata },
     });
 
-    // Force the next My Promoters load to re-poll tmapi immediately instead
-    // of waiting for the normal TTL — a resend usually means the inviter
-    // wants fresh status. Upsert so rows that pre-date this migration still
-    // get a PreUser without requiring a backfill.
-    //
-    // surveyLink handling on resend:
-    //   - create branch: seed with the freshly-built inviteUrl so the
-    //     "Open onboarding session" pill is live from the first render
-    //     (matches createReferralInvite behaviour for new invites).
-    //   - update branch: only backfill surveyLink when it's still null.
-    //     We must NOT clobber an upstream-supplied session URL that
-    //     refreshPreUserSteps may have already written — TeaseMe's URL
-    //     is the authoritative one once it shows up.
-    // Use upsert so concurrent resends can't race to a P2002 on
-    // PreUser.referralId / inviteCode.  The update branch only resets
-    // lastCheckedAt — surveyLink is backfilled in the separate updateMany
-    // below which guards on `surveyLink: null` so we never overwrite an
-    // upstream-supplied session URL.
-    await prisma.preUser.upsert({
-      where: { referralId: referral.id },
-      update: { lastCheckedAt: null },
-      create: {
-        email: inviteeEmail,
-        referralId: referral.id,
-        inviteCode: referral.inviteCode,
-        currentStep: 0,
-        surveyLink: inviteUrl,
+    // Force the next My Promoters load to re-poll the product immediately.
+    // Re-seed onboarding cache when missing; never clobber an upstream
+    // surveyLink already cached on the Referral.
+    const snap = readOnboardingSnapshot(referral.onboarding);
+    await prisma.referral.update({
+      where: { id: referral.id },
+      data: {
+        onboardingCheckedAt: null,
+        onboarding: onboardingToJson({
+          ...snap,
+          surveyLink: snap.surveyLink ?? inviteUrl,
+        }),
       },
     });
 
@@ -1274,28 +1226,6 @@ const loadReferralForAction = async (
           defaultReferralUrl: true,
         },
       },
-      preUser: {
-        select: {
-          id: true,
-          email: true,
-          inviteCode: true,
-          currentStep: true,
-          status: true,
-          lastCheckedAt: true,
-          stepHistory: true,
-          teasemeUserId: true,
-          // Needed by orderReferralLandingPage so the post-approve repoll
-          // can preserve the previously-known link if the upstream poll
-          // omits it.
-          surveyLink: true,
-          assetLink: true,
-          // Required by sendReferralWelcomeEmail so the helper can
-          // short-circuit duplicate sends, and to inherit the originating
-          // referral's owner when promoting the PreUser to a real User.
-          referralId: true,
-          welcomeEmailSentAt: true,
-        },
-      },
       referredUser: {
         select: { id: true, email: true },
       },
@@ -1305,7 +1235,7 @@ const loadReferralForAction = async (
   if (!canAccessReferralLifecycle(user, referral)) {
     return { error: { code: 403, message: "Access denied" } };
   }
-  return { referral };
+  return { referral: attachOnboardingView(referral) };
 };
 
 export const denyReferralInvite = async (req: AuthRequest, res: Response) => {
@@ -1503,16 +1433,6 @@ export const reassignReferralInvite = async (
   }
 };
 
-const ACTION_PRE_USER_SELECT = {
-  id: true,
-  currentStep: true,
-  status: true,
-  lastCheckedAt: true,
-  teasemeUserId: true,
-  surveyLink: true,
-  assetLink: true,
-} as const;
-
 const sugarPackageStillOpen = (preUser: {
   currentStep: number;
   status: string;
@@ -1526,36 +1446,46 @@ type PackageStepStamp = {
   currentStep: number;
   status: string;
   updatedAt: Date;
+  onboarding: Prisma.JsonValue | null;
 };
 
-const readPackageStepStamp = (preUserId: string) =>
-  prisma.preUser.findUnique({
-    where: { id: preUserId },
+const readPackageStepStamp = async (
+  referralId: string,
+): Promise<PackageStepStamp | null> => {
+  const row = await prisma.referral.findUnique({
+    where: { id: referralId },
     select: {
       id: true,
-      currentStep: true,
-      status: true,
       updatedAt: true,
+      onboarding: true,
     },
   });
+  if (!row) return null;
+  const snap = readOnboardingSnapshot(row.onboarding);
+  return {
+    id: row.id,
+    currentStep: snap.currentStep,
+    status: snap.status,
+    updatedAt: row.updatedAt,
+    onboarding: row.onboarding,
+  };
+};
 
 const readCurrentStep = async (
-  preUserId: string,
+  referralId: string,
   fallback: number,
 ): Promise<number> => {
-  const fresh = await prisma.preUser.findUnique({
-    where: { id: preUserId },
-    select: { currentStep: true },
+  const fresh = await prisma.referral.findUnique({
+    where: { id: referralId },
+    select: { onboarding: true },
   });
-  return fresh?.currentStep ?? fallback;
+  if (!fresh) return fallback;
+  return readOnboardingSnapshot(fresh.onboarding).currentStep;
 };
 
 // A missing pack rolls step 2 back to 1 only when Sugar's survey_step is
-// missing or still below 2. A reported step of 2 is left for the caller to
-// decide: a failed claim is not permission to publish. Pass null for
-// upstreamStep once a fresh read has confirmed the pack file is still
-// absent. The write matches the row stamp, so a make-package that commits
-// during the Sugar call is not overwritten.
+// missing or still below 2. Optimistic lock uses Referral.updatedAt +
+// matching cached currentStep/status.
 const claimMissingPackageStep = async (
   stamp: PackageStepStamp,
   upstreamStep: number | null,
@@ -1571,16 +1501,18 @@ const claimMissingPackageStep = async (
       currentStep: await readCurrentStep(stamp.id, stamp.currentStep),
     };
   }
-  const claimed = await prisma.preUser.updateMany({
+  const nextSnap = {
+    ...readOnboardingSnapshot(stamp.onboarding),
+    currentStep: 1,
+  };
+  const claimed = await prisma.referral.updateMany({
     where: {
       id: stamp.id,
-      currentStep: stamp.currentStep,
-      status: stamp.status,
       updatedAt: stamp.updatedAt,
     },
     data: {
-      currentStep: 1,
-      lastCheckedAt: new Date(),
+      onboarding: onboardingToJson(nextSnap),
+      onboardingCheckedAt: new Date(),
     },
   });
   if (claimed.count !== 1) {
@@ -1745,22 +1677,11 @@ export const makeReferralPackage = async (
         const now = new Date();
         const rolled =
           referral.preUser.currentStep >= 2 ? 1 : referral.preUser.currentStep;
-        const updatedPreUser = await prisma.preUser.update({
-          where: { id: referral.preUser.id },
-          data: {
-            currentStep: rolled,
-            lastCheckedAt: now,
-          },
-          select: {
-            id: true,
-            currentStep: true,
-            status: true,
-            lastCheckedAt: true,
-            teasemeUserId: true,
-            surveyLink: true,
-            assetLink: true,
-          },
-        });
+        const updatedPreUser = await patchReferralOnboarding(
+          prisma,
+          referral.preUser.id,
+          { currentStep: rolled, lastCheckedAt: now },
+        );
         return res.status(409).json({
           error:
             sugarUpstream.error ||
@@ -1788,27 +1709,19 @@ export const makeReferralPackage = async (
           )
         : history;
 
-    const updatedPreUser = await prisma.preUser.update({
-      where: { id: referral.preUser.id },
-      data: {
+    const updatedPreUser = await patchReferralOnboarding(
+      prisma,
+      referral.preUser.id,
+      {
         currentStep: nextStep,
         status: chooseForwardStatus(
           referral.preUser.status,
           sugarUpstream.status ?? referral.preUser.status,
         ),
         lastCheckedAt: now,
-        stepHistory: nextHistory as unknown as Prisma.InputJsonValue,
+        stepHistory: nextHistory as unknown as Prisma.JsonValue,
       },
-      select: {
-        id: true,
-        currentStep: true,
-        status: true,
-        lastCheckedAt: true,
-        teasemeUserId: true,
-        surveyLink: true,
-        assetLink: true,
-      },
-    });
+    );
 
     return res.json({ success: true, preUser: updatedPreUser });
   } catch (error) {
@@ -1874,7 +1787,15 @@ export const orderReferralLandingPage = async (
     //   TeaseMe campaigns → POST /approve, then re-poll /step-progress.
     const sugarCampaign = isSugarScratchCampaign(referral.campaign?.name);
     const now = new Date();
-    let updateData: Prisma.PreUserUpdateInput = { lastCheckedAt: now };
+    let updateData: {
+      currentStep?: number;
+      status?: string;
+      teasemeUserId?: string | null;
+      surveyLink?: string | null;
+      assetLink?: string | null;
+      lastCheckedAt?: Date | null;
+      stepHistory?: Prisma.InputJsonValue;
+    } = { lastCheckedAt: now };
 
     if (sugarCampaign) {
       // Sugar publishes the player /join LP URL on this call (status live)
@@ -1945,10 +1866,12 @@ export const orderReferralLandingPage = async (
             }
           }
           if (packMissing) {
-            const updatedPreUser = await prisma.preUser.findUnique({
-              where: { id: referral.preUser.id },
-              select: ACTION_PRE_USER_SELECT,
-            });
+            const updatedPreUser = toOnboardingView(
+              await prisma.referral.findUniqueOrThrow({
+                where: { id: referral.preUser.id },
+                select: referralOnboardingSelect,
+              }),
+            );
             return res.status(409).json({
               error: packNotReadyMessage,
               preUser: updatedPreUser,
@@ -1990,10 +1913,12 @@ export const orderReferralLandingPage = async (
               await claimMissingPackageStep(fresh, null);
             }
           }
-          const updatedPreUser = await prisma.preUser.findUnique({
-            where: { id: referral.preUser.id },
-            select: ACTION_PRE_USER_SELECT,
-          });
+          const updatedPreUser = toOnboardingView(
+            await prisma.referral.findUniqueOrThrow({
+              where: { id: referral.preUser.id },
+              select: referralOnboardingSelect,
+            }),
+          );
           return res.status(409).json({
             error: sugarUpstream.error || packNotReadyMessage,
             preUser: updatedPreUser,
@@ -2078,19 +2003,17 @@ export const orderReferralLandingPage = async (
       }
     }
 
-    const updatedPreUser = await prisma.preUser.update({
-      where: { id: referral.preUser.id },
-      data: updateData,
-      select: {
-        id: true,
-        currentStep: true,
-        status: true,
-        lastCheckedAt: true,
-        teasemeUserId: true,
-        surveyLink: true,
-        assetLink: true,
+    const updatedPreUser = await patchReferralOnboarding(
+      prisma,
+      referral.preUser.id,
+      {
+        ...updateData,
+        stepHistory:
+          updateData.stepHistory === undefined
+            ? undefined
+            : (updateData.stepHistory as Prisma.JsonValue),
       },
-    });
+    );
 
     return res.json({ success: true, preUser: updatedPreUser });
   } catch (error) {
@@ -2495,7 +2418,7 @@ export const sendReferralWelcomeEmail = async (
     // Echo the freshly stamped flag so the frontend can flip the button
     // label from "Send Welcome Email" to "Resend Welcome Email" without
     // a full list re-fetch.
-    const updated = await prisma.preUser.findUnique({
+    const updated = await prisma.referral.findUnique({
       where: { id: referral.preUser.id },
       select: { welcomeEmailSentAt: true },
     });
@@ -2630,26 +2553,6 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
             inviteCode: true,
           },
         },
-        preUser: {
-          select: {
-            id: true,
-            email: true,
-            // Required by refreshPreUserSteps' 4->5 promotion hook so the
-            // new User row inherits the originating referral's owner.
-            referralId: true,
-            inviteCode: true,
-            currentStep: true,
-            status: true,
-            lastCheckedAt: true,
-            stepHistory: true,
-            teasemeUserId: true,
-            surveyLink: true,
-            assetLink: true,
-            // Threaded through to the 4->5 promotion hook so we don't
-            // re-trigger the welcome email after it has been delivered.
-            welcomeEmailSentAt: true,
-          },
-        },
         referredUser: {
           select: {
             id: true,
@@ -2707,11 +2610,10 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
       orderBy: { createdAt: "desc" },
     });
 
-    // Refresh TeaseMe lifecycle state for any stale PreUser rows before
-    // shaping the response, so the UI sees the freshest possible "Step N"
-    // chip. Mutates each ref.preUser in-place; no-op for rows already inside
-    // TTL or for rows already registered (no PreUser attached).
-    await refreshPreUserSteps(allReferrals);
+    // Attach product onboarding cache as `preUser` DTO (API compat), then
+    // refresh TeaseMe snapshots that are past TTL. Sugar is webhook-only.
+    const referralsWithOnboarding = allReferrals.map(attachOnboardingView);
+    await refreshPreUserSteps(referralsWithOnboarding);
 
     // Backfill: for any PENDING referral already in the published/live state
     // whose promoter User already exists in the DB, accept the referral
@@ -2721,13 +2623,13 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
     // (POST /referrals/:id/ensure-group) or other lifecycle flows elsewhere,
     // and avoiding creation here helps prevent race-condition duplicates when
     // this endpoint is called multiple times in quick succession.
-    backfillPendingPublishedReferrals(user.id, allReferrals);
-    repairDuplicateInviteeReferrals(user.id, allReferrals);
+    backfillPendingPublishedReferrals(user.id, referralsWithOnboarding);
+    repairDuplicateInviteeReferrals(user.id, referralsWithOnboarding);
 
     // Filter out:
     // 1. Self-referrals (referredUserId === own id, e.g. username-based tracking records)
     // 2. Customer tracking referrals (inviteCode === username or starts with username_)
-    const filteredReferrals = allReferrals.filter((ref) => {
+    const filteredReferrals = referralsWithOnboarding.filter((ref) => {
       // Remove self-referrals entirely
       if (ref.referredUserId === user.id) return false;
 
@@ -3321,30 +3223,54 @@ export const receiveTeasemeStepWebhook = async (
   }
 
   try {
-    // Prefer the canonical inviteCode for correlation so an upstream email
-    // edit mid-flow doesn't attach the step update to the wrong invite. Fall
-    // back to the stored invitee email only for legacy rows missing inviteCode.
-    const preUser =
+    // Prefer inviteCode so an upstream email edit mid-flow does not attach
+    // the step update to the wrong invite. Fall back to invitee email in
+    // Referral.metadata for legacy rows.
+    const referralRow =
       (inviteCode
-        ? await prisma.preUser.findUnique({
+        ? await prisma.referral.findUnique({
             where: { inviteCode },
-            include: { referral: { select: { id: true } } },
+            select: {
+              ...referralOnboardingSelect,
+              campaign: { select: { name: true } },
+            },
           })
         : null) ??
       (email
-        ? await prisma.preUser.findFirst({
-            where: { email },
-            include: { referral: { select: { id: true } } },
-          })
+        ? (
+            await prisma.referral.findMany({
+              where: {
+                OR: [
+                  { metadata: { path: ["inviteeEmail"], equals: email } },
+                  {
+                    metadata: {
+                      path: ["inviteeEmail"],
+                      equals: email.toLowerCase(),
+                    },
+                  },
+                ],
+              },
+              select: {
+                ...referralOnboardingSelect,
+                campaign: { select: { name: true } },
+              },
+              take: 5,
+              orderBy: { createdAt: "desc" },
+            })
+          ).find(
+            (row) =>
+              inviteeEmailFromMetadata(row.metadata) === email.toLowerCase(),
+          ) ?? null
         : null);
 
-    if (!preUser) {
-      // No matching PreUser — log and return 200 so TeaseMe doesn't retry
-      console.warn("[teaseme-webhook] no PreUser found", { email, inviteCode });
+    if (!referralRow) {
+      console.warn("[teaseme-webhook] no Referral found", { email, inviteCode });
       return res.status(200).json({ ok: true, matched: false });
     }
 
-    const resolvedReferralId = preUser.referral?.id ?? null;
+    const preUser = toOnboardingView(referralRow);
+    const resolvedReferralId = referralRow.id;
+    const sugarCampaign = isSugarScratchCampaign(referralRow.campaign?.name);
 
     if (referralId && referralId !== resolvedReferralId) {
       console.warn(
@@ -3358,35 +3284,47 @@ export const receiveTeasemeStepWebhook = async (
       );
     }
 
-    const nextStatus = status ? canonicalizePreUserStatus(status) : undefined;
+    const alreadyPublished = isPreUserPublished(
+      preUser.currentStep,
+      preUser.status,
+    );
+    // Pack-not-ready rewinds (step 2 → 1) are valid before LP live. Once
+    // published, a late Sugar step-2 webhook must not drop the card off live.
+    const appliedStep = alreadyPublished
+      ? Math.max(preUser.currentStep, currentStep)
+      : currentStep;
+    const appliedStatus = status
+      ? chooseForwardStatus(preUser.status, status)
+      : preUser.status;
 
-    await prisma.preUser.update({
-      where: { id: preUser.id },
-      data: {
-        currentStep,
-        ...(nextStatus ? { status: nextStatus } : {}),
-        ...(typeof assetLink === "string" && assetLink ? { assetLink } : {}),
-        ...(typeof surveyLink === "string" && surveyLink ? { surveyLink } : {}),
-        lastCheckedAt: null,
-      },
+    await patchReferralOnboarding(prisma, resolvedReferralId, {
+      currentStep: appliedStep,
+      status: appliedStatus,
+      ...(typeof assetLink === "string" && assetLink ? { assetLink } : {}),
+      ...(typeof surveyLink === "string" && surveyLink ? { surveyLink } : {}),
+      // Sugar is webhook-driven only — keep lastCheckedAt so we do not
+      // schedule a TeaseMe poll. TeaseMe still wants a fresh poll.
+      lastCheckedAt: sugarCampaign ? preUser.lastCheckedAt : null,
     });
 
     console.info("[teaseme-webhook] step updated", {
       preUserId: preUser.id,
       email,
-      currentStep,
-      status: nextStatus ?? status,
+      currentStep: appliedStep,
+      requestedStep: currentStep,
+      status: appliedStatus,
       assetLink: assetLink ?? null,
       surveyLink: surveyLink ?? null,
       referralId: resolvedReferralId,
+      sugarCampaign,
     });
 
-    const emittedStatus = nextStatus ?? preUser.status;
+    const emittedStatus = appliedStatus;
     if (resolvedReferralId) {
       stepEmitter.emit(`step:${resolvedReferralId}`, {
-        currentStep,
+        currentStep: appliedStep,
         status: emittedStatus,
-        done: isPreUserPublished(currentStep, emittedStatus),
+        done: isPreUserPublished(appliedStep, emittedStatus),
       });
     }
 
@@ -3398,7 +3336,7 @@ export const receiveTeasemeStepWebhook = async (
     // before the welcome email was sent), accept the parent referral and
     // auto-create the default ChatterGroup without waiting for the AM to click
     // "Send Welcome Email".
-    if (isPreUserPublished(currentStep, emittedStatus)) {
+    if (isPreUserPublished(appliedStep, emittedStatus)) {
       void (async () => {
         try {
           const promotedUser = await prisma.user.findUnique({
@@ -3426,7 +3364,7 @@ export const receiveTeasemeStepWebhook = async (
             });
             if (accepted.count > 0) {
               console.info("[teaseme-webhook] referral accepted on published step", {
-                currentStep,
+                currentStep: appliedStep,
                 preUserId: preUser.id,
                 referralId: resolvedReferralId,
                 userId: promotedUser.id,
@@ -3451,18 +3389,19 @@ export const receiveTeasemeStepWebhook = async (
           // a generic/manually-assigned group, we still create the dedicated
           // one and move them to it.
           //
-          // Fetch the TeaseMe public username (the influencer's real handle)
-          // so the group name reflects their actual identity rather than the
-          // email-derived local username stored in our DB.
+          // TeaseMe username lookup is TeaseMe-only. Sugar Scratchie has no
+          // TeaseMe record — fall back to the local username / first name.
           let teasemeUsername: string | null = null;
-          try {
-            const stepStatus = await fetchTeasemePreUserStatus({
-              email: preUser.email,
-              inviteCode: preUser.inviteCode ?? undefined,
-            });
-            teasemeUsername = stepStatus?.username ?? null;
-          } catch {
-            // Non-fatal — fall back to DB username below.
+          if (!sugarCampaign) {
+            try {
+              const stepStatus = await fetchTeasemePreUserStatus({
+                email: preUser.email,
+                inviteCode: preUser.inviteCode ?? undefined,
+              });
+              teasemeUsername = stepStatus?.username ?? null;
+            } catch {
+              // Non-fatal — fall back to DB username below.
+            }
           }
 
           const influencerName =
@@ -3563,10 +3502,15 @@ export const receiveTeasemeStepWebhook = async (
       })();
     }
 
-    // Background: poll /step-progress right away to capture surveyLink /
-    // assetLink while TeaseMe still has fresh step data (closes the race
-    // window where the lifecycle advances before the next getMyReferrals).
-    if (currentStep < PUBLISHED_SURVEY_STEP) {
+    // Background: poll TeaseMe /step-progress for surveyLink / assetLink.
+    // Sugar Scratchie never uses TeaseMe — its LP URL arrives on the webhook
+    // body. Also skip once the invite is already published/live (Sugar step 3
+    // or TeaseMe published step), even when currentStep < PUBLISHED_SURVEY_STEP.
+    if (
+      !sugarCampaign &&
+      !isPreUserPublished(appliedStep, emittedStatus) &&
+      appliedStep < PUBLISHED_SURVEY_STEP
+    ) {
       void fetchTeasemePreUserStatus({
         email: preUser.email,
         inviteCode: preUser.inviteCode ?? undefined,
@@ -3580,13 +3524,10 @@ export const receiveTeasemeStepWebhook = async (
               : null;
           const freshAssetLink = freshStatus.assetLink ?? null;
           if (!freshSurveyLink && !freshAssetLink) return;
-          await prisma.preUser.update({
-            where: { id: preUser.id },
-            data: {
-              ...(freshSurveyLink ? { surveyLink: freshSurveyLink } : {}),
-              ...(freshAssetLink ? { assetLink: freshAssetLink } : {}),
-              lastCheckedAt: new Date(),
-            },
+          await patchReferralOnboarding(prisma, preUser.id, {
+            ...(freshSurveyLink ? { surveyLink: freshSurveyLink } : {}),
+            ...(freshAssetLink ? { assetLink: freshAssetLink } : {}),
+            lastCheckedAt: new Date(),
           });
           console.info("[teaseme-webhook] immediate poll saved links", {
             preUserId: preUser.id,
@@ -3640,13 +3581,10 @@ export const streamReferralStatus = async (req: AuthRequest, res: Response) => {
         referrerId: true,
         referredUserId: true,
         metadata: true,
-        preUser: {
-          select: {
-            id: true,
-            currentStep: true,
-            status: true,
-          },
-        },
+        onboarding: true,
+        onboardingCheckedAt: true,
+        welcomeEmailSentAt: true,
+        inviteCode: true,
       },
     });
 
@@ -3674,8 +3612,9 @@ export const streamReferralStatus = async (req: AuthRequest, res: Response) => {
     res.setHeader("X-Accel-Buffering", "no"); // disable nginx buffering
     res.flushHeaders();
 
-    const currentStep = referral.preUser?.currentStep ?? 0;
-    const currentStatus = referral.preUser?.status ?? "pending";
+    const onboardingView = attachOnboardingView(referral).preUser;
+    const currentStep = onboardingView?.currentStep ?? 0;
+    const currentStatus = onboardingView?.status ?? "pending";
     const done = isPreUserPublished(currentStep, currentStatus);
 
     // Send the current step immediately so the browser has a starting value

@@ -184,7 +184,7 @@ export interface PromotePreUserResult {
  * they do so via the `/api/auth/password-reset` endpoint).
  *
  * Behavior:
- *   - Email-idempotent: if `preUser.welcomeEmailSentAt` is already set,
+ *   - Email-idempotent: if `Referral.welcomeEmailSentAt` is already set,
  *     returns `already_emailed` immediately without any mutation. This is
  *     the primary anti-double-email guarantee and survives even if the User
  *     row is later deleted or `currentStep` is manually rewound.
@@ -195,7 +195,7 @@ export interface PromotePreUserResult {
  *     `mustChangePassword` is false (user has already set their own
  *     credentials or is an unrelated account), returns `already_user`
  *     without any mutation.
- *   - Stamps `PreUser.welcomeEmailSentAt` when the invite email is
+ *   - Stamps `Referral.welcomeEmailSentAt` when the invite email is
  *     successfully delivered so subsequent polls can skip the promotion
  *     hook entirely.
  *   - Invite email is best-effort: a send failure is logged but does not
@@ -215,9 +215,9 @@ export const promotePreUserToUser = async (
   // the operator can drive a deliberate "Resend Welcome Email" action
   // from the LP Live card without us blocking it.
   if (!preUser.forceResend) {
-    // Durable "email already sent" record on the PreUser row. Survives
+    // Durable "email already sent" record on the Referral row. Survives
     // even if the resulting User row is later deleted manually, so the
-    // welcome email fires at most once per PreUser when nobody asks for
+    // welcome email fires at most once per invite Referral when nobody asks for
     // a resend.
     if (preUser.welcomeEmailSentAt) {
       console.info("[promote-pre-user] welcome email already sent; skipping", {
@@ -231,7 +231,7 @@ export const promotePreUserToUser = async (
     // stale under concurrency, so relying only on the passed-in
     // `welcomeEmailSentAt` can allow duplicate welcome emails when two
     // non-resend requests race on the same PreUser.
-    const currentPreUser = await prisma.preUser.findUnique({
+    const currentReferral = await prisma.referral.findUnique({
       where: { id: preUser.id },
       select: {
         id: true,
@@ -239,10 +239,10 @@ export const promotePreUserToUser = async (
       },
     });
 
-    if (currentPreUser?.welcomeEmailSentAt) {
+    if (currentReferral?.welcomeEmailSentAt) {
       console.info("[promote-pre-user] welcome email already sent in db; skipping", {
         preUserId: preUser.id,
-        welcomeEmailSentAt: currentPreUser.welcomeEmailSentAt.toISOString(),
+        welcomeEmailSentAt: currentReferral.welcomeEmailSentAt.toISOString(),
       });
       return { status: "already_emailed" };
     }
@@ -794,17 +794,23 @@ export const promotePreUserToUser = async (
   // it on every /step-progress refresh, so it can be present even when
   // the live call above timed out / returned null).
   try {
-    const persisted = await prisma.preUser.findUnique({
+    const persistedReferral = await prisma.referral.findUnique({
       where: { id: preUser.id },
-      select: { teasemeUserId: true },
+      select: { onboarding: true },
     });
+    const persistedTeasemeUserId = (() => {
+      const raw = persistedReferral?.onboarding;
+      if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+      const v = (raw as Record<string, unknown>).teasemeUserId;
+      return typeof v === "string" && v ? v : null;
+    })();
     if (
-      persisted?.teasemeUserId &&
-      !candidateKeys.some((c) => c.key === persisted.teasemeUserId)
+      persistedTeasemeUserId &&
+      !candidateKeys.some((c) => c.key === persistedTeasemeUserId)
     ) {
       candidateKeys.push({
-        source: "preUser.teasemeUserId",
-        key: persisted.teasemeUserId,
+        source: "referral.onboarding.teasemeUserId",
+        key: persistedTeasemeUserId,
       });
     }
   } catch (err) {
@@ -896,19 +902,19 @@ export const promotePreUserToUser = async (
       preUserId: preUser.id,
       userId: user.id,
     });
-    // Stamp PreUser.welcomeEmailSentAt so the poller's anti-double-email
+    // Stamp Referral.welcomeEmailSentAt so the anti-double-email
     // guard sees the delivery confirmation. For operator-driven resends
     // (forceResend=true) we always update so the timestamp reflects the
     // most recent send; for the automatic path we keep the original
     // first-send semantics via the NULL guard.
     try {
       if (preUser.forceResend) {
-        await prisma.preUser.update({
+        await prisma.referral.update({
           where: { id: preUser.id },
           data: { welcomeEmailSentAt: new Date() },
         });
       } else {
-        await prisma.preUser.updateMany({
+        await prisma.referral.updateMany({
           where: { id: preUser.id, welcomeEmailSentAt: null },
           data: { welcomeEmailSentAt: new Date() },
         });

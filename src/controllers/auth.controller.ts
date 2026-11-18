@@ -1,9 +1,11 @@
 import {
   PasswordResetPurpose,
+  Prisma,
   PrismaClient,
   UserRole,
   UserType,
 } from "@prisma/client";
+import { clearReferralOnboarding } from "../services/onboarding-snapshot.service";
 import bcrypt from "bcryptjs";
 import { Response } from "express";
 import { validationResult } from "express-validator";
@@ -18,6 +20,7 @@ import {
 } from "../services/password-reset.service";
 import { resolveOwnership } from "../services/pre-user-promote.service";
 import { ensureCustomerTrackingReferralForPromotedUser, supersedeDuplicateInviteeReferrals } from "../services/referral-membership.service";
+import { isSugarScratchCampaign } from "../services/sugar.service";
 import { getUserTypeInfo, syncUserType } from "../services/user.service";
 import { buildSetPasswordUrl } from "../utils/frontend-url";
 import { clearMjfpCredentialsCache, getMjfpCredentials, MJFP_API_URL } from "../lib/mjfp-credentials";
@@ -92,6 +95,18 @@ export const register = async (req: AuthRequest, res: Response) => {
 
       if (referral.referredUserId) {
         return res.status(400).json({ error: "Invite code already used" });
+      }
+
+      // Sugar Scratchie influencer invites are confirmed on the Sugar join
+      // page and promoted via Send Welcome Email. Accepting them here (e.g.
+      // a Scratchie player registering with that code as promoter_ref) would
+      // mark the invite used and delete PreUser. TeaseMe campaigns are
+      // unrelated and keep the self-register path.
+      if (isSugarScratchCampaign(referral.campaign?.name)) {
+        return res.status(400).json({
+          error:
+            "This invite is for Sugar Scratchie influencer onboarding and cannot be used to register here.",
+        });
       }
 
       // If invited by an admin, user becomes an account manager
@@ -172,16 +187,34 @@ export const register = async (req: AuthRequest, res: Response) => {
         console.error("Failed to sync referrer type after join:", e),
       );
 
-      // Drop the TeaseMe lifecycle tracker — once the invitee registers on
-      // our side the Referral itself becomes the source of truth and the
-      // "Step N" chip should disappear. The OR covers the canonical link
-      // plus any orphan rows that share the email (e.g. rows seeded by a
-      // different inviter for the same mailbox).
-      await prisma.preUser.deleteMany({
+      // Clear the product onboarding cache — once the invitee registers,
+      // Referral + User are the promoter source of truth and the "Step N"
+      // chip should disappear. Also clear any other pending invites that
+      // cached the same invitee email.
+      await clearReferralOnboarding(prisma, referral.id);
+      const otherPending = await prisma.referral.findMany({
         where: {
-          OR: [{ referralId: referral.id }, { email: user.email }],
+          id: { not: referral.id },
+          status: "PENDING",
+          onboarding: { not: Prisma.DbNull },
         },
+        select: { id: true, metadata: true },
       });
+      for (const row of otherPending) {
+        const meta =
+          row.metadata &&
+          typeof row.metadata === "object" &&
+          !Array.isArray(row.metadata)
+            ? (row.metadata as Record<string, unknown>)
+            : {};
+        const invitee =
+          typeof meta.inviteeEmail === "string"
+            ? meta.inviteeEmail.trim().toLowerCase()
+            : "";
+        if (invitee === user.email) {
+          await clearReferralOnboarding(prisma, row.id);
+        }
+      }
 
       // Public-program shell referral (`referredUserId` null): keeps the
       // promoter attributable on the linked visible campaign without moving

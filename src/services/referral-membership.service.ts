@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { nanoid } from "nanoid";
 
+import { readOnboardingSnapshot } from "./onboarding-snapshot.service";
 import { isSugarScratchCampaign } from "./sugar.service";
 
 /**
@@ -84,19 +85,33 @@ const readReferralMetadataRecord = (
   return raw as Record<string, unknown>;
 };
 
-/** Prefer the TeaseMe onboarding row over ad-hoc membership duplicates. */
+/**
+ * Prefer invite referrals (those with a product onboarding cache) over
+ * ad-hoc membership duplicates. Step is only a weak tie-break from the
+ * cached product snapshot — products own the real pre-user step.
+ */
 export const referralDisplayScore = (row: {
+  onboarding?: Prisma.JsonValue | null;
+  /** @deprecated Use onboarding — kept for callers still mapping a view. */
   preUser?: { currentStep: number } | null;
   level: number;
-}): number =>
-  (row.preUser ? 1_000_000 : 0) +
-  (row.preUser?.currentStep ?? 0) * 1000 +
-  (row.level ?? 0);
+}): number => {
+  const fromCache =
+    row.onboarding !== undefined && row.onboarding !== null
+      ? readOnboardingSnapshot(row.onboarding).currentStep
+      : null;
+  const step = fromCache ?? row.preUser?.currentStep ?? 0;
+  const hasInviteOnboarding =
+    (row.onboarding !== undefined && row.onboarding !== null) ||
+    !!row.preUser;
+  return (hasInviteOnboarding ? 1_000_000 : 0) + step * 1000 + (row.level ?? 0);
+};
 
 /** Pick the canonical ACTIVE invitee row for a promoted user (highest score; lowest id breaks ties). */
 export function pickCanonicalInviteeReferral<
   T extends {
     id: string;
+    onboarding?: Prisma.JsonValue | null;
     preUser?: { currentStep: number } | null;
     level: number;
   },
@@ -146,6 +161,7 @@ export const dedupeReferralsByPromoter = <
       visibleToPromoters?: boolean | null;
       linkedCampaignId?: string | null;
     } | null;
+    onboarding?: Prisma.JsonValue | null;
     preUser?: { currentStep: number } | null;
     level: number;
   },
@@ -212,7 +228,7 @@ export async function supersedeDuplicateInviteeReferrals(
       id: true,
       metadata: true,
       level: true,
-      preUser: { select: { currentStep: true } },
+      onboarding: true,
     },
     orderBy: { id: "asc" },
   });
@@ -549,7 +565,7 @@ const pickTeamUpline = (
     referrerId: string;
     level: number;
     acceptedAt: Date | null;
-    preUser: { currentStep: number } | null;
+    onboarding: Prisma.JsonValue | null;
   }[],
   teammateIds: ReadonlySet<string>,
   amUserId: string,
@@ -652,7 +668,7 @@ export async function enrollAmPromotersOnPublicCampaigns(
       referrerId: true,
       level: true,
       acceptedAt: true,
-      preUser: { select: { currentStep: true } },
+      onboarding: true,
     },
   });
 

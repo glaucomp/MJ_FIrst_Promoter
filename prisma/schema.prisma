@@ -240,6 +240,17 @@ model Referral {
   updatedAt         DateTime        @updatedAt
   acceptedAt        DateTime?       // When the referred user signed up
 
+  // Promoter-side stamp: welcome / set-password email delivered for this invite.
+  // Lives on Referral (not a product pre-user). Null until Send Welcome Email.
+  welcomeEmailSentAt DateTime?
+
+  // Last known product onboarding snapshot (TeaseMe or Sugar Scratch).
+  // Products own pre-user state; this is a read cache for promoter cards /
+  // webhooks only. Shape: { currentStep, status, surveyLink, assetLink,
+  // teasemeUserId, stepHistory }. Cleared when the invitee becomes a User.
+  onboarding          Json?
+  onboardingCheckedAt DateTime?
+
   // Relationships
   campaignId        String
   campaign          Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
@@ -254,7 +265,6 @@ model Referral {
   clicks            ClickTracking[]
   customers         Customer[]
   transactions      Transaction[]
-  preUser           PreUser?
 
   @@index([inviteCode])
   @@index([campaignId])
@@ -262,46 +272,6 @@ model Referral {
   @@index([referredUserId])
   @@index([status])
   @@map("referrals")
-}
-
-// PreUser — TeaseMe onboarding state for a referral invite that hasn't yet
-// registered in our own system. Seeded alongside Referral in `createReferralInvite`
-// and polled against TeaseMe's `user-status` endpoint to track lifecycle
-// progress (Step 1 → Step N). Deleted when the invitee hits our `/api/auth/register`
-// (they become a real User) or when the parent Referral is hard-deleted
-// (ON DELETE CASCADE). Never mutates Referral.status — that transition is
-// still owned by the register handler.
-model PreUser {
-  id            String    @id @default(cuid())
-  email         String
-  referralId    String?   @unique
-  inviteCode    String?   @unique
-  teasemeUserId String?
-  currentStep   Int       @default(0)
-  // Lifecycle status mirrored from TeaseMe's /step-progress response.
-  // Values observed so far: "pending". Expected lifecycle on their side is
-  // pending -> order_lp -> building -> live. Stored as a free-form string
-  // (not an enum) so upstream additions don't require a migration here.
-  status        String    @default("pending")
-  // Onboarding session URL returned by TeaseMe's /step-progress response.
-  // Used to open the in-flight invitee session (chip = waiting/order_lp/building).
-  surveyLink    String?
-  // Live landing-page URL returned by TeaseMe once the LP is built.
-  // Used in lp_live state instead of surveyLink.
-  assetLink     String?
-  stepHistory   Json?
-  lastCheckedAt DateTime?
-  // Stamped once the welcome email has been successfully delivered for this
-  // pre-user (i.e. after a successful 4→5 promotion run). Null means the
-  // email has not been sent yet (or the send failed and a retry is pending).
-  welcomeEmailSentAt DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  referral Referral? @relation(fields: [referralId], references: [id], onDelete: Cascade)
-
-  @@index([email])
-  @@map("pre_users")
 }
 
 // TrackingLink table - unique URLs for each user/campaign combination
