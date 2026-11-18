@@ -5,10 +5,10 @@ frontend/node_modules/
 # Private key files – never commit key material
 *.pem
 
-# Environment variables
+# Environment variables — never commit secrets or timestamped backups
 .env
-.env.local
-.env.production
+.env.*
+!.env.example
 
 # Build outputs
 dist/
@@ -41,10 +41,6 @@ coverage/
 *.tmp
 *.temp
 .cache/
-
-.env
-.env.local
-.env.production
 
 # Frontend specific
 frontend/.vite/
