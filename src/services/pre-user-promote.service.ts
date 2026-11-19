@@ -86,6 +86,9 @@ export interface PromotePreUserInput {
   id: string;
   email: string;
   inviteCode: string | null;
+  // Username from the invite. Preferred over the email local-part so the
+  // influencer account keeps the handle they were invited with.
+  username?: string | null;
   // FK to the originating Referral row. Used to inherit the referring
   // account manager so the newly-promoted User does not land in the
   // "Needs assignment" bucket on the Users page.
@@ -320,7 +323,8 @@ export const promotePreUserToUser = async (
     });
   } else {
     const emailLocal = preUser.email.split("@")[0] ?? "user";
-    const username = await ensureUniqueUsername(prisma, emailLocal);
+    const usernameSeed = (preUser.username || "").trim() || emailLocal;
+    const username = await ensureUniqueUsername(prisma, usernameSeed);
     // firstName is not subject to unique constraints, so we always set it
     // even if the username derivation gave up.
     const firstName = sanitizeLocalPart(emailLocal);

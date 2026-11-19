@@ -31,6 +31,12 @@ const getSugarPackageWorkspaceUrl = (): string =>
     `${getSugarApiBaseUrl()}/api/promoter/pre-influencers/package-workspace`
   ).replace(/\/$/, "");
 
+const getSugarDefaultLandingPageUrl = (): string =>
+  (
+    process.env.SUGAR_DEFAULT_LP_URL ||
+    `${getSugarApiBaseUrl()}/api/promoter/pre-influencers/default-landing-page`
+  ).replace(/\/$/, "");
+
 /**
  * Campaign landing-page base. A homepage (`https://host` or `https://host/`)
  * publishes on `/join`, matching the link copied in the promoter UI. An
@@ -103,6 +109,118 @@ export interface SugarActionResult {
 /** True when the campaign is the Sugar Scratchie influencer funnel. */
 export const isSugarScratchCampaign = (name?: string | null): boolean =>
   (name || "").toLowerCase().includes("sugar scratch");
+
+/**
+ * Player /join URL Sugar actually returned (shared demo or published LP).
+ * Invite creation seeds surveyLink with the generic campaign invite URL
+ * first. That seed has tracking params only, so a failed default-lp call
+ * must stay retryable.
+ */
+export const isSugarFormsLandingLink = (
+  raw: string | null | undefined,
+): boolean => {
+  const trimmed = (raw || "").trim();
+  if (!trimmed) return false;
+  try {
+    const url = new URL(trimmed);
+    const path = url.pathname.replace(/\/+$/, "") || "/";
+    if (path !== "/join") return false;
+    const model = (url.searchParams.get("model") || "").trim();
+    return model.length > 0 && url.searchParams.get("freeplay") === "1";
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Ask Sugar Scratchie for the shared default /join URL (Forms step).
+ * Does not create a model or advance survey_step.
+ */
+export const createSugarDefaultLandingPage = async (params: {
+  inviteCode: string;
+  email?: string | null;
+  username?: string | null;
+}): Promise<SugarActionResult | null> => {
+  if (!params.inviteCode) {
+    throw new Error("createSugarDefaultLandingPage requires inviteCode");
+  }
+  const email = (params.email || "").trim();
+  const username = (params.username || "").trim().replace(/^@+/, "");
+  if (!email && !username) {
+    throw new Error(
+      "createSugarDefaultLandingPage requires a username or email",
+    );
+  }
+  const token = getSugarInternalToken();
+  if (!token) {
+    console.warn("[sugar.default-lp] SUGAR_INTERNAL_TOKEN unset");
+    return null;
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(getSugarDefaultLandingPageUrl(), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "X-Internal-Token": token,
+      },
+      body: JSON.stringify({
+        invite_code: params.inviteCode,
+        ...(email ? { invitee_email: email } : {}),
+        ...(username ? { invitee_username: username } : {}),
+      }),
+      signal: AbortSignal.timeout(SUGAR_APPROVE_TIMEOUT_MS),
+    });
+  } catch (err) {
+    console.error("[sugar.default-lp] request failed", {
+      err: err instanceof Error ? err.message : String(err),
+    });
+    return null;
+  }
+
+  let parsed: unknown = null;
+  try {
+    parsed = await res.json();
+  } catch {
+    parsed = null;
+  }
+
+  const raw =
+    parsed && typeof parsed === "object"
+      ? (parsed as Record<string, unknown>)
+      : {};
+  const detail =
+    typeof raw.detail === "string" && raw.detail.trim()
+      ? raw.detail.trim()
+      : null;
+
+  if (!res.ok || raw.ok === false) {
+    console.warn("[sugar.default-lp] upstream non-2xx", {
+      status: res.status,
+      body: parsed,
+    });
+    return {
+      ok: false,
+      error: detail,
+      statusCode: res.status,
+      raw: parsed,
+    };
+  }
+
+  const assetLink =
+    typeof raw.asset_link === "string" && raw.asset_link
+      ? raw.asset_link
+      : null;
+  return {
+    ok: true,
+    assetLink,
+    surveyStep: readSurveyStep(raw) ?? 0,
+    status: "pending",
+    raw: parsed,
+  };
+};
 
 /**
  * Resolve the operator packs page for this invite (no step advance).

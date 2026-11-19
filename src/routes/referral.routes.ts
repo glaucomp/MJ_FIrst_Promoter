@@ -3,26 +3,35 @@ import { body } from "express-validator";
 import { UserRole } from "@prisma/client";
 import * as referralController from "../controllers/referral.controller";
 import { authenticate, authorize } from "../middleware/auth.middleware";
-import { EMAIL_NORMALIZE_OPTIONS } from "../utils/email-normalize";
+import {
+  INVITE_USERNAME_ERROR,
+  isValidInviteUsername,
+  normalizeInviteUsername,
+} from "../utils/invite-username";
 
 const router = Router();
 
-// Create referral invite (Account Manager or Influencer)
+// Create referral invite (Account Manager or Influencer).
+// The invite identifies the person by username. Their email is collected on
+// the join form and verified later, when they become an influencer.
 router.post(
   "/create",
   authenticate,
   [
     body("campaignId").trim().notEmpty(),
-    body("email")
+    body("username")
       .trim()
       .notEmpty()
-      .withMessage("Email is required")
-      .isEmail()
-      // Normalize the email before it reaches the controller using the
-      // shared conservative options (no Gmail-dot stripping, no
-      // subaddress removal). See `utils/email-normalize.ts` for the
-      // rationale and the full set of disabled flags.
-      .normalizeEmail(EMAIL_NORMALIZE_OPTIONS),
+      .withMessage("Username is required")
+      .customSanitizer((value) =>
+        normalizeInviteUsername(String(value ?? "")),
+      )
+      .custom((value) => {
+        if (!isValidInviteUsername(String(value ?? ""))) {
+          throw new Error(INVITE_USERNAME_ERROR);
+        }
+        return true;
+      }),
   ],
   referralController.createReferralInvite,
 );
@@ -74,6 +83,13 @@ router.post(
   authenticate,
   [body("newReferrerId").trim().notEmpty()],
   referralController.reassignReferralInvite,
+);
+
+// Sugar Scratchie: shared default /join URL for the Forms step (no step advance).
+router.post(
+  "/:id/default-landing-page",
+  authenticate,
+  referralController.createReferralDefaultLandingPage,
 );
 
 // Sugar Scratchie: operator packs URL for Create with n8n (no step advance).
