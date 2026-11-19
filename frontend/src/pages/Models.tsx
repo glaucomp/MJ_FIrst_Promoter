@@ -1815,6 +1815,21 @@ const SUGAR_ONBOARDING_STEPS: { idx: number; label: string; hint?: string }[] = 
 const isSugarScratchCampaign = (name?: string | null): boolean =>
   (name || "").toLowerCase().includes("sugar scratch");
 
+/** Real Sugar /join page (model + freeplay). The invite-create seed is not one. */
+const isSugarFormsLandingLink = (raw: string | null | undefined): boolean => {
+  const trimmed = (raw || "").trim();
+  if (!trimmed) return false;
+  try {
+    const url = new URL(trimmed);
+    const path = url.pathname.replace(/\/+$/, "") || "/";
+    if (path !== "/join") return false;
+    const model = (url.searchParams.get("model") || "").trim();
+    return model.length > 0 && url.searchParams.get("freeplay") === "1";
+  } catch {
+    return false;
+  }
+};
+
 const onboardingStepsForCampaign = (campaignName?: string | null) =>
   isSugarScratchCampaign(campaignName)
     ? SUGAR_ONBOARDING_STEPS
@@ -2859,11 +2874,17 @@ const dedupeByPromoter = (rows: Referral[]): Referral[] => {
           // keep the icon visible-but-disabled with a tooltip that says why.
           const isTerminalState =
             chipState === "denied" || chipState === "expired";
+          const sugarCampaign = isSugarScratchCampaign(referral.campaign?.name);
           // Trust whatever URL the upstream sends — open it as-is. Only gate
           // it on (a) being non-empty and (b) the invite not being in a
           // terminal state (denied / expired) where the session is gone.
+          // A Sugar invite seed is the generic campaign URL, not a Forms page.
           const rawOpenUrl = referral.preUser?.surveyLink ?? null;
-          const openUrl = !isTerminalState && rawOpenUrl ? rawOpenUrl : null;
+          const formsOpenUrl =
+            sugarCampaign && rawOpenUrl && !isSugarFormsLandingLink(rawOpenUrl)
+              ? null
+              : rawOpenUrl;
+          const openUrl = !isTerminalState && formsOpenUrl ? formsOpenUrl : null;
           const openTooltip = openUrl
             ? "Open onboarding session"
             : isTerminalState
@@ -2878,9 +2899,14 @@ const dedupeByPromoter = (rows: Referral[]): Referral[] => {
           const displayName = inviteeLabel(referral);
           const isBusy = busyId === referral.id;
           const step = referral.preUser?.currentStep ?? 0;
-          const assetLink = referral.preUser?.assetLink ?? null;
+          const storedAssetLink = referral.preUser?.assetLink ?? null;
+          const assetLink =
+            sugarCampaign &&
+            storedAssetLink &&
+            !isSugarFormsLandingLink(storedAssetLink)
+              ? null
+              : storedAssetLink;
           const lifecycleStatus = referral.preUser?.status ?? null;
-          const sugarCampaign = isSugarScratchCampaign(referral.campaign?.name);
           const onboardingSteps = onboardingStepsForCampaign(
             referral.campaign?.name,
           );
@@ -3335,9 +3361,8 @@ const CardActions = ({
 
   if (state === "waiting") {
     const step = referral.preUser?.currentStep ?? 0;
-    const hasLandingLink = Boolean(
-      (referral.preUser?.assetLink || referral.preUser?.surveyLink || "").trim(),
-    );
+    const hasLandingLink = [referral.preUser?.assetLink, referral.preUser?.surveyLink]
+      .some((value) => isSugarFormsLandingLink(value));
     // Sugar step 0 → Create landing page (shared demo with Forms).
     // Sugar step 1 done → AM runs n8n before Order LP.
     const showCreateLandingPage =

@@ -39,6 +39,7 @@ import { resolveAccountManagersFor } from "../services/ownership.service";
 import {
   createSugarDefaultLandingPage,
   getSugarPackageWorkspace,
+  isSugarFormsLandingLink,
   isSugarScratchCampaign,
   makeSugarPackage,
   normalizeCampaignLandingUrl,
@@ -584,6 +585,32 @@ const buildInviteUrl = (
 };
 
 /**
+ * Link the inviter copies. Sugar create stores the /join Forms page on the
+ * referral; rebuilding from the campaign homepage drops that page. Prefer the
+ * stored Forms link, then the generic campaign invite.
+ */
+const shareableInviteUrl = (
+  campaign: { websiteUrl: string; defaultReferralUrl: string | null },
+  params: {
+    refCode: string;
+    inviteCode: string;
+    inviteeEmail?: string | null;
+    inviteeUsername?: string | null;
+    inviterEmail: string;
+    accountManagerEmail: string | null;
+  },
+  stored?: { assetLink?: string | null; surveyLink?: string | null } | null,
+): string => {
+  const formsLink = [stored?.surveyLink, stored?.assetLink]
+    .map((value) => (typeof value === "string" ? value.trim() : ""))
+    .find((value) => isSugarFormsLandingLink(value));
+  if (formsLink) {
+    return landingPageOnCampaignUrl(formsLink, campaign) || formsLink;
+  }
+  return buildInviteUrl(campaign, params);
+};
+
+/**
  * Published player /join links must live on the campaign website (or its
  * default referral URL). Sugar may have stored a local player origin; swap
  * the host and keep model / freeplay / card. Query parameters already on the
@@ -651,11 +678,12 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
         .json({ error: "Cannot create invites for inactive campaigns" });
     }
 
-    // Block duplicates: same inviter + same campaign + same invitee username
-    // on either a pending invite (metadata.inviteeUsername) or an already
-    // accepted one (referredUser.username). This query matches any `PENDING`
-    // or `ACTIVE` row, including pending invites whose computed expiry has
-    // passed, because expiry is not represented in the persisted `status`.
+    // Block duplicates: same inviter + same campaign + same invitee username.
+    // Match metadata on pending and accepted rows. /api/auth/register accepts
+    // a non-Sugar invite without copying inviteeUsername onto the new User, so
+    // referredUser.username alone misses those acceptances. This query matches
+    // any PENDING or ACTIVE row, including pending invites whose computed
+    // expiry has passed, because expiry is not represented in status.
     const existingInvite = await prisma.referral.findFirst({
       where: {
         referrerId: user.id,
@@ -663,7 +691,6 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
         status: { in: ["PENDING", "ACTIVE"] },
         OR: [
           {
-            referredUserId: null,
             metadata: {
               path: ["inviteeUsername"],
               equals: inviteeUsername,
@@ -893,9 +920,9 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
     // deletes it. Keeping both writes in one transaction guarantees we never
     // have a pending invite without its lifecycle row.
     //
-    // Seed Referral.onboarding.surveyLink with the invite URL so the
-    // "Open onboarding session" pill is clickable immediately. Product
-    // refreshes overwrite forward-only.
+    // Seed Referral.onboarding.surveyLink for TeaseMe so the open pill
+    // works before a product session URL exists. Sugar stays empty until
+    // the Forms /join link is stored. Product refreshes overwrite forward-only.
     const referral = await prisma.$transaction(async (tx) => {
       const created = await tx.referral.create({
         data: {
@@ -929,17 +956,20 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
         },
       });
 
-      // Seed product onboarding cache with the invite URL so "Open onboarding"
-      // works before TeaseMe/Sugar returns a session URL. Products own the
-      // real pre-user; this is Referral read-cache only. Sugar Scratchie
-      // overwrites this with the default landing-page URL after commit.
-      const seedInviteUrl = buildInviteUrl(created.campaign, {
-        refCode,
-        inviteCode,
-        inviteeUsername,
-        inviterEmail: inviter.email,
-        accountManagerEmail,
-      });
+      // TeaseMe can open the campaign invite immediately. Sugar's Forms page
+      // is a different /join URL; seeding the campaign link here makes a
+      // failed default-lp call look like the page already exists, so the
+      // retry button never shows. Leave Sugar links empty until that call
+      // returns a real Forms URL.
+      const seedInviteUrl = isSugarScratchCampaign(created.campaign.name)
+        ? null
+        : buildInviteUrl(created.campaign, {
+            refCode,
+            inviteCode,
+            inviteeUsername,
+            inviterEmail: inviter.email,
+            accountManagerEmail,
+          });
 
       await tx.referral.update({
         where: { id: created.id },
@@ -1067,14 +1097,19 @@ export const resendReferralInvite = async (req: AuthRequest, res: Response) => {
       referral.referrer.username ||
       referral.referrer.inviteCode ||
       referral.referrerId;
-    const inviteUrl = buildInviteUrl(referral.campaign, {
-      refCode,
-      inviteCode: referral.inviteCode,
-      inviteeEmail,
-      inviteeUsername,
-      inviterEmail,
-      accountManagerEmail,
-    });
+    const storedOnboarding = readOnboardingSnapshot(referral.onboarding);
+    const inviteUrl = shareableInviteUrl(
+      referral.campaign,
+      {
+        refCode,
+        inviteCode: referral.inviteCode,
+        inviteeEmail,
+        inviteeUsername,
+        inviterEmail,
+        accountManagerEmail,
+      },
+      storedOnboarding,
+    );
 
     // Push expiry forward 24h from now and bump `resendCount`. We do this
     // BEFORE sending so concurrent resend clicks can't both "win" and
@@ -1104,7 +1139,7 @@ export const resendReferralInvite = async (req: AuthRequest, res: Response) => {
     // Force the next My Promoters load to re-poll the product immediately.
     // Re-seed onboarding cache when missing; never clobber an upstream
     // surveyLink already cached on the Referral.
-    const snap = readOnboardingSnapshot(referral.onboarding);
+    const snap = storedOnboarding;
     await prisma.referral.update({
       where: { id: referral.id },
       data: {
@@ -1112,7 +1147,13 @@ export const resendReferralInvite = async (req: AuthRequest, res: Response) => {
         onboarding: onboardingToJson({
           ...snap,
           email: snap.email || inviteeEmail || null,
-          surveyLink: snap.surveyLink ?? inviteUrl,
+          // Sugar must not persist the generic campaign invite as surveyLink.
+          // That seed hides Create landing page and blocks the Forms retry.
+          surveyLink: isSugarScratchCampaign(referral.campaign.name)
+            ? isSugarFormsLandingLink(snap.surveyLink)
+              ? snap.surveyLink
+              : null
+            : snap.surveyLink ?? inviteUrl,
         }),
       },
     });
@@ -1637,12 +1678,11 @@ export const createReferralDefaultLandingPage = async (
       });
     }
 
-    // Keep an existing Forms / live link. Re-create only when missing.
-    const existingLink = (
-      referral.preUser?.assetLink ||
-      referral.preUser?.surveyLink ||
-      ""
-    ).trim();
+    // Keep a real Sugar /join link. The generic invite URL seeded at create
+    // time is not a Forms page — retry when that is all we have.
+    const existingLink = [referral.preUser?.assetLink, referral.preUser?.surveyLink]
+      .map((value) => (value || "").trim())
+      .find((value) => isSugarFormsLandingLink(value));
     if (existingLink) {
       return res.json({
         success: true,
@@ -2908,14 +2948,18 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
         ref.status === "PENDING" &&
         metadata.inviterEmail &&
         metadataIdentifiesInvitee(metadata)
-          ? buildInviteUrl(ref.campaign, {
-              refCode: refCodeForInvite,
-              inviteCode: ref.inviteCode,
-              inviteeEmail: metadata.inviteeEmail,
-              inviteeUsername: metadata.inviteeUsername,
-              inviterEmail: metadata.inviterEmail,
-              accountManagerEmail: metadata.accountManagerEmail ?? null,
-            })
+          ? shareableInviteUrl(
+              ref.campaign,
+              {
+                refCode: refCodeForInvite,
+                inviteCode: ref.inviteCode,
+                inviteeEmail: metadata.inviteeEmail,
+                inviteeUsername: metadata.inviteeUsername,
+                inviterEmail: metadata.inviterEmail,
+                accountManagerEmail: metadata.accountManagerEmail ?? null,
+              },
+              ref.preUser,
+            )
           : null;
 
       return {

@@ -111,6 +111,28 @@ export const isSugarScratchCampaign = (name?: string | null): boolean =>
   (name || "").toLowerCase().includes("sugar scratch");
 
 /**
+ * Player /join URL Sugar actually returned (shared demo or published LP).
+ * Invite creation seeds surveyLink with the generic campaign invite URL
+ * first. That seed has tracking params only, so a failed default-lp call
+ * must stay retryable.
+ */
+export const isSugarFormsLandingLink = (
+  raw: string | null | undefined,
+): boolean => {
+  const trimmed = (raw || "").trim();
+  if (!trimmed) return false;
+  try {
+    const url = new URL(trimmed);
+    const path = url.pathname.replace(/\/+$/, "") || "/";
+    if (path !== "/join") return false;
+    const model = (url.searchParams.get("model") || "").trim();
+    return model.length > 0 && url.searchParams.get("freeplay") === "1";
+  } catch {
+    return false;
+  }
+};
+
+/**
  * Ask Sugar Scratchie for the shared default /join URL (Forms step).
  * Does not create a model or advance survey_step.
  */
