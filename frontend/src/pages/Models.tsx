@@ -34,6 +34,23 @@ const formatManagerName = (m: {
   return parts || m.email;
 };
 
+const inviteeLabel = (referral: Referral): string => {
+  const username = referral.metadata?.inviteeUsername?.replace(/^@+/, "").trim();
+  const named = referral.referredUser
+    ? [referral.referredUser.firstName, referral.referredUser.lastName]
+        .filter(Boolean)
+        .join(" ")
+        .trim()
+    : "";
+  if (named) return named;
+  if (username) return `@${username}`;
+  return (
+    referral.referredUser?.email ??
+    referral.metadata?.inviteeEmail ??
+    `Invite · ${referral.inviteCode}`
+  );
+};
+
 // User-type options that make sense to filter by on the admin Users page.
 // ADMIN is excluded because admins are hidden from the list entirely.
 const USER_TYPE_OPTIONS: { value: string; label: string }[] = [
@@ -2315,8 +2332,7 @@ const dedupeByPromoter = (rows: Referral[]): Referral[] => {
   };
 
   const handleDelete = async (referral: Referral) => {
-    const label =
-      referral.metadata?.inviteeEmail ?? `invite code ${referral.inviteCode}`;
+    const label = inviteeLabel(referral);
     // Use the derived chip state for the confirmation noun so admin overrides
     // on active/building/order_lp rows get accurate wording instead of the
     // historical "expired" fallback.
@@ -2358,8 +2374,7 @@ const dedupeByPromoter = (rows: Referral[]): Referral[] => {
   };
 
   const handleDeny = async (referral: Referral) => {
-    const label =
-      referral.metadata?.inviteeEmail ?? `invite code ${referral.inviteCode}`;
+    const label = inviteeLabel(referral);
     if (
       !window.confirm(`Deny ${label}? The promoter will be marked as denied.`)
     ) {
@@ -2854,22 +2869,13 @@ const dedupeByPromoter = (rows: Referral[]): Referral[] => {
             : isTerminalState
               ? "Onboarding session no longer available"
               : "Onboarding session not started yet";
-          const inviteeEmail =
-            referral.referredUser?.email ??
-            referral.metadata?.inviteeEmail ??
-            null;
           const referrerLabel = referral.referrer
             ? formatManagerName(referral.referrer)
             : null;
           const showReferredByLine = Boolean(
             referrerLabel && viewerId && referral.referrer?.id !== viewerId,
           );
-          const displayName = referral.referredUser
-            ? [referral.referredUser.firstName, referral.referredUser.lastName]
-                .filter(Boolean)
-                .join(" ")
-                .trim() || referral.referredUser.email
-            : (inviteeEmail ?? `Invite · ${referral.inviteCode}`);
+          const displayName = inviteeLabel(referral);
           const isBusy = busyId === referral.id;
           const step = referral.preUser?.currentStep ?? 0;
           const assetLink = referral.preUser?.assetLink ?? null;
@@ -2950,9 +2956,7 @@ const dedupeByPromoter = (rows: Referral[]): Referral[] => {
                   </div>
                 )}
                 <p className="text-tm-text-color01 text-base font-medium truncate">
-                  {referral.referredUser
-                    ? displayName
-                    : (inviteeEmail ?? displayName)}
+                  {displayName}
                 </p>
               </div>
 
@@ -3530,10 +3534,7 @@ const MakePackageModal = ({
   const onSurveyStepRef = useRef(onSurveyStep);
   onSurveyStepRef.current = onSurveyStep;
 
-  const invitee =
-    referral.referredUser?.email ??
-    referral.metadata?.inviteeEmail ??
-    modelId;
+  const invitee = inviteeLabel(referral);
 
   const packsUrlNewTab = (() => {
     try {
@@ -3785,10 +3786,7 @@ const ReassignModal = ({
     };
   }, []);
 
-  const subject =
-    referral.referredUser?.email ??
-    referral.metadata?.inviteeEmail ??
-    referral.inviteCode;
+  const subject = inviteeLabel(referral);
 
   return (
     <ModalShell

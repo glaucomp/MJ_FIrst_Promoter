@@ -116,13 +116,18 @@ export const isSugarScratchCampaign = (name?: string | null): boolean =>
  */
 export const createSugarDefaultLandingPage = async (params: {
   inviteCode: string;
-  email: string;
+  email?: string | null;
+  username?: string | null;
 }): Promise<SugarActionResult | null> => {
   if (!params.inviteCode) {
     throw new Error("createSugarDefaultLandingPage requires inviteCode");
   }
-  if (!params.email) {
-    throw new Error("createSugarDefaultLandingPage requires email");
+  const email = (params.email || "").trim();
+  const username = (params.username || "").trim().replace(/^@+/, "");
+  if (!email && !username) {
+    throw new Error(
+      "createSugarDefaultLandingPage requires a username or email",
+    );
   }
   const token = getSugarInternalToken();
   if (!token) {
@@ -141,7 +146,8 @@ export const createSugarDefaultLandingPage = async (params: {
       },
       body: JSON.stringify({
         invite_code: params.inviteCode,
-        invitee_email: params.email,
+        ...(email ? { invitee_email: email } : {}),
+        ...(username ? { invitee_username: username } : {}),
       }),
       signal: AbortSignal.timeout(SUGAR_APPROVE_TIMEOUT_MS),
     });

@@ -30,6 +30,11 @@ import {
   supersedeDuplicateInviteeReferrals,
 } from "../services/referral-membership.service";
 import { getPresignedUrl } from "../services/s3.service";
+import {
+  INVITE_USERNAME_ERROR,
+  isValidInviteUsername,
+  normalizeInviteUsername,
+} from "../utils/invite-username";
 import { resolveAccountManagersFor } from "../services/ownership.service";
 import {
   createSugarDefaultLandingPage,
@@ -481,11 +486,17 @@ type ReferralMetadata = {
   accountManagerEmail?: string | null;
   inviterEmail?: string | null;
   inviteeEmail?: string | null;
+  /** Social username the invite was created for. Email is verified later. */
+  inviteeUsername?: string | null;
   inviteCode?: string | null;
   emailSentAt?: string | null;
   expiresAt?: string | null;
   resendCount?: number;
 };
+
+/** Person invites carry a username and, after the join form, an email. */
+const metadataIdentifiesInvitee = (metadata: ReferralMetadata): boolean =>
+  Boolean(metadata.inviteeEmail || metadata.inviteeUsername);
 
 const readReferralMetadata = (
   raw: Prisma.JsonValue | null | undefined,
@@ -545,7 +556,8 @@ const buildInviteUrl = (
   params: {
     refCode: string;
     inviteCode: string;
-    inviteeEmail: string;
+    inviteeEmail?: string | null;
+    inviteeUsername?: string | null;
     inviterEmail: string;
     accountManagerEmail: string | null;
   },
@@ -554,7 +566,16 @@ const buildInviteUrl = (
   const urlObj = new URL(targetUrl);
   urlObj.searchParams.set("fpr", params.refCode);
   urlObj.searchParams.set("inviteCode", params.inviteCode);
-  urlObj.searchParams.set("inviteeEmail", params.inviteeEmail);
+  const inviteeEmail = (params.inviteeEmail || "").trim();
+  if (inviteeEmail) {
+    urlObj.searchParams.set("inviteeEmail", inviteeEmail);
+  }
+  const inviteeUsername = (params.inviteeUsername || "")
+    .trim()
+    .replace(/^@+/, "");
+  if (inviteeUsername) {
+    urlObj.searchParams.set("inviteeUsername", inviteeUsername);
+  }
   urlObj.searchParams.set("inviterEmail", params.inviterEmail);
   if (params.accountManagerEmail) {
     urlObj.searchParams.set("accountManagerEmail", params.accountManagerEmail);
@@ -601,8 +622,17 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { campaignId, email } = req.body;
+    const { campaignId } = req.body;
+    const inviteeUsername = normalizeInviteUsername(
+      String(req.body.username ?? ""),
+    );
     const user = req.user!;
+
+    if (!isValidInviteUsername(inviteeUsername)) {
+      return res.status(400).json({
+        error: INVITE_USERNAME_ERROR,
+      });
+    }
 
     // Mail relations come along so invite sending does not load this campaign again.
     const campaign = await prisma.campaign.findUnique({
@@ -621,13 +651,11 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
         .json({ error: "Cannot create invites for inactive campaigns" });
     }
 
-    // Block duplicates: same inviter + same campaign + same invitee email
-    // on either a pending invite (metadata.inviteeEmail) or an already
-    // accepted one (referredUser.email). This query matches any `PENDING`
+    // Block duplicates: same inviter + same campaign + same invitee username
+    // on either a pending invite (metadata.inviteeUsername) or an already
+    // accepted one (referredUser.username). This query matches any `PENDING`
     // or `ACTIVE` row, including pending invites whose computed expiry has
     // passed, because expiry is not represented in the persisted `status`.
-    // The OR covers both the "still waiting on them to accept" and "they
-    // already signed up" case in a single query.
     const existingInvite = await prisma.referral.findFirst({
       where: {
         referrerId: user.id,
@@ -637,12 +665,12 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
           {
             referredUserId: null,
             metadata: {
-              path: ["inviteeEmail"],
-              equals: email,
+              path: ["inviteeUsername"],
+              equals: inviteeUsername,
             },
           },
           {
-            referredUser: { email },
+            referredUser: { username: inviteeUsername },
           },
         ],
       },
@@ -659,8 +687,8 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
       return res.status(409).json({
         error: "Duplicate invite",
         message: isAccepted
-          ? `${email} has already accepted an invite on this campaign.`
-          : `There's already a pending invite to ${email} on this campaign. Use Resend instead of creating a new one.`,
+          ? `@${inviteeUsername} has already accepted an invite on this campaign.`
+          : `There's already a pending invite for @${inviteeUsername} on this campaign. Use Resend instead of creating a new one.`,
         existingReferralId: existingInvite.id,
         existingInviteCode: existingInvite.inviteCode,
         existingStatus: existingInvite.status,
@@ -845,12 +873,14 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
 
     const now = new Date();
     const expiresAt = new Date(now.getTime() + REFERRAL_INVITE_TTL_MS);
+    // Username is the invite identity. Email stays empty until the join form,
+    // and is verified when the welcome email makes them an influencer.
     const metadata = {
       accountManagerEmail,
       inviterEmail: inviter.email,
-      inviteeEmail: email as string,
+      inviteeUsername,
       inviteCode,
-      emailSentAt: now.toISOString(),
+      emailSentAt: null,
       expiresAt: expiresAt.toISOString(),
       resendCount: 0,
     } satisfies Prisma.InputJsonValue;
@@ -906,7 +936,7 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
       const seedInviteUrl = buildInviteUrl(created.campaign, {
         refCode,
         inviteCode,
-        inviteeEmail: email as string,
+        inviteeUsername,
         inviterEmail: inviter.email,
         accountManagerEmail,
       });
@@ -914,9 +944,7 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
       await tx.referral.update({
         where: { id: created.id },
         data: {
-          onboarding: onboardingToJson(
-            seedOnboardingSnapshot(seedInviteUrl, email as string),
-          ),
+          onboarding: onboardingToJson(seedOnboardingSnapshot(seedInviteUrl, null)),
           onboardingCheckedAt: null,
         },
       });
@@ -927,7 +955,7 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
     let inviteUrl = buildInviteUrl(referral.campaign, {
       refCode,
       inviteCode,
-      inviteeEmail: email as string,
+      inviteeUsername,
       inviterEmail: inviter.email,
       accountManagerEmail,
     });
@@ -937,7 +965,7 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
     if (isSugarScratchCampaign(referral.campaign?.name)) {
       const sugarDefault = await createSugarDefaultLandingPage({
         inviteCode,
-        email: email as string,
+        username: inviteeUsername,
       });
       if (sugarDefault?.ok && sugarDefault.assetLink) {
         const campaignHosted = landingPageOnCampaignUrl(
@@ -961,38 +989,16 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // Send email with the "Accept Invite" button pointing at `inviteUrl`.
-    // Failures are surfaced via `emailSent: false` rather than failing the
-    // whole request — the inviter can still copy/share the link manually.
-    const inviterName =
-      [inviter.firstName, inviter.lastName].filter(Boolean).join(" ").trim() ||
-      inviter.username ||
-      inviter.email;
-
-    let emailSent = false;
-    const mail = pickInviteMail(campaign);
-    if (mail) {
-      try {
-        emailSent = await emailService.sendReferralInviteEmail({
-          inviteeEmail: email as string,
-          inviterName,
-          campaignName: referral.campaign.name,
-          acceptUrl: inviteUrl,
-          mail,
-        });
-      } catch (emailError) {
-        console.error("Referral invite email failed:", emailError);
-        emailSent = false;
-      }
-    }
-
+    // No invite email: the operator shares the link. The join form collects
+    // the email, and Send Welcome Email verifies it once they are an influencer.
     res.status(201).json({
       referral,
       inviteUrl,
       inviteCode,
-      emailSent,
-      mailConfigured: Boolean(mail),
-      fromEmail: mail ? outboundFromAddress(mail) : null,
+      inviteeUsername,
+      emailSent: false,
+      mailConfigured: false,
+      fromEmail: null,
       message: "Referral invite created successfully",
     });
   } catch (error) {
@@ -1046,11 +1052,12 @@ export const resendReferralInvite = async (req: AuthRequest, res: Response) => {
     }
 
     const metadata = readReferralMetadata(referral.metadata);
-    const inviteeEmail = metadata.inviteeEmail;
-    if (!inviteeEmail) {
+    const inviteeEmail = metadata.inviteeEmail ?? null;
+    const inviteeUsername = metadata.inviteeUsername ?? null;
+    if (!inviteeEmail && !inviteeUsername) {
       return res.status(400).json({
         error:
-          "This invite has no recorded invitee email (created before the email-required flow). Please create a new invite.",
+          "This invite has no recorded invitee. Please create a new invite.",
       });
     }
     const inviterEmail = metadata.inviterEmail ?? referral.referrer.email;
@@ -1064,6 +1071,7 @@ export const resendReferralInvite = async (req: AuthRequest, res: Response) => {
       refCode,
       inviteCode: referral.inviteCode,
       inviteeEmail,
+      inviteeUsername,
       inviterEmail,
       accountManagerEmail,
     });
@@ -1077,10 +1085,13 @@ export const resendReferralInvite = async (req: AuthRequest, res: Response) => {
     const nextMetadata = {
       ...metadata,
       inviteeEmail,
+      inviteeUsername,
       inviterEmail,
       accountManagerEmail,
       inviteCode: referral.inviteCode,
-      emailSentAt: now.toISOString(),
+      // Username invites are shared as a link until the join form records an
+      // email. Don't stamp a send we didn't make.
+      emailSentAt: inviteeEmail ? now.toISOString() : metadata.emailSentAt ?? null,
       expiresAt: expiresAt.toISOString(),
       resendCount: (metadata.resendCount ?? 0) + 1,
     } satisfies Prisma.InputJsonValue;
@@ -1115,8 +1126,8 @@ export const resendReferralInvite = async (req: AuthRequest, res: Response) => {
       referral.referrer.email;
 
     let emailSent = false;
-    const mail = pickInviteMail(referral.campaign);
-    if (mail) {
+    const mail = inviteeEmail ? pickInviteMail(referral.campaign) : null;
+    if (mail && inviteeEmail) {
       try {
         emailSent = await emailService.sendReferralInviteEmail({
           inviteeEmail,
@@ -1137,13 +1148,16 @@ export const resendReferralInvite = async (req: AuthRequest, res: Response) => {
       fromEmail: mail ? outboundFromAddress(mail) : null,
       inviteUrl,
       inviteeEmail,
+      inviteeUsername,
       expiresAt: expiresAt.toISOString(),
       resendCount: nextMetadata.resendCount,
       message: emailSent
         ? "Invite email resent"
-        : mail
-          ? "Invite updated but email delivery failed"
-          : "Invite updated but no email was sent because this campaign has no mail login",
+        : inviteeEmail
+          ? mail
+            ? "Invite updated but email delivery failed"
+            : "Invite updated but no email was sent because this campaign has no mail login"
+          : "Invite link refreshed. Share it with the username — email is verified when they become an influencer.",
     });
   } catch (error) {
     console.error("Resend referral invite error:", error);
@@ -1613,13 +1627,13 @@ export const createReferralDefaultLandingPage = async (
       });
     }
 
+    const inviteMeta = readReferralMetadata(referral.metadata);
     const inviteeEmail =
-      referral.preUser?.email ||
-      readReferralMetadata(referral.metadata).inviteeEmail ||
-      "";
-    if (!inviteeEmail) {
+      referral.preUser?.email || inviteMeta.inviteeEmail || "";
+    const inviteeUsername = inviteMeta.inviteeUsername || "";
+    if (!inviteeEmail && !inviteeUsername) {
       return res.status(400).json({
-        error: "This invite has no invitee email.",
+        error: "This invite has no invitee username.",
       });
     }
 
@@ -1639,7 +1653,8 @@ export const createReferralDefaultLandingPage = async (
 
     const sugarUpstream = await createSugarDefaultLandingPage({
       inviteCode: referral.inviteCode,
-      email: inviteeEmail,
+      email: inviteeEmail || undefined,
+      username: inviteeUsername || undefined,
     });
     if (!sugarUpstream?.ok || !sugarUpstream.assetLink) {
       console.warn("[default-landing-page] sugar default-lp failed", {
@@ -2524,6 +2539,15 @@ export const sendReferralWelcomeEmail = async (
       });
     }
 
+    // Username invites collect the address on the join form. Sending the
+    // welcome email is the verification step that makes them an influencer.
+    if (!referral.preUser.email) {
+      return res.status(400).json({
+        error:
+          "This invite has no email yet. They enter it on the join form, and we verify it when they become an influencer.",
+      });
+    }
+
     // Welcome email is only meaningful once the influencer is published /
     // LP Live. Earlier steps would create a User
     // before the upstream lifecycle has caught up, which is what we
@@ -2542,6 +2566,7 @@ export const sendReferralWelcomeEmail = async (
     const result = await promotePreUserToUser(prisma, {
       id: referral.preUser.id,
       email: referral.preUser.email,
+      username: readReferralMetadata(referral.metadata).inviteeUsername ?? null,
       inviteCode: referral.preUser.inviteCode,
       referralId: referral.preUser.referralId,
       referrerId: referral.referrerId,
@@ -2798,13 +2823,12 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
 
       // Hide public "customer tracking" shell rows from My Promoters — they are
       // ACTIVE rows with `referredUserId: null` and no person invite in
-      // metadata. Keep legacy pending invites visible even if they predate the
-      // email-required flow and therefore have no `inviteeEmail`.
+      // metadata. Username invites count (email arrives later, on the join form).
       const meta = readReferralMetadata(ref.metadata);
       if (
         ref.status === "ACTIVE" &&
         ref.referredUserId === null &&
-        !meta.inviteeEmail
+        !metadataIdentifiesInvitee(meta)
       )
         return false;
 
@@ -2878,17 +2902,17 @@ export const getMyReferrals = async (req: AuthRequest, res: Response) => {
             ref.referrer?.id ||
             callerRefCode;
       // Only pending rows need an inviteUrl — accepted rows already have a
-      // `referredUser` so the UI wouldn't show the "Copy link" action. We
-      // skip rows missing inviteeEmail (legacy invites created before the
-      // email-required change) so we never emit a broken URL.
+      // `referredUser` so the UI wouldn't show the "Copy link" action.
+      // Username is enough; email is optional until the join form.
       const inviteUrl =
         ref.status === "PENDING" &&
-        metadata.inviteeEmail &&
-        metadata.inviterEmail
+        metadata.inviterEmail &&
+        metadataIdentifiesInvitee(metadata)
           ? buildInviteUrl(ref.campaign, {
               refCode: refCodeForInvite,
               inviteCode: ref.inviteCode,
               inviteeEmail: metadata.inviteeEmail,
+              inviteeUsername: metadata.inviteeUsername,
               inviterEmail: metadata.inviterEmail,
               accountManagerEmail: metadata.accountManagerEmail ?? null,
             })
@@ -3462,7 +3486,13 @@ export const receiveTeasemeStepWebhook = async (
       ? chooseForwardStatus(preUser.status, status)
       : preUser.status;
 
+    // Username invites have no email until the join form. Keep the first
+    // address the product reports so the welcome email can verify it.
+    const incomingEmail = typeof email === "string" ? email.trim() : "";
+    const rememberEmail = Boolean(incomingEmail) && !preUser.email;
+
     await patchReferralOnboarding(prisma, resolvedReferralId, {
+      ...(rememberEmail ? { email: incomingEmail } : {}),
       currentStep: appliedStep,
       status: appliedStatus,
       ...(typeof assetLink === "string" && assetLink ? { assetLink } : {}),
@@ -3474,6 +3504,21 @@ export const receiveTeasemeStepWebhook = async (
       allowStepRewind:
         !alreadyPublished && appliedStep < preUser.currentStep,
     });
+
+    if (rememberEmail) {
+      const meta = readReferralMetadata(referralRow.metadata);
+      if (!meta.inviteeEmail) {
+        await prisma.referral.update({
+          where: { id: resolvedReferralId },
+          data: {
+            metadata: {
+              ...meta,
+              inviteeEmail: incomingEmail,
+            },
+          },
+        });
+      }
+    }
 
     console.info("[teaseme-webhook] step updated", {
       preUserId: preUser.id,
@@ -4112,7 +4157,7 @@ export const getAdminNetworkStructure = async (
           if (
             ref.status === "ACTIVE" &&
             ref.referredUserId === null &&
-            !meta.inviteeEmail
+            !metadataIdentifiesInvitee(meta)
           ) {
             return false;
           }

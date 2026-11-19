@@ -272,6 +272,8 @@ export interface ReferralMetadata {
   accountManagerEmail?: string | null;
   inviterEmail?: string | null;
   inviteeEmail?: string | null;
+  /** Username the invite was created for. Email is filled in later. */
+  inviteeUsername?: string | null;
   inviteCode?: string | null;
   emailSentAt?: string | null;
   expiresAt?: string | null;
@@ -604,9 +606,10 @@ export const modelsApi = {
     return data.managers;
   },
 
-  async createReferralInvite(campaignId: string, email: string): Promise<{
+  async createReferralInvite(campaignId: string, username: string): Promise<{
     inviteUrl: string;
     inviteCode: string;
+    inviteeUsername?: string;
     referral: Referral;
     emailSent?: boolean;
     mailConfigured?: boolean;
@@ -615,7 +618,7 @@ export const modelsApi = {
     const response = await apiFetch(`${API_URL}/referrals/create`, {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify({ campaignId, email }),
+      body: JSON.stringify({ campaignId, username }),
     });
     return handleResponse(response, 'Failed to create invite');
   },
