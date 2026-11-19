@@ -32,6 +32,7 @@ import {
 import { getPresignedUrl } from "../services/s3.service";
 import { resolveAccountManagersFor } from "../services/ownership.service";
 import {
+  createSugarDefaultLandingPage,
   getSugarPackageWorkspace,
   isSugarScratchCampaign,
   makeSugarPackage,
@@ -900,7 +901,8 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
 
       // Seed product onboarding cache with the invite URL so "Open onboarding"
       // works before TeaseMe/Sugar returns a session URL. Products own the
-      // real pre-user; this is Referral read-cache only.
+      // real pre-user; this is Referral read-cache only. Sugar Scratchie
+      // overwrites this with the default landing-page URL after commit.
       const seedInviteUrl = buildInviteUrl(created.campaign, {
         refCode,
         inviteCode,
@@ -922,13 +924,42 @@ export const createReferralInvite = async (req: AuthRequest, res: Response) => {
       return created;
     });
 
-    const inviteUrl = buildInviteUrl(referral.campaign, {
+    let inviteUrl = buildInviteUrl(referral.campaign, {
       refCode,
       inviteCode,
       inviteeEmail: email as string,
       inviterEmail: inviter.email,
       accountManagerEmail,
     });
+
+    // Sugar Scratchie: accept link is the shared default landing page with
+    // the Forms step. currentStep stays 0 until the invitee submits.
+    if (isSugarScratchCampaign(referral.campaign?.name)) {
+      const sugarDefault = await createSugarDefaultLandingPage({
+        inviteCode,
+        email: email as string,
+      });
+      if (sugarDefault?.ok && sugarDefault.assetLink) {
+        const campaignHosted = landingPageOnCampaignUrl(
+          sugarDefault.assetLink,
+          referral.campaign,
+        );
+        inviteUrl = campaignHosted || sugarDefault.assetLink;
+        await patchReferralOnboarding(prisma, referral.id, {
+          surveyLink: inviteUrl,
+          assetLink: inviteUrl,
+          currentStep: 0,
+          status: "pending",
+        });
+      } else {
+        console.warn("[create-invite] sugar default-lp failed", {
+          referralId: referral.id,
+          inviteCode,
+          statusCode: sugarDefault?.statusCode,
+          error: sugarDefault?.error,
+        });
+      }
+    }
 
     // Send email with the "Accept Invite" button pointing at `inviteUrl`.
     // Failures are surfaced via `emailSent: false` rather than failing the
@@ -1537,6 +1568,120 @@ const claimMissingPackageStep = async (
   return { rewound: true, currentStep: 1 };
 };
 
+export const createReferralDefaultLandingPage = async (
+  req: AuthRequest,
+  res: Response,
+) => {
+  try {
+    const { id } = req.params;
+    const user = req.user!;
+
+    const loaded = await loadReferralForAction(id, user);
+    if (loaded.error) {
+      return res
+        .status(loaded.error.code)
+        .json({ error: loaded.error.message });
+    }
+    const { referral } = loaded;
+
+    if (
+      user.role !== UserRole.ADMIN &&
+      user.userType !== UserType.ACCOUNT_MANAGER
+    ) {
+      return res.status(403).json({
+        error:
+          "Access denied: only account managers or admins can create landing pages",
+      });
+    }
+
+    if (!isSugarScratchCampaign(referral.campaign?.name)) {
+      return res.status(400).json({
+        error:
+          "Default landing page is only available for Sugar Scratchie campaigns.",
+      });
+    }
+
+    const isExpired = computeIsExpired(
+      referral.status,
+      referral.createdAt,
+      readReferralMetadata(referral.metadata),
+    );
+    if (referral.status === "CANCELLED" || isExpired) {
+      return res.status(400).json({
+        error:
+          "A landing page can only be created for active or pending referrals",
+      });
+    }
+
+    const inviteeEmail =
+      referral.preUser?.email ||
+      readReferralMetadata(referral.metadata).inviteeEmail ||
+      "";
+    if (!inviteeEmail) {
+      return res.status(400).json({
+        error: "This invite has no invitee email.",
+      });
+    }
+
+    // Keep an existing Forms / live link. Re-create only when missing.
+    const existingLink = (
+      referral.preUser?.assetLink ||
+      referral.preUser?.surveyLink ||
+      ""
+    ).trim();
+    if (existingLink) {
+      return res.json({
+        success: true,
+        preUser: referral.preUser,
+        assetLink: existingLink,
+      });
+    }
+
+    const sugarUpstream = await createSugarDefaultLandingPage({
+      inviteCode: referral.inviteCode,
+      email: inviteeEmail,
+    });
+    if (!sugarUpstream?.ok || !sugarUpstream.assetLink) {
+      console.warn("[default-landing-page] sugar default-lp failed", {
+        referralId: referral.id,
+        inviteCode: referral.inviteCode,
+        statusCode: sugarUpstream?.statusCode,
+        error: sugarUpstream?.error,
+      });
+      return res.status(sugarUpstream?.statusCode === 400 ? 400 : 502).json({
+        error:
+          sugarUpstream?.error ||
+          "Sugar Scratchie couldn't create the landing page right now. Please try again in a moment.",
+      });
+    }
+
+    const campaignHosted =
+      landingPageOnCampaignUrl(sugarUpstream.assetLink, referral.campaign) ||
+      sugarUpstream.assetLink;
+    const now = new Date();
+    const updatedPreUser = await patchReferralOnboarding(prisma, referral.id, {
+      surveyLink: campaignHosted,
+      assetLink: campaignHosted,
+      // Do not advance past Forms; create only publishes the shared demo URL.
+      currentStep: Math.max(0, referral.preUser?.currentStep ?? 0),
+      status: chooseForwardStatus(
+        referral.preUser?.status ?? "pending",
+        "pending",
+      ),
+      lastCheckedAt: now,
+    });
+
+    return res.json({
+      success: true,
+      preUser: updatedPreUser,
+      assetLink: campaignHosted,
+    });
+  } catch (error) {
+    console.error("Default landing page error:", error);
+    return res.status(500).json({ error: "Failed to create landing page" });
+  }
+};
+
 export const getReferralPackageWorkspace = async (
   req: AuthRequest,
   res: Response,
@@ -1572,7 +1717,7 @@ export const getReferralPackageWorkspace = async (
     if (!referral.preUser) {
       return res.status(400).json({
         error:
-          "This invite has no pre-influencer attached yet — the user hasn't confirmed email and name.",
+          "This invite has no pre-influencer attached yet — the user hasn't submitted the landing-page form.",
       });
     }
 
@@ -1662,13 +1807,13 @@ export const makeReferralPackage = async (
     if (!referral.preUser) {
       return res.status(400).json({
         error:
-          "This invite has no pre-influencer attached yet — the user hasn't confirmed email and name.",
+          "This invite has no pre-influencer attached yet — the user hasn't submitted the landing-page form.",
       });
     }
 
     if ((referral.preUser.currentStep ?? 0) < 1) {
       return res.status(400).json({
-        error: "Confirm email and name before making the package.",
+        error: "Submit the landing-page form before making the package.",
       });
     }
 

@@ -679,6 +679,29 @@ export const modelsApi = {
     return handleResponse(response, 'Failed to reassign referral');
   },
 
+  async createReferralDefaultLandingPage(referralId: string): Promise<{
+    success: true;
+    assetLink: string;
+    preUser: {
+      id: string;
+      currentStep: number;
+      status: string;
+      lastCheckedAt: string | null;
+      teasemeUserId: string | null;
+      surveyLink: string | null;
+      assetLink: string | null;
+    } | null;
+  }> {
+    const response = await apiFetch(
+      `${API_URL}/referrals/${referralId}/default-landing-page`,
+      {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      },
+    );
+    return handleResponse(response, 'Failed to create landing page');
+  },
+
   async getReferralPackageWorkspace(referralId: string): Promise<{
     success: true;
     modelId: string;

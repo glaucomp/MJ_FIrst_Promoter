@@ -1598,11 +1598,11 @@ const deriveChipState = (r: Referral): ChipState => {
   if (preLifecycle === "building") return "building";
   const step = r.preUser?.currentStep ?? 0;
   const sugarCampaign = isSugarScratchCampaign(r.campaign?.name);
-  // Sugar 3-step: 1 Email → 2 n8n package → 3 Order LP / live.
+  // Sugar 3-step: 1 Forms → 2 n8n → 3 Landing page / live.
   // Do not map `confirmed` (normalize → order_lp) to Order LP until step 2.
   // Step 2 is trusted only after the package-workspace repair: a false
   // step-2 webhook is written back to 1, which keeps this chip on waiting
-  // so Make package stays available.
+  // so n8n stays available.
   if (sugarCampaign) {
     if (step >= 3) return "lp_live";
     if (step >= 2) return "order_lp";
@@ -1788,11 +1788,11 @@ const TEASEME_ONBOARDING_STEPS: { idx: number; label: string; hint?: string }[] 
   ];
 
 // Sugar Scratchie funnel (same teaseme-step completion count as TeaseMe):
-// Email & Name → Make package (n8n) → Make landing page (Order LP).
+// Forms → n8n → Landing page (Order LP).
 const SUGAR_ONBOARDING_STEPS: { idx: number; label: string; hint?: string }[] = [
-  { idx: 1, label: "Email & Name" },
-  { idx: 2, label: "Make package", hint: "n8n" },
-  { idx: 3, label: "Make landing page" },
+  { idx: 1, label: "Forms" },
+  { idx: 2, label: "n8n" },
+  { idx: 3, label: "Landing page" },
 ];
 
 const isSugarScratchCampaign = (name?: string | null): boolean =>
@@ -1867,7 +1867,7 @@ const getCompletedOnboardingSteps = (
 ) => {
   const lifecycle = normalizePreUserLifecycleStatus(lifecycleStatus);
   // Sugar: building/live complete all three steps. Do not treat order_lp /
-  // confirmed as all-done — Make package (2) and Make landing page (3) stay open.
+  // confirmed as all-done — n8n (2) and Landing page (3) stay open.
   if (lifecycle === "building" || lifecycle === "live") {
     return stepCount;
   }
@@ -1875,7 +1875,7 @@ const getCompletedOnboardingSteps = (
     return stepCount;
   }
   // Sugar confirmed maps to order_lp lifecycle, but step may still be 1
-  // (email only) or 2 (package ready, Order LP open).
+  // (Forms only) or 2 (n8n done, Landing page open).
   if (sugarCampaign && lifecycle === "order_lp") {
     return Math.max(1, Math.min(Math.max(currentStep, 0), stepCount));
   }
@@ -2480,6 +2480,47 @@ const dedupeByPromoter = (rows: Referral[]): Referral[] => {
     );
   };
 
+  const handleCreateLandingPage = async (referral: Referral) => {
+    setBusyId(referral.id);
+    try {
+      const result = await modelsApi.createReferralDefaultLandingPage(referral.id);
+      if (result.preUser) {
+        applyPreUserSnapshot(referral.id, result.preUser);
+      } else if (result.assetLink) {
+        setReferrals?.((prev) =>
+          prev.map((r) =>
+            r.id === referral.id
+              ? {
+                  ...r,
+                  preUser: {
+                    ...(r.preUser ?? {
+                      currentStep: 0,
+                      status: null,
+                      lastCheckedAt: null,
+                      teasemeUserId: null,
+                      surveyLink: null,
+                      assetLink: null,
+                      welcomeEmailSentAt: null,
+                    }),
+                    surveyLink: result.assetLink,
+                    assetLink: result.assetLink,
+                  },
+                }
+              : r,
+          ),
+        );
+      }
+      showToast("success", "Landing page ready — copy the link for Forms");
+    } catch (err) {
+      showToast(
+        "error",
+        err instanceof Error ? err.message : "Failed to create landing page",
+      );
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const handleOpenPackageWorkspace = async (referral: Referral) => {
     setBusyId(referral.id);
     try {
@@ -2512,7 +2553,7 @@ const dedupeByPromoter = (rows: Referral[]): Referral[] => {
         modelId: workspace.modelId,
       });
       if (workspace.packageReady) {
-        showToast("success", "Pack already on the model");
+        showToast("success", "Pack already on the model — n8n can finish");
       } else {
         showToast(
           "success",
@@ -2535,7 +2576,7 @@ const dedupeByPromoter = (rows: Referral[]): Referral[] => {
       const result = await modelsApi.makeReferralPackage(referral.id);
       applyPreUserSnapshot(referral.id, result.preUser);
       setPackageFor(null);
-      showToast("success", "Make package done — Order LP unlocked");
+      showToast("success", "n8n done — Landing page unlocked");
     } catch (err) {
       const rolled =
         err &&
@@ -3055,6 +3096,7 @@ const dedupeByPromoter = (rows: Referral[]): Referral[] => {
                 onDelete={handleDelete}
                 onDeny={handleDeny}
                 onReassign={(r) => setReassignFor(r)}
+                onCreateLandingPage={handleCreateLandingPage}
                 onMakePackage={handleOpenPackageWorkspace}
                 onOrderLandingPage={handleOrderLandingPage}
                 onAssignChatters={handleAssignChatters}
@@ -3098,7 +3140,7 @@ const dedupeByPromoter = (rows: Referral[]): Referral[] => {
 //   expired  → message + Delete (dead invite, cleanup only)
 //   denied   → message + Delete (dead invite, cleanup only)
 //   waiting  → [Deny][ReAssign]  +  disabled "Order Landing Page"
-//              (Sugar after email: green "Make package" instead)
+//              (Sugar step 0: Create landing page; step 1: n8n)
 //   order_lp → full-width green "Order Landing Page"
 //   building → no CTA, grayed "Building landing page…" placeholder
 //   lp_live  → secondary "Send/Resend Welcome Email" + pink "Assign Chatters"
@@ -3120,6 +3162,7 @@ type CardActionsProps = {
   onDelete: (r: Referral) => void;
   onDeny: (r: Referral) => void;
   onReassign: (r: Referral) => void;
+  onCreateLandingPage: (r: Referral) => void;
   onMakePackage: (r: Referral) => void;
   onOrderLandingPage: (r: Referral) => void;
   onAssignChatters: (r: Referral) => void;
@@ -3240,6 +3283,7 @@ const CardActions = ({
   onDelete,
   onDeny,
   onReassign,
+  onCreateLandingPage,
   onMakePackage,
   onOrderLandingPage,
   onAssignChatters,
@@ -3287,7 +3331,13 @@ const CardActions = ({
 
   if (state === "waiting") {
     const step = referral.preUser?.currentStep ?? 0;
-    // Sugar step 1 done → AM runs n8n / Make package before Order LP.
+    const hasLandingLink = Boolean(
+      (referral.preUser?.assetLink || referral.preUser?.surveyLink || "").trim(),
+    );
+    // Sugar step 0 → Create landing page (shared demo with Forms).
+    // Sugar step 1 done → AM runs n8n before Order LP.
+    const showCreateLandingPage =
+      sugarCampaign && step < 1 && canOrderLandingPage && !hasLandingLink;
     const showMakePackage =
       sugarCampaign && step >= 1 && step < 2 && canOrderLandingPage;
     return (
@@ -3310,21 +3360,35 @@ const CardActions = ({
             </span>
           </SecondaryButton>
         </div>
-        {showMakePackage ? (
+        {showCreateLandingPage ? (
+          <GreenCta onClick={() => onCreateLandingPage(referral)} disabled={busy}>
+            {busy ? "Creating…" : "Create landing page"}
+          </GreenCta>
+        ) : showMakePackage ? (
           <GreenCta onClick={() => onMakePackage(referral)} disabled={busy}>
-            {busy ? "Running…" : "Make package"}
+            {busy ? "Running…" : "n8n"}
           </GreenCta>
         ) : (
           <button
             disabled
             title={
-              sugarCampaign && step >= 1 && !canOrderLandingPage
-                ? "Your account manager will make the package next."
-                : "Waiting for the promoter to finish onboarding before a landing page can be ordered."
+              sugarCampaign && step < 1 && hasLandingLink
+                ? "Waiting for the influencer to submit the Forms step."
+                : sugarCampaign && step >= 1 && !canOrderLandingPage
+                  ? "Your account manager will run n8n next."
+                  : sugarCampaign && step < 1 && !canOrderLandingPage
+                    ? "Your account manager will create the landing page next."
+                    : "Waiting for the promoter to finish onboarding before a landing page can be ordered."
             }
             className="w-full rounded-full px-4 py-3 text-base font-medium border border-tm-success-color05 text-tm-success-color05 opacity-40 cursor-not-allowed"
           >
-            {sugarCampaign && step >= 1 ? "Make package" : "Order Landing Page"}
+            {sugarCampaign && step < 1
+              ? hasLandingLink
+                ? "Waiting for Forms"
+                : "Create landing page"
+              : sugarCampaign && step >= 1
+                ? "n8n"
+                : "Order Landing Page"}
           </button>
         )}
         {/* Reassign is already in the row above, so the admin footer only
@@ -3349,7 +3413,11 @@ const CardActions = ({
     return (
       <div className="flex flex-col gap-2">
         <GreenCta onClick={() => onOrderLandingPage(referral)} disabled={busy}>
-          {busy ? "Requesting…" : "Order Landing Page"}
+          {busy
+            ? "Requesting…"
+            : sugarCampaign
+              ? "Landing page"
+              : "Order Landing Page"}
         </GreenCta>
         {adminOverride({ showReassign: true })}
       </div>
@@ -3558,7 +3626,7 @@ const MakePackageModal = ({
       >
         <div className="flex items-start justify-between gap-3 shrink-0">
           <div className="min-w-0">
-            <h3 className="text-white text-base font-bold">Make package</h3>
+            <h3 className="text-white text-base font-bold">n8n</h3>
             <p className="text-tm-text-color08 text-sm truncate">
               {invitee} · {modelId}
             </p>

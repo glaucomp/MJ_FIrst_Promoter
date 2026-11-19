@@ -76,6 +76,13 @@ router.post(
   referralController.reassignReferralInvite,
 );
 
+// Sugar Scratchie: shared default /join URL for the Forms step (no step advance).
+router.post(
+  "/:id/default-landing-page",
+  authenticate,
+  referralController.createReferralDefaultLandingPage,
+);
+
 // Sugar Scratchie: operator packs URL for Create with n8n (no step advance).
 router.post(
   "/:id/package-workspace",
